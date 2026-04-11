@@ -1,11 +1,12 @@
 from telethon import TelegramClient, events
 from telethon.sessions import StringSession
 import os
+import asyncio
 
 API_ID = int(os.environ['API_ID'])
 API_HASH = os.environ['API_HASH']
 SESSION = os.environ['SESSION_STRING']
-TARGET = os.environ['TARGET_GROUP']
+TARGET = int(os.environ['TARGET_GROUP'])
 SOURCES = os.environ['SOURCE_GROUPS'].split(',')
 
 KEYWORDS = [
@@ -29,6 +30,7 @@ async def handler(event):
     if has_keyword(event.message.text):
         await client.send_message(TARGET, f"📢 {event.message.text}")
 
-client.start()
-print("Bot running...")
-client.run_until_disconnected()
+async def main():
+    await client.start()
+    print("Bot running...")
+    await client.run_until_disconnected()
