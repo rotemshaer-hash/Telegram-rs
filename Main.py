@@ -33,6 +33,7 @@ async def handler(event):
 async def main():
     await client.start(phone=PHONE)
     print("Bot running...")
-    await client.run_until_disconnected()
+    await client.connect()
+
 
 asyncio.run(main())
