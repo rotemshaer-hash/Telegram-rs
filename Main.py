@@ -30,7 +30,7 @@ async def handler(event):
         await client.send_message(TARGET, f"📢 {event.message.text}")
 
 async def main():
-    await client.start()
+    await client.start(phone=PHONE)
     print("Bot running...")
     await client.run_until_disconnected()
 
