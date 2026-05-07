@@ -22,8 +22,7 @@ client = TelegramClient(StringSession(SESSION), API_ID, API_HASH)
 def has_keyword(text):
     if not text:
         return False
-    t = text.lower()
-    return any(k.lower() in t for k in KEYWORDS)
+    return any(k.lower() in text.lower() for k in KEYWORDS)
 
 @client.on(events.NewMessage(chats=SOURCES))
 async def handler(event):
