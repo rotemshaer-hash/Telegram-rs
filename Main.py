@@ -1,6 +1,7 @@
-from telethon.sync import TelegramClient, events
+from telethon import TelegramClient, events
 from telethon.sessions import StringSession
 import os
+import asyncio
 
 API_ID = int(os.environ['API_ID'])
 API_HASH = os.environ['API_HASH']
@@ -9,22 +10,29 @@ TARGET = int(os.environ['TARGET_GROUP'])
 SOURCES = os.environ['SOURCE_GROUPS'].split(',')
 
 KEYWORDS = [
-    'איראן','ישראל','לבנון','חיזבאללה','מלחמה','טיל',
+    'איראן','ישראל','לבנון','חיזבאללה','מלחמה','טיל','טילים',
+    'תקיפה','הפסקת אש','נתניהו','טראמפ','גרעין',
     'iran','israel','lebanon','hezbollah','war','missile',
-    'إيران','إسرائيل','لبنان','حرب'
+    'ceasefire','idf','nuclear','attack',
+    'إيران','إسرائيل','لبنان','حزب الله','حرب','صاروخ'
 ]
+
+client = TelegramClient(StringSession(SESSION), API_ID, API_HASH)
 
 def has_keyword(text):
     if not text:
         return False
-    return any(k.lower() in text.lower() for k in KEYWORDS)
+    t = text.lower()
+    return any(k.lower() in t for k in KEYWORDS)
 
-with TelegramClient(StringSession(SESSION), API_ID, API_HASH) as client:
+@client.on(events.NewMessage(chats=SOURCES))
+async def handler(event):
+    if has_keyword(event.message.text):
+        await client.send_message(TARGET, f"📢 {event.message.text}")
+
+async def main():
+    await client.start()
     print("Bot running...")
+    await client.run_until_disconnected()
 
-    @client.on(events.NewMessage(chats=SOURCES))
-    async def handler(event):
-        if has_keyword(event.message.text):
-            await client.send_message(TARGET, f"📢 {event.message.text}")
-
-    client.run_until_disconnected()
+asyncio.run(main())
