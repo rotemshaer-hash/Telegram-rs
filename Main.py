@@ -6,6 +6,7 @@ import asyncio
 API_ID = int(os.environ['API_ID'])
 API_HASH = os.environ['API_HASH']
 SESSION = os.environ['SESSION_STRING']
+PHONE = os.environ['PHONE']
 TARGET = int(os.environ['TARGET_GROUP'])
 SOURCES = os.environ['SOURCE_GROUPS'].split(',')
 
