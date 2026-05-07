@@ -29,11 +29,13 @@ def has_keyword(text):
 async def handler(event):
     if has_keyword(event.message.text):
         await client.send_message(TARGET, f"📢 {event.message.text}")
-
 async def main():
-    await client.start(phone=PHONE)
-    print("Bot running...")
     await client.connect()
+    if not await client.is_user_authorized():
+        print("Not authorized!")
+        return
+    print("Bot running...")
+    await client.run_until_disconnected()
 
 
 asyncio.run(main())
