@@ -7,6 +7,7 @@
 <meta name="description" content="Kidemy – ילדים מלמדים ילדים. פלטפורמה בטוחה לחינוך עמיתים."/>
 <link rel="manifest" href="data:application/json;charset=utf-8,%7B%22name%22%3A%22Kidemy%22%2C%22short_name%22%3A%22Kidemy%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230F0F1A%22%2C%22theme_color%22%3A%22%23FF6B35%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%2520viewBox%3D'0%200%20100%20100'%253E%253Ctext%2520y%3D'.9em'%2520font-size%3D'90'%253E%25F0%259F%258E%2593%253C%2Ftext%253E%253C%2Fsvg%253E%22%2C%22sizes%22%3A%22any%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%7D%5D%7D"/>
 <!-- Firebase SDKs -->
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
@@ -400,6 +401,7 @@ const ACHIEVEMENTS=[
 // ─── STATE ────────────────────────────────────────────────────────────────────
 let S={
   screen:"splash", prev:"home",
+  skippedSetup:false,
   teacher:null, chat:null,
   regStep:1, regRole:null, regAgreed:false, regVerifying:false, regVerified:false,
   msgs:[],
@@ -801,7 +803,7 @@ function TeacherSetup(){
   return `<div class="screen" style="background:linear-gradient(165deg,#CCFBF1 0%,#A5F3FC 50%,#7DD3FC 100%);min-height:100dvh;padding-bottom:80px">
     <div style="background:linear-gradient(135deg,#14B8A6 0%,#06B6D4 50%,#A855F7 100%);padding:24px 20px 32px;border-radius:0 0 32px 32px;color:#fff;position:relative;overflow:hidden">
       <div style="position:absolute;top:-60px;right:-60px;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,0.08)"></div>
-      <button onclick="go('home')" style="background:rgba(255,255,255,0.15);border:none;color:#fff;font-size:14px;cursor:pointer;border-radius:50px;padding:8px 16px;font-weight:700">← דלג לעת עתה</button>
+      <button onclick="S.skippedSetup=true;go('home')" style="background:rgba(255,255,255,0.15);border:none;color:#fff;font-size:14px;cursor:pointer;border-radius:50px;padding:8px 16px;font-weight:700">← דלג לעת עתה</button>
       <h2 style="font-size:24px;font-weight:900;margin:14px 0 6px;position:relative;z-index:1">🎓 השלם פרופיל מורה</h2>
       <p style="color:rgba(255,255,255,0.9);font-size:13px;margin:0;position:relative;z-index:1">תלמידים יראו את הפרופיל הזה כשיחפשו מורים</p>
     </div>
@@ -1115,31 +1117,40 @@ async function saveTeacherProfile(){
       }
     }
 
+    // אם המשתמש הוא מנהל — אשר אוטומטית
+    if(isAdmin())teacherData.verified=true;
     await db.ref('teachers/'+currentUser.uid).set(teacherData);
     await db.ref('users/'+currentUser.uid+'/role').set('teacher');
     if(currentUserData)currentUserData.role='teacher';
 
-    // התראה למנהל
-    try{
-      const adminSnap=await db.ref('users').orderByChild('email').equalTo(ADMIN_EMAILS[0]).get();
-      if(adminSnap.exists()){
-        adminSnap.forEach(u=>{
-          db.ref('notifications/'+u.key).push({
-            type:'newTeacher',
-            from:teacherData.name,
-            teacherId:currentUser.uid,
-            teacherCat:mainCat,
-            teacherEmail:currentUser.email,
-            customCats:_customCats,
-            read:false,
-            createdAt:Date.now()
+    if(isAdmin()){
+      showFireToast('✅ פרופיל מורה נשמר ואושר!');
+      await loadRealTeachers();
+      setTimeout(()=>go('home'),1200);
+    } else {
+      // התראה למנהל + מייל
+      try{
+        const adminSnap=await db.ref('users').orderByChild('email').equalTo(ADMIN_EMAILS[0]).get();
+        if(adminSnap.exists()){
+          adminSnap.forEach(u=>{
+            db.ref('notifications/'+u.key).push({
+              type:'newTeacher',
+              from:teacherData.name,
+              teacherId:currentUser.uid,
+              teacherCat:mainCat,
+              teacherEmail:currentUser.email,
+              customCats:_customCats,
+              read:false,
+              createdAt:Date.now()
+            });
           });
-        });
-      }
-    }catch(e){}
-
-    showFireToast('✅ הפרופיל נשמר! ממתין לאישור.');
-    setTimeout(()=>go('teacherPending'),1500);
+        }
+        sendAdminEmail('🎓 מורה חדש ממתין לאישור',
+          `שם: ${teacherData.name}\nמייל: ${teacherData.email}\nקטגוריה: ${mainCat}\nעיר: ${teacherData.city}`);
+      }catch(e){}
+      showFireToast('✅ הפרופיל נשמר! ממתין לאישור.');
+      setTimeout(()=>go('teacherPending'),1500);
+    }
   }catch(e){showFireToast('❌ '+e.message);}
 }
 
@@ -1831,6 +1842,29 @@ async function loadUserChats(){
 // ─── ADMIN SYSTEM 👨‍💼 ────────────────────────────────────────────────────
 const ADMIN_EMAILS=['rotemshaer@gmail.com'];
 
+// ─── EMAIL NOTIFICATIONS (EmailJS) ───────────────────────────────────────────
+// הגדרה: https://emailjs.com → צור חשבון → צור שירות Gmail → צור תבנית → הכנס מפתחות
+const EMAILJS_PUBLIC_KEY  = 'YOUR_PUBLIC_KEY';   // Account → API Keys
+const EMAILJS_SERVICE_ID  = 'YOUR_SERVICE_ID';   // Email Services
+const EMAILJS_TEMPLATE_ID = 'YOUR_TEMPLATE_ID';  // Email Templates
+let _ejsInit=false;
+function _initEmailJS(){
+  if(_ejsInit||EMAILJS_PUBLIC_KEY==='YOUR_PUBLIC_KEY')return;
+  if(typeof emailjs!=='undefined'){emailjs.init({publicKey:EMAILJS_PUBLIC_KEY});_ejsInit=true;}
+}
+function sendAdminEmail(subject,body){
+  _initEmailJS();
+  if(!_ejsInit)return; // EmailJS לא מוגדר
+  try{
+    emailjs.send(EMAILJS_SERVICE_ID,EMAILJS_TEMPLATE_ID,{
+      to_email:'rotemshaer@gmail.com',
+      subject,
+      message:body,
+      from_name:'Kidemy App'
+    });
+  }catch(e){}
+}
+
 // ─── פרטי תשלום למנהל 💳 ────────────────────────────────────────────────
 // עדכן את הפרטים האלה לפרטים האמיתיים שלך!
 const ADMIN_PAYMENT={
@@ -1878,6 +1912,12 @@ async function adminApproveTeacher(uid){
   try{
     await db.ref('teachers/'+uid+'/verified').set(true);
     await db.ref('teachers/'+uid+'/active').set(true);
+    // שלח הודעה למורה
+    await db.ref('notifications/'+uid).push({type:'teacherApproved',read:false,createdAt:Date.now()});
+    // מייל למנהל
+    const tSnap=await db.ref('teachers/'+uid).get();
+    const td=tSnap.val()||{};
+    sendAdminEmail('✅ מורה אושר',`אישרת את ${td.name||uid} (${td.email||''}) כמורה ב-Kidemy`);
     showFireToast('✅ המורה אושר!');
     await loadAdminData();renderAdminPanel();
   }catch(e){showFireToast('❌ '+e.message);}
@@ -2276,6 +2316,8 @@ async function _saveVideoToFirebase(title,url,desc,platform,thumbnail=null){
           });
         });
       }
+      sendAdminEmail('📹 סרטון חדש ממתין לאישור',
+        `מורה: ${currentUserData?.name||currentUser.email}\nכותרת: ${title}\nפלטפורמה: ${platform}`);
     }catch(e){}
     await loadTeacherVideos();
     render();
@@ -2403,39 +2445,75 @@ function showScheduleEditor(){
   loadTeacherSchedule().then(()=>renderScheduleEditor());
 }
 
+let _schDay=null; // יום שנבחר לעריכת שעות
 function renderScheduleEditor(){
   document.querySelector('._schEd')?.parentElement?.remove();
   const ov=document.createElement('div');
-  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:flex-start;justify-content:center;backdrop-filter:blur(8px);padding:30px 14px;direction:rtl;overflow-y:auto';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:9999;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(10px);direction:rtl';
+  const totalSlots=Object.values(teacherSchedule).filter(v=>v).length;
+  // בניית לוח שנה חודשי
+  const now=new Date();
+  if(!window._schMonth)window._schMonth=now.getMonth();
+  if(!window._schYear)window._schYear=now.getFullYear();
+  const month=window._schMonth;
+  const year=window._schYear;
+  const monthNames=['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+  const firstDay=new Date(year,month,1).getDay();
+  const daysInMonth=new Date(year,month+1,0).getDate();
+  // בניית תאי לוח השנה
+  let calCells='';
+  // כותרות ימים (ר׳ שני שלישי...)
+  const dayLabels=['א׳','ב׳','ג׳','ד׳','ה׳','ו׳','ש׳'];
+  calCells+=`<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:6px">`;
+  dayLabels.forEach(d=>{calCells+=`<div style="text-align:center;font-size:11px;font-weight:800;color:#64748B;padding:4px 0">${d}</div>`;});
+  calCells+=`</div><div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px">`;
+  // ימים ריקים בתחילה
+  for(let i=0;i<firstDay;i++)calCells+=`<div></div>`;
+  for(let d=1;d<=daysInMonth;d++){
+    const date=new Date(year,month,d);
+    const dayOfWeek=date.getDay();
+    // בדוק אם יש זמינות ביום זה בשבוע
+    const hasSlots=HOURS.some(h=>teacherSchedule[dayOfWeek+'_'+h]);
+    const isToday=d===now.getDate()&&month===now.getMonth()&&year===now.getFullYear();
+    const isPast=date<new Date(now.getFullYear(),now.getMonth(),now.getDate());
+    calCells+=`<button onclick="window._schSelDay=${dayOfWeek};renderScheduleEditor()" style="aspect-ratio:1;border-radius:10px;border:${isToday?'2px solid #14B8A6':'1px solid rgba(20,184,166,0.15)'};background:${hasSlots?'linear-gradient(135deg,#14B8A6,#06B6D4)':isPast?'rgba(0,0,0,0.04)':'rgba(20,184,166,0.06)'};color:${hasSlots?'#fff':isPast?'#CBD5E1':'#0F1A1F'};font-weight:${isToday?'900':'700'};font-size:13px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:4px 2px">${d}${hasSlots?`<span style="font-size:7px;opacity:0.85">●</span>`:''}</button>`;
+  }
+  calCells+=`</div>`;
+  // בניית בחירת שעות לפי יום נבחר
+  const selDay=window._schSelDay;
+  const dayHoursHtml=selDay!==undefined?`
+    <div style="margin-top:16px;padding:14px;background:rgba(20,184,166,0.06);border-radius:16px;border:1.5px solid rgba(20,184,166,0.2)">
+      <div style="font-weight:800;font-size:13px;margin-bottom:10px;color:#0F766E">📌 שעות ל${['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'][selDay]}</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
+        ${HOURS.map(h=>{const on=teacherSchedule[selDay+'_'+h];return `<button onclick="toggleSlot(${selDay},'${h}')" style="padding:8px 4px;border-radius:10px;border:none;background:${on?'linear-gradient(135deg,#14B8A6,#06B6D4)':'rgba(20,184,166,0.08)'};color:${on?'#fff':'#0F766E'};font-weight:800;font-size:12px;cursor:pointer">${h}${on?' ✓':''}</button>`;}).join('')}
+      </div>
+    </div>`:'<p style="text-align:center;color:#94A3B8;font-size:13px;margin-top:16px">לחץ על יום בלוח לעריכת שעות זמינות</p>';
   ov.innerHTML=`
-    <div class="_schEd" style="background:#fff;border-radius:24px;padding:22px 16px;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-        <button onclick="this.closest('._schEd').parentElement.remove()" style="background:rgba(20,184,166,0.1);border:none;color:#14B8A6;font-size:18px;cursor:pointer;border-radius:50%;width:32px;height:32px">✕</button>
-        <h3 style="font-weight:900;font-size:18px;margin:0;color:#0F1A1F">📅 לוח הזמנים שלי</h3>
+    <div class="_schEd" style="background:#fff;border-radius:28px 28px 0 0;padding:22px 18px 40px;width:100%;max-width:480px;max-height:92vh;overflow-y:auto;box-shadow:0 -8px 40px rgba(0,0,0,0.2)">
+      <!-- כותרת -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <button onclick="this.closest('._schEd').parentElement.remove()" style="background:rgba(20,184,166,0.1);border:none;color:#14B8A6;font-size:20px;cursor:pointer;border-radius:50%;width:36px;height:36px">✕</button>
+        <h3 style="font-weight:900;font-size:18px;margin:0;color:#0F1A1F">📅 זמינות שבועית</h3>
+        <button onclick="saveSchedule()" style="background:linear-gradient(135deg,#14B8A6,#A855F7);border:none;color:#fff;border-radius:50px;padding:9px 18px;font-weight:800;font-size:13px;cursor:pointer">💾 שמור</button>
       </div>
-      <p style="font-size:12px;color:#64748B;margin:0 0 14px;line-height:1.6">סמן את השעות שאתה <strong style="color:#10B981">פנוי</strong> ללמד.</p>
-      <div style="display:flex;gap:5px;margin-bottom:10px;flex-wrap:wrap">
-        <button onclick="quickFillSchedule('morning')" style="flex:1;background:linear-gradient(135deg,#FBBF24,#F59E0B);border:none;color:#fff;border-radius:50px;padding:8px;font-size:11px;font-weight:800;cursor:pointer">☀️ בוקר</button>
-        <button onclick="quickFillSchedule('afternoon')" style="flex:1;background:linear-gradient(135deg,#06B6D4,#0EA5E9);border:none;color:#fff;border-radius:50px;padding:8px;font-size:11px;font-weight:800;cursor:pointer">🌤 צהריים</button>
-        <button onclick="quickFillSchedule('evening')" style="flex:1;background:linear-gradient(135deg,#A855F7,#7E22CE);border:none;color:#fff;border-radius:50px;padding:8px;font-size:11px;font-weight:800;cursor:pointer">🌙 ערב</button>
-        <button onclick="clearSchedule()" style="background:rgba(231,76,60,0.1);border:1px solid rgba(231,76,60,0.3);color:#E74C3C;border-radius:50px;padding:8px 12px;font-size:11px;font-weight:800;cursor:pointer">נקה</button>
+      <p style="font-size:12px;color:#64748B;margin:0 0 14px;text-align:center">${totalSlots} שעות מסומנות כזמינות</p>
+      <!-- ניווט חודש -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;background:linear-gradient(135deg,#0F766E,#0891B2);border-radius:16px;padding:12px 16px;color:#fff">
+        <button onclick="window._schMonth--;if(window._schMonth<0){window._schMonth=11;window._schYear--;}renderScheduleEditor()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;border-radius:50%;width:32px;height:32px;font-size:16px;cursor:pointer;font-weight:900">‹</button>
+        <span style="font-weight:900;font-size:16px">${monthNames[month]} ${year}</span>
+        <button onclick="window._schMonth++;if(window._schMonth>11){window._schMonth=0;window._schYear++;}renderScheduleEditor()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;border-radius:50%;width:32px;height:32px;font-size:16px;cursor:pointer;font-weight:900">›</button>
       </div>
-      <div style="overflow-x:auto;margin-bottom:14px;background:rgba(20,184,166,0.04);border-radius:14px;padding:6px">
-        <table style="width:100%;border-collapse:separate;border-spacing:2px;font-size:10px;min-width:340px">
-          <thead><tr><th style="padding:4px;font-weight:800;color:#64748B;font-size:10px">שעה</th>${[0,1,2,3,4,5,6].map(d=>`<th style="padding:4px;font-weight:800;color:#0F1A1F;font-size:10px">${DAYS_HE[d].substring(0,2)}</th>`).join('')}</tr></thead>
-          <tbody>
-            ${HOURS.map(h=>`<tr><td style="padding:2px;font-weight:700;color:#64748B;font-size:9px;text-align:center;white-space:nowrap">${h}</td>${[0,1,2,3,4,5,6].map(d=>{
-              const key=d+'_'+h;
-              const on=teacherSchedule[key];
-              return `<td style="padding:0"><button onclick="toggleSlot(${d},'${h}')" style="width:100%;height:26px;background:${on?'linear-gradient(135deg,#14B8A6,#06B6D4)':'rgba(20,184,166,0.06)'};border:1px solid ${on?'transparent':'rgba(20,184,166,0.15)'};border-radius:6px;cursor:pointer;color:${on?'#fff':'#94A3B8'};font-size:11px;font-weight:900">${on?'✓':''}</button></td>`;
-            }).join('')}</tr>`).join('')}
-          </tbody>
-        </table>
+      <!-- לוח שנה -->
+      ${calCells}
+      <!-- מילוי מהיר -->
+      <div style="display:flex;gap:6px;margin-top:14px;flex-wrap:wrap">
+        <button onclick="quickFillSchedule('morning')" style="flex:1;background:linear-gradient(135deg,#FBBF24,#F59E0B);border:none;color:#fff;border-radius:50px;padding:9px;font-size:12px;font-weight:800;cursor:pointer">☀️ בוקר</button>
+        <button onclick="quickFillSchedule('afternoon')" style="flex:1;background:linear-gradient(135deg,#06B6D4,#0EA5E9);border:none;color:#fff;border-radius:50px;padding:9px;font-size:12px;font-weight:800;cursor:pointer">🌤 צהריים</button>
+        <button onclick="quickFillSchedule('evening')" style="flex:1;background:linear-gradient(135deg,#A855F7,#7E22CE);border:none;color:#fff;border-radius:50px;padding:9px;font-size:12px;font-weight:800;cursor:pointer">🌙 ערב</button>
+        <button onclick="clearSchedule()" style="background:rgba(231,76,60,0.1);border:1px solid rgba(231,76,60,0.3);color:#E74C3C;border-radius:50px;padding:9px 14px;font-size:12px;font-weight:800;cursor:pointer">🗑 נקה</button>
       </div>
-      <div style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.2);border-radius:12px;padding:11px;margin-bottom:14px">
-        <p style="margin:0;font-size:12px;color:#059669;line-height:1.5">💡 <strong>${Object.values(teacherSchedule).filter(v=>v).length} שעות</strong> מסומנות כפנויות</p>
-      </div>
-      <button onclick="saveSchedule()" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4,#A855F7);border:none;color:#fff;border-radius:50px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 4px 14px rgba(20,184,166,0.3)">💾 שמור לוח זמנים</button>
+      <!-- שעות לפי יום נבחר -->
+      ${dayHoursHtml}
     </div>`;
   document.body.appendChild(ov);
   ov.onclick=e=>{if(e.target===ov)ov.remove();};
@@ -2444,6 +2522,7 @@ function renderScheduleEditor(){
 function toggleSlot(day,hour){
   const key=day+'_'+hour;
   teacherSchedule[key]=!teacherSchedule[key];
+  window._schSelDay=day;
   renderScheduleEditor();
 }
 
@@ -5001,8 +5080,7 @@ auth.onAuthStateChanged(async user=>{
       // ── בדיקת מורה שלא אושר עדיין ──────────────────────────────
       if(currentUserData?.role==='teacher'){
         const tSnap=await db.ref('teachers/'+user.uid).get();
-        if(!tSnap.exists()){
-          // עדיין לא הגדיר פרופיל מורה
+        if(!tSnap.exists()&&!S.skippedSetup){
           go('teacherSetup');return;
         }
         const tData=tSnap.val();
