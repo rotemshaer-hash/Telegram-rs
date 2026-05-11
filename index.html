@@ -328,6 +328,7 @@ async function loadRealTeachers(){
             gps:t.gps||null,
             schedule:t.schedule||null,
             tags:t.tags||[],
+            catProfiles:t.catProfiles||{},
           });
           if(t.city)cities.add(t.city);
         }
@@ -441,7 +442,7 @@ function go(scr,extra={}){
   render();
   window.scrollTo(0,0);
   document.getElementById('app').scrollTop=0;
-  if(scr==='teacher')S.teacherCat=null;
+  if(scr==='teacher'&&!('teacherCat' in extra))S.teacherCat=null;
 }
 function back(){
   const prev=S.prev||'home';
@@ -3344,23 +3345,27 @@ function showRanksPanel(){
 function Home(){
   const GRPS=["לימודים","אמנות","ספורט","טכנולוגיה","בישול","יופי","חופשיים"];
   const GEM={"לימודים":"📚","אמנות":"🎨","ספורט":"⚽","טכנולוגיה":"💻","בישול":"🍳","יופי":"💅","חופשיים":"🌟"};
+  const GCOL={"לימודים":"#14B8A6","אמנות":"#E74C3C","ספורט":"#27AE60","טכנולוגיה":"#1ABC9C","בישול":"#FF9800","יופי":"#EC407A","חופשיים":"#FF7043"};
   const catSections=GRPS.map(g=>{
     const cats=CATS.filter(c=>c.grp===g);
-    return `<div style="margin-bottom:20px">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
-        <span style="font-size:16px">${GEM[g]}</span>
-        <span style="font-weight:800;font-size:15px">${g}</span>
-        <div style="flex:1;height:1px;background:rgba(20,184,166,.1)"></div>
+    if(!cats.length)return '';
+    const gc=GCOL[g]||'#14B8A6';
+    return `<div style="margin-bottom:24px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:0 2px">
+        <div style="width:36px;height:36px;border-radius:12px;background:linear-gradient(135deg,${gc},${gc}99);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;box-shadow:0 4px 12px ${gc}30">${GEM[g]}</div>
+        <span style="font-weight:900;font-size:16px;color:#0F1A1F">${g}</span>
+        <div style="flex:1;height:2px;background:linear-gradient(90deg,${gc}30,transparent);border-radius:2px"></div>
+        <span style="font-size:12px;color:${gc};font-weight:700;background:${gc}15;padding:3px 10px;border-radius:50px">${cats.length} נושאים</span>
       </div>
-      <div class="cat-grid">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
         ${cats.map(c=>{
           const cnt=TEACHERS.filter(t=>
             t.cat===c.id||(Array.isArray(t.cats)&&t.cats.includes(c.id))
           ).length;
-          return `<button class="cat-btn" onclick="S.catFilter='${c.id}';S.search='';render();window.scrollTo({top:0,behavior:'smooth'})">
-            <div style="width:44px;height:44px;border-radius:14px;background:${c.col}18;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">${c.em}</div>
-            <div><div style="font-weight:800;font-size:13px">${c.lbl}</div>
-            <div style="font-size:11px;color:${C.muted};margin-top:2px">${cnt>0?cnt+" מורים":"בקרוב"}</div></div>
+          return `<button onclick="S.catFilter='${c.id}';S.search='';render();window.scrollTo({top:0,behavior:'smooth'})" style="border:none;background:linear-gradient(145deg,#fff,${c.col}06);border:1.5px solid ${c.col}20;border-radius:20px;padding:16px 8px 14px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;text-align:center;box-shadow:0 2px 10px rgba(0,0,0,0.06);transition:all 0.2s;-webkit-tap-highlight-color:transparent">
+            <div style="width:52px;height:52px;border-radius:16px;background:linear-gradient(135deg,${c.col}25,${c.col}10);display:flex;align-items:center;justify-content:center;font-size:26px;margin-bottom:2px">${c.em}</div>
+            <div style="font-size:12px;font-weight:800;color:#0F1A1F;line-height:1.3">${c.lbl}</div>
+            ${cnt>0?`<div style="font-size:10px;font-weight:700;color:${c.col};background:${c.col}15;border-radius:50px;padding:2px 9px;margin-top:1px">${cnt} מורים</div>`:`<div style="font-size:10px;color:#CBD5E1;font-weight:600">בקרוב</div>`}
           </button>`;
         }).join("")}
       </div>
@@ -3462,7 +3467,7 @@ function Home(){
               <button class="btn bp" style="max-width:240px;margin:0 auto" onclick="${currentUser?"go('teacherSetup')":"go('register')"}">🎓 הצטרף כמורה</button>
             </div>
           `:filtered.map(t=>`
-            <button class="tc" onclick="go('teacher',{teacher:TEACHERS.find(x=>x.id==='${t.id}')})">
+            <button class="tc" onclick="go('teacher',{teacher:TEACHERS.find(x=>x.id==='${t.id}'),teacherCat:'${S.catFilter}'})">
               <div class="tc-av" style="background:${t.col}20">${t.av}${t.online?`<div class="online-dot"></div>`:""}</div>
               <div style="flex:1">
                 <div style="display:flex;justify-content:space-between;align-items:flex-start">
@@ -3499,7 +3504,11 @@ function Home(){
         <div style="height:14px"></div>
       `:''}
 
-      <h3 style="font-size:16px;font-weight:800;margin:0 0 14px">📂 קטגוריות</h3>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px">
+        <h3 style="font-size:17px;font-weight:900;margin:0;color:#0F1A1F">📂 כל הנושאים</h3>
+        <div style="flex:1;height:2px;background:linear-gradient(90deg,rgba(20,184,166,0.25),transparent);border-radius:2px"></div>
+        <span style="font-size:12px;color:#14B8A6;font-weight:700">${CATS.length} קטגוריות</span>
+      </div>
       ${catSections}
 
       ${currentUser&&favorites.length>0?`
@@ -3763,11 +3772,6 @@ function Teacher(){
         <button class="sos" onclick="sendSOS('${(t.name||'').replace(/'/g,"\\'").replace(/"/g,'&quot;')}')">🆘 כפתור SOS</button>
         <button onclick="shareTeacher(S.teacher)" style="background:linear-gradient(135deg,#833AB4,#FD1D1D,#F77737);color:#fff;border:none;border-radius:50px;padding:12px 20px;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:7px;white-space:nowrap;flex:1;justify-content:center">📤 שתף מורה</button>
       </div>
-
-      <!-- Edit own profile (if teacher viewing own page) -->
-      ${currentUser&&t.id===currentUser.uid?`
-      <button onclick="showEditTeacherProfileDialog()" style="width:100%;background:rgba(168,85,247,0.1);border:1.5px solid rgba(168,85,247,0.3);color:#A855F7;border-radius:50px;padding:13px;font-weight:800;font-size:14px;cursor:pointer;margin-bottom:14px">✏️ ערוך פרופיל</button>
-      `:''}
 
       <!-- Book -->
       ${S.booked
