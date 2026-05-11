@@ -1884,6 +1884,20 @@ function isAdmin(){
 
 let adminAllUsers=[],adminAllTeachers=[],adminAllVideos=[],adminAllReports=[];
 let adminTab='users';
+let _adminPendingCount=0;
+
+async function _checkAdminBadge(){
+  if(!isAdmin())return;
+  try{
+    const snap=await db.ref('teachers').get();
+    let n=0;
+    if(snap.exists())snap.forEach(c=>{if(!c.val()?.verified)n++;});
+    _adminPendingCount=n;
+    // update badge if profile screen is visible
+    const badge=document.getElementById('_adminPendingBadge');
+    if(badge){badge.textContent=n;badge.style.display=n>0?'inline-flex':'none';}
+  }catch(e){}
+}
 
 async function loadAdminData(){
   if(!isAdmin()){showFireToast('🚫 אין הרשאת מנהל');return;}
@@ -1931,7 +1945,23 @@ async function adminRejectTeacher(uid){
   if(!confirm('לדחות את המורה?'))return;
   try{
     await db.ref('teachers/'+uid).remove();
+    // reset role in users/ if record exists
+    const uSnap=await db.ref('users/'+uid).get();
+    if(uSnap.exists()) await db.ref('users/'+uid+'/role').set('student');
     showFireToast('🚫 המורה נדחה');
+    await loadAdminData();renderAdminPanel();
+  }catch(e){showFireToast('❌ '+e.message);}
+}
+
+async function adminDeleteTeacherFull(uid){
+  if(!confirm('למחוק לחלוטין מהמערכת?'))return;
+  try{
+    await db.ref('teachers/'+uid).remove();
+    await db.ref('users/'+uid).remove();
+    await db.ref('schedules/'+uid).remove();
+    await db.ref('videos/'+uid).remove();
+    await db.ref('notifications/'+uid).remove();
+    showFireToast('🗑 נמחק לחלוטין');
     await loadAdminData();renderAdminPanel();
   }catch(e){showFireToast('❌ '+e.message);}
 }
@@ -2912,7 +2942,13 @@ async function resetSystem(){
 
 function showAdminPanel(){
   if(!isAdmin()){showFireToast('🚫 אין הרשאת מנהל');return;}
-  loadAdminData().then(()=>renderAdminPanel());
+  loadAdminData().then(()=>{
+    const hasPendingTeachers=adminAllTeachers.filter(t=>!t.verified).length>0;
+    const hasPendingVideos=adminAllVideos.filter(v=>!v.approved).length>0;
+    if(hasPendingTeachers) adminTab='teachers';
+    else if(hasPendingVideos) adminTab='videos';
+    renderAdminPanel();
+  });
 }
 
 function renderAdminPanel(){
@@ -2929,6 +2965,7 @@ function renderAdminPanel(){
         <h2 style="font-weight:900;font-size:22px;margin:0">👨‍💼 פאנל מנהל</h2>
       </div>
       <p style="font-size:12px;opacity:0.9;margin:4px 0 0">${currentUser?.email}</p>
+      ${pendingTeachers.length>0?`<div onclick="adminTab='teachers';renderAdminPanel()" style="margin-top:10px;background:rgba(239,68,68,0.85);border-radius:12px;padding:10px 14px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:8px">🔔 <span>${pendingTeachers.length} מורים ממתינים לאישור – לחץ לטיפול</span></div>`:''}
     </div>
     <div style="padding:16px;display:grid;grid-template-columns:repeat(2,1fr);gap:10px">
       <div style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border-radius:18px;padding:14px;color:#fff"><div style="font-size:28px;font-weight:900">${adminAllUsers.filter(u=>u.role!=='teacher').length}</div><div style="font-size:11px;opacity:0.95">תלמידים</div></div>
@@ -3074,8 +3111,9 @@ function renderAdminTab(){
             ${t.desc?`<div style="font-size:12px;color:#475569;margin-top:6px;background:rgba(20,184,166,0.05);border-radius:10px;padding:8px;line-height:1.5">${t.desc}</div>`:''}
           </div>
           <div style="display:flex;gap:8px">
-            <button onclick="adminApproveTeacher('${t.uid}')" style="flex:1;background:#10B981;border:none;color:#fff;border-radius:50px;padding:10px;font-weight:800;font-size:12px;cursor:pointer">✅ אשר</button>
-            <button onclick="adminRejectTeacher('${t.uid}')" style="flex:1;background:rgba(239,68,68,0.9);border:none;color:#fff;border-radius:50px;padding:10px;font-weight:800;font-size:12px;cursor:pointer">❌ דחה</button>
+            <button onclick="adminApproveTeacher('${t.uid}')" style="flex:2;background:#10B981;border:none;color:#fff;border-radius:50px;padding:10px;font-weight:800;font-size:12px;cursor:pointer">✅ אשר</button>
+            <button onclick="adminRejectTeacher('${t.uid}')" style="flex:1;background:rgba(245,158,11,0.9);border:none;color:#fff;border-radius:50px;padding:10px;font-weight:800;font-size:12px;cursor:pointer">↩ דחה</button>
+            <button onclick="adminDeleteTeacherFull('${t.uid}')" style="flex:1;background:rgba(239,68,68,0.9);border:none;color:#fff;border-radius:50px;padding:10px;font-weight:800;font-size:12px;cursor:pointer">🗑 מחק</button>
           </div>
         </div>`).join('');
     }
@@ -4385,7 +4423,7 @@ function Profile(){
         ${currentUserData?.role==='teacher'?(()=>{const ft=TEACHERS.find(x=>x.id===currentUser?.uid);const on=ft?.freeTrial;return `<button onclick="toggleFreeTrial()" style="flex:1;min-width:90px;background:${on?'linear-gradient(135deg,#10B981,#14B8A6)':'rgba(156,163,175,0.25)'};border:${on?'none':'2px solid rgba(156,163,175,0.4)'};color:${on?'#fff':'#6B7280'};border-radius:14px;padding:11px;font-weight:800;font-size:12px;cursor:pointer;box-shadow:${on?'0 4px 14px rgba(16,185,129,0.35)':'none'}" title="${on?'ניסיון חינם פעיל – לחץ לביטול':'לחץ להפעלת ניסיון חינם'}">${on?'🎁 ניסיון פעיל ✓':'🎁 ניסיון חינם'}</button>`;})():''}
         <button onclick="showCertificate()" style="flex:1;min-width:90px;background:linear-gradient(135deg,#EC4899,#DB2777);border:none;color:#fff;border-radius:14px;padding:11px;font-weight:800;font-size:12px;cursor:pointer;box-shadow:0 4px 14px rgba(236,72,153,0.3)">🎖 תעודה</button>
         <button onclick="showRanksPanel()" style="flex:1;min-width:90px;background:linear-gradient(135deg,#A855F7,#7E22CE);border:none;color:#fff;border-radius:14px;padding:11px;font-weight:800;font-size:12px;cursor:pointer;box-shadow:0 4px 14px rgba(168,85,247,0.3)">🏅 דרגות</button>
-        ${isAdmin()?`<button onclick="showAdminPanel()" style="flex:1;min-width:90px;background:linear-gradient(135deg,#7E22CE,#A855F7,#EC4899);border:none;color:#fff;border-radius:14px;padding:11px;font-weight:900;font-size:12px;cursor:pointer;box-shadow:0 4px 14px rgba(126,34,206,0.5);animation:fadeUp 1.5s ease infinite alternate">👨‍💼 פאנל מנהל</button>`:''}
+        ${isAdmin()?`<button onclick="showAdminPanel()" style="flex:1;min-width:90px;background:linear-gradient(135deg,#7E22CE,#A855F7,#EC4899);border:none;color:#fff;border-radius:14px;padding:11px;font-weight:900;font-size:12px;cursor:pointer;box-shadow:0 4px 14px rgba(126,34,206,0.5);animation:fadeUp 1.5s ease infinite alternate;position:relative">👨‍💼 פאנל מנהל<span id="_adminPendingBadge" style="display:${_adminPendingCount>0?'inline-flex':'none'};position:absolute;top:-7px;right:-7px;background:#EF4444;color:#fff;border-radius:50px;min-width:20px;height:20px;font-size:11px;font-weight:900;align-items:center;justify-content:center;padding:0 4px;border:2px solid #fff;animation:pulse 1.2s infinite">${_adminPendingCount}</span></button>`:''}
       </div>`:''}
       <div style="display:flex;gap:10px;margin-bottom:18px">
         ${(()=>{const a=teacherAnalytics;const stats=[["⭐",a?.avgRating||"0","דירוג"],["📚",a?.completed||"0","שיעורים"],["👥",a?.uniqueStudentsCount||"0","תלמידים"],["📅",a?.lessonsThisMonth||"0","החודש"]];return stats.map(([e,v,l])=>`<div class="card-sm" style="flex:1;text-align:center;padding:11px 5px;margin-bottom:0"><div style="font-size:17px">${e}</div><div style="font-weight:900;font-size:15px">${v}</div><div style="font-size:9px;color:${C.muted}">${l}</div></div>`).join("");})()}
@@ -5156,6 +5194,7 @@ function render(){
     el.addEventListener("click",()=>{const tid=parseInt(el.dataset.tid);S.teacher=TEACHERS.find(t=>t.id===tid)||TEACHERS[0];go("teacher");});
   });
   if(S.screen==="chat"){const el=document.getElementById("chatMsgs");if(el)setTimeout(()=>el.scrollTop=el.scrollHeight,50);}
+  if(S.screen==="profile"&&isAdmin())setTimeout(_checkAdminBadge,200);
 }
 
 render();
