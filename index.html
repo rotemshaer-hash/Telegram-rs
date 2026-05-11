@@ -442,6 +442,7 @@ function go(scr,extra={}){
   window.scrollTo(0,0);
   document.getElementById('app').scrollTop=0;
   if(scr==='teacher')S.teacherCat=null;
+}
 function back(){
   const prev=S.prev||'home';
   S.prev='home';
@@ -4905,7 +4906,7 @@ function showEditTeacherProfileDialog(){
       </div>
       <div style="margin-bottom:14px">
         <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:6px">📚 תיאור (קצת עליך)</label>
-        <textarea id="_etDesc" class="inp" placeholder="ספר על עצמך כמורה..." style="min-height:80px;resize:none;border-radius:14px">${(t.desc||'').replace(/`/g,'')}</textarea>
+        <textarea id="_etDesc" class="inp" placeholder="ספר על עצמך כמורה..." style="min-height:80px;resize:none;border-radius:14px">${(t.desc||'').split(String.fromCharCode(96)).join("'")}</textarea>
       </div>
       <div style="margin-bottom:14px">
         <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:6px">💰 מחיר לשיעור (₪)</label>
@@ -4940,7 +4941,7 @@ function showEditCatProfileDialog(catId){
       </div>
       <div style="margin-bottom:14px">
         <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:6px">📝 תיאור ב${cat.lbl}</label>
-        <textarea id="_ecDesc" class="inp" placeholder="ספר על עצמך כמורה ל${cat.lbl}..." style="min-height:90px;resize:none;border-radius:14px">${(existing.desc||'').replace(/`/g,'')}</textarea>
+        <textarea id="_ecDesc" class="inp" placeholder="ספר על עצמך כמורה ל${cat.lbl}..." style="min-height:90px;resize:none;border-radius:14px">${(existing.desc||'').split(String.fromCharCode(96)).join("'")}</textarea>
       </div>
       <div style="margin-bottom:14px">
         <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:6px">🏷 תגיות ל${cat.lbl} (מופרדות בפסיק)</label>
