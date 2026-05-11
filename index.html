@@ -402,6 +402,7 @@ const ACHIEVEMENTS=[
 let S={
   screen:"splash", prev:"home",
   skippedSetup:false,
+  teacherCat:null,
   teacher:null, chat:null,
   regStep:1, regRole:null, regAgreed:false, regVerifying:false, regVerified:false,
   msgs:[],
@@ -439,7 +440,8 @@ function go(scr,extra={}){
   history.pushState({screen:scr,prev:S.prev},'');
   render();
   window.scrollTo(0,0);
-}
+  document.getElementById('app').scrollTop=0;
+  if(scr==='teacher')S.teacherCat=null;
 function back(){
   const prev=S.prev||'home';
   S.prev='home';
@@ -3377,6 +3379,7 @@ function Home(){
           <p style="color:rgba(255,255,255,.82);font-size:11px;margin:0;font-weight:600">ילדים מלמדים ילדים</p>
         </div>
         <div style="display:flex;gap:6px">
+          <button onclick="shareApp()" style="background:rgba(255,255,255,.2);border:none;color:#fff;font-size:16px;cursor:pointer;border-radius:50%;width:38px;height:38px;display:flex;align-items:center;justify-content:center" title="שתף את Kidemy">📤</button>
           <button onclick="showFiltersPanel()" style="position:relative;background:rgba(255,255,255,.2);border:none;color:#fff;font-size:14px;font-weight:700;cursor:pointer;border-radius:50%;width:38px;height:38px;display:flex;align-items:center;justify-content:center">🎯${activeFiltersCount()>0?`<span style="position:absolute;top:-4px;left:-4px;background:#A855F7;color:#fff;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900">${activeFiltersCount()}</span>`:''}</button>
           ${currentUser?`<button onclick="showNotificationsPanel()" style="position:relative;background:rgba(255,255,255,.2);border:none;color:#fff;font-size:15px;font-weight:700;cursor:pointer;border-radius:50%;width:38px;height:38px;display:flex;align-items:center;justify-content:center">🔔${unreadCount>0?`<span style="position:absolute;top:-4px;left:-4px;background:#EF4444;color:#fff;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900">${unreadCount}</span>`:''}</button>`:''}
         </div>
@@ -3675,8 +3678,15 @@ function Teacher(){
       </div>
       <h2 style="font-size:24px;font-weight:900;margin:12px 0 4px;position:relative;z-index:1">${t.name}</h2>
       <p style="font-size:14px;opacity:.88;margin:0;position:relative;z-index:1">גיל ${t.age} • ${t.city}</p>
-      <div style="margin-top:10px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;position:relative;z-index:1">
-        ${gTag(t.badge)} ${lTag(t.online)} ${t.group?`<span class="gbadge">👥 קבוצתי</span>`:""} ${t.freeTrial?`<span style="background:linear-gradient(135deg,#FBBF24,#F59E0B);color:#fff;font-weight:900;font-size:12px;padding:4px 12px;border-radius:50px;box-shadow:0 4px 12px rgba(251,191,36,0.4)">🎁 שיעור ניסיון חינם!</span>`:""}
+      <div style="margin-top:10px;display:flex;gap:6px;justify-content:center;flex-wrap:wrap;position:relative;z-index:1">
+        ${gTag(t.badge)} ${lTag(t.online)} ${t.group?`<span class="gbadge">👥 קבוצתי</span>`:""}
+      </div>
+      <div style="margin-top:10px;display:flex;gap:7px;justify-content:center;flex-wrap:wrap;position:relative;z-index:1">
+        ${(t.cats&&t.cats.length?t.cats:[t.cat]).map(cid=>{
+          const cat=CATS.find(x=>x.id===cid)||{em:'🎓',lbl:cid,col:'#14B8A6'};
+          const active=S.teacherCat===cid;
+          return `<button onclick="S.teacherCat='${cid}';render()" style="background:${active?'#fff':'rgba(255,255,255,0.22)'};color:${active?t.col:'#fff'};border:${active?'none':'1.5px solid rgba(255,255,255,0.35)'};border-radius:50px;padding:6px 14px;font-size:12px;font-weight:800;cursor:pointer;transition:all 0.2s;${active?'box-shadow:0 3px 12px rgba(0,0,0,0.2)':''}">${cat.em} ${cat.lbl}</button>`;
+        }).join('')}
       </div>
       <!-- Share teacher -->
       <button onclick="shareTeacher(TEACHERS.find(x=>x.id===''+t.id)||TEACHERS.find(x=>String(x.id)===String(t.id)))" style="position:absolute;top:20px;left:20px;background:rgba(255,255,255,.2);border:none;color:#fff;font-size:18px;cursor:pointer;border-radius:50%;width:40px;height:40px;display:flex;align-items:center;justify-content:center;z-index:2">📤</button>
@@ -3694,12 +3704,23 @@ function Teacher(){
         <div style="text-align:center"><div style="font-size:22px;font-weight:900;color:#FF9800">₪${Math.round(t.price/2)}</div><div style="font-size:11px;color:${C.muted};text-decoration:line-through">₪${t.price}</div></div>
       </div>
 
-      <!-- About -->
-      <div class="card"><h4 style="margin:0 0 10px;font-weight:800">👋 קצת עליי</h4><p style="margin:0;font-size:14px;line-height:1.7">${t.desc}</p></div>
-
-      <!-- Tags -->
-      <div class="card"><h4 style="margin:0 0 12px;font-weight:800">🏷 מה אני מלמד/ת</h4>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">${t.tags.map(tg=>`<span style="background:${t.col}18;color:${t.col};padding:7px 16px;border-radius:50px;font-size:13px;font-weight:700">${tg}</span>`).join("")}</div></div>
+      <!-- About — per category if selected -->
+      ${(()=>{
+        const cat=S.teacherCat?CATS.find(x=>x.id===S.teacherCat):null;
+        const catProfile=S.teacherCat&&t.catProfiles?.[S.teacherCat];
+        const desc=catProfile?.desc||t.desc||'';
+        const tags=catProfile?.tags||t.tags||[];
+        const isOwn=currentUser&&t.id===currentUser.uid;
+        return `
+        ${cat?`<div style="background:linear-gradient(135deg,${t.col}15,${t.col}08);border:1.5px solid ${t.col}30;border-radius:18px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:10px">
+          <span style="font-size:28px">${cat.em}</span>
+          <div><div style="font-weight:900;font-size:15px;color:${t.col}">${cat.lbl}</div><div style="font-size:12px;color:#64748B">פרופיל קטגוריה</div></div>
+          ${isOwn?`<button onclick="showEditCatProfileDialog('${S.teacherCat}')" style="margin-right:auto;background:${t.col}18;border:1px solid ${t.col}40;color:${t.col};border-radius:50px;padding:7px 14px;font-size:12px;font-weight:800;cursor:pointer">✏️ ערוך</button>`:''}
+        </div>`:''}
+        <div class="card"><h4 style="margin:0 0 10px;font-weight:800">👋 קצת עליי${cat?' ב'+cat.lbl:''}</h4><p style="margin:0;font-size:14px;line-height:1.7">${desc}</p></div>
+        ${tags.length?`<div class="card"><h4 style="margin:0 0 12px;font-weight:800">🏷 מה אני מלמד/ת${cat?' ב'+cat.lbl:''}</h4>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">${tags.map(tg=>`<span style="background:${t.col}18;color:${t.col};padding:7px 16px;border-radius:50px;font-size:13px;font-weight:700">${tg}</span>`).join("")}</div></div>`:''}`;
+      })()}
 
       <!-- Mode -->
       <div class="card"><h4 style="margin:0 0 12px;font-weight:800">🗓 אופן הלימוד</h4>
@@ -4902,6 +4923,45 @@ function showEditTeacherProfileDialog(){
     </div>`;
   document.body.appendChild(ov);
   ov.onclick=e=>{if(e.target===ov)ov.remove();};
+}
+function showEditCatProfileDialog(catId){
+  if(!currentUser){showFireToast('❌ לא מחובר');return;}
+  const cat=CATS.find(x=>x.id===catId)||{em:'🎓',lbl:catId,col:'#14B8A6'};
+  const t=TEACHERS.find(x=>x.id===currentUser.uid)||{};
+  const existing=(t.catProfiles||{})[catId]||{};
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:flex-end;justify-content:center;direction:rtl;backdrop-filter:blur(8px)';
+  ov.innerHTML=`
+    <div style="background:#fff;border-radius:28px 28px 0 0;padding:24px 20px 48px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+        <button onclick="saveCatProfileEdits('${catId}')" style="background:linear-gradient(135deg,${cat.col},${cat.col}CC);border:none;color:#fff;border-radius:50px;padding:10px 22px;font-weight:800;font-size:14px;cursor:pointer">💾 שמור</button>
+        <h3 style="margin:0;font-weight:900;font-size:17px">${cat.em} ערוך פרופיל ${cat.lbl}</h3>
+        <button onclick="this.closest('div[style*=fixed]').remove()" style="background:rgba(0,0,0,0.08);border:none;color:#555;font-size:20px;cursor:pointer;border-radius:50%;width:36px;height:36px">✕</button>
+      </div>
+      <div style="margin-bottom:14px">
+        <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:6px">📝 תיאור ב${cat.lbl}</label>
+        <textarea id="_ecDesc" class="inp" placeholder="ספר על עצמך כמורה ל${cat.lbl}..." style="min-height:90px;resize:none;border-radius:14px">${(existing.desc||'').replace(/`/g,'')}</textarea>
+      </div>
+      <div style="margin-bottom:14px">
+        <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:6px">🏷 תגיות ל${cat.lbl} (מופרדות בפסיק)</label>
+        <input id="_ecTags" class="inp" value="${(existing.tags||[]).join(', ')}" placeholder="למשל: מתחילים, רמה מתקדמת, אקורדים">
+      </div>
+    </div>`;
+  document.body.appendChild(ov);
+  ov.onclick=e=>{if(e.target===ov)ov.remove();};
+}
+async function saveCatProfileEdits(catId){
+  const desc=document.getElementById('_ecDesc')?.value.trim();
+  const tagsRaw=document.getElementById('_ecTags')?.value.trim();
+  const tags=tagsRaw?tagsRaw.split(',').map(s=>s.trim()).filter(Boolean):[];
+  try{
+    await db.ref(`teachers/${currentUser.uid}/catProfiles/${catId}`).set({desc:desc||'',tags});
+    const t=TEACHERS.find(x=>x.id===currentUser.uid);
+    if(t){if(!t.catProfiles)t.catProfiles={};t.catProfiles[catId]={desc:desc||'',tags};}
+    document.querySelector('div[style*=fixed]')?.remove();
+    showFireToast('✅ פרופיל '+catId+' עודכן!');
+    render();
+  }catch(e){showFireToast('❌ '+e.message);}
 }
 async function saveTeacherProfileEdits(){
   const desc=document.getElementById('_etDesc')?.value.trim();
