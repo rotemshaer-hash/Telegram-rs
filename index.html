@@ -2052,40 +2052,54 @@ function showVideoUploadDialog(){
   if(!currentUser){showFireToast('❌ צריך להתחבר');return;}
   if(currentUserData?.role!=='teacher'){showFireToast('🎓 רק מורים יכולים להעלות');return;}
 
+  window._vidMode=null;
+  window._vidThumbDataUrl=null;
+  window._selectedThumbFile=null;
+  window._vidAutoFrames=[];
+  _selectedVideoFile=null;
+
   const ov=document.createElement('div');
+  ov.id='_vidUpOv';
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(8px);padding:0;direction:rtl';
   ov.innerHTML=`
-    <div class="_vidUp" style="background:#fff;border-radius:24px 24px 0 0;padding:24px 20px 40px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto">
+    <div class="_vidUp" style="background:#fff;border-radius:24px 24px 0 0;padding:24px 20px 44px;width:100%;max-width:500px;max-height:92vh;overflow-y:auto">
       <div style="width:40px;height:4px;background:#E2E8F0;border-radius:50px;margin:0 auto 20px"></div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
-        <button onclick="this.closest('._vidUp').parentElement.remove()" style="background:rgba(20,184,166,0.1);border:none;color:#14B8A6;font-size:18px;cursor:pointer;border-radius:50%;width:32px;height:32px">✕</button>
+        <button onclick="document.getElementById('_vidUpOv')?.remove()" style="background:rgba(20,184,166,0.1);border:none;color:#14B8A6;font-size:18px;cursor:pointer;border-radius:50%;width:32px;height:32px">✕</button>
         <h3 style="font-weight:900;font-size:20px;margin:0;color:#0F1A1F">📹 העלאת סרטון</h3>
       </div>
 
-      <!-- כותרת ותיאור -->
+      <!-- כותרת (חובה) -->
       <div style="margin-bottom:12px">
-        <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:6px">🎬 כותרת הסרטון</label>
-        <input id="_vidTitle" placeholder="לדוגמה: שיעור גיטרה ראשון" style="width:100%;background:rgba(20,184,166,0.06);border:1.5px solid rgba(20,184,166,0.25);border-radius:12px;padding:12px;font-size:14px;font-family:inherit;direction:rtl;outline:none;box-sizing:border-box">
+        <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:6px">🎬 כותרת הסרטון <span style="color:#EF4444;font-size:13px">*</span></label>
+        <input id="_vidTitle" placeholder="לדוגמה: שיעור גיטרה ראשון" oninput="_vidCheckReady()" style="width:100%;background:rgba(20,184,166,0.06);border:1.5px solid rgba(20,184,166,0.25);border-radius:12px;padding:12px;font-size:14px;font-family:inherit;direction:rtl;outline:none;box-sizing:border-box">
       </div>
+
+      <!-- תיאור (לא חובה) -->
       <div style="margin-bottom:18px">
-        <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:6px">📝 תיאור קצר</label>
-        <textarea id="_vidDesc" placeholder="ספר על הסרטון..." style="width:100%;background:rgba(20,184,166,0.06);border:1.5px solid rgba(20,184,166,0.25);border-radius:12px;padding:12px;font-size:13px;font-family:inherit;direction:rtl;outline:none;box-sizing:border-box;resize:none;min-height:60px"></textarea>
+        <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:6px">📝 תיאור קצר <span style="font-size:10px;font-weight:400;color:#94A3B8">(לא חובה)</span></label>
+        <textarea id="_vidDesc" placeholder="ספר על הסרטון..." style="width:100%;background:rgba(20,184,166,0.06);border:1.5px solid rgba(20,184,166,0.25);border-radius:12px;padding:12px;font-size:13px;font-family:inherit;direction:rtl;outline:none;box-sizing:border-box;resize:none;min-height:55px"></textarea>
       </div>
 
-      <!-- 2 אפשרויות העלאה -->
-      <p style="font-weight:900;font-size:14px;margin:0 0 12px;color:#0F1A1F">בחר אפשרות העלאה:</p>
+      <!-- בחירת מצב -->
+      <p style="font-weight:900;font-size:14px;margin:0 0 10px;color:#0F1A1F">בחר אפשרות העלאה:</p>
+      <div style="display:flex;gap:10px;margin-bottom:16px">
+        <button id="_modeGallery" onclick="selectVidMode('gallery')" style="flex:1;border:2px solid rgba(20,184,166,0.3);background:rgba(20,184,166,0.05);border-radius:16px;padding:14px 8px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;transition:all 0.2s">
+          <span style="font-size:26px">📱</span>
+          <span style="font-size:12px;font-weight:800;color:#0F1A1F">העלה מהגלריה</span>
+          <span style="font-size:10px;color:#64748B">עד 3 דקות</span>
+        </button>
+        <button id="_modeLink" onclick="selectVidMode('link')" style="flex:1;border:2px solid rgba(168,85,247,0.3);background:rgba(168,85,247,0.04);border-radius:16px;padding:14px 8px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;transition:all 0.2s">
+          <span style="font-size:26px">🔗</span>
+          <span style="font-size:12px;font-weight:800;color:#0F1A1F">הדבק לינק</span>
+          <span style="font-size:10px;color:#64748B">YouTube / Instagram</span>
+        </button>
+      </div>
 
-      <!-- אפשרות 1: גלריה -->
-      <div style="border:2px solid rgba(20,184,166,0.25);border-radius:18px;padding:16px;margin-bottom:12px;background:rgba(20,184,166,0.04)">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-          <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#14B8A6,#06B6D4);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">📱</div>
-          <div>
-            <div style="font-weight:900;font-size:14px;color:#0F1A1F">העלה מהגלריה</div>
-            <div style="font-size:11px;color:#64748B">סרטון קצר עד 3 דקות</div>
-          </div>
-        </div>
+      <!-- גלריה -->
+      <div id="_vidGallerySection" style="display:none;margin-bottom:14px">
         <div id="_galPreview" style="display:none;margin-bottom:10px">
-          <video id="_galVideo" controls style="width:100%;border-radius:12px;max-height:200px;background:#000"></video>
+          <video id="_galVideo" controls style="width:100%;border-radius:14px;max-height:200px;background:#000"></video>
           <div id="_galInfo" style="font-size:11px;color:#64748B;margin-top:6px;text-align:center"></div>
         </div>
         <div style="display:flex;gap:8px">
@@ -2098,56 +2112,188 @@ function showVideoUploadDialog(){
             <input type="file" accept="video/*" capture="environment" style="display:none" onchange="previewGalleryVideo(this)">
           </label>
         </div>
-        <div id="_galUploadBtn" style="display:none;margin-top:10px">
-          <button onclick="uploadGalleryVideo()" id="_galSubmitBtn"
-            style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4,#A855F7);border:none;color:#fff;border-radius:50px;padding:13px;font-weight:800;font-size:14px;cursor:pointer">
-            ⬆️ העלה סרטון זה
-          </button>
+      </div>
+
+      <!-- לינק -->
+      <div id="_vidLinkSection" style="display:none;margin-bottom:14px">
+        <input id="_vidUrl" placeholder="https://youtube.com/watch?v=..." oninput="_vidCheckReady()" style="width:100%;background:rgba(168,85,247,0.06);border:1.5px solid rgba(168,85,247,0.2);border-radius:12px;padding:12px;font-size:13px;font-family:inherit;direction:ltr;outline:none;box-sizing:border-box">
+        <p style="font-size:11px;color:#64748B;margin:6px 0 0;text-align:center">YouTube · Instagram · TikTok</p>
+      </div>
+
+      <!-- תמונת תצוגה (מוצגת אחרי בחירה) -->
+      <div id="_thumbSection" style="display:none;border:1.5px solid rgba(20,184,166,0.2);border-radius:18px;padding:14px;margin-bottom:14px;background:rgba(20,184,166,0.02)">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+          <span style="font-size:20px">🖼</span>
+          <span style="font-weight:800;font-size:14px;color:#0F1A1F">תמונת תצוגה</span>
+          <span style="font-size:11px;color:#94A3B8">(אופציונלי)</span>
+        </div>
+        <!-- פריימים אוטומטיים -->
+        <div id="_autoFrames" style="display:none;margin-bottom:10px">
+          <div style="font-size:11px;color:#64748B;font-weight:700;margin-bottom:7px">📽 בחר פריים מהסרטון:</div>
+          <div id="_framesRow" style="display:flex;gap:7px;overflow-x:auto;padding-bottom:2px"></div>
+        </div>
+        <label style="display:flex;align-items:center;justify-content:center;gap:6px;background:rgba(236,72,153,0.08);border:1.5px solid rgba(236,72,153,0.25);color:#DB2777;border-radius:50px;padding:10px;font-weight:800;font-size:12px;cursor:pointer;margin-bottom:8px">
+          📸 בחר תמונה מהגלריה
+          <input type="file" accept="image/*" style="display:none" onchange="_onThumbFile(this.files[0])">
+        </label>
+        <div id="_thumbPreviewWrap" style="display:none">
+          <img id="_thumbPreview" style="width:100%;max-height:130px;object-fit:cover;border-radius:12px" alt="">
         </div>
       </div>
 
-      <!-- אפשרות 2: לינק -->
-      <div style="border:2px solid rgba(168,85,247,0.2);border-radius:18px;padding:16px;margin-bottom:14px;background:rgba(168,85,247,0.03)">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-          <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#FF0000,#FF4444);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">🔗</div>
-          <div>
-            <div style="font-weight:900;font-size:14px;color:#0F1A1F">הדבק לינק</div>
-            <div style="font-size:11px;color:#64748B">YouTube / Instagram / TikTok</div>
-          </div>
-        </div>
-        <input id="_vidUrl" placeholder="https://youtube.com/watch?v=..."
-          style="width:100%;background:rgba(168,85,247,0.06);border:1.5px solid rgba(168,85,247,0.2);border-radius:12px;padding:12px;font-size:13px;font-family:inherit;direction:ltr;outline:none;box-sizing:border-box;margin-bottom:10px">
-        <button onclick="submitVideoLink()"
-          style="width:100%;background:linear-gradient(135deg,#A855F7,#7E22CE);border:none;color:#fff;border-radius:50px;padding:12px;font-weight:800;font-size:13px;cursor:pointer">
-          📤 שלח לינק לאישור
+      <!-- כפתור שליחה (מוצג אחרי בחירה + כותרת) -->
+      <div id="_vidSubmitWrap" style="display:none;margin-bottom:14px">
+        <button onclick="_submitVideo()" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4,#A855F7);border:none;color:#fff;border-radius:50px;padding:15px;font-weight:900;font-size:15px;cursor:pointer;box-shadow:0 6px 20px rgba(20,184,166,0.35)">
+          ⬆️ העלה סרטון זה
         </button>
       </div>
 
-      <!-- Thumbnail selection -->
-      <div style="border:2px solid rgba(20,184,166,0.2);border-radius:18px;padding:14px;margin-bottom:14px;background:rgba(20,184,166,0.02)">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-          <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#EC4899,#A855F7);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">🖼</div>
-          <div><div style="font-weight:900;font-size:14px;color:#0F1A1F">תמונת תצוגה (אופציונלי)</div><div style="font-size:11px;color:#64748B">מגלריה או לינק לתמונה</div></div>
-        </div>
-        <div style="display:flex;gap:8px;margin-bottom:10px">
-          <label style="flex:1;background:rgba(236,72,153,0.08);border:1.5px solid rgba(236,72,153,0.25);color:#DB2777;border-radius:50px;padding:10px;text-align:center;font-weight:800;font-size:12px;cursor:pointer">
-            📸 בחר מהגלריה
-            <input type="file" accept="image/*" style="display:none" onchange="(function(f){if(!f)return;const r=new FileReader();r.onload=e=>{document.getElementById('_vidThumbUrl').value='';const p=document.getElementById('_thumbPreview');if(p){p.src=e.target.result;p.parentElement.style.display='block';}window._selectedThumbFile=f;};r.readAsDataURL(f);})(this.files[0])">
-          </label>
-          <button type="button" onclick="(function(){const u=document.getElementById('_vidThumbUrl').value.trim();if(!u)return;const p=document.getElementById('_thumbPreview');if(p){p.src=u;p.parentElement.style.display='block';}})()" style="flex:1;background:rgba(168,85,247,0.08);border:1.5px solid rgba(168,85,247,0.25);color:#A855F7;border-radius:50px;padding:10px;font-weight:800;font-size:12px;cursor:pointer">🔗 מלינק</button>
-        </div>
-        <input id="_vidThumbUrl" placeholder="לינק לתמונת תצוגה (URL)..." style="width:100%;background:rgba(168,85,247,0.05);border:1.5px solid rgba(168,85,247,0.15);border-radius:12px;padding:10px;font-size:12px;font-family:inherit;direction:ltr;outline:none;box-sizing:border-box;margin-bottom:8px">
-        <div id="_thumbPreviewWrap" style="display:none">
-          <img id="_thumbPreview" style="width:100%;max-height:120px;object-fit:cover;border-radius:10px" alt="">
-        </div>
-      </div>
-
       <div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);border-radius:12px;padding:10px 14px">
-        <p style="margin:0;font-size:11px;color:#92400E;line-height:1.5">⚠️ כל סרטון עובר בדיקת מנהל לפני פרסום. אסור תוכן בעייתי.</p>
+        <p style="margin:0;font-size:11px;color:#92400E;line-height:1.5">⚠️ כל סרטון עובר בדיקת מנהל לפני פרסום.</p>
       </div>
     </div>`;
   document.body.appendChild(ov);
   ov.onclick=e=>{if(e.target===ov)ov.remove();};
+}
+
+function selectVidMode(mode){
+  window._vidMode=mode;
+  _selectedVideoFile=null;
+  window._vidThumbDataUrl=null;
+  window._selectedThumbFile=null;
+  window._vidAutoFrames=[];
+
+  const galBtn=document.getElementById('_modeGallery');
+  const lnkBtn=document.getElementById('_modeLink');
+  const base='flex:1;border-radius:16px;padding:14px 8px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;transition:all 0.2s;';
+  if(galBtn)galBtn.style.cssText=base+(mode==='gallery'?'border:2px solid #14B8A6;background:rgba(20,184,166,0.14);box-shadow:0 4px 14px rgba(20,184,166,0.25)':'border:2px solid rgba(20,184,166,0.3);background:rgba(20,184,166,0.05)');
+  if(lnkBtn)lnkBtn.style.cssText=base+(mode==='link'?'border:2px solid #A855F7;background:rgba(168,85,247,0.14);box-shadow:0 4px 14px rgba(168,85,247,0.25)':'border:2px solid rgba(168,85,247,0.3);background:rgba(168,85,247,0.04)');
+
+  document.getElementById('_vidGallerySection').style.display=mode==='gallery'?'block':'none';
+  document.getElementById('_vidLinkSection').style.display=mode==='link'?'block':'none';
+  document.getElementById('_thumbSection').style.display='none';
+  document.getElementById('_vidSubmitWrap').style.display='none';
+
+  const gv=document.getElementById('_galVideo');if(gv)gv.src='';
+  const gp=document.getElementById('_galPreview');if(gp)gp.style.display='none';
+  const af=document.getElementById('_autoFrames');if(af)af.style.display='none';
+  const tw=document.getElementById('_thumbPreviewWrap');if(tw)tw.style.display='none';
+  const url=document.getElementById('_vidUrl');if(url)url.value='';
+}
+
+function _vidCheckReady(){
+  const title=(document.getElementById('_vidTitle')?.value||'').trim();
+  const mode=window._vidMode;
+  const hasVideo=mode==='gallery'&&!!_selectedVideoFile;
+  const hasLink=(()=>{
+    if(mode!=='link')return false;
+    const u=(document.getElementById('_vidUrl')?.value||'').trim();
+    return u.startsWith('http')&&!!detectVideoPlatform(u);
+  })();
+  const ready=(hasVideo||hasLink)&&title.length>=3;
+  const sub=document.getElementById('_vidSubmitWrap');
+  const thmb=document.getElementById('_thumbSection');
+  if(sub)sub.style.display=ready?'block':'none';
+  if(thmb)thmb.style.display=(hasVideo||hasLink)?'block':'none';
+}
+
+function _onThumbFile(f){
+  if(!f)return;
+  window._selectedThumbFile=f;
+  window._vidThumbDataUrl=null;
+  const r=new FileReader();
+  r.onload=e=>{
+    window._vidThumbDataUrl=e.target.result;
+    const p=document.getElementById('_thumbPreview');
+    const w=document.getElementById('_thumbPreviewWrap');
+    if(p)p.src=e.target.result;
+    if(w)w.style.display='block';
+    document.querySelectorAll('._frameThumb').forEach(el=>el.style.outline='none');
+  };
+  r.readAsDataURL(f);
+}
+
+async function captureVideoFrames(videoEl){
+  try{
+    const duration=isFinite(videoEl.duration)&&videoEl.duration>0?videoEl.duration:10;
+    const times=[0.5,duration*0.25,duration*0.5,duration*0.75].map(t=>Math.max(0.1,Math.min(t,duration-0.2)));
+    const canvas=document.createElement('canvas');
+    const ctx=canvas.getContext('2d');
+    const frames=[];
+    for(const t of times){
+      await new Promise(res=>{
+        const onSeeked=()=>{
+          videoEl.removeEventListener('seeked',onSeeked);
+          canvas.width=videoEl.videoWidth||320;
+          canvas.height=videoEl.videoHeight||180;
+          ctx.drawImage(videoEl,0,0,canvas.width,canvas.height);
+          frames.push(canvas.toDataURL('image/jpeg',0.75));
+          res();
+        };
+        videoEl.addEventListener('seeked',onSeeked);
+        videoEl.currentTime=t;
+      });
+    }
+    return frames;
+  }catch(e){return[];}
+}
+
+function _selectAutoFrame(idx){
+  window._vidThumbDataUrl=window._vidAutoFrames[idx];
+  window._selectedThumbFile=null;
+  const p=document.getElementById('_thumbPreview');
+  const w=document.getElementById('_thumbPreviewWrap');
+  if(p)p.src=window._vidThumbDataUrl;
+  if(w)w.style.display='block';
+  document.querySelectorAll('._frameThumb').forEach((el,i)=>{
+    el.style.outline=i===idx?'3px solid #14B8A6':'2px solid transparent';
+  });
+}
+
+async function _submitVideo(){
+  const title=(document.getElementById('_vidTitle')?.value||'').trim();
+  const desc=(document.getElementById('_vidDesc')?.value||'').trim();
+  const mode=window._vidMode;
+  if(!title||title.length<3){showFireToast('❌ כותרת לפחות 3 תווים');return;}
+  const thumbUrl=window._vidThumbDataUrl||null;
+  document.getElementById('_vidUpOv')?.remove();
+  if(mode==='gallery'){
+    if(!_selectedVideoFile){showFireToast('❌ בחר סרטון');return;}
+    _showVideoUploadProgress(title);
+    if(CLOUDINARY_ENABLED){
+      try{
+        const fd=new FormData();
+        fd.append('file',_selectedVideoFile);
+        fd.append('upload_preset',CLOUDINARY_PRESET);
+        fd.append('resource_type','video');
+        const xhr=new XMLHttpRequest();
+        xhr.open('POST',`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/video/upload`);
+        xhr.upload.onprogress=e=>{if(e.lengthComputable)_updateVideoUploadProgress(Math.round(e.loaded/e.total*90));};
+        const pr=new Promise((res,rej)=>{xhr.onload=()=>res(JSON.parse(xhr.responseText));xhr.onerror=()=>rej(new Error('שגיאת רשת'));});
+        xhr.send(fd);
+        _updateVideoUploadProgress(5);
+        const data=await pr;
+        if(data.secure_url){
+          _updateVideoUploadProgress(95);
+          await _saveVideoToFirebase(title,data.secure_url,desc,'gallery_cloudinary',thumbUrl);
+          _updateVideoUploadProgress(100);
+          _hideVideoUploadProgress();
+          showFireToast('✅ הסרטון הועלה לאישור!');
+          _selectedVideoFile=null;
+        }else throw new Error(data.error?.message||'שגיאה');
+      }catch(e){_hideVideoUploadProgress();showFireToast('❌ '+e.message);}
+    }else{
+      _hideVideoUploadProgress();
+      showUploadInstructions(_selectedVideoFile,title,desc);
+    }
+  }else if(mode==='link'){
+    const url=(document.getElementById('_vidUrl')?.value||'').trim();
+    const platform=detectVideoPlatform(url);
+    if(!platform){showFireToast('❌ לינק לא נתמך');return;}
+    showFireToast('⏳ שומר...');
+    await _saveVideoToFirebase(title,url,desc,platform,thumbUrl);
+    showFireToast('✅ הסרטון נשלח לאישור!');
+  }
 }
 
 let _selectedVideoFile=null;
@@ -2155,28 +2301,46 @@ let _selectedVideoFile=null;
 function previewGalleryVideo(input){
   const file=input.files[0];
   if(!file)return;
-  _selectedVideoFile=file;
-
   const maxSizeMB=150;
   if(file.size>maxSizeMB*1024*1024){
     showFireToast(`❌ הסרטון גדול מדי – מקס ${maxSizeMB}MB`);
-    _selectedVideoFile=null;
     return;
   }
-
+  _selectedVideoFile=file;
   const url=URL.createObjectURL(file);
   const vid=document.getElementById('_galVideo');
   const preview=document.getElementById('_galPreview');
   const info=document.getElementById('_galInfo');
-  const btn=document.getElementById('_galUploadBtn');
-
   if(vid){vid.src=url;}
   if(preview)preview.style.display='block';
   if(info){
     const sizeMB=(file.size/1024/1024).toFixed(1);
     info.textContent=`📦 ${file.name} | ${sizeMB}MB`;
   }
-  if(btn)btn.style.display='block';
+  _vidCheckReady();
+  // לכוד פריימים אוטומטית אחרי טעינת המטאדאטה
+  if(vid){
+    vid.onloadedmetadata=async()=>{
+      const frames=await captureVideoFrames(vid);
+      if(!frames.length)return;
+      window._vidAutoFrames=frames;
+      window._vidThumbDataUrl=frames[0];
+      window._selectedThumbFile=null;
+      // הצג פריימים
+      const framesRow=document.getElementById('_framesRow');
+      const autoFrames=document.getElementById('_autoFrames');
+      const thumbPrev=document.getElementById('_thumbPreview');
+      const thumbWrap=document.getElementById('_thumbPreviewWrap');
+      if(framesRow){
+        framesRow.innerHTML=frames.map((f,i)=>`<img class="_frameThumb" src="${f}" onclick="_selectAutoFrame(${i})" style="width:72px;height:50px;object-fit:cover;border-radius:8px;cursor:pointer;flex-shrink:0;outline:${i===0?'3px solid #14B8A6':'2px solid transparent'};transition:outline 0.15s">`).join('');
+      }
+      if(autoFrames)autoFrames.style.display='block';
+      if(thumbPrev)thumbPrev.src=frames[0];
+      if(thumbWrap)thumbWrap.style.display='block';
+      // החזר את הסרטון לתחילה
+      vid.currentTime=0;
+    };
+  }
 }
 
 function _showVideoUploadProgress(title){
@@ -2199,62 +2363,7 @@ function _hideVideoUploadProgress(){
   if(el){el.style.opacity='0';el.style.transition='opacity 0.5s';setTimeout(()=>el.remove(),500);}
 }
 
-async function uploadGalleryVideo(){
-  if(!_selectedVideoFile){showFireToast('❌ בחר סרטון');return;}
-  const title=document.getElementById('_vidTitle')?.value.trim();
-  const desc=document.getElementById('_vidDesc')?.value.trim();
-  let thumbUrl=document.getElementById('_vidThumbUrl')?.value.trim()||null;
-  // if user picked a local thumbnail image, convert to data URL
-  if(!thumbUrl&&window._selectedThumbFile){
-    thumbUrl=await new Promise(res=>{
-      const r=new FileReader();
-      r.onload=e=>res(e.target.result);
-      r.readAsDataURL(window._selectedThumbFile);
-    });
-    window._selectedThumbFile=null;
-  }
-  if(!title||title.length<3){showFireToast('❌ כותרת לפחות 3 תווים');return;}
-
-  // close dialog immediately so app is usable during upload
-  document.querySelector('._vidUp')?.parentElement?.remove();
-  _showVideoUploadProgress(title);
-
-  if(CLOUDINARY_ENABLED){
-    try{
-      const formData=new FormData();
-      formData.append('file',_selectedVideoFile);
-      formData.append('upload_preset',CLOUDINARY_PRESET);
-      formData.append('resource_type','video');
-
-      const xhr=new XMLHttpRequest();
-      xhr.open('POST',`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/video/upload`);
-      xhr.upload.onprogress=e=>{if(e.lengthComputable)_updateVideoUploadProgress(Math.round(e.loaded/e.total*90));};
-      const uploadPromise=new Promise((res,rej)=>{
-        xhr.onload=()=>res(JSON.parse(xhr.responseText));
-        xhr.onerror=()=>rej(new Error('שגיאת רשת'));
-      });
-      xhr.send(formData);
-      _updateVideoUploadProgress(5);
-      const data=await uploadPromise;
-      if(data.secure_url){
-        _updateVideoUploadProgress(95);
-        await _saveVideoToFirebase(title,data.secure_url,desc,'gallery_cloudinary',thumbUrl);
-        _updateVideoUploadProgress(100);
-        _hideVideoUploadProgress();
-        showFireToast('✅ הסרטון הועלה לאישור!');
-        _selectedVideoFile=null;
-      } else {
-        throw new Error(data.error?.message||'שגיאה בהעלאה');
-      }
-    }catch(e){
-      _hideVideoUploadProgress();
-      showFireToast('❌ '+e.message);
-    }
-  } else {
-    _hideVideoUploadProgress();
-    showUploadInstructions(_selectedVideoFile,title,desc);
-  }
-}
+async function uploadGalleryVideo(){_submitVideo();}
 
 function showUploadInstructions(file,title,desc){
   document.querySelector('._vidUp')?.parentElement?.remove();
@@ -2283,20 +2392,7 @@ function showUploadInstructions(file,title,desc){
   ov.onclick=e=>{if(e.target===ov)ov.remove();};
 }
 
-async function submitVideoLink(){
-  const title=document.getElementById('_vidTitle')?.value.trim();
-  const url=document.getElementById('_vidUrl')?.value.trim();
-  const desc=document.getElementById('_vidDesc')?.value.trim();
-  const thumbUrl=document.getElementById('_vidThumbUrl')?.value.trim()||null;
-  if(!title||title.length<3){showFireToast('❌ כותרת לפחות 3 תווים');return;}
-  if(!url||(!url.startsWith('http://')&&!url.startsWith('https://'))){showFireToast('❌ לינק לא תקין');return;}
-  const platform=detectVideoPlatform(url);
-  if(!platform){showFireToast('❌ לינק לא נתמך');return;}
-  document.querySelector('._vidUp')?.parentElement?.remove();
-  showFireToast('⏳ שומר...');
-  await _saveVideoToFirebase(title,url,desc,platform,thumbUrl);
-  showFireToast('✅ הסרטון נשלח לאישור!');
-}
+async function submitVideoLink(){_submitVideo();}
 
 async function _saveVideoToFirebase(title,url,desc,platform,thumbnail=null){
   try{
@@ -4999,6 +5095,76 @@ function render(){
 }
 
 render();
+
+// ─── PULL-TO-REFRESH ─────────────────────────────────────────────────────────
+(function(){
+  let _ptStart=null,_ptEl=null,_ptRefreshing=false;
+  const THRESHOLD=75;
+  function _getAppEl(){return document.getElementById('app');}
+  function _mkIndicator(){
+    const d=document.createElement('div');
+    d.id='_ptrInd';
+    d.style.cssText='position:fixed;top:0;left:50%;transform:translateX(-50%) translateY(-60px);z-index:99998;pointer-events:none;transition:transform 0.18s,opacity 0.18s;opacity:0;display:flex;align-items:center;gap:8px;background:linear-gradient(135deg,#14B8A6,#A855F7);color:#fff;border-radius:50px;padding:8px 20px;font-size:13px;font-weight:800;box-shadow:0 4px 18px rgba(20,184,166,0.4);white-space:nowrap';
+    d.innerHTML='<span id="_ptrSpinner" style="display:inline-block;font-size:16px">↓</span> <span id="_ptrTxt">משוך לרענון</span>';
+    document.body.appendChild(d);
+    return d;
+  }
+  function _update(dy){
+    if(!_ptEl)_ptEl=_mkIndicator();
+    const prog=Math.min(dy/THRESHOLD,1);
+    const translateY=Math.min(dy*0.55,52)-60;
+    _ptEl.style.transform=`translateX(-50%) translateY(${translateY}px)`;
+    _ptEl.style.opacity=prog;
+    const txt=document.getElementById('_ptrTxt');
+    if(txt)txt.textContent=prog>=1?'שחרר לרענון ✨':'משוך לרענון';
+    const sp=document.getElementById('_ptrSpinner');
+    if(sp)sp.style.transform=`rotate(${prog*180}deg)`;
+  }
+  function _dismiss(){
+    if(_ptEl){_ptEl.style.opacity='0';_ptEl.style.transform='translateX(-50%) translateY(-60px)';setTimeout(()=>{_ptEl?.remove();_ptEl=null;},300);}
+  }
+  async function _doRefresh(){
+    _ptRefreshing=true;
+    if(_ptEl){
+      const sp=document.getElementById('_ptrSpinner');
+      const txt=document.getElementById('_ptrTxt');
+      if(sp)sp.innerHTML='<span style="display:inline-block;animation:spin 0.8s linear infinite">⟳</span>';
+      if(txt)txt.textContent='מרענן...';
+      _ptEl.style.transform='translateX(-50%) translateY(-4px)';
+      _ptEl.style.opacity='1';
+    }
+    await loadRealTeachers();
+    render();
+    showFireToast('✅ עודכן!');
+    _dismiss();
+    _ptRefreshing=false;
+  }
+  const app=_getAppEl()||document.body;
+  app.addEventListener('touchstart',e=>{
+    if(_ptRefreshing)return;
+    const el=_getAppEl()||document.body;
+    if(el.scrollTop===0)_ptStart=e.touches[0].clientY;
+  },{passive:true});
+  app.addEventListener('touchmove',e=>{
+    if(_ptStart===null||_ptRefreshing)return;
+    const dy=e.touches[0].clientY-_ptStart;
+    if(dy>8)_update(dy);
+  },{passive:true});
+  app.addEventListener('touchend',e=>{
+    if(_ptStart===null||_ptRefreshing)return;
+    const dy=e.changedTouches[0].clientY-_ptStart;
+    _ptStart=null;
+    if(dy>=THRESHOLD)_doRefresh();
+    else _dismiss();
+  });
+  // הוסף animation לספינר
+  if(!document.getElementById('_ptrStyle')){
+    const s=document.createElement('style');
+    s.id='_ptrStyle';
+    s.textContent='@keyframes spin{to{transform:rotate(360deg)}}';
+    document.head.appendChild(s);
+  }
+})();
 
 // ─── WhatsApp Click-to-Chat 📱 ───────────────────────────────────────────────
 function openWhatsApp(phone,message){
