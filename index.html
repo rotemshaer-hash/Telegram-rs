@@ -1130,7 +1130,8 @@ async function saveTeacherProfile(){
     await db.ref('users/'+currentUser.uid+'/role').set('teacher');
     if(currentUserData)currentUserData.role='teacher';
 
-    if(isAdmin()){
+    const isAutoVerified=isAdmin()||TEACHER_AUTO_VERIFY.includes(currentUser.email?.toLowerCase());
+    if(isAutoVerified){
       showFireToast('✅ פרופיל מורה נשמר ואושר!');
       await loadRealTeachers();
       setTimeout(()=>go('home'),1200);
@@ -3009,12 +3010,18 @@ async function adminDeleteOldUsers(){
       });
     }
 
-    // שמור UIDs שנשמרים (למקרה שהמנהל עצמו ב-users/ ללא מייל מדויק)
+    // שמור UIDs שנשמרים — מ-users/, מ-teachers/, ומהמנהל הנוכחי
     const keepUids=new Set();
     if(usersSnap.exists()){
       usersSnap.forEach(u=>{
         const email=(u.val()?.email||'').toLowerCase();
         if(KEEP.includes(email)) keepUids.add(u.key);
+      });
+    }
+    if(teachersSnap.exists()){
+      teachersSnap.forEach(t=>{
+        const email=(t.val()?.email||'').toLowerCase();
+        if(KEEP.includes(email)) keepUids.add(t.key);
       });
     }
     keepUids.add(currentUser.uid); // תמיד שמור את המנהל הנוכחי
