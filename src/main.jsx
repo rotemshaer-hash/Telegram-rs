@@ -1,9 +1,9 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import LiveChart from "./LiveChart.jsx";
+import ScalpBot from "./ScalpBot.jsx";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <LiveChart />
+    <ScalpBot />
   </React.StrictMode>
 );
