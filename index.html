@@ -1937,27 +1937,35 @@ async function loadUserChats(){
 const ADMIN_EMAILS=['rotemshaer@gmail.com'];
 const TEACHER_AUTO_VERIFY=['rotemshaer@gmail.com','eyalxbeja+kidemyteacher@gmail.com'];
 
-// ─── EMAIL NOTIFICATIONS (EmailJS) ───────────────────────────────────────────
-// הגדרה: https://emailjs.com → צור חשבון → צור שירות Gmail → צור תבנית → הכנס מפתחות
-const EMAILJS_PUBLIC_KEY  = 'YOUR_PUBLIC_KEY';   // Account → API Keys
-const EMAILJS_SERVICE_ID  = 'YOUR_SERVICE_ID';   // Email Services
-const EMAILJS_TEMPLATE_ID = 'YOUR_TEMPLATE_ID';  // Email Templates
-let _ejsInit=false;
-function _initEmailJS(){
-  if(_ejsInit||EMAILJS_PUBLIC_KEY==='YOUR_PUBLIC_KEY')return;
-  if(typeof emailjs!=='undefined'){emailjs.init({publicKey:EMAILJS_PUBLIC_KEY});_ejsInit=true;}
-}
-function sendAdminEmail(subject,body){
-  _initEmailJS();
-  if(!_ejsInit)return; // EmailJS לא מוגדר
+// ─── EMAIL NOTIFICATIONS (FormSubmit.co — אין צורך בהגדרה, רק אישור חד-פעמי) ─
+const ADMIN_EMAIL='rotemshaer@gmail.com';
+
+async function sendEmail(to,subject,body){
   try{
-    emailjs.send(EMAILJS_SERVICE_ID,EMAILJS_TEMPLATE_ID,{
-      to_email:'rotemshaer@gmail.com',
-      subject,
-      message:body,
-      from_name:'Kidemy App'
+    await fetch('https://formsubmit.co/ajax/'+encodeURIComponent(to),{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Accept':'application/json'},
+      body:JSON.stringify({
+        _subject:subject,
+        _template:'table',
+        _captcha:'false',
+        from_name:'Kidemy 🎓',
+        message:body
+      })
     });
-  }catch(e){}
+  }catch(e){console.warn('Email error:',e);}
+}
+
+function sendAdminEmail(subject,body){
+  sendEmail(ADMIN_EMAIL,subject,body);
+}
+
+async function sendWelcomeEmail(toEmail,userName,role){
+  const roleHe=role==='teacher'?'מורה':'תלמיד/ה';
+  await sendEmail(toEmail,
+    'ברוך הבא ל-Kidemy! 🎓',
+    `שלום ${userName}!\n\nנרשמת בהצלחה ל-Kidemy כ${roleHe}.\n\nאפשר להיכנס לאפליקציה ב:\nhttps://kidemy-app.netlify.app\n\n– צוות Kidemy`
+  );
 }
 
 // ─── פרטי תשלום למנהל 💳 ────────────────────────────────────────────────
@@ -5618,16 +5626,17 @@ async function firebaseRegister(email,password,userData){
       verified:false,
       role:userData.role||'student'
     });
-    // שליחת מייל אימות עם הגדרות נכונות
+    // שליחת מייל אימות + מייל ברכה למשתמש
     try{
       await cred.user.sendEmailVerification({
         url: window.location.origin,
         handleCodeInApp: false
       });
-      showFireToast('📧 מייל אימות נשלח ל-'+email);
     }catch(emailErr){
       console.warn('Email verification failed:',emailErr);
     }
+    // מייל ברכה אישי למשתמש
+    sendWelcomeEmail(email, userData.name||email.split('@')[0], userData.role||'student');
     // עדכון currentUserData מיד
     currentUserData={...userData,email,uid:cred.user.uid,role:userData.role||'student'};
     // התראה למנהל על משתמש חדש
@@ -5647,6 +5656,10 @@ async function firebaseRegister(email,password,userData){
           });
         });
       }
+      // מייל למנהל על הרשמה חדשה
+      const roleHe=(userData.role||'student')==='teacher'?'מורה':'תלמיד/ה';
+      sendAdminEmail(`👤 נרשם/ה ${roleHe} חדש/ה – ${userData.name||email}`,
+        `שם: ${userData.name||'—'}\nמייל: ${email}\nתפקיד: ${roleHe}\n${userData.parentName?'הורה: '+userData.parentName+' ('+userData.parentEmail+')':''}\n\nזמן: ${new Date().toLocaleString('he-IL')}`);
     }catch(e){}
     // מציג מסך הצלחה במקום ה-render הרגיל
     S.screen='regSuccess';
