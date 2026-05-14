@@ -393,7 +393,7 @@ export default function ScalpBot() {
       )}
 
       <div style={{ fontSize: 9, color: G.muted, textAlign: "center", marginTop: 14, lineHeight: 2 }}>
-        XRP/USDT · Binance free API · Real-time WebSocket · No API key needed<br/>
+        XRP/USDT · Binance · Real-time WebSocket · Free · v2<br/>
         <span style={{ color: "rgba(255,255,255,0.06)" }}>Not financial advice · EMA 9/21 crossover signals</span>
       </div>
     </div>
