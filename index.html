@@ -1550,7 +1550,7 @@ function showNotificationsPanel(){
       const ago=Math.round((Date.now()-(n.createdAt||0))/60000);
       const agoTxt=ago<1?'עכשיו':ago<60?ago+' דק\'':ago<1440?Math.floor(ago/60)+' שע\'':Math.floor(ago/1440)+' ימים';
       return `
-        <div onclick="markNotificationRead('${n.id}');document.querySelector('._notifPanel')?.remove();${n.type==='bookingApproved'?"go('messages')":n.type==='newBooking'?"go('home')":""}" style="background:${n.read?'rgba(255,255,255,0.7)':'#fff'};border-right:4px solid ${col};border-radius:14px;padding:14px;margin-bottom:8px;cursor:pointer;display:flex;align-items:start;gap:12px;${!n.read?'box-shadow:0 4px 14px rgba(20,184,166,0.15)':''}">
+        <div onclick="markNotificationRead('${n.id}');document.querySelector('._notifPanel')?.remove();${n.type==='bookingApproved'?"go('messages')":n.type==='newBooking'?"go('home')":n.type==='newTeacher'||n.type==='newReport'?"adminTab='teachers';showAdminPanel()":n.type==='newVideo'?"adminTab='videos';showAdminPanel()":""}" style="background:${n.read?'rgba(255,255,255,0.7)':'#fff'};border-right:4px solid ${col};border-radius:14px;padding:14px;margin-bottom:8px;cursor:pointer;display:flex;align-items:start;gap:12px;${!n.read?'box-shadow:0 4px 14px rgba(20,184,166,0.15)':''}">
           <div style="width:40px;height:40px;border-radius:12px;background:${col}20;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">${ico}</div>
           <div style="flex:1;min-width:0">
             <div style="font-weight:900;font-size:14px;color:#0F1A1F">${ttl}</div>
@@ -2838,9 +2838,10 @@ function confirmDeleteOldUsers(){
       <div style="font-size:64px;margin-bottom:14px">🧹</div>
       <h3 style="font-weight:900;font-size:20px;margin:0 0 12px;color:#F59E0B">מחיקת משתמשים ישנים</h3>
       <div style="background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.25);border-radius:14px;padding:14px;margin-bottom:16px;text-align:right">
-        <p style="margin:0;font-size:13px;line-height:1.7;color:#0F1A1F">הפעולה תמחק מהמסד את כל הרשומות של משתמשים שנרשמו עם מייל, מלבד:<br>
+        <p style="margin:0;font-size:13px;line-height:1.7;color:#0F1A1F">הפעולה תמחק <strong>את כל</strong> המשתמשים והמורים מהמסד, כולל ממתינים לאישור, מלבד:<br>
         ✅ rotemshaer@gmail.com<br>
         ✅ eyalxbeja+kidemyteacher@gmail.com<br><br>
+        נמחקים: פרופיל, לוח זמנים, סרטונים, הזמנות, התראות.<br>
         המשתמשים שיימחקו יצטרכו להירשם מחדש.</p>
       </div>
       <p style="font-size:12px;color:#EF4444;font-weight:800;margin:0 0 20px">⚠️ לא ניתן לבטל פעולה זו!</p>
@@ -2856,38 +2857,50 @@ async function adminDeleteOldUsers(){
   if(!isAdmin()){showFireToast('🚫 אין הרשאה');return;}
   const KEEP=['rotemshaer@gmail.com','eyalxbeja+kidemyteacher@gmail.com'];
   try{
-    showFireToast('⏳ מוחק משתמשים ישנים...');
+    showFireToast('⏳ סורק ומוחק...');
     let deleted=0;
+    const uidsToDelete=new Set();
 
-    const usersSnap=await db.ref('users').get();
-    if(usersSnap.exists()){
-      const promises=[];
-      usersSnap.forEach(u=>{
-        const email=(u.val()?.email||'').toLowerCase();
-        if(!KEEP.includes(email)){
-          promises.push(db.ref('users/'+u.key).remove());
-          deleted++;
-        }
-      });
-      await Promise.all(promises);
-    }
-
+    // סרוק teachers/ ומצא UIDs שצריך למחוק
     const teachersSnap=await db.ref('teachers').get();
     if(teachersSnap.exists()){
-      const promises=[];
       teachersSnap.forEach(t=>{
         const email=(t.val()?.email||'').toLowerCase();
-        if(!KEEP.includes(email)){
-          promises.push(db.ref('teachers/'+t.key).remove());
-          deleted++;
-        }
+        if(!KEEP.includes(email)) uidsToDelete.add(t.key);
       });
+    }
+
+    // סרוק users/ ומצא UIDs שצריך למחוק (כולל משתמשים שאין להם רשומת teacher)
+    const usersSnap=await db.ref('users').get();
+    if(usersSnap.exists()){
+      usersSnap.forEach(u=>{
+        const email=(u.val()?.email||'').toLowerCase();
+        if(!KEEP.includes(email)) uidsToDelete.add(u.key);
+      });
+    }
+
+    // שמור UIDs שנשמרים (למקרה שהמנהל עצמו ב-users/ ללא מייל מדויק)
+    const keepUids=new Set();
+    if(usersSnap.exists()){
+      usersSnap.forEach(u=>{
+        const email=(u.val()?.email||'').toLowerCase();
+        if(KEEP.includes(email)) keepUids.add(u.key);
+      });
+    }
+    keepUids.add(currentUser.uid); // תמיד שמור את המנהל הנוכחי
+
+    // מחק את כל הנתונים של כל UID שמצאנו
+    const allPaths=['teachers','users','schedules','videos','notifications','userChats','teacherBookings','bookings','reviews'];
+    for(const uid of uidsToDelete){
+      if(keepUids.has(uid)) continue;
+      const promises=allPaths.map(path=>db.ref(path+'/'+uid).remove().catch(()=>{}));
       await Promise.all(promises);
+      deleted++;
     }
 
     await loadRealTeachers();
     render();
-    showFireToast('✅ נמחקו '+deleted+' רשומות!');
+    showFireToast('✅ נמחקו '+deleted+' משתמשים!');
   }catch(e){
     showFireToast('❌ שגיאה: '+e.message);
   }
