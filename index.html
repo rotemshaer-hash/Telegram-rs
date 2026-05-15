@@ -1938,30 +1938,38 @@ async function loadUserChats(){
 const ADMIN_EMAILS=['rotemshaer@gmail.com'];
 const TEACHER_AUTO_VERIFY=['rotemshaer@gmail.com','eyalxbeja+kidemyteacher@gmail.com'];
 
-// ─── EMAIL NOTIFICATIONS (FormSubmit.co — אין צורך בהגדרה, רק אישור חד-פעמי) ─
+// ─── EMAIL NOTIFICATIONS (EmailJS) ───────────────────────────────────────────
+// הגדרה חד-פעמית:
+// 1. היכנס ל-emailjs.com → צור חשבון חינם (Account → Free)
+// 2. Email Services → Add New Service → Gmail → קבל SERVICE ID
+// 3. Email Templates → Create New Template →
+//    הכנס בתבנית: To Email={{to_email}}, Subject={{subject}}, Content={{message}}
+//    → Save → קבל TEMPLATE ID
+// 4. Account → API Keys → קבל PUBLIC KEY
+// 5. החלף את שלושת הערכים למטה ושמור
 const ADMIN_EMAIL='rotemshaer@gmail.com';
+const EMAILJS_SERVICE_ID='';    // ← הכנס כאן: service_xxxxxxx
+const EMAILJS_TEMPLATE_ID='';   // ← הכנס כאן: template_xxxxxxx
+const EMAILJS_PUBLIC_KEY='';    // ← הכנס כאן: xxxxxxxxxxxxxxxxxxxxx
 
 async function sendEmail(to,subject,body){
+  if(!EMAILJS_SERVICE_ID||!EMAILJS_TEMPLATE_ID||!EMAILJS_PUBLIC_KEY){
+    console.log('[Email] EmailJS not configured — would send to:',to,'|',subject);
+    return null;
+  }
   try{
-    const res=await fetch('https://formsubmit.co/ajax/'+encodeURIComponent(to),{
-      method:'POST',
-      headers:{'Content-Type':'application/json','Accept':'application/json'},
-      body:JSON.stringify({
-        _subject:subject,
-        _template:'table',
-        _captcha:'false',
-        from_name:'Kidemy 🎓',
-        message:body
-      })
-    });
-    const json=await res.json().catch(()=>({}));
-    // FormSubmit שולח מייל אישור חד-פעמי — חובה ללחוץ עליו לפני שהמיילים יגיעו
-    if(json.success==='false'||json.success===false){
-      console.warn('FormSubmit:',json.message);
-      if(isAdmin())showFireToast('⚠️ מייל לא נשלח — בדוק תיבת הדואר שלך למייל אישור מ-FormSubmit');
-    }
-    return json;
-  }catch(e){console.warn('Email error:',e);}
+    const result=await emailjs.send(
+      EMAILJS_SERVICE_ID,
+      EMAILJS_TEMPLATE_ID,
+      {to_email:to,subject,message:body},
+      {publicKey:EMAILJS_PUBLIC_KEY}
+    );
+    return result;
+  }catch(e){
+    console.warn('EmailJS error:',e);
+    if(isAdmin())showFireToast('⚠️ שגיאה בשליחת מייל: '+(e.text||e.message||''));
+    return null;
+  }
 }
 
 function sendAdminEmail(subject,body){
@@ -3119,13 +3127,17 @@ async function resetSystem(){
 
 async function adminSendTestEmail(){
   if(!isAdmin())return;
+  if(!EMAILJS_SERVICE_ID||!EMAILJS_TEMPLATE_ID||!EMAILJS_PUBLIC_KEY){
+    showFireToast('⚠️ EmailJS לא מוגדר — ראה הוראות בלשונית 📊 סטטיסטיקות');
+    return;
+  }
   showFireToast('⏳ שולח מייל בדיקה...');
   const result=await sendEmail(ADMIN_EMAIL,'🔔 מייל בדיקה מ-Kidemy',
-    `שלום!\n\nמייל הבדיקה הצליח.\nאם זה המייל הראשון — בדוק תיבת הדואר שלך למייל אישור מ-FormSubmit וודא שלחצת עליו.`);
-  if(result&&(result.success==='true'||result.success===true)){
+    `שלום רותם!\n\nמייל הבדיקה הגיע בהצלחה — EmailJS מחובר ועובד!\n\nמעכשיו תקבל מייל על כל הרשמה חדשה.\n\n– Kidemy`);
+  if(result&&result.status===200){
     showFireToast('✅ מייל נשלח! בדוק את תיבת הדואר שלך.');
   } else {
-    showFireToast('⚠️ בדוק תיבת הדואר שלך — ייתכן שיש מייל אישור מ-FormSubmit שצריך לאשר');
+    showFireToast('❌ שגיאה — בדוק שה-Service ID, Template ID ו-Public Key נכונים');
   }
 }
 
@@ -3412,11 +3424,28 @@ function renderAdminTab(){
           ?`<div style="background:rgba(16,185,129,0.1);border-radius:10px;padding:8px 12px;font-size:12px;font-weight:800;color:#10B981">✅ התראות פעילות!</div>`
           :`<button onclick="_requestBrowserNotifPermission()" style="width:100%;background:linear-gradient(135deg,#10B981,#14B8A6);border:none;color:#fff;border-radius:50px;padding:11px;font-weight:900;font-size:13px;cursor:pointer">🔔 הפעל התראות דפדפן</button>`}
       </div>
-      <div style="background:rgba(168,85,247,0.07);border:1.5px solid rgba(168,85,247,0.2);border-radius:16px;padding:14px;margin-bottom:14px">
-        <h4 style="margin:0 0 8px;font-weight:900;font-size:14px;color:#A855F7">📧 מיילים (FormSubmit)</h4>
-        <p style="margin:0 0 4px;font-size:12px;color:#64748B;line-height:1.5">שלח מייל בדיקה. אם לא מקבל — <strong>בדוק ספאם/זבל</strong> למייל מ-<strong>noreply@formsubmit.co</strong> עם כותרת "Please Confirm Your Email" ולחץ על הקישור בו.</p>
-        <button onclick="adminSendTestEmail()" style="width:100%;background:linear-gradient(135deg,#A855F7,#7E22CE);border:none;color:#fff;border-radius:50px;padding:11px;font-weight:800;font-size:13px;cursor:pointer;margin-top:8px">📤 שלח מייל בדיקה</button>
-      </div>
+      ${EMAILJS_SERVICE_ID&&EMAILJS_TEMPLATE_ID&&EMAILJS_PUBLIC_KEY
+        ?`<div style="background:rgba(168,85,247,0.07);border:1.5px solid rgba(168,85,247,0.3);border-radius:16px;padding:14px;margin-bottom:14px">
+            <h4 style="margin:0 0 6px;font-weight:900;font-size:14px;color:#A855F7">📧 מיילים ✅ מוגדר</h4>
+            <button onclick="adminSendTestEmail()" style="width:100%;background:linear-gradient(135deg,#A855F7,#7E22CE);border:none;color:#fff;border-radius:50px;padding:11px;font-weight:800;font-size:13px;cursor:pointer">📤 שלח מייל בדיקה</button>
+          </div>`
+        :`<div style="background:rgba(239,68,68,0.05);border:2px solid rgba(239,68,68,0.3);border-radius:16px;padding:14px;margin-bottom:14px">
+            <h4 style="margin:0 0 8px;font-weight:900;font-size:14px;color:#EF4444">📧 מיילים — טרם הוגדר</h4>
+            <div style="font-size:12px;color:#374151;line-height:1.8;background:rgba(0,0,0,0.03);border-radius:10px;padding:10px">
+              <b>4 צעדים להגדרה:</b><br>
+              1. כנס ל-<b>emailjs.com</b> → צור חשבון חינם<br>
+              2. <b>Email Services</b> → Add New Service → <b>Gmail</b> → קבל Service ID<br>
+              3. <b>Email Templates</b> → Create New Template<br>
+              &nbsp;&nbsp;&nbsp;• To: <code>{{to_email}}</code><br>
+              &nbsp;&nbsp;&nbsp;• Subject: <code>{{subject}}</code><br>
+              &nbsp;&nbsp;&nbsp;• Content: <code>{{message}}</code><br>
+              &nbsp;&nbsp;&nbsp;→ Save → קבל Template ID<br>
+              4. <b>Account → API Keys</b> → קבל Public Key<br>
+              <br>
+              5. שלח את 3 הערכים לקלוד ובקש לעדכן
+            </div>
+          </div>`
+      }
       <div style="background:linear-gradient(135deg,#0F1A1F,#1E1B4B);border-radius:20px;padding:18px;color:#fff;margin-bottom:14px">
         <h4 style="margin:0 0 14px;font-weight:900;font-size:16px;color:#5EEAD4">📊 סקירה כללית</h4>
         <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">
