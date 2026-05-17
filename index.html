@@ -3913,7 +3913,7 @@ function Home(){
         ${[["👩‍🏫",realStats.teachers,"מורים"],["📚",realStats.categories,"נושאים"],["📍",realStats.cities,"ערים"],["👨‍🎓",realStats.students,"תלמידים"]].map(([e,v,l])=>`<div class="card-sm" style="flex:1;text-align:center;padding:12px 6px;margin-bottom:0"><div style="font-size:18px">${e}</div><div style="font-weight:900;font-size:17px">${v}</div><div style="font-size:10px;color:${C.muted};font-weight:600">${l}</div></div>`).join("")}
       </div>
 
-      ${currentUserData?.role==='teacher'&&teacherPendingBookings.length>0?`
+      ${currentUserData?.role==='teacher'&&!isAdmin()&&teacherPendingBookings.length>0?`
       <!-- Teacher: Pending bookings -->
       <div style="background:linear-gradient(135deg,#A855F7,#06B6D4);border-radius:24px;padding:18px;margin-bottom:18px;color:#fff;box-shadow:0 10px 30px rgba(168,85,247,0.3)">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
