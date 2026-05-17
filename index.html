@@ -433,6 +433,10 @@ function go(scr,extra={}){
   if(scr!=="splash")S.prev=S.screen;
   Object.assign(S,extra,{screen:scr});
   if(scr==='community')loadCommunityPosts();
+  if(scr==='chat'&&currentUser&&(extra.chat||S.chat)?.otherUid){
+    const ou=(extra.chat||S.chat).otherUid;
+    db.ref('userChats/'+currentUser.uid+'/'+ou+'/unread').set(false).catch(()=>{});
+  }
   if(scr==='teacher'&&(extra.teacher||S.teacher)){
     const tid=(extra.teacher||S.teacher)?.id;
     if(tid)loadPublicTeacherVideos(tid);
@@ -464,6 +468,7 @@ window.addEventListener('popstate',()=>{
 });
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
+function escapeHtml(s){if(!s)return '';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 const catById=id=>CATS.find(c=>c.id===id)||{};
 const stars=r=>"★".repeat(Math.floor(r))+" "+r;
 const mTag=m=>`<span class="tag ${m==="online"?"t-online":"t-frontal"}">${m==="online"?"🖥 אונליין":"🤝 פרונטלי"}</span>`;
@@ -1178,7 +1183,7 @@ async function processPayment(payMethod,totalAmount){
     const days=["א'","ב'","ג'","ד'","ה'","ו'"];
     const bookingRef=db.ref('bookings').push();
     const bookingId=bookingRef.key;
-    const jitsiRoom='Kidemy-'+bookingId.replace(/[^a-zA-Z0-9]/g,'').substring(0,16);
+    const jitsiRoom='Kidemy-'+bookingId.replace(/[^a-zA-Z0-9]/g,'');
     const bookingData={
       id:bookingId,
       studentId:currentUser.uid,
@@ -1220,7 +1225,7 @@ async function processPayment(payMethod,totalAmount){
     try{
       const tSnap=await db.ref('teachers/'+t.id).get();
       const teacherEmail=tSnap.val()?.email||ADMIN_EMAIL;
-      sendEmail(teacherEmail,'📚 הזמנת שיעור חדשה ב-Kidemy!',
+      await sendEmail(teacherEmail,'📚 הזמנת שיעור חדשה ב-Kidemy!',
         `שלום ${t.name}!\n\nתלמיד חדש הזמין שיעור:\n👤 תלמיד: ${bookingData.studentName}\n📅 יום: ${bookingData.day} בשעה ${bookingData.time}\n💰 מחיר: ₪${totalAmount}\n\nכנס לאפליקציה לאישור:\nhttps://kidemy-app.netlify.app`);
     }catch(e){}
     S.lastBookingId=bookingId;
@@ -1268,6 +1273,7 @@ async function approveBooking(bookingId){
     const snap=await db.ref('bookings/'+bookingId).get();
     if(!snap.exists()){showFireToast('❌ הזמנה לא נמצאה');return;}
     const b=snap.val();
+    if(b.teacherId!==currentUser?.uid){showFireToast('❌ אין הרשאה לאשר הזמנה זו');return;}
     await db.ref('bookings/'+bookingId+'/status').set('approved');
     await db.ref('userBookings/'+b.studentId+'/'+bookingId+'/status').set('approved');
     await db.ref('teacherBookings/'+b.teacherId+'/'+bookingId+'/status').set('approved');
@@ -1298,6 +1304,7 @@ async function rejectBooking(bookingId){
     const snap=await db.ref('bookings/'+bookingId).get();
     if(!snap.exists())return;
     const b=snap.val();
+    if(b.teacherId!==currentUser?.uid){showFireToast('❌ אין הרשאה לדחות הזמנה זו');return;}
     await db.ref('bookings/'+bookingId+'/status').set('rejected');
     await db.ref('userBookings/'+b.studentId+'/'+bookingId+'/status').set('rejected');
     await db.ref('teacherBookings/'+b.teacherId+'/'+bookingId+'/status').set('rejected');
@@ -2169,20 +2176,37 @@ async function adminFixUser(uid,email){
 }
 
 async function adminDeleteUser(uid,name,role){
-  if(!confirm(`למחוק את ${name||'המשתמש'} לצמיתות?\n\nפעולה זו תמחק:\n• פרופיל המשתמש\n• הנתונים שלו מהמערכת\n\n⚠️ לא ניתן לבטל!`))return;
+  if(!isAdmin()){showFireToast('❌ אין הרשאה');return;}
+  if(!confirm(`למחוק את ${name||'המשתמש'} לצמיתות?\n\nפעולה זו תמחק:\n• פרופיל, הזמנות, ביקורות, מועדפים\n• פוסטים בקהילה, הודעות, התראות\n\n⚠️ לא ניתן לבטל!`))return;
   try{
     showFireToast('⏳ מוחק...');
-    // מחק מה-users
     await db.ref('users/'+uid).remove();
-    // אם מורה – מחק גם מ-teachers
     if(role==='teacher'){
       await db.ref('teachers/'+uid).remove();
       await db.ref('schedules/'+uid).remove();
       await db.ref('videos/'+uid).remove();
+      await db.ref('teacherBookings/'+uid).remove();
     }
-    // מחק הודעות ואנוטיפיקציות
     await db.ref('notifications/'+uid).remove();
     await db.ref('userChats/'+uid).remove();
+    await db.ref('userBookings/'+uid).remove();
+    await db.ref('favorites/'+uid).remove();
+    // מחק פוסטים בקהילה של המשתמש
+    const postsSnap=await db.ref('communityPosts').get();
+    if(postsSnap.exists()){
+      const delPosts=[];
+      postsSnap.forEach(p=>{if(p.val().uid===uid)delPosts.push(p.key);});
+      await Promise.all(delPosts.map(k=>db.ref('communityPosts/'+k).remove()));
+    }
+    // מחק ביקורות שכתב המשתמש
+    const revSnap=await db.ref('reviews').get();
+    if(revSnap.exists()){
+      const delRevs=[];
+      revSnap.forEach(teacherEntry=>{
+        teacherEntry.forEach(r=>{if(r.val().uid===uid)delRevs.push('reviews/'+teacherEntry.key+'/'+r.key);});
+      });
+      await Promise.all(delRevs.map(p=>db.ref(p).remove()));
+    }
     showFireToast('✅ המשתמש נמחק');
     await loadAdminData();renderAdminPanel();
   }catch(e){showFireToast('❌ '+e.message);}
@@ -2199,7 +2223,7 @@ async function adminApproveVideo(teacherId,videoId){
 async function adminRejectVideo(teacherId,videoId){
   try{
     await db.ref('videos/'+teacherId+'/'+videoId).update({approved:'rejected',rejectedAt:Date.now()});
-    showFireToast('↩ הסרטון נדחה – יימחק תוך 24 שעות');
+    showFireToast('↩ הסרטון נדחה');
     await loadAdminData();renderAdminPanel();
   }catch(e){showFireToast('❌ '+e.message);}
 }
@@ -4625,7 +4649,7 @@ function Chat(){
         const tStr=t.getHours().toString().padStart(2,'0')+':'+t.getMinutes().toString().padStart(2,'0');
         return `<div style="display:flex;justify-content:${mine?'flex-start':'flex-end'};margin-bottom:11px">
           <div class="bbl ${mine?'bbl-me':'bbl-other'}" style="${!mine?'background:#14B8A6':''}">
-            ${m.text}<div style="font-size:10px;color:${mine?'#94A3B8':'rgba(255,255,255,.7)'};text-align:left;margin-top:4px">${tStr}</div>
+            ${escapeHtml(m.text)}<div style="font-size:10px;color:${mine?'#94A3B8':'rgba(255,255,255,.7)'};text-align:left;margin-top:4px">${tStr}</div>
           </div>
         </div>`;
       }).join("")}
@@ -4879,7 +4903,7 @@ function Community(){
           <span style="background:rgba(20,184,166,.1);color:#00864A;font-size:11px;font-weight:700;padding:3px 9px;border-radius:50px">${CC.find(c=>c.id===p.pcat)?.e||""} ${CC.find(c=>c.id===p.pcat)?.l||""}</span>
         </div>
       </div>
-      <div style="padding:0 15px 13px"><p style="margin:0;font-size:14px;line-height:1.7">${p.text||''}</p></div>
+      <div style="padding:0 15px 13px"><p style="margin:0;font-size:14px;line-height:1.7">${escapeHtml(p.text)}</p></div>
       <div class="p-acts">
         <button onclick="toggleLike('${p.id}')" style="color:${p.liked?"#E74C3C":C.muted}">${p.liked?"❤️":"🤍"} ${p.likes||0}</button>
         <button onclick="openPost('${p.id}')">💬 ${(p.reps||[]).length}</button>
@@ -4889,7 +4913,7 @@ function Community(){
       ${S.openPost===p.id?`<div style="background:#FAFAFE;border-top:1px solid rgba(0,0,0,.05)">
         ${(p.reps||[]).map(r=>`<div style="padding:11px 14px;border-bottom:1px solid rgba(0,0,0,.04);display:flex;gap:9px">
           <div style="width:32px;height:32px;border-radius:10px;background:#EEE;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0">${r.av||'😊'}</div>
-          <div style="flex:1"><div style="display:flex;justify-content:space-between"><span style="font-size:11px;color:${C.muted}">${r.createdAt?new Date(r.createdAt).toLocaleDateString('he-IL'):r.time||''}</span><span style="font-weight:800;font-size:13px">${r.auth}</span></div><p style="margin:4px 0 0;font-size:13px;line-height:1.5">${r.text}</p></div>
+          <div style="flex:1"><div style="display:flex;justify-content:space-between"><span style="font-size:11px;color:${C.muted}">${r.createdAt?new Date(r.createdAt).toLocaleDateString('he-IL'):r.time||''}</span><span style="font-weight:800;font-size:13px">${escapeHtml(r.auth)}</span></div><p style="margin:4px 0 0;font-size:13px;line-height:1.5">${escapeHtml(r.text)}</p></div>
         </div>`).join("")}
         <div style="padding:11px 14px;display:flex;gap:9px;align-items:center">
           <button onclick="sendReply('${p.id}')" style="background:linear-gradient(135deg,#0D9488,#38ef7d);border:none;border-radius:50%;width:36px;height:36px;color:#fff;font-weight:900;cursor:pointer;flex-shrink:0">↑</button>
