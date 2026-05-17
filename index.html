@@ -1216,6 +1216,13 @@ async function processPayment(payMethod,totalAmount){
       read:false,
       createdAt:Date.now()
     });
+    // שלח מייל + הודעת דפדפן למורה
+    try{
+      const tSnap=await db.ref('teachers/'+t.id).get();
+      const teacherEmail=tSnap.val()?.email||ADMIN_EMAIL;
+      sendEmail(teacherEmail,'📚 הזמנת שיעור חדשה ב-Kidemy!',
+        `שלום ${t.name}!\n\nתלמיד חדש הזמין שיעור:\n👤 תלמיד: ${bookingData.studentName}\n📅 יום: ${bookingData.day} בשעה ${bookingData.time}\n💰 מחיר: ₪${totalAmount}\n\nכנס לאפליקציה לאישור:\nhttps://kidemy-app.netlify.app`);
+    }catch(e){}
     S.lastBookingId=bookingId;
     S.bookStep=3;
     showFireToast('✅ ההזמנה נשלחה למורה!');
@@ -5695,6 +5702,7 @@ auth.onAuthStateChanged(async user=>{
         if(n&&!n.read&&isAdmin()){
           if(n.type==='newTeacher')_sendBrowserNotif('🎓 מורה חדש ממתין לאישור',`${n.from||''}${n.teacherEmail?' · '+n.teacherEmail:''}`);
           else if(n.type==='newVideo')_sendBrowserNotif('📹 סרטון חדש ממתין',n.from||'');
+          else if(n.type==='newBooking')_sendBrowserNotif('📚 הזמנת שיעור חדשה!',`${n.from||''} · יום ${n.day||''} ${n.time||''} · ₪${n.price||''}`);
         }
         loadNotifications().then(()=>{if(S.screen)render();});
       });
