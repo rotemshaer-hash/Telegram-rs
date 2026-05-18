@@ -431,6 +431,7 @@ let S={
 // ─── ROUTER ───────────────────────────────────────────────────────────────────
 function go(scr,extra={}){
   if(scr==='register'&&!S.safetyConfirmed){scr='safety';}
+  else if(scr==='register'&&!S.parentRegData){scr='parentReg';}
   if(scr!=="splash")S.prev=S.screen;
   Object.assign(S,extra,{screen:scr});
   if(scr==='community')loadCommunityPosts();
@@ -785,8 +786,8 @@ function Safety(){
       </div>
 
       <!-- Buttons -->
-      <button onclick="(()=>{const cb=document.getElementById('safetyCheckbox');if(!cb||!cb.checked){showFireToast('❌ יש לסמן שקראת את כללי הבטיחות');return;}S.safetyConfirmed=true;go('register');})()" class="btn bp" style="font-size:16px;padding:16px;border-radius:18px;letter-spacing:.3px">
-        ✅ קראתי – המשך להרשמה
+      <button onclick="(()=>{const cb=document.getElementById('safetyCheckbox');if(!cb||!cb.checked){showFireToast('❌ יש לסמן שקראת את כללי הבטיחות');return;}S.safetyConfirmed=true;go('parentReg');})()" class="btn bp" style="font-size:16px;padding:16px;border-radius:18px;letter-spacing:.3px">
+        ✅ קראתי – המשך לרישום הורה
       </button>
 
       <button onclick="go('home')" style="width:100%;background:none;border:none;padding:12px;font-size:13px;color:#64748B;cursor:pointer">
@@ -797,13 +798,133 @@ function Safety(){
   </div>`;
 }
 
+function ParentReg(){
+  return `<div class="screen" style="background:linear-gradient(165deg,#1E293B 0%,#0F2027 60%,#0D1B2A 100%);min-height:100dvh;display:flex;flex-direction:column;align-items:center;padding:0 0 40px;overflow-y:auto;color:#fff">
+
+    <!-- progress bar -->
+    <div style="width:100%;background:rgba(255,255,255,.06);height:4px"><div style="width:50%;height:4px;background:linear-gradient(90deg,#14B8A6,#A855F7);border-radius:2px"></div></div>
+
+    <!-- header -->
+    <div style="width:100%;background:linear-gradient(135deg,#1E3A5F,#0F2A4A);padding:26px 20px 22px;text-align:center">
+      <div style="display:flex;justify-content:center;gap:6px;margin-bottom:14px">
+        <div style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900">1</div>
+        <div style="height:2px;background:rgba(255,255,255,.15);width:40px;align-self:center;border-radius:2px"></div>
+        <div style="background:rgba(255,255,255,.15);border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:#94A3B8">2</div>
+      </div>
+      <div style="font-size:44px;margin-bottom:8px">👨‍👩‍👧</div>
+      <h2 style="font-size:22px;font-weight:900;margin:0 0 5px">שלב 1 – רישום הורה</h2>
+      <p style="font-size:12px;color:#94A3B8;margin:0;line-height:1.6">ההורה חייב להירשם ראשון.<br>חובה להיות מעל גיל 18 ולספק תעודת זהות.</p>
+    </div>
+
+    <div style="width:100%;max-width:400px;padding:20px 16px;display:flex;flex-direction:column;gap:14px">
+
+      <!-- warning banner -->
+      <div style="background:rgba(168,85,247,.12);border:1.5px solid rgba(168,85,247,.35);border-radius:16px;padding:13px 15px;display:flex;gap:10px;align-items:center">
+        <span style="font-size:22px">🔐</span>
+        <span style="font-size:12px;color:#C4B5FD;line-height:1.6">פרטי ההורה ישמרו בצורה מוצפנת ויהיו גלויים <strong style="color:#E9D5FF">למנהל האפליקציה בלבד</strong>. לא יוצגו לאף ילד או מורה.</span>
+      </div>
+
+      <!-- form card -->
+      <div style="background:rgba(255,255,255,.04);border:1.5px solid rgba(255,255,255,.1);border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:14px">
+
+        <div class="ing" style="margin-bottom:0">
+          <label style="color:#94A3B8;font-size:12px;font-weight:700;display:block;margin-bottom:6px">שם מלא של ההורה</label>
+          <input id="prName" class="inp" type="text" placeholder="שם פרטי ושם משפחה"
+            style="background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.12);color:#fff;border-radius:14px;padding:13px 15px;font-size:14px">
+        </div>
+
+        <div class="ing" style="margin-bottom:0">
+          <label style="color:#94A3B8;font-size:12px;font-weight:700;display:block;margin-bottom:6px">תעודת זהות (9 ספרות)</label>
+          <input id="prId" class="inp" type="tel" maxlength="9" placeholder="000000000" inputmode="numeric"
+            style="background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.12);color:#fff;border-radius:14px;padding:13px 15px;font-size:14px;letter-spacing:3px"
+            oninput="this.value=this.value.replace(/\D/g,'')">
+        </div>
+
+        <div class="ing" style="margin-bottom:0">
+          <label style="color:#94A3B8;font-size:12px;font-weight:700;display:block;margin-bottom:6px">גיל ההורה (מינימום 18)</label>
+          <input id="prAge" class="inp" type="number" min="18" max="120" placeholder="גיל"
+            style="background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.12);color:#fff;border-radius:14px;padding:13px 15px;font-size:14px">
+        </div>
+
+        <div class="ing" style="margin-bottom:0">
+          <label style="color:#94A3B8;font-size:12px;font-weight:700;display:block;margin-bottom:6px">כתובת מייל של ההורה</label>
+          <input id="prEmail" class="inp" type="email" placeholder="המייל שלך"
+            style="background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.12);color:#fff;border-radius:14px;padding:13px 15px;font-size:14px">
+        </div>
+
+        <div class="ing" style="margin-bottom:0">
+          <label style="color:#94A3B8;font-size:12px;font-weight:700;display:block;margin-bottom:6px">טלפון ההורה</label>
+          <input id="prPhone" class="inp" type="tel" placeholder="050-1234567"
+            style="background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.12);color:#fff;border-radius:14px;padding:13px 15px;font-size:14px">
+        </div>
+
+      </div>
+
+      <!-- consent -->
+      <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer;background:rgba(20,184,166,.07);border:1.5px solid rgba(20,184,166,.25);border-radius:16px;padding:14px">
+        <input type="checkbox" id="prConsent" style="width:20px;height:20px;cursor:pointer;flex-shrink:0;margin-top:1px;accent-color:#14B8A6">
+        <span style="font-size:12px;line-height:1.7;color:#CBD5E1">אני <strong style="color:#fff">ההורה</strong>, מעל גיל 18, ומאשר/ת את הצטרפות ילדי לאפליקציה Kidemy. ידוע לי שפעילות הילד תהיה גלויה לי בכל עת.</span>
+      </label>
+
+      <!-- submit -->
+      <button onclick="submitParentReg()" style="width:100%;background:linear-gradient(135deg,#14B8A6 0%,#06B6D4 50%,#A855F7 100%);border:none;color:#fff;border-radius:18px;padding:17px;font-size:16px;font-weight:900;cursor:pointer;box-shadow:0 4px 20px rgba(20,184,166,.3)">
+        המשך לרישום הילד ←
+      </button>
+
+      <button onclick="go('safety')" style="width:100%;background:none;border:none;padding:10px;font-size:13px;color:#475569;cursor:pointer">
+        ← חזור
+      </button>
+
+    </div>
+  </div>`;
+}
+
+function submitParentReg(){
+  const name=(document.getElementById('prName')?.value||'').trim();
+  const id=(document.getElementById('prId')?.value||'').trim();
+  const age=parseInt(document.getElementById('prAge')?.value||'0');
+  const email=(document.getElementById('prEmail')?.value||'').trim().toLowerCase();
+  const phone=(document.getElementById('prPhone')?.value||'').trim();
+  const consent=document.getElementById('prConsent')?.checked;
+
+  if(!name){showFireToast('❌ הכנס שם מלא של ההורה');return;}
+  if(!/^\d{9}$/.test(id)){showFireToast('❌ תעודת זהות חייבת להיות 9 ספרות');return;}
+  if(!age||age<18){showFireToast('❌ ההורה חייב להיות מעל גיל 18');return;}
+  if(!email.includes('@')){showFireToast('❌ הכנס כתובת מייל תקינה של ההורה');return;}
+  if(phone.replace(/\D/g,'').length<9){showFireToast('❌ הכנס מספר טלפון תקין של ההורה');return;}
+  if(!consent){showFireToast('❌ ההורה חייב לאשר את ההסכמה');return;}
+
+  S.parentRegData={name,id,email,age,phone,confirmedAt:Date.now()};
+  showFireToast('✅ פרטי ההורה אומתו!');
+  setTimeout(()=>go('register'),600);
+}
+
 function Register(){
   return `<div class="screen" style="background:linear-gradient(165deg,#CCFBF1 0%,#A5F3FC 50%,#7DD3FC 100%);min-height:100dvh;display:flex;flex-direction:column;align-items:center;padding:24px 20px 40px;overflow-y:auto">
-    <div style="font-size:64px;margin:16px 0 10px">🎓</div>
-    <h2 style="font-weight:900;font-size:26px;margin-bottom:4px;text-align:center">הצטרף ל-Kidemy!</h2>
-    <p style="color:#8A94A6;font-size:14px;margin-bottom:22px;text-align:center">ילדים מלמדים ילדים – חינם!</p>
+    <!-- progress bar -->
+    <div style="width:100%;background:rgba(0,0,0,.08);height:4px"><div style="width:100%;height:4px;background:linear-gradient(90deg,#14B8A6,#A855F7);border-radius:2px"></div></div>
+
+    <div style="font-size:64px;margin:16px 0 6px">🎓</div>
+    <div style="display:flex;justify-content:center;gap:6px;margin-bottom:8px">
+      <div style="background:#10B981;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:#fff">✓</div>
+      <div style="height:2px;background:rgba(0,0,0,.15);width:36px;align-self:center;border-radius:2px"></div>
+      <div style="background:linear-gradient(135deg,#14B8A6,#A855F7);border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:#fff">2</div>
+    </div>
+    <h2 style="font-weight:900;font-size:24px;margin-bottom:4px;text-align:center">שלב 2 – רישום הילד</h2>
+    <p style="color:#8A94A6;font-size:13px;margin-bottom:18px;text-align:center">ילדים מלמדים ילדים – חינם!</p>
 
     <div style="width:100%;max-width:380px">
+
+      <!-- parent confirmed banner -->
+      <div style="background:linear-gradient(135deg,rgba(16,185,129,.12),rgba(20,184,166,.08));border:1.5px solid rgba(16,185,129,.4);border-radius:16px;padding:12px 15px;margin-bottom:16px;display:flex;gap:10px;align-items:center">
+        <div style="background:#10B981;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">✓</div>
+        <div>
+          <div style="font-size:12px;font-weight:900;color:#065F46">הורה אומת בהצלחה</div>
+          <div style="font-size:11px;color:#047857;margin-top:1px">${escapeHtml(S.parentRegData?.name||'')} · ${escapeHtml(S.parentRegData?.email||'')}</div>
+        </div>
+        <button onclick="S.parentRegData=null;go('parentReg')" style="margin-right:auto;background:none;border:none;font-size:11px;color:#6B7280;cursor:pointer;flex-shrink:0">שנה</button>
+      </div>
+
       <!-- Role selection -->
       <div style="display:flex;gap:10px;margin-bottom:18px">
         <button id="roleStudent" onclick="selectRole('student')" style="flex:1;background:linear-gradient(135deg,#14B8A6 0%,#06B6D4 50%,#A855F7 100%);color:#fff;border:none;border-radius:16px;padding:14px;font-weight:800;font-size:14px;cursor:pointer">🎒 תלמיד</button>
@@ -832,24 +953,8 @@ function Register(){
           <input id="regPass2" class="inp" type="password" placeholder="הקלד שוב את הסיסמה"></div>
       </div>
 
-      <!-- פרטי הורה - חובה! -->
-      <div class="card" style="margin-bottom:14px;padding:16px;background:linear-gradient(135deg,rgba(168,85,247,0.06),rgba(236,72,153,0.04));border:1.5px solid rgba(168,85,247,0.25)">
-        <h4 style="font-weight:900;font-size:14px;margin:0 0 6px;color:#A855F7">👨‍👩‍👧 פרטי ההורה</h4>
-        <p style="font-size:11px;color:#64748B;margin:0 0 12px;line-height:1.5">חובה למלא! ההורה יוכל לעקוב אחרי הפעילות שלך ולקבל התראות. <strong>ללא הורה רשום – ההרשמה לא מאושרת.</strong></p>
-        <div class="ing"><label>שם הורה (אבא/אמא)</label>
-          <input id="regParentName" class="inp" type="text" placeholder="שם פרטי ושם משפחה"></div>
-        <div class="ing"><label>מייל ההורה</label>
-          <input id="regParentEmail" class="inp" type="email" placeholder="מייל ההורה לעדכונים"></div>
-        <div class="ing" style="margin-bottom:0"><label>טלפון ההורה</label>
-          <input id="regParentPhone" class="inp" type="tel" placeholder="050-1234567"></div>
-      </div>
-
       <!-- אישורים -->
       <div style="background:rgba(20,184,166,0.05);border:1px solid rgba(20,184,166,0.2);border-radius:14px;padding:14px;margin-bottom:14px">
-        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;margin-bottom:10px">
-          <input type="checkbox" id="regParentConsent" style="width:18px;height:18px;cursor:pointer;flex-shrink:0;margin-top:2px">
-          <span style="font-size:12px;line-height:1.6;color:#0F1A1F">✅ <strong>ההורה שלי יודע ומאשר</strong> את הצטרפותי ל-Kidemy ואת מסירת פרטיו</span>
-        </label>
         <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer">
           <input type="checkbox" id="regTerms" style="width:18px;height:18px;cursor:pointer;flex-shrink:0;margin-top:2px">
           <span style="font-size:12px;line-height:1.6;color:#0F1A1F">📜 קראתי ומסכים ל<strong>תנאי השימוש</strong> ו<strong>מדיניות הפרטיות</strong></span>
@@ -897,32 +1002,28 @@ async function quickRegister(){
   const email=document.getElementById('regEmail');
   const pass=document.getElementById('regPass');
   const pass2=document.getElementById('regPass2');
-  const parentName=document.getElementById('regParentName');
-  const parentEmail=document.getElementById('regParentEmail');
-  const parentPhone=document.getElementById('regParentPhone');
-  const parentConsent=document.getElementById('regParentConsent');
   const terms=document.getElementById('regTerms');
-  
+  const pr=S.parentRegData;
+
+  if(!pr){showFireToast('❌ פרטי הורה חסרים – חזור לשלב 1');go('parentReg');return;}
   if(!name||!name.value.trim()){showFireToast('❌ הכנס שם מלא');return;}
   if(!age||!age.value||parseInt(age.value)<8||parseInt(age.value)>18){showFireToast('❌ גיל חייב להיות בין 8-18');return;}
   if(!email||!email.value){showFireToast('❌ הכנס כתובת מייל');return;}
+  if(email.value.toLowerCase()===pr.email){showFireToast('❌ מייל הילד חייב להיות שונה ממייל ההורה');return;}
   if(!pass||pass.value.length<6){showFireToast('❌ סיסמה לפחות 6 תווים');return;}
   if(!pass2||pass.value!==pass2.value){showFireToast('❌ הסיסמאות לא תואמות');return;}
-  if(!parentName||!parentName.value.trim()){showFireToast('❌ חובה: שם הורה');return;}
-  if(!parentEmail||!parentEmail.value.includes('@')){showFireToast('❌ חובה: מייל הורה תקין');return;}
-  if(!parentPhone||parentPhone.value.replace(/\D/g,'').length<9){showFireToast('❌ חובה: טלפון הורה תקין');return;}
-  if(parentEmail.value.toLowerCase()===email.value.toLowerCase()){showFireToast('❌ מייל הורה חייב להיות שונה משלך');return;}
-  if(!parentConsent||!parentConsent.checked){showFireToast('❌ נדרש אישור הורה');return;}
   if(!terms||!terms.checked){showFireToast('❌ נדרש אישור תנאי שימוש');return;}
-  
+
   await firebaseRegister(email.value, pass.value, {
     name:name.value.trim(),
     age:parseInt(age.value),
     gender:_selectedGender,
     role:_selectedRole,
-    parentName:parentName.value.trim(),
-    parentEmail:parentEmail.value.trim().toLowerCase(),
-    parentPhone:parentPhone.value.trim()
+    parentName:pr.name,
+    parentEmail:pr.email,
+    parentPhone:pr.phone,
+    parentId:pr.id,
+    parentAge:pr.age
   });
 }
 
@@ -5649,7 +5750,7 @@ async function saveTeacherProfileEdits(){
   }catch(e){showFireToast('❌ '+e.message);}
 }
 
-const SCREENS={splash:Splash,safety:Safety,register:Register,login:Login,regSuccess:RegSuccess,teacherSetup:TeacherSetup,teacherPending:TeacherPending,home:Home,nearby:Nearby,teacher:Teacher,booking:Booking,messages:Messages,chat:Chat,profile:Profile,parent:Parent,community:Community,leaderboard:Leaderboard,about:About};
+const SCREENS={splash:Splash,safety:Safety,parentReg:ParentReg,register:Register,login:Login,regSuccess:RegSuccess,teacherSetup:TeacherSetup,teacherPending:TeacherPending,home:Home,nearby:Nearby,teacher:Teacher,booking:Booking,messages:Messages,chat:Chat,profile:Profile,parent:Parent,community:Community,leaderboard:Leaderboard,about:About};
 
 function render(){
   const fn=SCREENS[S.screen]||Home;
