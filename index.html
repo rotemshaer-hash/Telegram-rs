@@ -120,6 +120,11 @@ input,textarea,select{font-family:inherit;-webkit-appearance:none;appearance:non
 .inp:focus{border-color:var(--s)}
 .ing{margin-bottom:16px}
 .ing label{font-size:13px;font-weight:700;color:var(--text);display:block;margin-bottom:7px}
+.kcb-row{display:flex;align-items:flex-start;gap:12px;cursor:pointer;padding:13px;border-radius:14px;border:2px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);user-select:none;-webkit-user-select:none}
+.kcb-row.light{border-color:rgba(20,184,166,.3);background:rgba(20,184,166,.06)}
+.kcb-box{width:26px;height:26px;min-width:26px;border-radius:7px;border:2.5px solid #94A3B8;background:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:transparent;transition:background .15s,border-color .15s,color .15s;margin-top:1px}
+.kcb-row[data-checked="true"] .kcb-box{background:linear-gradient(135deg,#14B8A6,#A855F7);border-color:transparent;color:#fff}
+.kcb-row.light[data-checked="true"] .kcb-box{background:linear-gradient(135deg,#10B981,#14B8A6);border-color:transparent;color:#fff}
 
 /* INFO / WARN */
 .warn{background:#FFF3CD;border-radius:var(--radius-sm);padding:12px 14px;font-size:12px;color:#856404;font-weight:600;display:flex;gap:8px;align-items:flex-start}
@@ -471,6 +476,8 @@ window.addEventListener('popstate',()=>{
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 function escapeHtml(s){if(!s)return '';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+function kcbToggle(el){const r=el.closest('.kcb-row');if(!r)return;const v=r.dataset.checked==='true';r.dataset.checked=v?'false':'true';}
+function kcbChecked(id){const el=document.getElementById(id);return el?.dataset.checked==='true';}
 const catById=id=>CATS.find(c=>c.id===id)||{};
 const stars=r=>"★".repeat(Math.floor(r))+" "+r;
 const mTag=m=>`<span class="tag ${m==="online"?"t-online":"t-frontal"}">${m==="online"?"🖥 אונליין":"🤝 פרונטלי"}</span>`;
@@ -779,14 +786,14 @@ function Safety(){
           <strong style="color:#5EEAD4">חשוב:</strong> ב-Kidemy אנחנו רואים בבטיחות הילדים את הדבר החשוב ביותר.<br>
           על ידי המשך ההרשמה, ההורה ואתה מסכימים לכללים אלה.
         </p>
-        <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer;background:rgba(255,255,255,.05);border-radius:14px;padding:13px;border:1px solid rgba(255,255,255,.1)">
-          <input type="checkbox" id="safetyCheckbox" style="width:20px;height:20px;cursor:pointer;flex-shrink:0;margin-top:1px;accent-color:#14B8A6">
+        <div id="safetyCheckbox" class="kcb-row" data-checked="false" onclick="kcbToggle(this)">
+          <div class="kcb-box">✓</div>
           <span style="font-size:13px;line-height:1.7;color:#E2E8F0"><strong style="color:#fff">קראתי את כל הכללים והגנות הבטיחות</strong> והנני מאשר שהוריי יודעים על ההרשמה ומסכימים לה.</span>
-        </label>
+        </div>
       </div>
 
       <!-- Buttons -->
-      <button onclick="(()=>{const cb=document.getElementById('safetyCheckbox');if(!cb||!cb.checked){showFireToast('❌ יש לסמן שקראת את כללי הבטיחות');return;}S.safetyConfirmed=true;go('parentReg');})()" class="btn bp" style="font-size:16px;padding:16px;border-radius:18px;letter-spacing:.3px">
+      <button onclick="(()=>{if(!kcbChecked('safetyCheckbox')){showFireToast('❌ יש לסמן שקראת את כללי הבטיחות');return;}S.safetyConfirmed=true;go('parentReg');})()" class="btn bp" style="font-size:16px;padding:16px;border-radius:18px;letter-spacing:.3px">
         ✅ קראתי – המשך לרישום הורה
       </button>
 
@@ -861,10 +868,10 @@ function ParentReg(){
       </div>
 
       <!-- consent -->
-      <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer;background:rgba(20,184,166,.07);border:1.5px solid rgba(20,184,166,.25);border-radius:16px;padding:14px">
-        <input type="checkbox" id="prConsent" style="width:20px;height:20px;cursor:pointer;flex-shrink:0;margin-top:1px;accent-color:#14B8A6">
+      <div id="prConsent" class="kcb-row" data-checked="false" onclick="kcbToggle(this)">
+        <div class="kcb-box">✓</div>
         <span style="font-size:12px;line-height:1.7;color:#CBD5E1">אני <strong style="color:#fff">ההורה</strong>, מעל גיל 18, ומאשר/ת את הצטרפות ילדי לאפליקציה Kidemy. ידוע לי שפעילות הילד תהיה גלויה לי בכל עת.</span>
-      </label>
+      </div>
 
       <!-- submit -->
       <button onclick="submitParentReg()" style="width:100%;background:linear-gradient(135deg,#14B8A6 0%,#06B6D4 50%,#A855F7 100%);border:none;color:#fff;border-radius:18px;padding:17px;font-size:16px;font-weight:900;cursor:pointer;box-shadow:0 4px 20px rgba(20,184,166,.3)">
@@ -885,14 +892,12 @@ function submitParentReg(){
   const age=parseInt(document.getElementById('prAge')?.value||'0');
   const email=(document.getElementById('prEmail')?.value||'').trim().toLowerCase();
   const phone=(document.getElementById('prPhone')?.value||'').trim();
-  const consent=document.getElementById('prConsent')?.checked;
-
   if(!name){showFireToast('❌ הכנס שם מלא של ההורה');return;}
   if(!/^\d{9}$/.test(id)){showFireToast('❌ תעודת זהות חייבת להיות 9 ספרות');return;}
   if(!age||age<18){showFireToast('❌ ההורה חייב להיות מעל גיל 18');return;}
   if(!email.includes('@')){showFireToast('❌ הכנס כתובת מייל תקינה של ההורה');return;}
   if(phone.replace(/\D/g,'').length<9){showFireToast('❌ הכנס מספר טלפון תקין של ההורה');return;}
-  if(!consent){showFireToast('❌ ההורה חייב לאשר את ההסכמה');return;}
+  if(!kcbChecked('prConsent')){showFireToast('❌ ההורה חייב לאשר את ההסכמה');return;}
 
   S.parentRegData={name,id,email,age,phone,confirmedAt:Date.now()};
   showFireToast('✅ פרטי ההורה אומתו!');
@@ -954,11 +959,9 @@ function Register(){
       </div>
 
       <!-- אישורים -->
-      <div style="background:rgba(20,184,166,0.05);border:1px solid rgba(20,184,166,0.2);border-radius:14px;padding:14px;margin-bottom:14px">
-        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer">
-          <input type="checkbox" id="regTerms" style="width:18px;height:18px;cursor:pointer;flex-shrink:0;margin-top:2px">
-          <span style="font-size:12px;line-height:1.6;color:#0F1A1F">📜 קראתי ומסכים ל<strong>תנאי השימוש</strong> ו<strong>מדיניות הפרטיות</strong></span>
-        </label>
+      <div id="regTerms" class="kcb-row light" data-checked="false" onclick="kcbToggle(this)" style="margin-bottom:14px">
+        <div class="kcb-box">✓</div>
+        <span style="font-size:13px;line-height:1.6;color:#0F1A1F">📜 קראתי ומסכים ל<strong>תנאי השימוש</strong> ו<strong>מדיניות הפרטיות</strong></span>
       </div>
 
       <div class="warn" style="margin-bottom:18px"><span>🛡</span><span>אפליקציה לגילאי 8-18. ההורים מקבלים התראות והגישה לכל פעילותך.</span></div>
@@ -1002,7 +1005,6 @@ async function quickRegister(){
   const email=document.getElementById('regEmail');
   const pass=document.getElementById('regPass');
   const pass2=document.getElementById('regPass2');
-  const terms=document.getElementById('regTerms');
   const pr=S.parentRegData;
 
   if(!pr){showFireToast('❌ פרטי הורה חסרים – חזור לשלב 1');go('parentReg');return;}
@@ -1012,7 +1014,7 @@ async function quickRegister(){
   if(email.value.toLowerCase()===pr.email){showFireToast('❌ מייל הילד חייב להיות שונה ממייל ההורה');return;}
   if(!pass||pass.value.length<6){showFireToast('❌ סיסמה לפחות 6 תווים');return;}
   if(!pass2||pass.value!==pass2.value){showFireToast('❌ הסיסמאות לא תואמות');return;}
-  if(!terms||!terms.checked){showFireToast('❌ נדרש אישור תנאי שימוש');return;}
+  if(!kcbChecked('regTerms')){showFireToast('❌ נדרש אישור תנאי שימוש');return;}
 
   await firebaseRegister(email.value, pass.value, {
     name:name.value.trim(),
