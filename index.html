@@ -430,6 +430,7 @@ let S={
 
 // ─── ROUTER ───────────────────────────────────────────────────────────────────
 function go(scr,extra={}){
+  if(scr==='register'&&!S.safetyConfirmed){scr='safety';}
   if(scr!=="splash")S.prev=S.screen;
   Object.assign(S,extra,{screen:scr});
   if(scr==='community')loadCommunityPosts();
@@ -681,6 +682,121 @@ function Splash(){
 }
 
 // ─── REGISTER (5 STEPS) ───────────────────────────────────────────────────────
+function Safety(){
+  return `<div class="screen" style="background:linear-gradient(165deg,#0F172A 0%,#0D2234 60%,#0C1A2E 100%);min-height:100dvh;display:flex;flex-direction:column;align-items:center;padding:0 0 40px;overflow-y:auto;color:#fff">
+
+    <!-- Header -->
+    <div style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4,#A855F7);padding:28px 20px 24px;text-align:center;position:relative">
+      <div style="font-size:56px;margin-bottom:8px">🛡️</div>
+      <h1 style="font-size:24px;font-weight:900;margin:0 0 6px;text-shadow:0 2px 8px rgba(0,0,0,.3)">בטיחות ילדים ב-Kidemy</h1>
+      <p style="font-size:13px;opacity:.9;margin:0;line-height:1.6">לפני ההרשמה – חשוב שתקרא את כל השורות הבאות</p>
+    </div>
+
+    <div style="width:100%;max-width:420px;padding:20px 16px;display:flex;flex-direction:column;gap:14px">
+
+      <!-- badge row -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin:-4px 0 4px">
+        ${[['🔒','מוצפן'],['👨‍👩‍👧','הורה מאשר'],['🎓','מורים מאומתים'],['🚨','מערכת דיווח']].map(([e,t])=>`
+          <div style="background:rgba(20,184,166,.15);border:1px solid rgba(20,184,166,.3);border-radius:50px;padding:6px 13px;font-size:12px;font-weight:700;color:#5EEAD4">${e} ${t}</div>
+        `).join('')}
+      </div>
+
+      <!-- Section 1 -->
+      <div style="background:rgba(255,255,255,.04);border:1.5px solid rgba(20,184,166,.25);border-radius:20px;padding:18px;backdrop-filter:blur(8px)">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <div style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border-radius:12px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">👨‍👩‍👧</div>
+          <div><div style="font-weight:900;font-size:15px">פיקוח הורים – חובה מוחלטת</div><div style="font-size:11px;color:#94A3B8;margin-top:2px">אין הרשמה ללא הורה</div></div>
+        </div>
+        ${[
+          ['כל ילד – תלמיד או מורה – חייב לספק שם מלא, מייל וטלפון של הורה. ללא פרטי הורה אין הרשמה בכלל.',false],
+          ['ההורה מקבל מייל על כל הזמנת שיעור, אישור שיעור, ופעילות חשובה באפליקציה.',false],
+          ['להורה יש גישה לכל השיחות של הילד – ניתן לקרוא כל הודעה בכל עת.',false],
+          ['ניתן לבטל חשבון בכל עת דרך פנייה למנהל האפליקציה.',false],
+        ].map(([t])=>`<div style="display:flex;gap:9px;margin-bottom:10px;align-items:flex-start"><span style="color:#14B8A6;font-size:16px;flex-shrink:0;margin-top:1px">✓</span><span style="font-size:13px;line-height:1.6;color:#CBD5E1">${t}</span></div>`).join('')}
+      </div>
+
+      <!-- Section 2 -->
+      <div style="background:rgba(255,255,255,.04);border:1.5px solid rgba(168,85,247,.25);border-radius:20px;padding:18px;backdrop-filter:blur(8px)">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <div style="background:linear-gradient(135deg,#A855F7,#EC4899);border-radius:12px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">🎓</div>
+          <div><div style="font-weight:900;font-size:15px">אימות מורים ידני</div><div style="font-size:11px;color:#94A3B8;margin-top:2px">שום מורה לא נכנס ללא בדיקה</div></div>
+        </div>
+        ${[
+          'כל מי שמבקש להירשם כמורה עובר בדיקה ידנית על ידי מנהל האפליקציה לפני שהפרופיל שלו מוצג.',
+          'מורה שלא עבר אישור לא יכול לקבל הזמנות שיעור ולא מופיע בחיפוש.',
+          'מנהל האפליקציה יכול להשעות או למחוק מורה בכל רגע אם מתקבל דיווח.',
+          'כל ביקורת שתלמיד כותב על מורה נשמרת ומוצגת בשקיפות מלאה.',
+        ].map(t=>`<div style="display:flex;gap:9px;margin-bottom:10px;align-items:flex-start"><span style="color:#A855F7;font-size:16px;flex-shrink:0;margin-top:1px">✓</span><span style="font-size:13px;line-height:1.6;color:#CBD5E1">${t}</span></div>`).join('')}
+      </div>
+
+      <!-- Section 3 -->
+      <div style="background:rgba(255,255,255,.04);border:1.5px solid rgba(6,182,212,.25);border-radius:20px;padding:18px;backdrop-filter:blur(8px)">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <div style="background:linear-gradient(135deg,#06B6D4,#3B82F6);border-radius:12px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">📹</div>
+          <div><div style="font-weight:900;font-size:15px">שיעורים אונליין מאובטחים</div><div style="font-size:11px;color:#94A3B8;margin-top:2px">טכנולוגיה מוכחת ובטוחה</div></div>
+        </div>
+        ${[
+          'שיעורי וידאו מתקיימים דרך Jitsi Meet – פלטפורמה אירופאית מוצפנת, ללא צורך בחשבון.',
+          'לכל שיעור נוצר חדר ייחודי עם מזהה אקראי שאי-אפשר לנחש. אורחים לא מוזמנים לא יכולים להיכנס.',
+          'שיעורים פרונטליים (פנים-אל-פנים) מחייבים אישור הורה מפורש לפני האישור הסופי.',
+          'שיעורי אונליין מוגבלים לשני המשתמשים שאישרו את ההזמנה בלבד.',
+        ].map(t=>`<div style="display:flex;gap:9px;margin-bottom:10px;align-items:flex-start"><span style="color:#06B6D4;font-size:16px;flex-shrink:0;margin-top:1px">✓</span><span style="font-size:13px;line-height:1.6;color:#CBD5E1">${t}</span></div>`).join('')}
+      </div>
+
+      <!-- Section 4 -->
+      <div style="background:rgba(255,255,255,.04);border:1.5px solid rgba(239,68,68,.25);border-radius:20px;padding:18px;backdrop-filter:blur(8px)">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <div style="background:linear-gradient(135deg,#EF4444,#F97316);border-radius:12px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">🚨</div>
+          <div><div style="font-weight:900;font-size:15px">מערכת דיווח ואכיפה</div><div style="font-size:11px;color:#94A3B8;margin-top:2px">אפס סבלנות לתוכן פוגעני</div></div>
+        </div>
+        ${[
+          'כל משתמש יכול לדווח על פוסט, הודעה, מורה או תלמיד בלחיצת כפתור אחת.',
+          'דיווחים מגיעים ישירות למנהל האפליקציה שמטפל בהם בתוך 24 שעות.',
+          'משתמש שדיווח עליו יחסם מיד עד לבירור, גם אם הדיווח עדיין בבחינה.',
+          'תוכן לא הולם, שפה פוגענית או ניסיון ליצור קשר מחוץ לאפליקציה – מוביל למחיקת חשבון.',
+        ].map(t=>`<div style="display:flex;gap:9px;margin-bottom:10px;align-items:flex-start"><span style="color:#EF4444;font-size:16px;flex-shrink:0;margin-top:1px">✓</span><span style="font-size:13px;line-height:1.6;color:#CBD5E1">${t}</span></div>`).join('')}
+      </div>
+
+      <!-- Section 5 -->
+      <div style="background:rgba(255,255,255,.04);border:1.5px solid rgba(16,185,129,.25);border-radius:20px;padding:18px;backdrop-filter:blur(8px)">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <div style="background:linear-gradient(135deg,#10B981,#14B8A6);border-radius:12px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">🔒</div>
+          <div><div style="font-weight:900;font-size:15px">הגנת מידע ופרטיות</div><div style="font-size:11px;color:#94A3B8;margin-top:2px">המידע שלך שמור ולא נמכר</div></div>
+        </div>
+        ${[
+          'כל הנתונים מוצפנים ומאוחסנים על שרתי Firebase של Google – תקן אבטחה עולמי.',
+          'פרטי הורה (מייל, טלפון) לא מוצגים לאף משתמש אחר מלבד המנהל.',
+          'הילד בוחר שם תצוגה – השם המלא לא חייב להיות גלוי לכולם.',
+          'מיקום גיאוגרפי מוצג רק ברמת עיר/אזור, ורק אם הילד בחר לשתף אותו.',
+          'Kidemy לא מוכרת, לא משתפת ולא מעבירה מידע אישי לצד שלישי לעולם.',
+        ].map(t=>`<div style="display:flex;gap:9px;margin-bottom:10px;align-items:flex-start"><span style="color:#10B981;font-size:16px;flex-shrink:0;margin-top:1px">✓</span><span style="font-size:13px;line-height:1.6;color:#CBD5E1">${t}</span></div>`).join('')}
+      </div>
+
+      <!-- Confirm card -->
+      <div style="background:linear-gradient(135deg,rgba(20,184,166,.12),rgba(168,85,247,.08));border:2px solid rgba(20,184,166,.4);border-radius:20px;padding:18px">
+        <p style="font-size:13px;color:#E2E8F0;line-height:1.7;margin:0 0 14px;text-align:center">
+          <strong style="color:#5EEAD4">חשוב:</strong> ב-Kidemy אנחנו רואים בבטיחות הילדים את הדבר החשוב ביותר.<br>
+          על ידי המשך ההרשמה, ההורה ואתה מסכימים לכללים אלה.
+        </p>
+        <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer;background:rgba(255,255,255,.05);border-radius:14px;padding:13px;border:1px solid rgba(255,255,255,.1)">
+          <input type="checkbox" id="safetyCheckbox" style="width:20px;height:20px;cursor:pointer;flex-shrink:0;margin-top:1px;accent-color:#14B8A6">
+          <span style="font-size:13px;line-height:1.7;color:#E2E8F0"><strong style="color:#fff">קראתי את כל הכללים והגנות הבטיחות</strong> והנני מאשר שהוריי יודעים על ההרשמה ומסכימים לה.</span>
+        </label>
+      </div>
+
+      <!-- Buttons -->
+      <button onclick="(()=>{const cb=document.getElementById('safetyCheckbox');if(!cb||!cb.checked){showFireToast('❌ יש לסמן שקראת את כללי הבטיחות');return;}S.safetyConfirmed=true;go('register');})()" class="btn bp" style="font-size:16px;padding:16px;border-radius:18px;letter-spacing:.3px">
+        ✅ קראתי – המשך להרשמה
+      </button>
+
+      <button onclick="go('home')" style="width:100%;background:none;border:none;padding:12px;font-size:13px;color:#64748B;cursor:pointer">
+        ← חזור לעמוד הבית
+      </button>
+
+    </div>
+  </div>`;
+}
+
 function Register(){
   return `<div class="screen" style="background:linear-gradient(165deg,#CCFBF1 0%,#A5F3FC 50%,#7DD3FC 100%);min-height:100dvh;display:flex;flex-direction:column;align-items:center;padding:24px 20px 40px;overflow-y:auto">
     <div style="font-size:64px;margin:16px 0 10px">🎓</div>
@@ -5533,7 +5649,7 @@ async function saveTeacherProfileEdits(){
   }catch(e){showFireToast('❌ '+e.message);}
 }
 
-const SCREENS={splash:Splash,register:Register,login:Login,regSuccess:RegSuccess,teacherSetup:TeacherSetup,teacherPending:TeacherPending,home:Home,nearby:Nearby,teacher:Teacher,booking:Booking,messages:Messages,chat:Chat,profile:Profile,parent:Parent,community:Community,leaderboard:Leaderboard,about:About};
+const SCREENS={splash:Splash,safety:Safety,register:Register,login:Login,regSuccess:RegSuccess,teacherSetup:TeacherSetup,teacherPending:TeacherPending,home:Home,nearby:Nearby,teacher:Teacher,booking:Booking,messages:Messages,chat:Chat,profile:Profile,parent:Parent,community:Community,leaderboard:Leaderboard,about:About};
 
 function render(){
   const fn=SCREENS[S.screen]||Home;
