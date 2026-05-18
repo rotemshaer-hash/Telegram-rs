@@ -433,6 +433,25 @@ let S={
   shareCopied:false,
 };
 
+// ─── שמירת מצב הרשמה בין רענונים ────────────────────────────────────────────
+function _saveRegSession(){
+  try{
+    sessionStorage.setItem('_kidReg',JSON.stringify({
+      safetyConfirmed:S.safetyConfirmed||false,
+      parentRegData:S.parentRegData||null
+    }));
+  }catch(e){}
+}
+function _restoreRegSession(){
+  try{
+    const raw=sessionStorage.getItem('_kidReg');
+    if(!raw)return;
+    const d=JSON.parse(raw);
+    if(d.safetyConfirmed)S.safetyConfirmed=true;
+    if(d.parentRegData)S.parentRegData=d.parentRegData;
+  }catch(e){}
+}
+_restoreRegSession();
 // ─── ROUTER ───────────────────────────────────────────────────────────────────
 function go(scr,extra={}){
   if(scr==='register'&&!S.safetyConfirmed){scr='safety';}
@@ -793,7 +812,7 @@ function Safety(){
       </div>
 
       <!-- Buttons -->
-      <button onclick="(()=>{if(!kcbChecked('safetyCheckbox')){showFireToast('❌ יש לסמן שקראת את כללי הבטיחות');return;}S.safetyConfirmed=true;go('parentReg');})()" class="btn bp" style="font-size:16px;padding:16px;border-radius:18px;letter-spacing:.3px">
+      <button onclick="(()=>{if(!kcbChecked('safetyCheckbox')){showFireToast('❌ יש לסמן שקראת את כללי הבטיחות');return;}S.safetyConfirmed=true;_saveRegSession();go('parentReg');})()" class="btn bp" style="font-size:16px;padding:16px;border-radius:18px;letter-spacing:.3px">
         ✅ קראתי – המשך לרישום הורה
       </button>
 
@@ -900,6 +919,7 @@ function submitParentReg(){
   if(!kcbChecked('prConsent')){showFireToast('❌ ההורה חייב לאשר את ההסכמה');return;}
 
   S.parentRegData={name,id,email,age,phone,confirmedAt:Date.now()};
+  _saveRegSession();
   showFireToast('✅ פרטי ההורה אומתו!');
   setTimeout(()=>go('register'),600);
 }
@@ -940,9 +960,13 @@ function Register(){
       <div class="card" style="margin-bottom:14px;padding:16px">
         <h4 style="font-weight:900;font-size:14px;margin:0 0 12px;color:#14B8A6">👤 הפרטים שלך</h4>
         <div class="ing"><label>שם מלא</label>
-          <input id="regName" class="inp" type="text" placeholder="השם שלך"></div>
+          <input id="regName" class="inp" type="text" placeholder="השם שלך"
+            value="${(()=>{try{return sessionStorage.getItem('_rName')||'';}catch(e){return '';}})()} "
+            oninput="try{sessionStorage.setItem('_rName',this.value);}catch(e){}"></div>
         <div class="ing"><label>גיל</label>
-          <input id="regAge" class="inp" type="number" min="8" max="18" placeholder="גיל בין 8-18"></div>
+          <input id="regAge" class="inp" type="number" min="8" max="18" placeholder="גיל בין 8-18"
+            value="${(()=>{try{return sessionStorage.getItem('_rAge')||'';}catch(e){return '';}})()} "
+            oninput="try{sessionStorage.setItem('_rAge',this.value);}catch(e){}"></div>
         <div class="ing"><label>מגדר</label>
           <div style="display:flex;gap:8px;margin-top:4px">
             <button type="button" id="genderM" onclick="selectGender('male')" style="flex:1;background:linear-gradient(135deg,#14B8A6,#06B6D4);color:#fff;border:none;border-radius:12px;padding:10px;font-weight:700;font-size:13px;cursor:pointer">👦 זכר</button>
@@ -951,7 +975,9 @@ function Register(){
           </div>
         </div>
         <div class="ing"><label>כתובת מייל</label>
-          <input id="regEmail" class="inp" type="email" placeholder="המייל שלך"></div>
+          <input id="regEmail" class="inp" type="email" placeholder="המייל שלך"
+            value="${(()=>{try{return sessionStorage.getItem('_rEmail')||'';}catch(e){return '';}})()} "
+            oninput="try{sessionStorage.setItem('_rEmail',this.value);}catch(e){}"></div>
         <div class="ing"><label>סיסמה (לפחות 6 תווים)</label>
           <input id="regPass" class="inp" type="password" placeholder="בחר סיסמה"></div>
         <div class="ing" style="margin-bottom:0"><label>אישור סיסמה</label>
@@ -6054,7 +6080,13 @@ async function firebaseRegister(email,password,userData){
       console.warn('Email verification failed:',emailErr);
     }
     // מייל ברכה אישי למשתמש
-    sendWelcomeEmail(email, userData.name||email.split('@')[0], userData.role||'student');
+    await sendWelcomeEmail(email, userData.name||email.split('@')[0], userData.role||'student');
+    // מייל להורה על הצטרפות הילד
+    if(userData.parentEmail){
+      const roleHe=(userData.role||'student')==='teacher'?'מורה':'תלמיד/ה';
+      sendEmail(userData.parentEmail,`אישור הצטרפות ל-Kidemy – ${userData.name||''}`,
+        `שלום ${userData.parentName||'הורה יקר'},\n\nילדך ${userData.name||''} נרשם/ה בהצלחה ל-Kidemy כ${roleHe}.\n\nתוכלו לעקוב אחרי כל הפעילות שלו/ה באפליקציה.\n\nבכל שאלה – פנו למנהל האפליקציה: ${ADMIN_EMAIL}\n\n– צוות Kidemy`);
+    }
     // עדכון currentUserData מיד
     currentUserData={...userData,email,uid:cred.user.uid,role:userData.role||'student'};
     // התראה למנהל על משתמש חדש
@@ -6079,6 +6111,14 @@ async function firebaseRegister(email,password,userData){
       sendAdminEmail(`👤 נרשם/ה ${roleHe} חדש/ה – ${userData.name||email}`,
         `שם: ${userData.name||'—'}\nמייל: ${email}\nתפקיד: ${roleHe}\n${userData.parentName?'הורה: '+userData.parentName+' ('+userData.parentEmail+')':''}\n\nזמן: ${new Date().toLocaleString('he-IL')}`);
     }catch(e){}
+    // נקה את סשן ההרשמה – הרשמה הסתיימה
+    try{
+      sessionStorage.removeItem('_kidReg');
+      sessionStorage.removeItem('_rName');
+      sessionStorage.removeItem('_rAge');
+      sessionStorage.removeItem('_rEmail');
+    }catch(e){}
+    S.safetyConfirmed=false;S.parentRegData=null;
     // מציג מסך הצלחה במקום ה-render הרגיל
     S.screen='regSuccess';
     S.regEmail=email;
