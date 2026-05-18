@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>משחק ידיעת הארץ 🗺️</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;700;900&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Heebo', Arial, sans-serif;
+      background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* ── Header ── */
+    .header {
+      width: 100%;
+      background: #fff;
+      padding: 12px 20px 8px;
+      text-align: center;
+      box-shadow: 0 4px 20px rgba(0,0,0,.25);
+      position: sticky;
+      top: 0;
+      z-index: 200;
+    }
+    .header h1 {
+      font-size: 1.9em;
+      font-weight: 900;
+      background: linear-gradient(135deg, #6a11cb, #2575fc);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .stats {
+      display: flex;
+      justify-content: center;
+      gap: 14px;
+      margin-top: 6px;
+      flex-wrap: wrap;
+    }
+    .stat-badge {
+      background: linear-gradient(135deg, #f6d365, #fda085);
+      padding: 3px 16px;
+      border-radius: 20px;
+      font-weight: 700;
+      font-size: .9em;
+      color: #fff;
+      text-shadow: 0 1px 3px rgba(0,0,0,.2);
+    }
+
+    /* ── Progress bar ── */
+    .progress-bar { width: 100%; height: 7px; background: #dfe6e9; }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #6a11cb, #fd79a8);
+      border-radius: 0 4px 4px 0;
+      transition: width .6s ease;
+    }
+
+    /* ── Game card ── */
+    .game-card {
+      width: 95%;
+      max-width: 780px;
+      margin: 22px auto 40px;
+      background: #fff;
+      border-radius: 26px;
+      overflow: hidden;
+      box-shadow: 0 18px 60px rgba(0,0,0,.35);
+    }
+
+    /* ── Setup screen ── */
+    .setup-screen {
+      padding: 48px 32px;
+      text-align: center;
+    }
+    .setup-icon { font-size: 5em; line-height: 1; margin-bottom: 12px; }
+    .setup-screen h2 {
+      font-size: 1.55em;
+      font-weight: 900;
+      color: #4834d4;
+      margin-bottom: 10px;
+    }
+    .setup-screen p { color: #636e72; line-height: 1.7; margin-bottom: 22px; }
+    .input-row {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+    .api-input {
+      padding: 11px 18px;
+      border: 2px solid #c5b9ff;
+      border-radius: 30px;
+      font-size: 1em;
+      width: 290px;
+      direction: ltr;
+      font-family: monospace;
+      outline: none;
+      transition: border-color .2s;
+    }
+    .api-input:focus { border-color: #6a11cb; }
+    .api-note { font-size: .82em; color: #b2bec3; }
+    .api-note a { color: #6a11cb; }
+
+    /* ── Buttons ── */
+    .btn-primary {
+      background: linear-gradient(135deg, #6a11cb, #2575fc);
+      color: #fff;
+      border: none;
+      padding: 11px 28px;
+      border-radius: 30px;
+      font-size: 1em;
+      font-family: inherit;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 4px 16px rgba(106,17,203,.4);
+      transition: transform .15s, box-shadow .15s;
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(106,17,203,.45); }
+
+    /* ── Loading spinner ── */
+    .loader-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 20px;
+      gap: 16px;
+    }
+    .spinner {
+      width: 52px;
+      height: 52px;
+      border: 5px solid #e0d4ff;
+      border-top-color: #6a11cb;
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Question banner ── */
+    .question-banner {
+      background: linear-gradient(135deg, #a29bfe, #fd79a8);
+      padding: 14px 20px;
+      text-align: center;
+    }
+    .question-text {
+      font-size: 1.25em;
+      font-weight: 700;
+      color: #fff;
+      text-shadow: 0 1px 4px rgba(0,0,0,.25);
+    }
+
+    /* ── Map ── */
+    #map { width: 100%; height: 420px; }
+
+    /* ── Answer buttons ── */
+    .answers {
+      display: flex;
+      gap: 10px;
+      padding: 14px 16px 10px;
+      justify-content: stretch;
+    }
+    .answer-btn {
+      flex: 1;
+      padding: 14px 8px;
+      font-size: 1.1em;
+      font-weight: 700;
+      border: none;
+      border-radius: 16px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: transform .15s, box-shadow .15s;
+      box-shadow: 0 4px 14px rgba(0,0,0,.15);
+      position: relative;
+      overflow: hidden;
+    }
+    .answer-btn::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(255,255,255,.18);
+      opacity: 0;
+      transition: opacity .2s;
+    }
+    .answer-btn:hover:not(:disabled)::after { opacity: 1; }
+    .answer-btn:hover:not(:disabled) { transform: translateY(-3px); box-shadow: 0 8px 22px rgba(0,0,0,.22); }
+    .answer-btn:active:not(:disabled) { transform: translateY(0); }
+    .answer-btn:disabled { cursor: not-allowed; }
+
+    .answer-btn.opt-0 { background: linear-gradient(135deg, #f7971e, #ffd200); color: #333; }
+    .answer-btn.opt-1 { background: linear-gradient(135deg, #11998e, #38ef7d); color: #fff; }
+    .answer-btn.opt-2 { background: linear-gradient(135deg, #ee0979, #ff6a00); color: #fff; }
+
+    .answer-btn.correct {
+      background: linear-gradient(135deg, #0f9b58, #00bf8f) !important;
+      color: #fff !important;
+      box-shadow: 0 0 22px rgba(15,155,88,.55) !important;
+    }
+    .answer-btn.wrong {
+      background: linear-gradient(135deg, #cb2d3e, #ef473a) !important;
+      color: #fff !important;
+      opacity: .7;
+    }
+
+    /* ── Feedback ── */
+    .feedback {
+      min-height: 50px;
+      text-align: center;
+      padding: 6px 16px 14px;
+      font-size: 1.2em;
+      font-weight: 700;
+    }
+
+    /* ── Results screen ── */
+    .results-screen {
+      text-align: center;
+      padding: 54px 30px;
+    }
+    .results-emoji { font-size: 5.5em; line-height: 1; }
+    .results-message {
+      font-size: 1.75em;
+      font-weight: 900;
+      margin: 16px 0 8px;
+    }
+    .results-score { font-size: 1.2em; color: #636e72; margin-bottom: 10px; }
+    .results-stars { font-size: 2em; margin-bottom: 28px; }
+
+    /* ── Floating stars ── */
+    @keyframes floatStar {
+      0%   { transform: translateY(0) scale(1);   opacity: 1; }
+      100% { transform: translateY(-110px) scale(1.6); opacity: 0; }
+    }
+    .float-star {
+      position: fixed;
+      font-size: 2em;
+      animation: floatStar .95s ease-out forwards;
+      pointer-events: none;
+      z-index: 999;
+    }
+
+    /* ── Shake on wrong answer ── */
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      20%     { transform: translateX(-8px); }
+      40%     { transform: translateX(8px); }
+      60%     { transform: translateX(-5px); }
+      80%     { transform: translateX(5px); }
+    }
+    .shake { animation: shake .4s ease; }
+
+    /* ── Mobile ── */
+    @media (max-width: 520px) {
+      .header h1  { font-size: 1.4em; }
+      #map        { height: 310px; }
+      .answer-btn { font-size: .95em; padding: 12px 5px; }
+      .answers    { gap: 7px; padding: 12px 10px 8px; }
+      .setup-screen { padding: 32px 18px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ────────── Header ────────── -->
+<div class="header">
+  <h1>🗺️ משחק ידיעת הארץ</h1>
+  <div class="stats" id="stats" style="display:none">
+    <div class="stat-badge">⭐ ניקוד: <span id="score">0</span></div>
+    <div class="stat-badge">❓ שאלה <span id="qNum">1</span> מתוך <span id="qTotal">10</span></div>
+  </div>
+</div>
+<div class="progress-bar">
+  <div class="progress-fill" id="progressFill" style="width:0%"></div>
+</div>
+
+<!-- ────────── Game card ────────── -->
+<div class="game-card" id="gameCard">
+
+  <!-- Setup / API-key screen -->
+  <div class="setup-screen" id="setupScreen">
+    <div class="setup-icon">🗺️</div>
+    <h2>ברוכים הבאים למשחק ידיעת הארץ!</h2>
+    <p>
+      עיר או יישוב יהבהבו על מפת ישראל, ועליך לנחש את שמם<br />
+      מתוך שלוש אפשרויות. כמה נקודות תצבור?
+    </p>
+    <div class="input-row">
+      <input
+        type="text"
+        class="api-input"
+        id="apiKeyInput"
+        placeholder="הדבק כאן את מפתח Google Maps API..."
+      />
+      <button class="btn-primary" onclick="startGame()">🚀 התחל משחק!</button>
+    </div>
+    <p class="api-note">
+      אין לך מפתח?
+      <a
+        href="https://developers.google.com/maps/documentation/javascript/get-api-key"
+        target="_blank"
+        rel="noopener"
+      >לחץ כאן</a>
+      לקבלת מפתח חינמי (דורש חשבון Google).
+    </p>
+  </div>
+
+  <!-- Loading indicator -->
+  <div class="loader-wrap" id="loaderWrap" style="display:none">
+    <div class="spinner"></div>
+    <p style="color:#a29bfe; font-weight:700">טוען מפה…</p>
+  </div>
+
+  <!-- Game area -->
+  <div id="gameArea" style="display:none">
+    <div class="question-banner">
+      <div class="question-text">🔍 מהו שמה של העיר/היישוב המהבהב על המפה?</div>
+    </div>
+    <div id="map"></div>
+    <div class="answers">
+      <button class="answer-btn opt-0" id="btn0" onclick="checkAnswer(0)"></button>
+      <button class="answer-btn opt-1" id="btn1" onclick="checkAnswer(1)"></button>
+      <button class="answer-btn opt-2" id="btn2" onclick="checkAnswer(2)"></button>
+    </div>
+    <div class="feedback" id="feedback"></div>
+  </div>
+
+</div><!-- end .game-card -->
+
+<!-- ────────── Script ────────── -->
+<script>
+// ═══════════════════════════════════════════════
+// CITY DATA  (name · lat · lng)
+// ═══════════════════════════════════════════════
+const CITIES = [
+  { name: 'תל אביב',      lat: 32.0853, lng: 34.7818 },
+  { name: 'ירושלים',      lat: 31.7683, lng: 35.2137 },
+  { name: 'חיפה',         lat: 32.7940, lng: 34.9896 },
+  { name: 'באר שבע',      lat: 31.2518, lng: 34.7915 },
+  { name: 'אשדוד',        lat: 31.8044, lng: 34.6553 },
+  { name: 'אשקלון',       lat: 31.6688, lng: 34.5743 },
+  { name: 'פתח תקווה',    lat: 32.0840, lng: 34.8878 },
+  { name: 'ראשון לציון',  lat: 31.9642, lng: 34.8044 },
+  { name: 'נתניה',        lat: 32.3215, lng: 34.8532 },
+  { name: 'בני ברק',      lat: 32.0841, lng: 34.8338 },
+  { name: 'רמת גן',       lat: 32.0680, lng: 34.8240 },
+  { name: 'בת ים',        lat: 32.0179, lng: 34.7503 },
+  { name: 'הרצליה',       lat: 32.1640, lng: 34.8435 },
+  { name: 'כפר סבא',      lat: 32.1754, lng: 34.9077 },
+  { name: 'מודיעין',      lat: 31.8969, lng: 35.0108 },
+  { name: 'רחובות',       lat: 31.8928, lng: 34.8113 },
+  { name: 'נצרת',         lat: 32.6996, lng: 35.3035 },
+  { name: 'עכו',          lat: 32.9231, lng: 35.0818 },
+  { name: 'עפולה',        lat: 32.6067, lng: 35.2892 },
+  { name: 'טבריה',        lat: 32.7940, lng: 35.5302 },
+  { name: 'צפת',          lat: 32.9634, lng: 35.4959 },
+  { name: 'קריית שמונה',  lat: 33.2074, lng: 35.5695 },
+  { name: 'אילת',         lat: 29.5577, lng: 34.9519 },
+  { name: 'דימונה',       lat: 31.0690, lng: 35.0316 },
+  { name: 'ערד',          lat: 31.2587, lng: 35.2133 },
+  { name: 'מצפה רמון',    lat: 30.6129, lng: 34.8004 },
+  { name: 'ראש העין',     lat: 32.0956, lng: 34.9567 },
+  { name: 'הוד השרון',    lat: 32.1508, lng: 34.8917 },
+  { name: 'קריית גת',     lat: 31.6093, lng: 34.7706 },
+  { name: 'נהריה',        lat: 33.0046, lng: 35.0978 },
+  { name: 'כרמיאל',       lat: 32.9149, lng: 35.2963 },
+  { name: 'יבנה',         lat: 31.8774, lng: 34.7406 },
+  { name: 'זכרון יעקב',   lat: 32.5735, lng: 34.9497 },
+  { name: 'מגדל העמק',    lat: 32.6739, lng: 35.2388 },
+  { name: 'אופקים',       lat: 31.3114, lng: 34.6239 },
+  { name: 'שדרות',        lat: 31.5248, lng: 34.5964 },
+  { name: 'לוד',          lat: 31.9516, lng: 34.8951 },
+  { name: 'רמלה',         lat: 31.9292, lng: 34.8667 },
+  { name: 'גבעתיים',      lat: 32.0714, lng: 34.8131 },
+  { name: 'כפר יונה',     lat: 32.3212, lng: 34.9388 },
+  { name: 'עתלית',        lat: 32.6906, lng: 34.9417 },
+  { name: 'זכרון יעקב',   lat: 32.5735, lng: 34.9497 },
+  { name: 'בית שאן',      lat: 32.5029, lng: 35.5027 },
+  { name: 'קריית ים',     lat: 32.8460, lng: 35.0698 },
+];
+
+// ═══════════════════════════════════════════════
+// MAP STYLE  – bright & child-friendly
+// ═══════════════════════════════════════════════
+const MAP_STYLE = [
+  { featureType: 'water',                elementType: 'geometry',          stylers: [{ color: '#64b5f6' }] },
+  { featureType: 'water',                elementType: 'labels.text.fill',  stylers: [{ color: '#0d47a1' }] },
+  { featureType: 'landscape',            elementType: 'geometry',          stylers: [{ color: '#e8f5e9' }] },
+  { featureType: 'landscape.natural',    elementType: 'geometry',          stylers: [{ color: '#c8e6c9' }] },
+  { featureType: 'road',                 elementType: 'geometry',          stylers: [{ color: '#fff176' }] },
+  { featureType: 'road',                 elementType: 'geometry.stroke',   stylers: [{ color: '#ffb300' }] },
+  { featureType: 'road.highway',         elementType: 'geometry',          stylers: [{ color: '#ffcc80' }] },
+  { featureType: 'road.highway',         elementType: 'geometry.stroke',   stylers: [{ color: '#ef6c00' }] },
+  { featureType: 'poi.park',             elementType: 'geometry',          stylers: [{ color: '#a5d6a7' }] },
+  { featureType: 'poi',                  elementType: 'geometry',          stylers: [{ color: '#ce93d8' }] },
+  { featureType: 'transit',              elementType: 'geometry',          stylers: [{ color: '#fff9c4' }] },
+  { featureType: 'administrative',       elementType: 'geometry.stroke',   stylers: [{ color: '#7c4dff' }, { weight: 2 }] },
+  { featureType: 'administrative.country',elementType:'geometry.stroke',   stylers: [{ color: '#6200ea' }, { weight: 3 }] },
+  { elementType: 'labels.text.stroke',   stylers: [{ color: '#ffffff' }, { weight: 3 }] },
+  { elementType: 'labels.text.fill',     stylers: [{ color: '#212121' }] },
+  { featureType: 'poi',                  elementType: 'labels',            stylers: [{ visibility: 'off' }] },
+];
+
+// ═══════════════════════════════════════════════
+// GAME STATE
+// ═══════════════════════════════════════════════
+const TOTAL_QUESTIONS = 10;
+
+let map, infoWindow;
+let innerMarker, outerMarker;
+let animFrameId   = null;
+let animStartTime = null;
+
+let score       = 0;
+let questionNum = 0;
+let usedIndices = [];
+let currentCity, currentOptions;
+let answered    = false;
+
+// ═══════════════════════════════════════════════
+// BOOTSTRAP
+// ═══════════════════════════════════════════════
+function startGame() {
+  const key = (document.getElementById('apiKeyInput').value || '').trim();
+  if (!key) {
+    alert('אנא הכנס מפתח Google Maps API תקין.');
+    return;
+  }
+
+  document.getElementById('setupScreen').style.display = 'none';
+  document.getElementById('loaderWrap').style.display  = 'flex';
+  document.getElementById('stats').style.display       = 'flex';
+  document.getElementById('qTotal').textContent        = TOTAL_QUESTIONS;
+
+  const s   = document.createElement('script');
+  s.src     = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&callback=initMap&language=he&region=IL`;
+  s.async   = true;
+  s.onerror = () => {
+    document.getElementById('loaderWrap').innerHTML =
+      '<p style="color:#e74c3c;padding:20px;text-align:center">⚠️ שגיאה בטעינת המפה.<br>בדוק שהמפתח תקין ושה-Maps JS API מופעל.</p>';
+  };
+  document.head.appendChild(s);
+}
+
+// Called by Google Maps SDK after load
+window.initMap = function () {
+  document.getElementById('loaderWrap').style.display = 'none';
+  document.getElementById('gameArea').style.display   = 'block';
+
+  map = new google.maps.Map(document.getElementById('map'), {
+    styles:             MAP_STYLE,
+    mapTypeControl:     false,
+    streetViewControl:  false,
+    fullscreenControl:  false,
+    zoomControl:        true,
+    gestureHandling:    'cooperative',
+    minZoom:            6,
+    maxZoom:            13,
+  });
+
+  // Fit to Israel bounds
+  map.fitBounds(
+    new google.maps.LatLngBounds(
+      { lat: 29.2, lng: 33.9 },   // SW – south of Eilat, west of coast
+      { lat: 33.6, lng: 36.2 }    // NE – north of Kiryat Shmona, east of Jordan
+    )
+  );
+
+  infoWindow = new google.maps.InfoWindow();
+  nextQuestion();
+};
+
+// ═══════════════════════════════════════════════
+// GAME LOOP
+// ═══════════════════════════════════════════════
+function nextQuestion() {
+  if (questionNum >= TOTAL_QUESTIONS) { showResults(); return; }
+
+  questionNum++;
+  answered = false;
+
+  document.getElementById('qNum').textContent          = questionNum;
+  document.getElementById('progressFill').style.width  = ((questionNum - 1) / TOTAL_QUESTIONS * 100) + '%';
+  document.getElementById('feedback').innerHTML        = '';
+
+  // Reset button appearance
+  for (let i = 0; i < 3; i++) {
+    const b = document.getElementById('btn' + i);
+    b.className = 'answer-btn opt-' + i;
+    b.disabled  = false;
+    b.style.opacity = '';
+  }
+
+  // Pick a city not recently used
+  let pool = CITIES.map((_, i) => i).filter(i => !usedIndices.includes(i));
+  if (pool.length < 3) { usedIndices = []; pool = CITIES.map((_, i) => i); }
+
+  const pick = pool[Math.floor(Math.random() * pool.length)];
+  usedIndices.push(pick);
+  currentCity = CITIES[pick];
+
+  // Generate 2 wrong distractors
+  const wrong = CITIES
+    .map((c, i) => ({ c, i }))
+    .filter(({ i }) => i !== pick)
+    .sort(() => Math.random() - 0.5)
+    .slice(0, 2)
+    .map(({ c }) => c);
+
+  currentOptions = [currentCity, wrong[0], wrong[1]].sort(() => Math.random() - 0.5);
+  for (let i = 0; i < 3; i++) document.getElementById('btn' + i).textContent = currentOptions[i].name;
+
+  infoWindow.close();
+  placeMarker(currentCity.lat, currentCity.lng);
+}
+
+// ═══════════════════════════════════════════════
+// PULSING MARKER  (inner dot + expanding ring)
+// ═══════════════════════════════════════════════
+function placeMarker(lat, lng) {
+  if (innerMarker) innerMarker.setMap(null);
+  if (outerMarker) outerMarker.setMap(null);
+  if (animFrameId) cancelAnimationFrame(animFrameId);
+
+  const pos = { lat, lng };
+
+  innerMarker = new google.maps.Marker({
+    position: pos, map, zIndex: 1001,
+    icon: dotIcon(10, 1),
+  });
+  outerMarker = new google.maps.Marker({
+    position: pos, map, zIndex: 1000,
+    icon: ringIcon(10, 0.8),
+  });
+
+  animStartTime = null;
+  function animate(ts) {
+    if (!animStartTime) animStartTime = ts;
+    const t = ((ts - animStartTime) % 1400) / 1400; // 0→1 every 1.4 s
+
+    // Inner dot: gentle pulse
+    const ds = 9 + 4 * Math.sin(t * Math.PI * 2);
+    innerMarker.setIcon(dotIcon(ds, 1));
+
+    // Outer ring: expands and fades
+    const rs = 10 + 24 * t;
+    const ro = Math.max(0, 0.9 - t);
+    outerMarker.setIcon(ringIcon(rs, ro));
+
+    animFrameId = requestAnimationFrame(animate);
+  }
+  animFrameId = requestAnimationFrame(animate);
+}
+
+function dotIcon(scale, opacity) {
+  return {
+    path:          google.maps.SymbolPath.CIRCLE,
+    scale,
+    fillColor:     '#ff4757',
+    fillOpacity:   opacity,
+    strokeColor:   '#ffffff',
+    strokeWeight:  3,
+  };
+}
+
+function ringIcon(scale, opacity) {
+  return {
+    path:           google.maps.SymbolPath.CIRCLE,
+    scale,
+    fillColor:      '#ff4757',
+    fillOpacity:    0,
+    strokeColor:    '#ff4757',
+    strokeWeight:   2.5,
+    strokeOpacity:  opacity,
+  };
+}
+
+// ═══════════════════════════════════════════════
+// ANSWER HANDLING
+// ═══════════════════════════════════════════════
+function checkAnswer(btnIdx) {
+  if (answered) return;
+  answered = true;
+
+  // Freeze animation
+  if (animFrameId) cancelAnimationFrame(animFrameId);
+  if (innerMarker) innerMarker.setIcon(dotIcon(12, 1));
+  if (outerMarker) outerMarker.setMap(null);
+
+  // Reveal city name on map
+  infoWindow.setContent(
+    `<div style="font-family:Heebo,Arial;font-size:1.1em;font-weight:700;color:#6200ea;padding:2px 4px">${currentCity.name}</div>`
+  );
+  infoWindow.open(map, innerMarker);
+
+  // Disable all buttons
+  for (let i = 0; i < 3; i++) document.getElementById('btn' + i).disabled = true;
+
+  const correct = currentOptions[btnIdx].name === currentCity.name;
+  const chosenBtn = document.getElementById('btn' + btnIdx);
+  const fb = document.getElementById('feedback');
+
+  if (correct) {
+    score += 10;
+    document.getElementById('score').textContent = score;
+    chosenBtn.classList.add('correct');
+    fb.innerHTML    = '✅ &nbsp;כל הכבוד! תשובה נכונה! 🎉';
+    fb.style.color  = '#0f9b58';
+    spawnStars(chosenBtn);
+  } else {
+    chosenBtn.classList.add('wrong');
+    chosenBtn.classList.add('shake');
+    // Highlight the correct answer
+    for (let i = 0; i < 3; i++) {
+      if (currentOptions[i].name === currentCity.name)
+        document.getElementById('btn' + i).classList.add('correct');
+    }
+    fb.innerHTML   = `❌ &nbsp;לא נכון! הייתה זו <strong>${currentCity.name}</strong>`;
+    fb.style.color = '#cb2d3e';
+  }
+
+  setTimeout(nextQuestion, 2300);
+}
+
+// ═══════════════════════════════════════════════
+// FLOATING STARS (on correct answer)
+// ═══════════════════════════════════════════════
+function spawnStars(elem) {
+  const r  = elem.getBoundingClientRect();
+  const cx = r.left + r.width / 2;
+  const cy = r.top  + r.height / 2;
+
+  ['⭐','🌟','✨','🎊'].forEach((em, i) => {
+    const el       = document.createElement('div');
+    el.className   = 'float-star';
+    el.textContent = em;
+    el.style.left  = (cx + (Math.random() - 0.5) * 100) + 'px';
+    el.style.top   = cy + 'px';
+    el.style.animationDelay = (i * 0.09) + 's';
+    document.body.appendChild(el);
+    el.addEventListener('animationend', () => el.remove());
+  });
+}
+
+// ═══════════════════════════════════════════════
+// RESULTS SCREEN
+// ═══════════════════════════════════════════════
+function showResults() {
+  if (innerMarker) innerMarker.setMap(null);
+  if (outerMarker) outerMarker.setMap(null);
+  if (animFrameId) cancelAnimationFrame(animFrameId);
+  infoWindow.close();
+
+  document.getElementById('progressFill').style.width = '100%';
+
+  const pct = score / (TOTAL_QUESTIONS * 10) * 100;
+  let emoji, message, color;
+
+  if      (pct >= 90) { emoji = '🏆'; message = 'מדהים! אתה/את אלוף/ה ידיעת הארץ!';  color = '#f39c12'; }
+  else if (pct >= 70) { emoji = '🥇'; message = 'מצוין! כל הכבוד!';                   color = '#00b894'; }
+  else if (pct >= 50) { emoji = '👍'; message = 'יפה! המשך/י להתאמן!';                color = '#6c5ce7'; }
+  else                { emoji = '📚'; message = 'כדאי לתרגל עוד קצת — תצליח/י!';     color = '#e17055'; }
+
+  const stars = '⭐'.repeat(Math.round(pct / 20));
+
+  document.getElementById('gameCard').innerHTML = `
+    <div class="results-screen">
+      <div class="results-emoji">${emoji}</div>
+      <div class="results-message" style="color:${color}">${message}</div>
+      <div class="results-score">קיבלת <strong>${score}</strong> מתוך <strong>${TOTAL_QUESTIONS * 10}</strong> נקודות</div>
+      <div class="results-stars">${stars}</div>
+      <button class="btn-primary" style="font-size:1.2em;padding:14px 42px" onclick="location.reload()">
+        🔄 שחק שוב
+      </button>
+    </div>`;
+}
+</script>
+
+</body>
+</html>
