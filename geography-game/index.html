@@ -1,161 +1,95 @@
 <!DOCTYPE html>
 <html dir="rtl" lang="he">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ידיעת הארץ 🗺️</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"><\/script>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;700;900&display=swap" rel="stylesheet" />
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root {
-      --purple:#6a11cb; --blue:#2575fc; --green:#00b894;
-      --orange:#e17055; --pink:#fd79a8; --yellow:#fdcb6e; --red:#ff4757;
-    }
-    body {
-      font-family:'Heebo',Arial,sans-serif;
-      background:linear-gradient(135deg,var(--purple) 0%,var(--blue) 100%);
-      min-height:100vh; display:flex; flex-direction:column; align-items:center;
-    }
-    .header {
-      width:100%; background:#fff; padding:10px 20px 7px;
-      text-align:center; box-shadow:0 4px 20px rgba(0,0,0,.25);
-      position:sticky; top:0; z-index:500;
-    }
-    .header h1 {
-      font-size:1.85em; font-weight:900;
-      background:linear-gradient(135deg,var(--purple),var(--blue));
-      -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
-    }
-    .hdr-stats { display:flex; justify-content:center; gap:12px; margin-top:6px; flex-wrap:wrap; }
-    .stat-badge {
-      background:linear-gradient(135deg,#f6d365,#fda085);
-      padding:3px 15px; border-radius:20px; font-weight:700; font-size:.88em;
-      color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.2);
-    }
-    .progress-bar { width:100%; height:7px; background:#e2e8f0; }
-    .progress-fill {
-      height:100%; background:linear-gradient(90deg,var(--purple),var(--pink));
-      border-radius:0 4px 4px 0; transition:width .55s ease;
-    }
-    .card {
-      width:95%; max-width:800px; margin:22px auto 40px;
-      background:#fff; border-radius:26px; overflow:hidden;
-      box-shadow:0 18px 60px rgba(0,0,0,.35);
-    }
-    /* ── MENU ── */
-    #menuScreen { padding:36px 28px; }
-    .menu-title { text-align:center; font-size:1.5em; font-weight:900; color:var(--purple); margin-bottom:4px; }
-    .menu-sub   { text-align:center; color:#636e72; margin-bottom:24px; font-size:.95em; line-height:1.6; }
-    .mode-grid  { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:14px; margin-bottom:26px; }
-    .mode-card  {
-      border:3px solid transparent; border-radius:18px; padding:18px 14px;
-      text-align:center; cursor:pointer; background:#f8f9ff;
-      transition:transform .15s,box-shadow .15s,border-color .15s;
-    }
-    .mode-card:hover   { transform:translateY(-4px); box-shadow:0 8px 24px rgba(0,0,0,.15); }
-    .mode-card.selected{ border-color:var(--purple); background:#f0edff; }
-    .mode-card .mode-icon { font-size:2.4em; }
-    .mode-card .mode-name { font-size:1.05em; font-weight:700; color:#2d3436; margin-top:6px; }
-    .mode-card .mode-desc { font-size:.8em; color:#636e72; margin-top:3px; line-height:1.4; }
-    .diff-label { font-weight:700; color:#4a5568; margin-bottom:10px; text-align:center; }
-    .diff-pills { display:flex; justify-content:center; gap:10px; flex-wrap:wrap; margin-bottom:26px; }
-    .diff-pill  {
-      padding:7px 20px; border-radius:25px; border:2px solid #c5b9ff;
-      font-family:inherit; font-size:.9em; font-weight:700;
-      cursor:pointer; transition:.15s; background:#fff; color:var(--purple);
-    }
-    .diff-pill:hover   { background:#ede8ff; }
-    .diff-pill.selected{ background:var(--purple); color:#fff; border-color:var(--purple); }
-    .btn-start {
-      display:block; width:100%; max-width:300px; margin:0 auto;
-      padding:15px; font-size:1.25em; font-weight:900; font-family:inherit;
-      border:none; border-radius:50px;
-      background:linear-gradient(135deg,var(--purple),var(--blue)); color:#fff;
-      cursor:pointer; box-shadow:0 6px 20px rgba(106,17,203,.45);
-      transition:transform .15s,box-shadow .15s;
-    }
-    .btn-start:hover { transform:translateY(-2px); box-shadow:0 10px 28px rgba(106,17,203,.5); }
-    /* ── GAME ── */
-    .question-banner { background:linear-gradient(135deg,#a29bfe,#fd79a8); padding:13px 20px; text-align:center; }
-    .question-text { font-size:1.2em; font-weight:700; color:#fff; text-shadow:0 1px 4px rgba(0,0,0,.25); line-height:1.4; }
-    .clue-box {
-      background:linear-gradient(135deg,#fff9c4,#fff3e0);
-      border-right:5px solid var(--yellow); padding:14px 18px;
-      font-size:1em; line-height:1.65; color:#2d3436; display:none;
-    }
-    .clue-box strong { color:var(--purple); }
-    #map { width:100%; height:390px; transition:height .3s; }
-    #map.map-small { height:0; overflow:hidden; }
-    .answers { display:flex; gap:9px; padding:13px 14px 9px; }
-    .answer-btn {
-      flex:1; padding:13px 6px; font-size:1.05em; font-weight:700;
-      border:none; border-radius:15px; cursor:pointer; font-family:inherit;
-      transition:transform .13s,box-shadow .13s; box-shadow:0 4px 12px rgba(0,0,0,.14);
-      position:relative; overflow:hidden;
-    }
-    .answer-btn::after { content:''; position:absolute; inset:0; background:rgba(255,255,255,.18); opacity:0; transition:opacity .2s; }
-    .answer-btn:hover:not(:disabled)::after { opacity:1; }
-    .answer-btn:hover:not(:disabled) { transform:translateY(-3px); box-shadow:0 8px 20px rgba(0,0,0,.2); }
-    .answer-btn:disabled { cursor:not-allowed; }
-    .answer-btn.opt-0 { background:linear-gradient(135deg,#f7971e,#ffd200); color:#333; }
-    .answer-btn.opt-1 { background:linear-gradient(135deg,#11998e,#38ef7d); color:#fff; }
-    .answer-btn.opt-2 { background:linear-gradient(135deg,#ee0979,#ff6a00); color:#fff; }
-    .answer-btn.opt-3 { background:linear-gradient(135deg,#4776e6,#8e54e9); color:#fff; }
-    .answer-btn.correct { background:linear-gradient(135deg,#0f9b58,#00bf8f)!important; color:#fff!important; box-shadow:0 0 22px rgba(15,155,88,.55)!important; }
-    .answer-btn.wrong   { background:linear-gradient(135deg,#cb2d3e,#ef473a)!important; color:#fff!important; opacity:.72; }
-    .feedback { min-height:48px; text-align:center; padding:5px 16px 13px; font-size:1.15em; font-weight:700; }
-    /* ── INFO CARD ── */
-    .overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:600; align-items:flex-end; justify-content:center; padding:20px; }
-    .overlay.show { display:flex; }
-    .info-card {
-      background:#fff; border-radius:22px 22px 18px 18px; width:100%; max-width:600px;
-      padding:26px 24px 22px; animation:slideUp .35s ease; max-height:80vh; overflow-y:auto;
-    }
-    @keyframes slideUp { from{transform:translateY(60px);opacity:0} to{transform:translateY(0);opacity:1} }
-    .ic-header  { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
-    .ic-icon    { font-size:2.5em; }
-    .ic-title   { font-size:1.5em; font-weight:900; color:var(--purple); }
-    .ic-type    { font-size:.85em; color:#636e72; }
-    .ic-badges  { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
-    .ic-badge   { background:#f0edff; color:var(--purple); border-radius:20px; padding:3px 12px; font-size:.82em; font-weight:700; }
-    .ic-fact    { background:linear-gradient(135deg,#f0fffe,#e8f5e9); border-right:4px solid var(--green); padding:12px 14px; border-radius:10px; font-size:.95em; line-height:1.7; color:#2d3436; margin-bottom:18px; }
-    .btn-next   { display:block; width:100%; padding:13px; font-size:1.1em; font-weight:900; font-family:inherit; border:none; border-radius:40px; background:linear-gradient(135deg,var(--purple),var(--blue)); color:#fff; cursor:pointer; box-shadow:0 4px 16px rgba(106,17,203,.4); transition:transform .13s; }
-    .btn-next:hover { transform:translateY(-2px); }
-    /* ── RESULTS ── */
-    #resultsScreen { text-align:center; padding:52px 28px; }
-    .res-emoji { font-size:5.5em; line-height:1; }
-    .res-msg   { font-size:1.75em; font-weight:900; margin:14px 0 6px; }
-    .res-score { font-size:1.2em; color:#636e72; margin-bottom:8px; }
-    .res-stars { font-size:2em; margin-bottom:22px; }
-    .res-breakdown { display:flex; justify-content:center; flex-wrap:wrap; gap:10px; margin-bottom:28px; }
-    .res-item  { background:#f8f9ff; border-radius:14px; padding:10px 16px; font-size:.9em; text-align:center; }
-    .res-item .ri-label { color:#636e72; font-size:.8em; }
-    .res-item .ri-val   { font-weight:900; font-size:1.2em; color:var(--purple); }
-    /* ── Leaflet marker ── */
-    .pulse-wrap { position:relative; width:60px; height:60px; }
-    .pulse-dot  { position:absolute; width:22px; height:22px; border-radius:50%; top:50%; left:50%; transform:translate(-50%,-50%); border:3px solid #fff; box-shadow:0 2px 10px rgba(0,0,0,.35); }
-    .pulse-ring { position:absolute; width:22px; height:22px; border-radius:50%; top:50%; left:50%; transform:translate(-50%,-50%); border:3px solid; animation:ringOut 1.5s ease-out infinite; }
-    @keyframes ringOut { 0%{transform:translate(-50%,-50%) scale(1);opacity:.85} 100%{transform:translate(-50%,-50%) scale(3.6);opacity:0} }
-    .leaflet-div-icon { background:none!important; border:none!important; }
-    .leaflet-popup-content-wrapper { border-radius:12px!important; font-family:'Heebo',Arial,sans-serif!important; font-weight:700; font-size:1em; box-shadow:0 4px 20px rgba(0,0,0,.25)!important; padding:0!important; }
-    .leaflet-popup-content { margin:10px 16px!important; }
-    /* ── Animations ── */
-    @keyframes floatStar { 0%{transform:translateY(0) scale(1);opacity:1} 100%{transform:translateY(-110px) scale(1.6);opacity:0} }
-    .float-star { position:fixed; font-size:2em; pointer-events:none; z-index:999; animation:floatStar 1s ease-out forwards; }
-    @keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-8px)} 40%{transform:translateX(8px)} 60%{transform:translateX(-5px)} 80%{transform:translateX(5px)} }
-    .shake { animation:shake .38s ease; }
-    @media(max-width:500px){
-      .header h1{font-size:1.4em} #map{height:290px}
-      .answer-btn{font-size:.9em;padding:11px 4px} .answers{gap:6px;padding:10px 8px 6px}
-      .mode-grid{grid-template-columns:1fr 1fr}
-    }
-  </style>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>ידיעת הארץ – פתח ישירות</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--purple:#6a11cb;--blue:#2575fc;--green:#00b894;--orange:#e17055;--pink:#fd79a8;--yellow:#fdcb6e;--red:#ff4757}
+body{font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif;background:linear-gradient(135deg,var(--purple) 0%,var(--blue) 100%);min-height:100vh;display:flex;flex-direction:column;align-items:center}
+.header{width:100%;background:#fff;padding:10px 20px 7px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,.25);position:sticky;top:0;z-index:500}
+.header h1{font-size:1.85em;font-weight:900;background:linear-gradient(135deg,var(--purple),var(--blue));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hdr-stats{display:flex;justify-content:center;gap:12px;margin-top:6px;flex-wrap:wrap}
+.stat-badge{background:linear-gradient(135deg,#f6d365,#fda085);padding:3px 15px;border-radius:20px;font-weight:700;font-size:.88em;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.2)}
+.progress-bar{width:100%;height:7px;background:#e2e8f0}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--purple),var(--pink));border-radius:0 4px 4px 0;transition:width .55s ease}
+.card{width:95%;max-width:800px;margin:22px auto 40px;background:#fff;border-radius:26px;overflow:hidden;box-shadow:0 18px 60px rgba(0,0,0,.35)}
+#menuScreen{padding:32px 24px}
+.menu-title{text-align:center;font-size:1.4em;font-weight:900;color:var(--purple);margin-bottom:4px}
+.menu-sub{text-align:center;color:#636e72;margin-bottom:20px;font-size:.92em;line-height:1.6}
+.mode-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:22px}
+.mode-card{border:3px solid transparent;border-radius:16px;padding:16px 12px;text-align:center;cursor:pointer;background:#f8f9ff;transition:.15s}
+.mode-card:hover{transform:translateY(-3px);box-shadow:0 8px 24px rgba(0,0,0,.15)}
+.mode-card.selected{border-color:var(--purple);background:#f0edff}
+.mode-card .mode-icon{font-size:2.2em}
+.mode-card .mode-name{font-size:1em;font-weight:700;color:#2d3436;margin-top:5px}
+.mode-card .mode-desc{font-size:.78em;color:#636e72;margin-top:2px;line-height:1.4}
+.diff-label{font-weight:700;color:#4a5568;margin-bottom:8px;text-align:center}
+.diff-pills{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-bottom:22px}
+.diff-pill{padding:6px 18px;border-radius:25px;border:2px solid #c5b9ff;font-family:inherit;font-size:.88em;font-weight:700;cursor:pointer;transition:.15s;background:#fff;color:var(--purple)}
+.diff-pill:hover{background:#ede8ff}
+.diff-pill.selected{background:var(--purple);color:#fff;border-color:var(--purple)}
+.btn-start{display:block;width:100%;max-width:280px;margin:0 auto;padding:14px;font-size:1.2em;font-weight:900;font-family:inherit;border:none;border-radius:50px;background:linear-gradient(135deg,var(--purple),var(--blue));color:#fff;cursor:pointer;box-shadow:0 6px 20px rgba(106,17,203,.45);transition:.15s}
+.btn-start:hover{transform:translateY(-2px)}
+.question-banner{background:linear-gradient(135deg,#a29bfe,#fd79a8);padding:13px 20px;text-align:center}
+.question-text{font-size:1.15em;font-weight:700;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.25);line-height:1.4}
+.clue-box{background:linear-gradient(135deg,#fff9c4,#fff3e0);border-right:5px solid var(--yellow);padding:12px 16px;font-size:.95em;line-height:1.65;color:#2d3436;display:none}
+.clue-box strong{color:var(--purple)}
+#mapWrap{width:100%;position:relative;background:#f0f4f8;overflow:hidden}
+#mapSvg{width:100%;display:block}
+#mapWrap.map-hidden{height:0;overflow:hidden}
+.answers{display:flex;gap:9px;padding:12px 14px 8px;flex-wrap:wrap}
+.answer-btn{flex:1;min-width:120px;padding:12px 6px;font-size:1em;font-weight:700;border:none;border-radius:14px;cursor:pointer;font-family:inherit;transition:.13s;box-shadow:0 4px 12px rgba(0,0,0,.14);position:relative;overflow:hidden}
+.answer-btn::after{content:'';position:absolute;inset:0;background:rgba(255,255,255,.18);opacity:0;transition:opacity .2s}
+.answer-btn:hover:not(:disabled)::after{opacity:1}
+.answer-btn:hover:not(:disabled){transform:translateY(-3px);box-shadow:0 8px 20px rgba(0,0,0,.2)}
+.answer-btn:disabled{cursor:not-allowed}
+.answer-btn.opt-0{background:linear-gradient(135deg,#f7971e,#ffd200);color:#333}
+.answer-btn.opt-1{background:linear-gradient(135deg,#11998e,#38ef7d);color:#fff}
+.answer-btn.opt-2{background:linear-gradient(135deg,#ee0979,#ff6a00);color:#fff}
+.answer-btn.opt-3{background:linear-gradient(135deg,#4776e6,#8e54e9);color:#fff}
+.answer-btn.correct{background:linear-gradient(135deg,#0f9b58,#00bf8f)!important;color:#fff!important;box-shadow:0 0 22px rgba(15,155,88,.55)!important}
+.answer-btn.wrong{background:linear-gradient(135deg,#cb2d3e,#ef473a)!important;color:#fff!important;opacity:.72}
+.feedback{min-height:46px;text-align:center;padding:4px 16px 12px;font-size:1.1em;font-weight:700}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:600;align-items:flex-end;justify-content:center;padding:16px}
+.overlay.show{display:flex}
+.info-card{background:#fff;border-radius:22px 22px 16px 16px;width:100%;max-width:600px;padding:24px 22px 20px;animation:slideUp .3s ease;max-height:80vh;overflow-y:auto}
+@keyframes slideUp{from{transform:translateY(60px);opacity:0}to{transform:translateY(0);opacity:1}}
+.ic-header{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.ic-icon{font-size:2.3em}
+.ic-title{font-size:1.4em;font-weight:900;color:var(--purple)}
+.ic-type{font-size:.83em;color:#636e72}
+.ic-badges{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.ic-badge{background:#f0edff;color:var(--purple);border-radius:20px;padding:3px 12px;font-size:.8em;font-weight:700}
+.ic-fact{background:linear-gradient(135deg,#f0fffe,#e8f5e9);border-right:4px solid var(--green);padding:11px 13px;border-radius:10px;font-size:.92em;line-height:1.7;color:#2d3436;margin-bottom:16px}
+.btn-next{display:block;width:100%;padding:12px;font-size:1.05em;font-weight:900;font-family:inherit;border:none;border-radius:40px;background:linear-gradient(135deg,var(--purple),var(--blue));color:#fff;cursor:pointer;box-shadow:0 4px 16px rgba(106,17,203,.4);transition:.13s}
+.btn-next:hover{transform:translateY(-2px)}
+#resultsScreen{text-align:center;padding:48px 26px}
+.res-emoji{font-size:5em;line-height:1}
+.res-msg{font-size:1.65em;font-weight:900;margin:12px 0 6px}
+.res-score{font-size:1.15em;color:#636e72;margin-bottom:8px}
+.res-stars{font-size:1.9em;margin-bottom:20px}
+.res-breakdown{display:flex;justify-content:center;flex-wrap:wrap;gap:10px;margin-bottom:26px}
+.res-item{background:#f8f9ff;border-radius:14px;padding:10px 14px;font-size:.88em;text-align:center}
+.res-item .ri-label{color:#636e72;font-size:.78em}
+.res-item .ri-val{font-weight:900;font-size:1.2em;color:var(--purple)}
+/* SVG map styles */
+.city-dot{cursor:default}
+.dot-ring{animation:none}
+.city-dot.active .dot-ring{animation:ringPulse 1.4s ease-out infinite}
+.city-dot.active .dot-inner{animation:dotPulse 1.4s ease-in-out infinite}
+@keyframes ringPulse{0%{r:8;opacity:.9}100%{r:26;opacity:0}}
+@keyframes dotPulse{0%,100%{r:7}50%{r:10}}
+.city-dot.revealed text{display:block}
+/* Float stars */
+@keyframes floatStar{0%{transform:translateY(0) scale(1);opacity:1}100%{transform:translateY(-110px) scale(1.6);opacity:0}}
+.float-star{position:fixed;font-size:2em;pointer-events:none;z-index:999;animation:floatStar 1s ease-out forwards}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}.shake{animation:shake .38s ease}
+@media(max-width:500px){.header h1{font-size:1.4em}.answer-btn{font-size:.88em;padding:10px 4px}.answers{gap:6px;padding:10px 8px 6px}.mode-grid{grid-template-columns:1fr 1fr}}
+</style>
 </head>
 <body>
-
 <div class="header">
   <h1>🗺️ ידיעת הארץ</h1>
   <div class="hdr-stats" id="hdrStats" style="display:none">
@@ -167,356 +101,332 @@
 <div class="progress-bar"><div class="progress-fill" id="progFill" style="width:0%"></div></div>
 
 <div class="card" id="mainCard">
-
-  <!-- MAIN MENU -->
   <div id="menuScreen">
-    <div style="text-align:center;font-size:3.5em;margin-bottom:8px">🗺️</div>
+    <div style="text-align:center;font-size:3em;margin-bottom:8px">🗺️</div>
     <div class="menu-title">ברוכים הבאים – משחק ידיעת הארץ</div>
-    <div class="menu-sub">עיר, נהר, יער או הר יופיעו על מפה, ועליך לנחש את שמם.<br />בחר מצב משחק ורמת קושי ולחץ "התחל"!</div>
-    <div class="mode-grid" id="modeGrid">
-      <div class="mode-card selected" data-mode="map"  onclick="pickMode(this)"><div class="mode-icon">📍</div><div class="mode-name">מצביע על המפה</div><div class="mode-desc">מיקום מהבהב – נחש מתוך 3 שמות</div></div>
-      <div class="mode-card"          data-mode="clue" onclick="pickMode(this)"><div class="mode-icon">💡</div><div class="mode-name">נחש לפי רמז</div><div class="mode-desc">קרא רמז טקסטואלי – נחש מתוך 4 אפשרויות</div></div>
-      <div class="mode-card"          data-mode="gk"   onclick="pickMode(this)"><div class="mode-icon">🧠</div><div class="mode-name">ידע כללי</div><div class="mode-desc">שאלות גיאוגרפיה ועובדות מרתקות</div></div>
+    <div class="menu-sub">עיר, נהר, יער או הר יופיעו על מפת ישראל, ועליך לנחש את שמם.<br/>בחר מצב משחק ורמת קושי ולחץ "התחל"!</div>
+    <div class="mode-grid">
+      <div class="mode-card selected" data-mode="map" onclick="pickMode(this)"><div class="mode-icon">📍</div><div class="mode-name">מצביע על המפה</div><div class="mode-desc">מיקום מהבהב – נחש מתוך 3 שמות</div></div>
+      <div class="mode-card" data-mode="clue" onclick="pickMode(this)"><div class="mode-icon">💡</div><div class="mode-name">נחש לפי רמז</div><div class="mode-desc">קרא רמז טקסטואלי – נחש מתוך 4 אפשרויות</div></div>
+      <div class="mode-card" data-mode="gk" onclick="pickMode(this)"><div class="mode-icon">🧠</div><div class="mode-name">ידע כללי</div><div class="mode-desc">שאלות גיאוגרפיה ועובדות מרתקות</div></div>
     </div>
     <div class="diff-label">⚙️ רמת קושי</div>
-    <div class="diff-pills" id="diffPills">
+    <div class="diff-pills">
       <button class="diff-pill selected" data-diff="1" onclick="pickDiff(this)">⭐ קל</button>
-      <button class="diff-pill"          data-diff="2" onclick="pickDiff(this)">⭐⭐ בינוני</button>
-      <button class="diff-pill"          data-diff="3" onclick="pickDiff(this)">⭐⭐⭐ קשה</button>
-      <button class="diff-pill"          data-diff="4" onclick="pickDiff(this)">⭐⭐⭐⭐ מאסטר</button>
+      <button class="diff-pill" data-diff="2" onclick="pickDiff(this)">⭐⭐ בינוני</button>
+      <button class="diff-pill" data-diff="3" onclick="pickDiff(this)">⭐⭐⭐ קשה</button>
+      <button class="diff-pill" data-diff="4" onclick="pickDiff(this)">⭐⭐⭐⭐ מאסטר</button>
     </div>
     <button class="btn-start" onclick="startGame()">🚀 התחל משחק!</button>
   </div>
 
-  <!-- GAME SCREEN -->
   <div id="gameScreen" style="display:none">
     <div class="question-banner"><div class="question-text" id="questionText"></div></div>
     <div class="clue-box" id="clueBox"></div>
-    <div id="map"></div>
+    <div id="mapWrap">
+      <svg id="mapSvg" viewBox="0 0 300 565" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="seaGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#5ba4d4;stop-opacity:1"/>
+            <stop offset="100%" style="stop-color:#3d8fc0;stop-opacity:1"/>
+          </linearGradient>
+          <linearGradient id="landGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style="stop-color:#e8dcc8;stop-opacity:1"/>
+            <stop offset="100%" style="stop-color:#d4c8a8;stop-opacity:1"/>
+          </linearGradient>
+          <linearGradient id="israelGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style="stop-color:#c8e6c9;stop-opacity:1"/>
+            <stop offset="100%" style="stop-color:#a5d6a7;stop-opacity:1"/>
+          </linearGradient>
+        </defs>
+        <!-- Sea background -->
+        <rect width="300" height="565" fill="url(#seaGrad)"/>
+        <!-- Surrounding land -->
+        <polygon points="0.0,0.0 300.0,0.0 300.0,565.0 0.0,565.0" fill="url(#landGrad)"/>
+        <!-- Israel land -->
+        <polygon points="153.5,98.2 152.3,77.6 165.0,81.0 184.6,81.0 210.0,76.5 234.2,74.2 243.5,81.0 242.3,94.7 234.2,122.1 227.3,142.7 219.2,145.0 210.0,159.8 207.7,165.5 206.5,194.0 204.2,222.6 198.5,251.1 193.8,279.6 178.8,308.2 165.0,336.7 146.5,382.4 146.5,445.2 141.9,496.5 138.5,502.2 137.3,507.9 128.1,507.9 101.5,490.8 83.1,447.4 71.5,410.9 71.5,382.4 75.0,353.8 83.1,313.9 85.4,296.8 84.2,279.6 87.7,271.7 90.0,262.5 94.6,253.4 106.2,236.3 114.2,216.9 117.7,202.0 126.9,182.6 131.5,159.8 136.2,137.0 141.9,117.6 151.2,102.7 153.5,98.2" fill="url(#israelGrad)" stroke="#6a8c6a" stroke-width="1.2"/>
+        <!-- Jordan River -->
+        <polyline points="210.0,85.6 212.3,110.7 211.2,127.8 208.8,159.8 206.5,194.0 198.5,239.7 193.8,279.6 178.8,308.2 165.0,336.7 146.5,382.4 146.5,445.2 141.9,496.5" fill="none" stroke="#5ba4d4" stroke-width="1.5" stroke-dasharray="3,2" opacity="0.7"/>
+        <!-- Yarkon River -->
+        <polyline points="167.3,211.2 125.8,211.2 115.4,212.3" fill="none" stroke="#5ba4d4" stroke-width="1" opacity="0.6"/>
+        <!-- Kinneret -->
+        <ellipse cx="211.6" cy="129.0" rx="10" ry="16" fill="#64b5f6" stroke="#42a5f5" stroke-width="1" opacity="0.9"/>
+        <text x="211.6" y="132.0" text-anchor="middle" font-size="5" fill="#1565c0" font-weight="bold">כינרת</text>
+        <!-- Dead Sea -->
+        <ellipse cx="198.8" cy="287.6" rx="9" ry="36" fill="#64b5f6" stroke="#42a5f5" stroke-width="1" opacity="0.85"/>
+        <text x="196.8" y="290.6" text-anchor="middle" font-size="4.5" fill="#1565c0" font-weight="bold" transform="rotate(-5,198.8,287.6)">ים המלח</text>
+        <!-- Hula Lake (small) -->
+        <ellipse cx="214.6" cy="98.7" rx="4" ry="5" fill="#64b5f6" stroke="#42a5f5" stroke-width="0.8" opacity="0.75"/>
+        <!-- Labels: compass + country names -->
+        <text x="15" y="20" font-size="8" fill="#1565c0" opacity="0.8">🌊 ים תיכון</text>
+        <text x="240" y="40" font-size="7" fill="#888" opacity="0.7">סוריה</text>
+        <text x="245" y="160" font-size="7" fill="#888" opacity="0.7">ירדן</text>
+        <text x="30" y="500" font-size="7" fill="#888" opacity="0.7">מצרים</text>
+        <text x="5" y="540" font-size="6.5" fill="#1565c0" opacity="0.8">🌊 ים סוף</text>
+        <!-- City dots (hidden, activated by JS) -->
+        <g class="city-dot" id="dot_tlv" data-id="tlv" style="display:none"><circle class="dot-ring" cx="119.1" cy="212.8" r="8" fill="none" stroke="#ff4757" stroke-width="2.5" opacity="0"/><circle class="dot-inner" cx="119.1" cy="212.8" r="7" fill="#ff4757" stroke="white" stroke-width="2.5"/></g>
+    <g class="city-dot" id="dot_jlm" data-id="jlm" style="display:none"><circle class="dot-ring" cx="168.9" cy="249.0" r="8" fill="none" stroke="#ff4757" stroke-width="2.5" opacity="0"/><circle class="dot-inner" cx="168.9" cy="249.0" r="7" fill="#ff4757" stroke="white" stroke-width="2.5"/></g>
+    <g class="city-dot" id="dot_hfa" data-id="hfa" style="display:none"><circle class="dot-ring" cx="143.0" cy="131.9" r="8" fill="none" stroke="#ff4757" stroke-width="2.5" opacity="0"/><circle class="dot-inner" cx="143.0" cy="131.9" r="7" fill="#ff4757" stroke="white" stroke-width="2.5"/></g>
+    <g class="city-dot" id="dot_bsh" data-id="bsh" style="display:none"><circle class="dot-ring" cx="120.2" cy="308.0" r="8" fill="none" stroke="#ff4757" stroke-width="2.5" opacity="0"/><circle class="dot-inner" cx="120.2" cy="308.0" r="7" fill="#ff4757" stroke="white" stroke-width="2.5"/></g>
+    <g class="city-dot" id="dot_asd" data-id="asd" style="display:none"><circle class="dot-ring" cx="104.5" cy="244.9" r="8" fill="none" stroke="#ff4757" stroke-width="2.5" opacity="0"/><circle class="dot-inner" cx="104.5" cy="244.9" r="7" fill="#ff4757" stroke="white" stroke-width="2.5"/></g>
+    <g class="city-dot" id="dot_ntn" data-id="ntn" style="display:none"><circle class="dot-ring" cx="127.3" cy="185.9" r="8" fill="none" stroke="#ff4757" stroke-width="2.5" opacity="0"/><circle class="dot-inner" cx="127.3" cy="185.9" r="7" fill="#ff4757" stroke="white" stroke-width="2.5"/></g>
+    <g class="city-dot" id="dot_r1z" data-id="r1z" style="display:none"><circle class="dot-ring" cx="121.7" cy="226.7" r="8" fill="none" stroke="#ff4757" stroke-width="2.5" opacity="0"/><circle class="dot-inner" cx="121.7" cy="226.7" r="7" fill="#ff4757" stroke="white" stroke-width="2.5"/></g>
+    <g class="city-dot" id="dot_ptk" data-id="ptk" style="display:none"><circle class="dot-ring" cx="131.3" cy="213.0" r="8" fill="none" stroke="#ff4757" stroke-width="2.5" opacity="0"/><circle class="dot-inner" cx="131.3" cy="213.0" r="7" fill="#ff4757" stroke="white" stroke-width="2.5"/></g>
+    <g class="city-dot" id="dot_akl" data-id="akl" style="display:none"><circle class="dot-ring" cx="95.1" cy="260.4" r="8" fill="none" stroke="#ff4757" stroke-width="2.5" opacity="0"/><circle class="dot-inner" cx="95.1" cy="260.4" r="7" fill="#ff4757" stroke="white" stroke-width="2.5"/></g>
+    <g class="city-dot" id="dot_hzl" data-id="hzl" style="display:none"><circle class="dot-ring" cx="126.2" cy="203.9" r="8" fill="none" stroke="#ff4757" stroke-width="2.5" opacity="0"/><circle class="dot-inner" cx="126.2" cy="203.9" r="7" fill="#ff4757" stroke="white" stroke-width="2.5"/></g>
+    <g class="city-dot" id="dot_nzr" data-id="nzr" style="display:none"><circle class="dot-ring" cx="179.2" cy="142.7" r="8" fill="none" stroke="#ff4757" stroke-width="2.5" opacity="0"/><circle class="dot-inner" cx="179.2" cy="142.7" r="7" fill="#ff4757" stroke="white" stroke-width="2.5"/></g>
+    <g class="city-dot" id="dot_akk" data-id="akk" style="display:none"><circle class="dot-ring" cx="153.7" cy="117.2" r="8" fill="none" stroke="#ff4757" stroke-width="2.5" opacity="0"/><circle class="dot-inner" cx="153.7" cy="117.2" r="7" fill="#ff4757" stroke="white" stroke-width="2.5"/></g>
+    <g class="city-dot" id="dot_tbr" data-id="tbr" style="display:none"><circle class="dot-ring" cx="205.4" cy="131.9" r="8" fill="none" stroke="#ff4757" stroke-width="2.5" opacity="0"/><circle class="dot-inner" cx="205.4" cy="131.9" r="7" fill="#ff4757" stroke="white" stroke-width="2.5"/></g>
+    <g class="city-dot" id="dot_sfd" data-id="sfd" style="display:none"><circle class="dot-ring" cx="201.4" cy="112.6" r="8" fill="none" stroke="#ff4757" stroke-width="2.5" opacity="0"/><circle class="dot-inner" cx="201.4" cy="112.6" r="7" fill="#ff4757" stroke="white" stroke-width="2.5"/></g>
+    <g class="city-dot" id="dot_ksh" data-id="ksh" style="display:none"><circle class="dot-ring" cx="209.9" cy="84.8" r="8" fill="none" stroke="#ff4757" stroke-width="2.5" opacity="0"/><circle class="dot-inner" cx="209.9" cy="84.8" r="7" fill="#ff4757" stroke="white" stroke-width="2.5"/></g>
+    <g class="city-dot" id="dot_elt" data-id="elt" style="display:none"><circle class="dot-ring" cx="138.7" cy="501.3" r="8" fill="none" stroke="#ff4757" stroke-width="2.5" opacity="0"/><circle class="dot-inner" cx="138.7" cy="501.3" r="7" fill="#ff4757" stroke="white" stroke-width="2.5"/></g>
+    <g class="city-dot" id="dot_nhr" data-id="nhr" style="display:none"><circle class="dot-ring" cx="155.5" cy="107.9" r="8" fill="none" stroke="#ff4757" stroke-width="2.5" opacity="0"/><circle class="dot-inner" cx="155.5" cy="107.9" r="7" fill="#ff4757" stroke="white" stroke-width="2.5"/></g>
+    <g class="city-dot" id="dot_dim" data-id="dim" style="display:none"><circle class="dot-ring" cx="147.9" cy="328.8" r="8" fill="none" stroke="#ff4757" stroke-width="2.5" opacity="0"/><circle class="dot-inner" cx="147.9" cy="328.8" r="7" fill="#ff4757" stroke="white" stroke-width="2.5"/></g>
+    <g class="city-dot" id="dot_mrm" data-id="mrm" style="display:none"><circle class="dot-ring" cx="121.2" cy="380.9" r="8" fill="none" stroke="#ff4757" stroke-width="2.5" opacity="0"/><circle class="dot-inner" cx="121.2" cy="380.9" r="7" fill="#ff4757" stroke="white" stroke-width="2.5"/></g>
+    <g class="city-dot" id="dot_krm" data-id="krm" style="display:none"><circle class="dot-ring" cx="178.4" cy="118.1" r="8" fill="none" stroke="#ff4757" stroke-width="2.5" opacity="0"/><circle class="dot-inner" cx="178.4" cy="118.1" r="7" fill="#ff4757" stroke="white" stroke-width="2.5"/></g>
+    <g class="city-dot" id="dot_mdn" data-id="mdn" style="display:none"><circle class="dot-ring" cx="145.5" cy="234.3" r="8" fill="none" stroke="#ff4757" stroke-width="2.5" opacity="0"/><circle class="dot-inner" cx="145.5" cy="234.3" r="7" fill="#ff4757" stroke="white" stroke-width="2.5"/></g>
+    <g class="city-dot" id="dot_rhv" data-id="rhv" style="display:none"><circle class="dot-ring" cx="122.5" cy="234.8" r="8" fill="none" stroke="#ff4757" stroke-width="2.5" opacity="0"/><circle class="dot-inner" cx="122.5" cy="234.8" r="7" fill="#ff4757" stroke="white" stroke-width="2.5"/></g>
+    <g class="city-dot" id="dot_zky" data-id="zky" style="display:none"><circle class="dot-ring" cx="138.4" cy="157.1" r="8" fill="none" stroke="#ff4757" stroke-width="2.5" opacity="0"/><circle class="dot-inner" cx="138.4" cy="157.1" r="7" fill="#ff4757" stroke="white" stroke-width="2.5"/></g>
+    <g class="city-dot" id="dot_bts" data-id="bts" style="display:none"><circle class="dot-ring" cx="202.2" cy="165.2" r="8" fill="none" stroke="#ff4757" stroke-width="2.5" opacity="0"/><circle class="dot-inner" cx="202.2" cy="165.2" r="7" fill="#ff4757" stroke="white" stroke-width="2.5"/></g>
+    <g class="city-dot" id="dot_csr" data-id="csr" style="display:none"><circle class="dot-ring" cx="133.8" cy="165.5" r="8" fill="none" stroke="#ff4757" stroke-width="2.5" opacity="0"/><circle class="dot-inner" cx="133.8" cy="165.5" r="7" fill="#ff4757" stroke="white" stroke-width="2.5"/></g>
+    <g class="city-dot" id="dot_rsp" data-id="rsp" style="display:none"><circle class="dot-ring" cx="206.6" cy="112.0" r="8" fill="none" stroke="#ff4757" stroke-width="2.5" opacity="0"/><circle class="dot-inner" cx="206.6" cy="112.0" r="7" fill="#ff4757" stroke="white" stroke-width="2.5"/></g>
+    <g class="city-dot" id="dot_sdr" data-id="sdr" style="display:none"><circle class="dot-ring" cx="97.7" cy="276.8" r="8" fill="none" stroke="#ff4757" stroke-width="2.5" opacity="0"/><circle class="dot-inner" cx="97.7" cy="276.8" r="7" fill="#ff4757" stroke="white" stroke-width="2.5"/></g>
+    <g class="city-dot" id="dot_lod" data-id="lod" style="display:none"><circle class="dot-ring" cx="132.1" cy="228.1" r="8" fill="none" stroke="#ff4757" stroke-width="2.5" opacity="0"/><circle class="dot-inner" cx="132.1" cy="228.1" r="7" fill="#ff4757" stroke="white" stroke-width="2.5"/></g>
+    <g class="city-dot" id="dot_aad" data-id="aad" style="display:none"><circle class="dot-ring" cx="168.8" cy="307.2" r="8" fill="none" stroke="#ff4757" stroke-width="2.5" opacity="0"/><circle class="dot-inner" cx="168.8" cy="307.2" r="7" fill="#ff4757" stroke="white" stroke-width="2.5"/></g>
+    <g class="city-dot" id="dot_kgt" data-id="kgt" style="display:none"><circle class="dot-ring" cx="117.8" cy="267.2" r="8" fill="none" stroke="#ff4757" stroke-width="2.5" opacity="0"/><circle class="dot-inner" cx="117.8" cy="267.2" r="7" fill="#ff4757" stroke="white" stroke-width="2.5"/></g>
+    <g class="city-dot" id="dot_rjdn" data-id="rjdn" style="display:none"><circle class="dot-ring" cx="211.2" cy="182.6" r="8" fill="none" stroke="#0984e3" stroke-width="2.5" opacity="0"/><circle class="dot-inner" cx="211.2" cy="182.6" r="7" fill="#0984e3" stroke="white" stroke-width="2.5"/></g>
+    <g class="city-dot" id="dot_ryrk" data-id="ryrk" style="display:none"><circle class="dot-ring" cx="127.0" cy="210.7" r="8" fill="none" stroke="#0984e3" stroke-width="2.5" opacity="0"/><circle class="dot-inner" cx="127.0" cy="210.7" r="7" fill="#0984e3" stroke="white" stroke-width="2.5"/></g>
+    <g class="city-dot" id="dot_rksn" data-id="rksn" style="display:none"><circle class="dot-ring" cx="150.0" cy="130.1" r="8" fill="none" stroke="#0984e3" stroke-width="2.5" opacity="0"/><circle class="dot-inner" cx="150.0" cy="130.1" r="7" fill="#0984e3" stroke="white" stroke-width="2.5"/></g>
+    <g class="city-dot" id="dot_rbsr" data-id="rbsr" style="display:none"><circle class="dot-ring" cx="75.0" cy="308.2" r="8" fill="none" stroke="#0984e3" stroke-width="2.5" opacity="0"/><circle class="dot-inner" cx="75.0" cy="308.2" r="7" fill="#0984e3" stroke="white" stroke-width="2.5"/></g>
+    <g class="city-dot" id="dot_fkrm" data-id="fkrm" style="display:none"><circle class="dot-ring" cx="140.8" cy="140.4" r="8" fill="none" stroke="#00b894" stroke-width="2.5" opacity="0"/><circle class="dot-inner" cx="140.8" cy="140.4" r="7" fill="#00b894" stroke="white" stroke-width="2.5"/></g>
+    <g class="city-dot" id="dot_fytr" data-id="fytr" style="display:none"><circle class="dot-ring" cx="152.3" cy="293.3" r="8" fill="none" stroke="#00b894" stroke-width="2.5" opacity="0"/><circle class="dot-inner" cx="152.3" cy="293.3" r="7" fill="#00b894" stroke="white" stroke-width="2.5"/></g>
+    <g class="city-dot" id="dot_mhrm" data-id="mhrm" style="display:none"><circle class="dot-ring" cx="243.1" cy="61.1" r="8" fill="none" stroke="#e17055" stroke-width="2.5" opacity="0"/><circle class="dot-inner" cx="243.1" cy="61.1" r="7" fill="#e17055" stroke="white" stroke-width="2.5"/></g>
+    <g class="city-dot" id="dot_mmrn" data-id="mmrn" style="display:none"><circle class="dot-ring" cx="194.0" cy="109.2" r="8" fill="none" stroke="#e17055" stroke-width="2.5" opacity="0"/><circle class="dot-inner" cx="194.0" cy="109.2" r="7" fill="#e17055" stroke="white" stroke-width="2.5"/></g>
+    <g class="city-dot" id="dot_mtbr" data-id="mtbr" style="display:none"><circle class="dot-ring" cx="189.3" cy="144.2" r="8" fill="none" stroke="#e17055" stroke-width="2.5" opacity="0"/><circle class="dot-inner" cx="189.3" cy="144.2" r="7" fill="#e17055" stroke="white" stroke-width="2.5"/></g>
+    <g class="city-dot" id="dot_mszd" data-id="mszd" style="display:none"><circle class="dot-ring" cx="185.1" cy="300.6" r="8" fill="none" stroke="#e17055" stroke-width="2.5" opacity="0"/><circle class="dot-inner" cx="185.1" cy="300.6" r="7" fill="#e17055" stroke="white" stroke-width="2.5"/></g>
+    <g class="city-dot" id="dot_lknr" data-id="lknr" style="display:none"><circle class="dot-ring" cx="211.6" cy="129.0" r="8" fill="none" stroke="#00cec9" stroke-width="2.5" opacity="0"/><circle class="dot-inner" cx="211.6" cy="129.0" r="7" fill="#00cec9" stroke="white" stroke-width="2.5"/></g>
+    <g class="city-dot" id="dot_ldds" data-id="ldds" style="display:none"><circle class="dot-ring" cx="198.5" cy="279.6" r="8" fill="none" stroke="#00cec9" stroke-width="2.5" opacity="0"/><circle class="dot-inner" cx="198.5" cy="279.6" r="7" fill="#00cec9" stroke="white" stroke-width="2.5"/></g>
+    <g class="city-dot" id="dot_lhla" data-id="lhla" style="display:none"><circle class="dot-ring" cx="214.6" cy="98.7" r="8" fill="none" stroke="#00cec9" stroke-width="2.5" opacity="0"/><circle class="dot-inner" cx="214.6" cy="98.7" r="7" fill="#00cec9" stroke="white" stroke-width="2.5"/></g>
+        <!-- Reveal label group (populated by JS) -->
+        <g id="revealLabel"></g>
+      </svg>
+    </div>
     <div class="answers" id="answersDiv"></div>
     <div class="feedback" id="feedback"></div>
   </div>
-
-  <!-- RESULTS SCREEN -->
   <div id="resultsScreen" style="display:none"></div>
-
 </div>
 
-<!-- INFO CARD OVERLAY -->
 <div class="overlay" id="infoOverlay">
-  <div class="info-card" id="infoCard">
+  <div class="info-card">
     <div class="ic-header"><div class="ic-icon" id="icIcon"></div><div><div class="ic-title" id="icTitle"></div><div class="ic-type" id="icType"></div></div></div>
     <div class="ic-badges" id="icBadges"></div>
-    <div class="ic-fact"   id="icFact"></div>
+    <div class="ic-fact" id="icFact"></div>
     <button class="btn-next" onclick="closeInfoCard()">הבא ←</button>
   </div>
 </div>
 
 <script>
-const TYPE_LABELS = {city:'עיר/יישוב',river:'נהר/נחל',forest:'יער',mountain:'הר/מצוק',lake:'ים/אגם'};
-const TYPE_COLORS = {city:'#ff4757',river:'#0984e3',forest:'#00b894',mountain:'#e17055',lake:'#00cec9'};
+const TYPE_LABELS={city:'עיר/יישוב',river:'נהר/נחל',forest:'יער',mountain:'הר/מצוק',lake:'ים/אגם'};
+const TYPE_COLORS={city:'#ff4757',river:'#0984e3',forest:'#00b894',mountain:'#e17055',lake:'#00cec9'};
 
-const LOCATIONS = [
-  {id:'tlv', name:'תל אביב-יפו',   type:'city',     diff:1, lat:32.0853,lng:34.7818, region:'גוש דן',        pop:467000, icon:'🏙️', fact:'תל אביב הייתה העיר העברית הראשונה בעולם (1909). כיום מרכז טכנולוגיה, תרבות ועסקים.', clue:'אני העיר שנוסדה ב-1909 כ"גן בעיר" ליד יפו העתיקה.'},
-  {id:'jlm', name:'ירושלים',        type:'city',     diff:1, lat:31.7683,lng:35.2137, region:'ירושלים',       pop:936000, icon:'🏛️', fact:'ירושלים בירת ישראל, עיר קדושה לשלוש הדתות. הכותל המערבי ומסגד אל-אקצה נמצאים בה.', clue:'אני בירת ישראל, עיר קדושה לשלוש דתות עם הכותל המערבי.'},
-  {id:'hfa', name:'חיפה',            type:'city',     diff:1, lat:32.7940,lng:34.9896, region:'חיפה',          pop:290000, icon:'⚓', fact:'חיפה עיר הנמל הגדולה, שוכנת על הר הכרמל. גני הבהאי המרהיבים נכללים ברשימת אונסקו.', clue:'אני עיר הנמל הצפונית עם גני הבהאי ומפרץ יפהפה.'},
-  {id:'bsh', name:'באר שבע',         type:'city',     diff:1, lat:31.2518,lng:34.7915, region:'הנגב',          pop:213000, icon:'🐪', fact:'באר שבע "בירת הנגב", מרכזת תעשייה ואוניברסיטת בן-גוריון. בתנ"ך גבול ישראל הדרומי.', clue:'אני "בירת הנגב", עם אוניברסיטה חשובה, בדרום ישראל.'},
-  {id:'asd', name:'אשדוד',           type:'city',     diff:1, lat:31.8044,lng:34.6553, region:'שפלה',          pop:240000, icon:'🚢', fact:'אשדוד בנויה על דיונות חול. כ-70% מהסחורות הנכנסות לישראל עוברות דרך הנמל שלה.', clue:'אני עיר הנמל הגדולה, 70% מסחורות ישראל עוברות בי.'},
-  {id:'ntn', name:'נתניה',            type:'city',     diff:1, lat:32.3215,lng:34.8532, region:'שרון',          pop:220000, icon:'🏖️', fact:'נתניה "עיר היהלומים" בשל תעשיית הצחצוח. ידועה בחופיה הנפלאים על הים התיכון.', clue:'אני "עיר היהלומים", עיר חוף יפה בשרון הצפוני.'},
-  {id:'r1z', name:'ראשון לציון',     type:'city',     diff:1, lat:31.9642,lng:34.8044, region:'גוש דן',        pop:263000, icon:'🍇', fact:'ראשון לציון (1882) אחת המושבות הציוניות הראשונות. שמה מהפסוק "ראשון לציון הנה הנם".', clue:'אני מושבה ציונית מ-1882, שמי לקוח מפסוק בישעיהו.'},
-  {id:'ptk', name:'פתח תקווה',       type:'city',     diff:1, lat:32.0840,lng:34.8878, region:'גוש דן',        pop:260000, icon:'🌾', fact:'פתח תקווה (1878) "אם המושבות" – המושבה הציונית הראשונה בארץ ישראל.', clue:'אני "אם המושבות", המושבה הציונית הראשונה (1878).'},
-  {id:'akl', name:'אשקלון',           type:'city',     diff:1, lat:31.6688,lng:34.5743, region:'שפלה דרומית',  pop:148000, icon:'🏺', fact:'אשקלון אחת הערים הקדומות בעולם. פארק לאומי בה עם שרידי כנענים ופלשתים.', clue:'אני עיר חוף עתיקה בדרום, עם שרידי פלשתים ופארק לאומי.'},
-  {id:'hzl', name:'הרצליה',           type:'city',     diff:1, lat:32.1640,lng:34.8435, region:'שרון',          pop:97000,  icon:'💻', fact:'הרצליה "עמק הסיליקון הישראלי" בשל ריכוז חברות הייטק גדולות בפארקי התעשייה שלה.', clue:'אני "סיליקון ואדי" ישראלי, מרכז חברות ההייטק הגדולות.'},
-  {id:'nzr', name:'נצרת',             type:'city',     diff:2, lat:32.6996,lng:35.3035, region:'גליל תחתון',   pop:78000,  icon:'⛪', fact:'נצרת מרכז הנצרות הגדול בישראל, עם כנסיית הבשורה הגדולה ביותר במזרח התיכון.', clue:'אני עיר הגליל הערבית הגדולה, עם כנסיית הבשורה החשובה.'},
-  {id:'akk', name:'עכו',              type:'city',     diff:2, lat:32.9231,lng:35.0818, region:'גליל מערבי',   pop:50000,  icon:'🏰', fact:'עכו נמל עתיקה על חוף הים. מצודת הצלבנים ומנהרותיה נכללות ברשימת מורשת אונסקו.', clue:'אני עיר נמל עתיקה עם חומות ומנהרות צלבניות, אתר אונסקו.'},
-  {id:'tbr', name:'טבריה',            type:'city',     diff:2, lat:32.7940,lng:35.5302, region:'גליל',          pop:45000,  icon:'🎣', fact:'טבריה שוכנת על חוף הכינרת. אחת מארבע הערים הקדושות ביהדות, ובה קבורת הרמב"ם.', clue:'אני עיר על חוף הכינרת, אחת מארבע הקדושות ביהדות.'},
-  {id:'sfd', name:'צפת',              type:'city',     diff:2, lat:32.9634,lng:35.4959, region:'גליל עליון',   pop:34000,  icon:'🎨', fact:'צפת עיר הקבלה ועיר האמנים. בה הוקם הדפוס הראשון בארץ ישראל (1577), בגובה 900 מ\'.', clue:'אני עיר הקבלה ועיר האמנים בגליל העליון.'},
-  {id:'ksh', name:'קריית שמונה',     type:'city',     diff:2, lat:33.2074,lng:35.5695, region:'גליל עליון',   pop:24000,  icon:'🏔️', fact:'קריית שמונה העיר הצפונית ביותר בישראל, שוכנת בעמק החולה ליד הגבול הלבנוני.', clue:'אני העיר הצפונית ביותר בישראל, בעמק החולה.'},
-  {id:'elt', name:'אילת',             type:'city',     diff:2, lat:29.5577,lng:34.9519, region:'ערבה',          pop:53000,  icon:'🐠', fact:'אילת העיר הדרומית ביותר בישראל, על חוף ים סוף. מפורסמת בשוניות האלמוגים.', clue:'אני העיר הדרומית ביותר בישראל, בחוף ים סוף.'},
-  {id:'nhr', name:'נהריה',            type:'city',     diff:2, lat:33.0046,lng:35.0978, region:'גליל מערבי',   pop:62000,  icon:'🌊', fact:'נהריה עיר חוף בצפון, שמה לקוח מנחל הגעתון הזורם במרכזה ישר לים.', clue:'אני עיר חוף צפונית, ונחל זורם דרכי ישר לים.'},
-  {id:'dim', name:'דימונה',           type:'city',     diff:2, lat:31.0690,lng:35.0316, region:'הנגב',          pop:36000,  icon:'🏜️', fact:'דימונה שוכנת בנגב הצפוני, ידועה בשל הכור הגרעיני "קריה למחקר גרעיני" הסמוך.', clue:'אני עיר נגב הידועה בכור הגרעיני הסמוך לה.'},
-  {id:'mrm', name:'מצפה רמון',        type:'city',     diff:2, lat:30.6129,lng:34.8004, region:'הנגב',          pop:6000,   icon:'🦅', fact:'מצפה רמון שוכנת על שפת מכתש רמון – המכתש הגדול בעולם (40 ק"מ אורך).', clue:'אני יישוב על שפת המכתש הגדול בעולם, בנגב.'},
-  {id:'krm', name:'כרמיאל',           type:'city',     diff:2, lat:32.9149,lng:35.2963, region:'גליל תחתון',   pop:51000,  icon:'🕺', fact:'כרמיאל ידועה בפסטיבל המחול הבינלאומי השנתי – אחד הגדולים בעולם.', clue:'אני עיר הגליל הידועה בפסטיבל המחול הבינלאומי הגדול.'},
-  {id:'mdn', name:'מודיעין',           type:'city',     diff:2, lat:31.8969,lng:35.0108, region:'שפלה',          pop:100000, icon:'🏘️', fact:'מודיעין-מכבים-רעות נוסדה ב-1993. גדלה במהירות והיום עיר מרכזית בין ירושלים לתל אביב.', clue:'אני עיר חדשה (1993) בין ירושלים לתל אביב.'},
-  {id:'rhv', name:'רחובות',            type:'city',     diff:2, lat:31.8928,lng:34.8113, region:'שפלה',          pop:125000, icon:'🔬', fact:'רחובות (1890) מרכזת מוסדות מחקר, ובה מכון ויצמן למדע – אחד החשובים בעולם.', clue:'אני עיר שבה מכון ויצמן למדע, ידועה כעיר מחקר.'},
-  {id:'zky', name:'זכרון יעקב',       type:'city',     diff:3, lat:32.5735,lng:34.9497, region:'כרמל',          pop:23000,  icon:'🍷', fact:'זכרון יעקב (1882) מושבה ותיקה. בית רוטשילד תמך ביישובה. ידועה ביקב "כרמל" העתיק.', clue:'אני מושבה ותיקה על הכרמל שבית רוטשילד מימן אותה.'},
-  {id:'bts', name:'בית שאן',          type:'city',     diff:3, lat:32.5029,lng:35.5027, region:'עמק הירדן',     pop:18000,  icon:'🏛️', fact:'בית שאן עיר עתיקה עם שכבות יישוב של 5,000 שנה. רחוב רומאי ותיאטרון שלמים.', clue:'אני עיר עתיקה בעמק הירדן עם תיאטרון רומאי שלם.'},
-  {id:'csr', name:'קיסריה',           type:'city',     diff:3, lat:32.5000,lng:34.9100, region:'שרון',          pop:4800,   icon:'🎭', fact:'קיסריה בנויה על נמל הורדוס הרומאי. אמפיתיאטרון על שפת הים עם הופעות קיץ מפורסמות.', clue:'אני אתר היסטורי עם אמפיתיאטרון על שפת הים, נמל רומאי.'},
-  {id:'rsp', name:'ראש פינה',         type:'city',     diff:3, lat:32.9685,lng:35.5407, region:'גליל עליון',   pop:3200,   icon:'🌸', fact:'ראש פינה (1882) המושבה הצפונית הראשונה בגליל. שמה מהפסוק "אבן מאסו הבונים הייתה לראש פינה".', clue:'אני המושבה הצפונית הראשונה (1882) בגליל העליון.'},
-  {id:'sdr', name:'שדרות',            type:'city',     diff:3, lat:31.5248,lng:34.5964, region:'נגב מערבי',     pop:31000,  icon:'🛡️', fact:'שדרות ידועה בעמידתה בפני ירי רקטות מעזה. "כיפת ברזל" נבחנה ופותחה בעקבותיה.', clue:'אני עיר בנגב המערבי שבה נבחנה מערכת "כיפת ברזל".'},
-  {id:'lod', name:'לוד',              type:'city',     diff:3, lat:31.9516,lng:34.8951, region:'שפלה',          pop:80000,  icon:'✈️', fact:'לוד ידועה בשדה התעופה "בן גוריון" הסמוך לה. אחת הערים העתיקות ביותר בישראל.', clue:'אני העיר שסמוך לה שדה התעופה הבינלאומי הגדול בישראל.'},
-  {id:'aad', name:'ערד',              type:'city',     diff:3, lat:31.2587,lng:35.2133, region:'נגב',           pop:25000,  icon:'🌬️', fact:'ערד שוכנת בגובה 620 מ\' בנגב. בשל אוויר יבש ונקי היא מרכז לחולי אסתמה.', clue:'אני עיר נגב גבוהה ויבשה, מקום מרפא לחולי אסתמה.'},
-  {id:'yvn', name:'יבנה',             type:'city',     diff:3, lat:31.8774,lng:34.7406, region:'שפלה',          pop:48000,  icon:'📜', fact:'יבנה חשובה בהיסטוריה היהודית: לאחר חורבן בית שני היה בה בית המדרש של רבן יוחנן בן זכאי.', clue:'אני עיר היסטורית שבה הוקם בית המדרש אחרי חורבן הבית.'},
-  {id:'kgt', name:'קריית גת',         type:'city',     diff:3, lat:31.6093,lng:34.7706, region:'שפלה',          pop:58000,  icon:'🏭', fact:'קריית גת שוכנת בשפלת יהודה. בה מפעל אינטל הישראלי – אחד הגדולים ביצרנות שבבים.', clue:'אני עיר שפלה שבה מפעל אינטל הגדול, יצרנית שבבים עולמית.'},
-  {id:'rjdn',name:'נהר הירדן',        type:'river',    diff:1, lat:32.35, lng:35.58,  region:'צפון',            len:251,   icon:'🌊', fact:'הירדן הנהר הארוך ביותר בישראל (251 ק"מ). נובע מהחרמון, עובר בכינרת, מסתיים בים המלח.', clue:'אני הנהר הארוך ביותר בישראל, נובע מהחרמון ומגיע לים המלח.'},
-  {id:'ryrk',name:'נהר הירקון',       type:'river',    diff:2, lat:32.104,lng:34.851, region:'גוש דן',          len:28,    icon:'🌿', fact:'הירקון זורם דרך תל אביב ומסתיים בים התיכון. פארק הירקון הוא ריאה ירוקה בלב העיר.', clue:'אני הנהר שזורם דרך תל אביב לים התיכון, עם פארק גדול.'},
-  {id:'rksn',name:'נהר הקישון',       type:'river',    diff:2, lat:32.810,lng:35.050, region:'עמק יזרעאל',      len:70,    icon:'🌾', fact:'הקישון זורם בעמק יזרעאל לחיפה. בתנ"ך: אליהו הנביא הרג כאן את נביאי הבעל.', clue:'אני הנהר שבו אליהו הכה נביאי הבעל, ונשפך למפרץ חיפה.'},
-  {id:'rdan',name:'נחל דן',           type:'river',    diff:3, lat:33.220,lng:35.650, region:'גליל עליון',       len:12,    icon:'💧', fact:'נחל דן אחד משלושת מקורות הירדן. נובע ממעיינות ליד מושב דן בצפון הגליל.', clue:'אני אחד ממקורות נהר הירדן, נובע ממעיינות קרירים בגליל.'},
-  {id:'ralx',name:'נחל אלכסנדר',     type:'river',    diff:3, lat:32.410,lng:34.890, region:'שרון',             len:43,    icon:'🐢', fact:'נחל אלכסנדר ידוע בצבי-הנילוס הגדולים שמגיעים לשפכו – הגדולים בעולם, עד 80 ס"מ.', clue:'אני נחל שרון המפורסם בצבי-הנילוס הגדולים בשפכו לים.'},
-  {id:'rbsr',name:'נחל הבשור',        type:'river',    diff:3, lat:31.250,lng:34.400, region:'נגב',              len:110,   icon:'🏜️', fact:'נחל הבשור הנחל הארוך ביותר בישראל (110 ק"מ), חוצה את הנגב ממזרח למערב.', clue:'אני הנחל הארוך ביותר בישראל, חוצה את הנגב לים התיכון.'},
-  {id:'fkrm',name:'יער הכרמל',        type:'forest',   diff:2, lat:32.720,lng:34.970, region:'הכרמל',            area:20000,icon:'🌲', fact:'יער הכרמל הגדול ביותר (20,000 דונם). בדצמבר 2010 פגעה שריפה עצומה שגבתה 44 נפשות.', clue:'אני היער על הר הכרמל שעבר שריפה קשה ב-2010 שגבתה 44 חיים.'},
-  {id:'fbry',name:'יער בריה',          type:'forest',   diff:3, lat:32.950,lng:35.500, region:'גליל עליון',      area:9000, icon:'🌳', fact:'יער בריה בגליל העליון שוכן סביב צפת. חלק מרצף יערות גדול של הקק"ל בגליל.', clue:'אני יער ענק בגליל שמקיף את עיר הקבלה צפת.'},
-  {id:'fbsh',name:'יער בן שמן',        type:'forest',   diff:3, lat:31.960,lng:34.950, region:'שפלה',             area:7000, icon:'🌿', fact:'יער בן שמן נטוע משנות ה-20. נקרא על שם השמן שנסחט מזיתיו ההיסטוריים.', clue:'אני יער ותיק במרכז הארץ הנקרא על שם שמן הזיתים.'},
-  {id:'fytr',name:'יער יתיר',          type:'forest',   diff:2, lat:31.380,lng:35.070, region:'נגב',              area:30000,icon:'🌵', fact:'יער יתיר הגדול ביותר בישראל (30,000 דונם). נטוע בשולי הנגב ומשמש כמחקר בינלאומי.', clue:'אני היער הגדול ביותר בישראל, נטוע בשולי המדבר.'},
-  {id:'mhrm',name:'הר חרמון',          type:'mountain', diff:1, lat:33.415,lng:35.857, region:'צפון',             elev:2814, icon:'⛷️', fact:'הר חרמון הגבוה ביותר בישראל (2,814 מ\'). בחורף מכוסה שלג ובו אתר הסקי היחיד.', clue:'אני ההר הגבוה ביותר בישראל, עם שלג בחורף ואתר סקי.'},
-  {id:'mmrn',name:'הר מירון',          type:'mountain', diff:2, lat:32.993,lng:35.431, region:'גליל עליון',      elev:1208, icon:'⛰️', fact:'הר מירון הגבוה ביותר בגבולות ישראל (1,208 מ\'). מוקד עלייה לרגל בל"ג בעומר.', clue:'אני ההר הגבוה בגבולות ישראל הרשמיים (ללא חרמון), עם קבר הרשב"י.'},
-  {id:'mtbr',name:'הר תבור',           type:'mountain', diff:2, lat:32.687,lng:35.391, region:'גליל תחתון',      elev:575,  icon:'🏔️', fact:'הר תבור הר מבודד בגליל התחתון (575 מ\'). בתנ"ך מקום קרב דבורה וברק.', clue:'אני הר מבודד בגליל התחתון עם נוף פנורמי, מקום קרב דבורה.'},
-  {id:'mkrm',name:'הר הכרמל',          type:'mountain', diff:2, lat:32.736,lng:34.987, region:'חיפה',            elev:546,  icon:'🌺', fact:'הר הכרמל רכס הרים (39 ק"מ). בתנ"ך מקום מאבק אליהו הנביא ונביאי הבעל.', clue:'אני רכס ההרים עם היער הגדול שעל גביו עיר הנמל הגדולה.'},
-  {id:'mszd',name:'מצדה',              type:'mountain', diff:1, lat:31.316,lng:35.354, region:'מדבר יהודה',      elev:40,   icon:'🏰', fact:'מצדה מצודת הורדוס על פסגת סלע. כאן בחרו הלוחמים למות ולא להיכנע לרומאים (73 לספירה).', clue:'אני מבצר עתיק על פסגה במדבר יהודה, "לא תיפול שנית".'},
-  {id:'lknr',name:'הכינרת',            type:'lake',     diff:1, lat:32.820,lng:35.584, region:'גליל',            area:166,  icon:'🏊', fact:'הכינרת האגם הגדול ביותר בישראל (166 קמ"ר) ומקור המים השותים העיקרי. מפלסה מדד לבצורת.', clue:'אני האגם הגדול ביותר בישראל ומקור המים השותים.'},
-  {id:'ldds',name:'ים המלח',           type:'lake',     diff:1, lat:31.500,lng:35.470, region:'ערבה',            area:605,  icon:'🧂', fact:'ים המלח שוכן 430 מ\' מתחת לפני הים – הנמוך ביותר בעולם. ריכוז מלח 34% מאפשר ציפה.', clue:'אני הנקודה הנמוכה ביותר בעולם, מים מלוחים שמאפשרים לצוף.'},
-  {id:'lhla',name:'אגם החולה',         type:'lake',     diff:3, lat:33.085,lng:35.610, region:'גליל עליון',      area:14,   icon:'🦩', fact:'ביצות החולה יובשו ב-1957, הוקמה שמורה ב-1993. כיום עצירה לעשרות אלפי ציפורים נודדות.', clue:'אני אגם שיובש ואוחר, שמורת טבע לציפורים נודדות בגליל.'},
-];
-
-const GK = [
-  {q:'מהו הנהר הארוך ביותר בישראל?',               a:'נהר הירדן',                opts:['נהר הירקון','נהר הירדן','נהר הקישון','נחל הבשור'],          diff:1, fact:'הירדן (251 ק"מ) הנהר הארוך ביותר. נובע מהחרמון, עובר בכינרת, מסתיים בים המלח.'},
-  {q:'מהי הנקודה הנמוכה ביותר בעולם?',              a:'ים המלח',                  opts:['הכינרת','ים המלח','עמק יזרעאל','ים סוף'],                    diff:1, fact:'ים המלח שוכן 430 מ\' מתחת לפני הים – הנמוך ביותר על פני כדור הארץ.'},
-  {q:'מהו ההר הגבוה ביותר בישראל?',                 a:'הר חרמון',                 opts:['הר מירון','הר תבור','הר חרמון','הר הכרמל'],                 diff:1, fact:'הר חרמון (2,814 מ\') הגבוה ביותר. מכוסה שלג בחורף ובו אתר הסקי.'},
-  {q:'מהו האגם הגדול ביותר בישראל?',                a:'הכינרת',                   opts:['ים המלח','אגם החולה','הכינרת','בריכת סדום'],                 diff:1, fact:'הכינרת (166 קמ"ר) האגם הגדול ביותר ומקור המים השותים העיקרי.'},
-  {q:'כמה מדינות גובלות בישראל?',                   a:'4',                        opts:['3','4','5','6'],                                            diff:1, fact:'ישראל גובלת עם ארבע מדינות: לבנון, סוריה, ירדן ומצרים.'},
-  {q:'מהי בירת ישראל?',                             a:'ירושלים',                  opts:['תל אביב','ירושלים','חיפה','באר שבע'],                       diff:1, fact:'ירושלים היא בירת ישראל ומשמשת כמרכז השלטוני של המדינה.'},
-  {q:'מי נקראת "אם המושבות"?',                      a:'פתח תקווה',                opts:['זכרון יעקב','ראשון לציון','פתח תקווה','ראש פינה'],          diff:2, fact:'פתח תקווה (1878) "אם המושבות" – המושבה הציונית הראשונה.'},
-  {q:'מה מיוחד בים המלח?',                          a:'ניתן לצוף בו ללא מאמץ',   opts:['הוא הים החם ביותר','יש בו דגים ייחודיים','ניתן לצוף בו ללא מאמץ','הוא הים הגדול ביותר'], diff:1, fact:'ריכוז המלח (34%) בים המלח גבוה פי 10 מהים, ולכן הגוף צף ללא מאמץ.'},
-  {q:'מהי "בירת הנגב"?',                            a:'באר שבע',                  opts:['אילת','דימונה','ערד','באר שבע'],                            diff:1, fact:'באר שבע "בירת הנגב". בה אוניברסיטת בן-גוריון ומרכז הנגב.'},
-  {q:'מהי העיר הדרומית ביותר בישראל?',              a:'אילת',                     opts:['ערד','דימונה','אילת','מצפה רמון'],                           diff:1, fact:'אילת שוכנת בקצה הדרומי של ישראל על שפת ים סוף.'},
-  {q:'מהי העיר הצפונית ביותר בישראל?',              a:'קריית שמונה',              opts:['נהריה','קריית שמונה','צפת','עכו'],                           diff:2, fact:'קריית שמונה היא העיר הצפונית ביותר, שוכנת בעמק החולה.'},
-  {q:'ליד איזה שדה תעופה נמצאת העיר לוד?',         a:'שדה תעופה בן גוריון',     opts:['נמל תעופה הרצליה','שדה תעופה בן גוריון','שדה דב','נמל חיפה'], diff:2, fact:'שדה התעופה הבינלאומי "בן גוריון" נמצא בין לוד לבן גוריון.'},
-  {q:'מהו הנחל הארוך ביותר בישראל?',               a:'נחל הבשור',                opts:['נחל שורק','נחל אלכסנדר','נחל הבשור','נחל קישון'],            diff:2, fact:'נחל הבשור (110 ק"מ) הארוך ביותר, חוצה את הנגב ממזרח למערב.'},
-  {q:'מהו היער הגדול ביותר בישראל?',               a:'יער יתיר',                 opts:['יער הכרמל','יער בן שמן','יער יתיר','יער בריה'],              diff:2, fact:'יער יתיר (30,000 דונם) הגדול ביותר, נטוע בשולי הנגב.'},
-  {q:'על שפת איזה גוף מים שוכנת טבריה?',          a:'הכינרת',                   opts:['נהר הירדן','ים המלח','הכינרת','ים התיכון'],                  diff:2, fact:'טבריה שוכנת על חוף הכינרת (ים כינרת) בגליל.'},
-  {q:'מהי העיר הידועה כ"עיר היהלומים"?',           a:'נתניה',                    opts:['אשדוד','הרצליה','נתניה','רחובות'],                           diff:2, fact:'נתניה "עיר היהלומים" בגלל תעשיית צחצוח יהלומים שפרחה בה.'},
-  {q:'מאיזה הר יוצא אתר הסקי היחיד בישראל?',       a:'הר חרמון',                 opts:['הר מירון','הר הכרמל','הר תבור','הר חרמון'],                 diff:1, fact:'אתר הסקי "חרמון" היחיד בישראל, פועל בחורף על מדרונות החרמון.'},
-  {q:'מה מיוחד בנחל אלכסנדר?',                    a:'צבי הנילוס הגדולים',       opts:['לוויתנים','צבי הנילוס הגדולים','כרישים','סרטנים גדולים'],    diff:3, fact:'בשפך נחל אלכסנדר מגיעים צבי-נילוס גדולים – הגדולים בעולם, עד 80 ס"מ.'},
-  {q:'מהי הסיבה לפרסום מצדה?',                    a:'הלוחמים בחרו למות ולא להיכנע', opts:['עם אוצרות גנוזים','הלוחמים בחרו למות ולא להיכנע','קרב אלכסנדר הגדול','ניצחון מול הפרסים'], diff:3, fact:'ב-73 לספירה בחרו הלוחמים היהודים במצדה למות ולא להיכנע לרומאים.'},
-  {q:'איזו עיר נקראת "עיר האמנים"?',              a:'צפת',                      opts:['עכו','ירושלים','צפת','כרמיאל'],                             diff:2, fact:'צפת ידועה כ"עיר האמנים" בשל גלריות רבות ואמנים שהתיישבו בה.'},
-  {q:'מתי נוסדה פתח תקווה?',                      a:'1878',                     opts:['1860','1878','1900','1920'],                                diff:3, fact:'פתח תקווה נוסדה ב-1878, שנתיים לפני ראשון לציון.'},
-  {q:'מהי העיר שבה מרכז מחקר מכון ויצמן?',        a:'רחובות',                   opts:['ירושלים','תל אביב','רחובות','חיפה'],                        diff:3, fact:'מכון ויצמן למדע שוכן ברחובות ומשמש כמרכז מחקר בין-לאומי.'},
-  {q:'מה גובהו של הר חרמון?',                     a:'2,814 מ\'',                opts:['1,208 מ\'','1,750 מ\'','2,814 מ\'','3,500 מ\''],             diff:3, fact:'הר חרמון מגיע ל-2,814 מ\' ומכוסה שלג כ-4 חודשים בשנה.'},
-  {q:'מה ידוע ביחודו של יער יתיר?',               a:'יער מדברי ייחודי בנגב',   opts:['יער הגשמים הגדול','יער מדברי ייחודי בנגב','יער העצים הגבוהים','יער ים התיכון הגדול'], diff:3, fact:'יער יתיר הוא מחקר ייחודי בעולם – גידול יער בשטח צחיח-מדברי.'},
-  {q:'איזה נהר נובע ממעיינות ליד מושב דן?',       a:'נחל דן',                   opts:['נהר הירדן','נחל דן','נהר הירקון','נחל הבשור'],              diff:3, fact:'נחל דן נובע ממעיינות טבעיים עשירים ומהווה אחד ממקורות נהר הירדן.'},
-];
-
-const TOTAL = 10;
-let gMode = 'map', gDiff = 1;
-let score = 0, qNum = 0, usedIds = [], answered = false;
-let currentLoc = null, currentGK = null, currentOpts = [];
-let breakdown = {correct:0, wrong:0, byType:{}};
-let leafMap, curMarker;
-
-function pickMode(el) {
-  document.querySelectorAll('.mode-card').forEach(c => c.classList.remove('selected'));
-  el.classList.add('selected');
-  gMode = el.dataset.mode;
-}
-function pickDiff(el) {
-  document.querySelectorAll('.diff-pill').forEach(p => p.classList.remove('selected'));
-  el.classList.add('selected');
-  gDiff = +el.dataset.diff;
+// SVG coordinate conversion (must match Python above)
+function toXY(lat,lng){
+  const minLat=29.0,maxLat=33.95,minLng=33.75,maxLng=36.35,W=300,H=565;
+  return [+((lng-minLng)/(maxLng-minLng)*W).toFixed(1),
+          +((maxLat-lat)/(maxLat-minLat)*H).toFixed(1)];
 }
 
-function startGame() {
-  score = 0; qNum = 0; usedIds = [];
-  breakdown = {correct:0, wrong:0, byType:{}};
-  document.getElementById('menuScreen').style.display    = 'none';
-  document.getElementById('resultsScreen').style.display = 'none';
-  document.getElementById('gameScreen').style.display    = 'block';
-  document.getElementById('hdrStats').style.display      = 'flex';
-  document.getElementById('qTot').textContent            = TOTAL;
-  const modeNames = {map:'📍 מפה', clue:'💡 רמז', gk:'🧠 ידע כללי'};
-  document.getElementById('modeBadge').textContent = modeNames[gMode];
-  if (!leafMap) initLeaflet(); else leafMap.invalidateSize();
-  const mapEl = document.getElementById('map');
-  if (gMode === 'gk') mapEl.classList.add('map-small');
-  else mapEl.classList.remove('map-small');
+const LOCATIONS=[{id:'tlv',name:'תל אביב-יפו',type:'city',diff:1,lat:32.0853,lng:34.7818,region:'גוש דן',pop:467000,icon:'🏙️',fact:'תל אביב הייתה העיר העברית הראשונה בעולם (1909). כיום מרכז טכנולוגיה, תרבות ועסקים.',clue:'אני העיר שנוסדה ב-1909 כ"גן בעיר" ליד יפו העתיקה.'},{id:'jlm',name:'ירושלים',type:'city',diff:1,lat:31.7683,lng:35.2137,region:'ירושלים',pop:936000,icon:'🏛️',fact:'ירושלים בירת ישראל, עיר קדושה לשלוש הדתות. הכותל המערבי ומסגד אל-אקצה נמצאים בה.',clue:'אני בירת ישראל, עיר קדושה לשלוש דתות עם הכותל המערבי.'},{id:'hfa',name:'חיפה',type:'city',diff:1,lat:32.794,lng:34.9896,region:'חיפה',pop:290000,icon:'⚓',fact:'חיפה עיר הנמל הגדולה, שוכנת על הר הכרמל. גני הבהאי המרהיבים נכללים ברשימת אונסקו.',clue:'אני עיר הנמל הצפונית עם גני הבהאי ומפרץ יפהפה.'},{id:'bsh',name:'באר שבע',type:'city',diff:1,lat:31.2518,lng:34.7915,region:'הנגב',pop:213000,icon:'🐪',fact:'באר שבע "בירת הנגב", מרכזת תעשייה ואוניברסיטת בן-גוריון. בתנ"ך גבול ישראל הדרומי.',clue:'אני "בירת הנגב", עם אוניברסיטה חשובה, בדרום ישראל.'},{id:'asd',name:'אשדוד',type:'city',diff:1,lat:31.8044,lng:34.6553,region:'שפלה',pop:240000,icon:'🚢',fact:'אשדוד בנויה על דיונות חול. כ-70% מהסחורות הנכנסות לישראל עוברות דרך הנמל שלה.',clue:'אני עיר הנמל הגדולה, 70% מסחורות ישראל עוברות בי.'},{id:'ntn',name:'נתניה',type:'city',diff:1,lat:32.3215,lng:34.8532,region:'שרון',pop:220000,icon:'🏖️',fact:'נתניה "עיר היהלומים" בשל תעשיית הצחצוח. ידועה בחופיה הנפלאים על הים התיכון.',clue:'אני "עיר היהלומים", עיר חוף יפה בשרון הצפוני.'},{id:'r1z',name:'ראשון לציון',type:'city',diff:1,lat:31.9642,lng:34.8044,region:'גוש דן',pop:263000,icon:'🍇',fact:'ראשון לציון (1882) אחת המושבות הציוניות הראשונות. שמה מהפסוק "ראשון לציון הנה הנם".',clue:'אני מושבה ציונית מ-1882, שמי לקוח מפסוק בישעיהו.'},{id:'ptk',name:'פתח תקווה',type:'city',diff:1,lat:32.084,lng:34.8878,region:'גוש דן',pop:260000,icon:'🌾',fact:'פתח תקווה (1878) "אם המושבות" – המושבה הציונית הראשונה בארץ ישראל.',clue:'אני "אם המושבות", המושבה הציונית הראשונה (1878).'},{id:'akl',name:'אשקלון',type:'city',diff:1,lat:31.6688,lng:34.5743,region:'שפלה דרומית',pop:148000,icon:'🏺',fact:'אשקלון אחת הערים הקדומות בעולם. פארק לאומי בה עם שרידי כנענים ופלשתים.',clue:'אני עיר חוף עתיקה בדרום, עם שרידי פלשתים ופארק לאומי.'},{id:'hzl',name:'הרצליה',type:'city',diff:1,lat:32.164,lng:34.8435,region:'שרון',pop:97000,icon:'💻',fact:'הרצליה "עמק הסיליקון הישראלי" בשל ריכוז חברות הייטק גדולות בפארקי התעשייה שלה.',clue:'אני "סיליקון ואדי" ישראלי, מרכז חברות ההייטק הגדולות.'},{id:'nzr',name:'נצרת',type:'city',diff:2,lat:32.6996,lng:35.3035,region:'גליל תחתון',pop:78000,icon:'⛪',fact:'נצרת מרכז הנצרות הגדול בישראל, עם כנסיית הבשורה הגדולה ביותר במזרח התיכון.',clue:'אני עיר הגליל הערבית הגדולה, עם כנסיית הבשורה החשובה.'},{id:'akk',name:'עכו',type:'city',diff:2,lat:32.9231,lng:35.0818,region:'גליל מערבי',pop:50000,icon:'🏰',fact:'עכו נמל עתיקה על חוף הים. מצודת הצלבנים ומנהרותיה נכללות ברשימת מורשת אונסקו.',clue:'אני עיר נמל עתיקה עם חומות ומנהרות צלבניות, אתר אונסקו.'},{id:'tbr',name:'טבריה',type:'city',diff:2,lat:32.794,lng:35.5302,region:'גליל',pop:45000,icon:'🎣',fact:'טבריה שוכנת על חוף הכינרת. אחת מארבע הערים הקדושות ביהדות, ובה קבורת הרמב"ם.',clue:'אני עיר על חוף הכינרת, אחת מארבע הקדושות ביהדות.'},{id:'sfd',name:'צפת',type:'city',diff:2,lat:32.9634,lng:35.4959,region:'גליל עליון',pop:34000,icon:'🎨',fact:'צפת עיר הקבלה ועיר האמנים. בה הוקם הדפוס הראשון בארץ ישראל (1577), בגובה 900 מ\'.',clue:'אני עיר הקבלה ועיר האמנים בגליל העליון.'},{id:'ksh',name:'קריית שמונה',type:'city',diff:2,lat:33.2074,lng:35.5695,region:'גליל עליון',pop:24000,icon:'🏔️',fact:'קריית שמונה העיר הצפונית ביותר בישראל, שוכנת בעמק החולה ליד הגבול הלבנוני.',clue:'אני העיר הצפונית ביותר בישראל, בעמק החולה.'},{id:'elt',name:'אילת',type:'city',diff:2,lat:29.5577,lng:34.9519,region:'ערבה',pop:53000,icon:'🐠',fact:'אילת העיר הדרומית ביותר בישראל, על חוף ים סוף. מפורסמת בשוניות האלמוגים.',clue:'אני העיר הדרומית ביותר בישראל, בחוף ים סוף.'},{id:'nhr',name:'נהריה',type:'city',diff:2,lat:33.0046,lng:35.0978,region:'גליל מערבי',pop:62000,icon:'🌊',fact:'נהריה עיר חוף בצפון, שמה לקוח מנחל הגעתון הזורם במרכזה ישר לים.',clue:'אני עיר חוף צפונית, ונחל זורם דרכי ישר לים.'},{id:'dim',name:'דימונה',type:'city',diff:2,lat:31.069,lng:35.0316,region:'הנגב',pop:36000,icon:'🏜️',fact:'דימונה שוכנת בנגב הצפוני, ידועה בשל הכור הגרעיני "קריה למחקר גרעיני" הסמוך.',clue:'אני עיר נגב הידועה בכור הגרעיני הסמוך לה.'},{id:'mrm',name:'מצפה רמון',type:'city',diff:2,lat:30.6129,lng:34.8004,region:'הנגב',pop:6000,icon:'🦅',fact:'מצפה רמון שוכנת על שפת מכתש רמון – המכתש הגדול בעולם (40 ק"מ אורך).',clue:'אני יישוב על שפת המכתש הגדול בעולם, בנגב.'},{id:'krm',name:'כרמיאל',type:'city',diff:2,lat:32.9149,lng:35.2963,region:'גליל תחתון',pop:51000,icon:'🕺',fact:'כרמיאל ידועה בפסטיבל המחול הבינלאומי השנתי – אחד הגדולים בעולם.',clue:'אני עיר הגליל הידועה בפסטיבל המחול הבינלאומי הגדול.'},{id:'mdn',name:'מודיעין',type:'city',diff:2,lat:31.8969,lng:35.0108,region:'שפלה',pop:100000,icon:'🏘️',fact:'מודיעין-מכבים-רעות נוסדה ב-1993. גדלה במהירות והיום עיר מרכזית בין ירושלים לתל אביב.',clue:'אני עיר חדשה (1993) בין ירושלים לתל אביב.'},{id:'rhv',name:'רחובות',type:'city',diff:2,lat:31.8928,lng:34.8113,region:'שפלה',pop:125000,icon:'🔬',fact:'רחובות (1890) מרכזת מוסדות מחקר, ובה מכון ויצמן למדע – אחד החשובים בעולם.',clue:'אני עיר שבה מכון ויצמן למדע, ידועה כעיר מחקר.'},{id:'zky',name:'זכרון יעקב',type:'city',diff:3,lat:32.5735,lng:34.9497,region:'כרמל',pop:23000,icon:'🍷',fact:'זכרון יעקב (1882) מושבה ותיקה. בית רוטשילד תמך ביישובה. ידועה ביקב "כרמל" העתיק.',clue:'אני מושבה ותיקה על הכרמל שבית רוטשילד מימן אותה.'},{id:'bts',name:'בית שאן',type:'city',diff:3,lat:32.5029,lng:35.5027,region:'עמק הירדן',pop:18000,icon:'🏛️',fact:'בית שאן עיר עתיקה עם שכבות יישוב של 5,000 שנה. רחוב רומאי ותיאטרון שלמים.',clue:'אני עיר עתיקה בעמק הירדן עם תיאטרון רומאי שלם.'},{id:'csr',name:'קיסריה',type:'city',diff:3,lat:32.5,lng:34.91,region:'שרון',pop:4800,icon:'🎭',fact:'קיסריה בנויה על נמל הורדוס הרומאי. אמפיתיאטרון על שפת הים עם הופעות קיץ.',clue:'אני אתר היסטורי עם אמפיתיאטרון על שפת הים, נמל רומאי.'},{id:'rsp',name:'ראש פינה',type:'city',diff:3,lat:32.9685,lng:35.5407,region:'גליל עליון',pop:3200,icon:'🌸',fact:'ראש פינה (1882) המושבה הצפונית הראשונה בגליל. שמה מהפסוק "אבן מאסו הבונים".',clue:'אני המושבה הצפונית הראשונה (1882) בגליל העליון.'},{id:'sdr',name:'שדרות',type:'city',diff:3,lat:31.5248,lng:34.5964,region:'נגב מערבי',pop:31000,icon:'🛡️',fact:'שדרות ידועה בעמידתה בפני ירי רקטות מעזה. "כיפת ברזל" נבחנה ופותחה בעקבותיה.',clue:'אני עיר בנגב המערבי שבה נבחנה מערכת "כיפת ברזל".'},{id:'lod',name:'לוד',type:'city',diff:3,lat:31.9516,lng:34.8951,region:'שפלה',pop:80000,icon:'✈️',fact:'לוד ידועה בשדה התעופה "בן גוריון" הסמוך לה. אחת הערים העתיקות ביותר בישראל.',clue:'אני העיר שסמוך לה שדה התעופה הבינלאומי הגדול בישראל.'},{id:'aad',name:'ערד',type:'city',diff:3,lat:31.2587,lng:35.2133,region:'נגב',pop:25000,icon:'🌬️',fact:'ערד שוכנת בגובה 620 מ\' בנגב. בשל אוויר יבש ונקי היא מרכז לחולי אסתמה.',clue:'אני עיר נגב גבוהה ויבשה, מקום מרפא לחולי אסתמה.'},{id:'kgt',name:'קריית גת',type:'city',diff:3,lat:31.6093,lng:34.7706,region:'שפלה',pop:58000,icon:'🏭',fact:'קריית גת שוכנת בשפלת יהודה. בה מפעל אינטל הישראלי – אחד הגדולים ביצרנות שבבים.',clue:'אני עיר שפלה שבה מפעל אינטל הגדול, יצרנית שבבים עולמית.'},{id:'rjdn',name:'נהר הירדן',type:'river',diff:1,lat:32.35,lng:35.58,region:'צפון',pop:null,icon:'🌊',fact:'הירדן הנהר הארוך ביותר בישראל (251 ק"מ). נובע מהחרמון, עובר בכינרת, מסתיים בים המלח.',clue:'אני הנהר הארוך ביותר בישראל, נובע מהחרמון ומגיע לים המלח.'},{id:'ryrk',name:'נהר הירקון',type:'river',diff:2,lat:32.104,lng:34.851,region:'גוש דן',pop:null,icon:'🌿',fact:'הירקון זורם דרך תל אביב ומסתיים בים התיכון. פארק הירקון הוא ריאה ירוקה בלב העיר.',clue:'אני הנהר שזורם דרך תל אביב לים התיכון, עם פארק גדול.'},{id:'rksn',name:'נהר הקישון',type:'river',diff:2,lat:32.81,lng:35.05,region:'עמק יזרעאל',pop:null,icon:'🌾',fact:'הקישון זורם בעמק יזרעאל לחיפה. בתנ"ך: אליהו הנביא הרג כאן את נביאי הבעל.',clue:'אני הנהר שבו אליהו הכה נביאי הבעל, ונשפך למפרץ חיפה.'},{id:'rbsr',name:'נחל הבשור',type:'river',diff:3,lat:31.25,lng:34.4,region:'נגב',pop:null,icon:'🏜️',fact:'נחל הבשור הנחל הארוך ביותר בישראל (110 ק"מ), חוצה את הנגב ממזרח למערב.',clue:'אני הנחל הארוך ביותר בישראל, חוצה את הנגב לים התיכון.'},{id:'fkrm',name:'יער הכרמל',type:'forest',diff:2,lat:32.72,lng:34.97,region:'הכרמל',pop:null,icon:'🌲',fact:'יער הכרמל הגדול ביותר (20,000 דונם). בדצמבר 2010 פגעה שריפה עצומה שגבתה 44 נפשות.',clue:'אני היער על הר הכרמל שעבר שריפה קשה ב-2010 שגבתה 44 חיים.'},{id:'fytr',name:'יער יתיר',type:'forest',diff:2,lat:31.38,lng:35.07,region:'נגב',pop:null,icon:'🌵',fact:'יער יתיר הגדול ביותר בישראל (30,000 דונם). נטוע בשולי הנגב ומשמש כמחקר בינלאומי.',clue:'אני היער הגדול ביותר בישראל, נטוע בשולי המדבר.'},{id:'mhrm',name:'הר חרמון',type:'mountain',diff:1,lat:33.415,lng:35.857,region:'צפון',pop:null,icon:'⛷️',fact:'הר חרמון הגבוה ביותר בישראל (2,814 מ\'). בחורף מכוסה שלג ובו אתר הסקי היחיד.',clue:'אני ההר הגבוה ביותר בישראל, עם שלג בחורף ואתר סקי.'},{id:'mmrn',name:'הר מירון',type:'mountain',diff:2,lat:32.993,lng:35.431,region:'גליל עליון',pop:null,icon:'⛰️',fact:'הר מירון הגבוה ביותר בגבולות ישראל (1,208 מ\'). מוקד עלייה לרגל בל"ג בעומר.',clue:'אני ההר הגבוה בגבולות ישראל הרשמיים (ללא חרמון), עם קבר הרשב"י.'},{id:'mtbr',name:'הר תבור',type:'mountain',diff:2,lat:32.687,lng:35.391,region:'גליל תחתון',pop:null,icon:'🏔️',fact:'הר תבור הר מבודד בגליל התחתון (575 מ\'). בתנ"ך מקום קרב דבורה וברק.',clue:'אני הר מבודד בגליל התחתון עם נוף פנורמי, מקום קרב דבורה.'},{id:'mszd',name:'מצדה',type:'mountain',diff:1,lat:31.316,lng:35.354,region:'מדבר יהודה',pop:null,icon:'🏰',fact:'מצדה מצודת הורדוס על פסגת סלע. כאן בחרו הלוחמים למות ולא להיכנע לרומאים (73 לספירה).',clue:'אני מבצר עתיק על פסגה במדבר יהודה, "לא תיפול שנית".'},{id:'lknr',name:'הכינרת',type:'lake',diff:1,lat:32.82,lng:35.584,region:'גליל',pop:null,icon:'🏊',fact:'הכינרת האגם הגדול ביותר בישראל (166 קמ"ר) ומקור המים השותים העיקרי. מפלסה מדד לבצורת.',clue:'אני האגם הגדול ביותר בישראל ומקור המים השותים.'},{id:'ldds',name:'ים המלח',type:'lake',diff:1,lat:31.5,lng:35.47,region:'ערבה',pop:null,icon:'🧂',fact:'ים המלח שוכן 430 מ\' מתחת לפני הים – הנמוך ביותר בעולם. ריכוז מלח 34% מאפשר ציפה.',clue:'אני הנקודה הנמוכה ביותר בעולם, מים מלוחים שמאפשרים לצוף.'},{id:'lhla',name:'אגם החולה',type:'lake',diff:3,lat:33.085,lng:35.61,region:'גליל עליון',pop:null,icon:'🦩',fact:'ביצות החולה יובשו ב-1957, הוקמה שמורה ב-1993. כיום עצירה לעשרות אלפי ציפורים נודדות.',clue:'אני אגם שיובש ואוחר, שמורת טבע לציפורים נודדות בגליל.'}];
+const GK=[{q:'מהו הנהר הארוך ביותר בישראל?',a:'נהר הירדן',opts:['נהר הירקון','נהר הירדן','נהר הקישון','נחל הבשור'],diff:1,fact:'הירדן (251 ק"מ) הנהר הארוך ביותר. נובע מהחרמון, עובר בכינרת, מסתיים בים המלח.'},{q:'מהי הנקודה הנמוכה ביותר בעולם?',a:'ים המלח',opts:['הכינרת','ים המלח','עמק יזרעאל','ים סוף'],diff:1,fact:'ים המלח שוכן 430 מ\' מתחת לפני הים – הנמוך ביותר על פני כדור הארץ.'},{q:'מהו ההר הגבוה ביותר בישראל?',a:'הר חרמון',opts:['הר מירון','הר תבור','הר חרמון','הר הכרמל'],diff:1,fact:'הר חרמון (2,814 מ\') הגבוה ביותר. מכוסה שלג בחורף ובו אתר הסקי.'},{q:'מהו האגם הגדול ביותר בישראל?',a:'הכינרת',opts:['ים המלח','אגם החולה','הכינרת','בריכת סדום'],diff:1,fact:'הכינרת (166 קמ"ר) האגם הגדול ביותר ומקור המים השותים העיקרי.'},{q:'כמה מדינות גובלות בישראל?',a:'4',opts:['3','4','5','6'],diff:1,fact:'ישראל גובלת עם ארבע מדינות: לבנון, סוריה, ירדן ומצרים.'},{q:'מהי בירת ישראל?',a:'ירושלים',opts:['תל אביב','ירושלים','חיפה','באר שבע'],diff:1,fact:'ירושלים היא בירת ישראל ומשמשת כמרכז השלטוני של המדינה.'},{q:'מי נקראת "אם המושבות"?',a:'פתח תקווה',opts:['זכרון יעקב','ראשון לציון','פתח תקווה','ראש פינה'],diff:2,fact:'פתח תקווה (1878) "אם המושבות" – המושבה הציונית הראשונה.'},{q:'מה מיוחד בים המלח?',a:'ניתן לצוף בו ללא מאמץ',opts:['הוא הים החם ביותר','יש בו דגים ייחודיים','ניתן לצוף בו ללא מאמץ','הוא הים הגדול ביותר'],diff:1,fact:'ריכוז המלח (34%) בים המלח גבוה פי 10 מהים, ולכן הגוף צף ללא מאמץ.'},{q:'מהי "בירת הנגב"?',a:'באר שבע',opts:['אילת','דימונה','ערד','באר שבע'],diff:1,fact:'באר שבע "בירת הנגב". בה אוניברסיטת בן-גוריון ומרכז הנגב.'},{q:'מהי העיר הדרומית ביותר בישראל?',a:'אילת',opts:['ערד','דימונה','אילת','מצפה רמון'],diff:1,fact:'אילת שוכנת בקצה הדרומי של ישראל על שפת ים סוף.'},{q:'מהי העיר הצפונית ביותר בישראל?',a:'קריית שמונה',opts:['נהריה','קריית שמונה','צפת','עכו'],diff:2,fact:'קריית שמונה היא העיר הצפונית ביותר, שוכנת בעמק החולה.'},{q:'ליד איזה שדה תעופה נמצאת העיר לוד?',a:'שדה תעופה בן גוריון',opts:['נמל תעופה הרצליה','שדה תעופה בן גוריון','שדה דב','נמל חיפה'],diff:2,fact:'שדה התעופה הבינלאומי "בן גוריון" נמצא בין לוד לבן גוריון.'},{q:'מהו הנחל הארוך ביותר בישראל?',a:'נחל הבשור',opts:['נחל שורק','נחל אלכסנדר','נחל הבשור','נחל קישון'],diff:2,fact:'נחל הבשור (110 ק"מ) הארוך ביותר, חוצה את הנגב ממזרח למערב.'},{q:'מהו היער הגדול ביותר בישראל?',a:'יער יתיר',opts:['יער הכרמל','יער בן שמן','יער יתיר','יער בריה'],diff:2,fact:'יער יתיר (30,000 דונם) הגדול ביותר, נטוע בשולי הנגב.'},{q:'על שפת איזה גוף מים שוכנת טבריה?',a:'הכינרת',opts:['נהר הירדן','ים המלח','הכינרת','ים התיכון'],diff:2,fact:'טבריה שוכנת על חוף הכינרת (ים כינרת) בגליל.'},{q:'מהי העיר הידועה כ"עיר היהלומים"?',a:'נתניה',opts:['אשדוד','הרצליה','נתניה','רחובות'],diff:2,fact:'נתניה "עיר היהלומים" בגלל תעשיית צחצוח יהלומים שפרחה בה.'},{q:'מאיזה הר יוצא אתר הסקי היחיד בישראל?',a:'הר חרמון',opts:['הר מירון','הר הכרמל','הר תבור','הר חרמון'],diff:1,fact:'אתר הסקי "חרמון" היחיד בישראל, פועל בחורף על מדרונות החרמון.'},{q:'מהי הסיבה לפרסום מצדה?',a:'הלוחמים בחרו למות ולא להיכנע',opts:['עם אוצרות גנוזים','הלוחמים בחרו למות ולא להיכנע','קרב אלכסנדר','ניצחון על הפרסים'],diff:3,fact:'ב-73 לספירה בחרו הלוחמים היהודים במצדה למות ולא להיכנע לרומאים.'},{q:'איזו עיר נקראת "עיר האמנים"?',a:'צפת',opts:['עכו','ירושלים','צפת','כרמיאל'],diff:2,fact:'צפת ידועה כ"עיר האמנים" בשל גלריות רבות ואמנים שהתיישבו בה.'},{q:'מתי נוסדה פתח תקווה?',a:'1878',opts:['1860','1878','1900','1920'],diff:3,fact:'פתח תקווה נוסדה ב-1878, שנתיים לפני ראשון לציון.'},{q:'מהי העיר שבה מרכז מחקר מכון ויצמן?',a:'רחובות',opts:['ירושלים','תל אביב','רחובות','חיפה'],diff:3,fact:'מכון ויצמן למדע שוכן ברחובות ומשמש כמרכז מחקר בין-לאומי.'},{q:'מה גובהו של הר חרמון?',a:'2,814 מ\'',opts:['1,208 מ\'','1,750 מ\'','2,814 מ\'','3,500 מ\''],diff:3,fact:'הר חרמון מגיע ל-2,814 מ\' ומכוסה שלג כ-4 חודשים בשנה.'},{q:'מה ידוע ביחודו של יער יתיר?',a:'יער מדברי ייחודי בנגב',opts:['יער הגשמים הגדול','יער מדברי ייחודי בנגב','יער העצים הגבוהים','יער ים התיכון הגדול'],diff:3,fact:'יער יתיר הוא מחקר ייחודי בעולם – גידול יער בשטח צחיח-מדברי.'},{q:'איזה נהר נובע ממעיינות ליד מושב דן?',a:'נחל דן',opts:['נהר הירדן','נחל דן','נהר הירקון','נחל הבשור'],diff:3,fact:'נחל דן נובע ממעיינות טבעיים עשירים ומהווה אחד ממקורות נהר הירדן.'},{q:'מהו ריכוז המלח בים המלח?',a:'כ-34%',opts:['כ-5%','כ-15%','כ-34%','כ-60%'],diff:3,fact:'ריכוז המלח בים המלח עומד על כ-34%, פי עשרה מהים הרגיל.'}];
+
+const TOTAL=10;
+let gMode='map',gDiff=1,score=0,qNum=0,usedIds=[],answered=false;
+let currentLoc=null,currentGK=null;
+let breakdown={correct:0,wrong:0,byType:{}};
+
+function pickMode(el){document.querySelectorAll('.mode-card').forEach(c=>c.classList.remove('selected'));el.classList.add('selected');gMode=el.dataset.mode;}
+function pickDiff(el){document.querySelectorAll('.diff-pill').forEach(p=>p.classList.remove('selected'));el.classList.add('selected');gDiff=+el.dataset.diff;}
+
+function startGame(){
+  score=0;qNum=0;usedIds=[];breakdown={correct:0,wrong:0,byType:{}};
+  document.getElementById('menuScreen').style.display='none';
+  document.getElementById('resultsScreen').style.display='none';
+  document.getElementById('gameScreen').style.display='block';
+  document.getElementById('hdrStats').style.display='flex';
+  document.getElementById('qTot').textContent=TOTAL;
+  document.getElementById('modeBadge').textContent={map:'📍 מפה',clue:'💡 רמז',gk:'🧠 ידע כללי'}[gMode];
+  const mw=document.getElementById('mapWrap');
+  if(gMode==='gk')mw.classList.add('map-hidden'); else mw.classList.remove('map-hidden');
   nextQuestion();
 }
 
-function initLeaflet() {
-  leafMap = L.map('map', {zoomControl:true, minZoom:6, maxZoom:13, attributionControl:true});
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-    {attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>', subdomains:'abcd', maxZoom:20}).addTo(leafMap);
-  leafMap.fitBounds([[29.2,33.9],[33.6,36.2]]);
+function clearActiveDots(){
+  document.querySelectorAll('.city-dot').forEach(d=>{
+    d.style.display='none';d.classList.remove('active','revealed');
+  });
+  document.getElementById('revealLabel').innerHTML='';
 }
 
-function nextQuestion() {
-  if (qNum >= TOTAL) { showResults(); return; }
-  qNum++;
-  answered = false;
-  document.getElementById('scoreVal').textContent = score;
-  document.getElementById('qNum').textContent     = qNum;
-  document.getElementById('progFill').style.width = ((qNum-1)/TOTAL*100)+'%';
-  document.getElementById('feedback').innerHTML   = '';
-  if (curMarker) { curMarker.remove(); curMarker = null; }
-  if (gMode === 'gk') buildGKQuestion();
-  else buildLocationQuestion();
+function nextQuestion(){
+  if(qNum>=TOTAL){showResults();return;}
+  qNum++;answered=false;
+  document.getElementById('scoreVal').textContent=score;
+  document.getElementById('qNum').textContent=qNum;
+  document.getElementById('progFill').style.width=((qNum-1)/TOTAL*100)+'%';
+  document.getElementById('feedback').innerHTML='';
+  clearActiveDots();
+  if(gMode==='gk')buildGKQ(); else buildLocQ();
 }
 
-function buildGKQuestion() {
-  document.getElementById('clueBox').style.display = 'none';
-  const pool = GK.filter(q => q.diff <= gDiff && !usedIds.includes(q.q));
-  if (!pool.length) { usedIds = []; buildGKQuestion(); return; }
-  currentGK = pool[Math.floor(Math.random()*pool.length)];
+function buildGKQ(){
+  document.getElementById('clueBox').style.display='none';
+  const pool=GK.filter(q=>q.diff<=gDiff&&!usedIds.includes(q.q));
+  if(!pool.length){usedIds=[];buildGKQ();return;}
+  currentGK=pool[Math.floor(Math.random()*pool.length)];
   usedIds.push(currentGK.q);
-  document.getElementById('questionText').textContent = '🧠 '+currentGK.q;
-  buildButtons(currentGK.opts, currentGK.a, 4);
+  document.getElementById('questionText').textContent='🧠 '+currentGK.q;
+  buildButtons(currentGK.opts,currentGK.a,4);
 }
 
-function buildLocationQuestion() {
-  const pool = LOCATIONS.filter(l => l.diff <= gDiff && !usedIds.includes(l.id));
-  if (pool.length < 3) { usedIds = []; buildLocationQuestion(); return; }
-  const idx = Math.floor(Math.random()*pool.length);
-  currentLoc = pool[idx];
-  usedIds.push(currentLoc.id);
-  if (gMode === 'map') {
-    document.getElementById('clueBox').style.display = 'none';
-    document.getElementById('questionText').textContent = '📍 מהו שמו של המקום המהבהב על המפה?';
-    placeMarker(currentLoc);
-    leafMap.flyToBounds(L.latLng(currentLoc.lat,currentLoc.lng).toBounds(80000),{maxZoom:8,animate:true,duration:.8});
-  } else {
-    document.getElementById('clueBox').style.display = 'block';
-    document.getElementById('clueBox').innerHTML = '<strong>רמז:</strong> '+currentLoc.clue;
-    document.getElementById('questionText').textContent = '💡 מהו שמו של המקום?';
+function buildLocQ(){
+  const pool=LOCATIONS.filter(l=>l.diff<=gDiff&&!usedIds.includes(l.id));
+  if(pool.length<3){usedIds=[];buildLocQ();return;}
+  const idx=Math.floor(Math.random()*pool.length);
+  currentLoc=pool[idx];usedIds.push(currentLoc.id);
+  if(gMode==='map'){
+    document.getElementById('clueBox').style.display='none';
+    document.getElementById('questionText').textContent='📍 מהו שמו של המקום המהבהב על המפה?';
+    activateDot(currentLoc.id);
+  }else{
+    document.getElementById('clueBox').style.display='block';
+    document.getElementById('clueBox').innerHTML='<strong>רמז:</strong> '+currentLoc.clue;
+    document.getElementById('questionText').textContent='💡 מהו שמו של המקום?';
   }
-  const count = gMode === 'map' ? 3 : 4;
-  const wrongs = LOCATIONS.filter(l=>l.id!==currentLoc.id).sort(()=>Math.random()-.5).slice(0,count-1).map(l=>l.name);
-  const opts = [currentLoc.name,...wrongs].sort(()=>Math.random()-.5);
-  buildButtons(opts, currentLoc.name, count);
+  const count=gMode==='map'?3:4;
+  const wrongs=LOCATIONS.filter(l=>l.id!==currentLoc.id).sort(()=>Math.random()-.5).slice(0,count-1).map(l=>l.name);
+  buildButtons([currentLoc.name,...wrongs].sort(()=>Math.random()-.5),currentLoc.name,count);
 }
 
-function buildButtons(opts, correct, count) {
-  const div = document.getElementById('answersDiv');
-  div.innerHTML = '';
-  for (let i=0;i<count;i++) {
-    const b = document.createElement('button');
-    b.className = 'answer-btn opt-'+i;
-    b.textContent = opts[i];
-    b.onclick = () => handleAnswer(b, opts[i]===correct, correct);
+function activateDot(id){
+  const el=document.getElementById('dot_'+id);
+  if(el){el.style.display='block';el.classList.add('active');}
+}
+
+function revealDot(loc){
+  clearActiveDots();
+  const el=document.getElementById('dot_'+loc.id);
+  if(el){
+    el.style.display='block';el.classList.add('revealed');
+    // Show label
+    const [x,y]=toXY(loc.lat,loc.lng);
+    const lbl=document.getElementById('revealLabel');
+    const bg_x=x-2, bg_y=y-22, bg_w=loc.name.length*6+8, bg_h=16;
+    lbl.innerHTML=
+      '<rect x="'+(bg_x-2)+'" y="'+(bg_y-2)+'" width="'+(bg_w+4)+'" height="'+(bg_h+2)+
+      '" rx="4" fill="white" opacity="0.9" stroke="#6a11cb" stroke-width="0.8"/>'+
+      '<text x="'+x+'" y="'+(y-10)+'" text-anchor="middle" font-size="8" font-weight="bold" fill="#6a11cb">'+loc.name+'</text>';
+  }
+}
+
+function buildButtons(opts,correct,count){
+  const div=document.getElementById('answersDiv');
+  div.innerHTML='';
+  for(let i=0;i<count;i++){
+    const b=document.createElement('button');
+    b.className='answer-btn opt-'+i;
+    b.textContent=opts[i];
+    b.onclick=()=>handleAnswer(b,opts[i]===correct,correct);
     div.appendChild(b);
   }
 }
 
-function placeMarker(loc) {
-  const color = TYPE_COLORS[loc.type]||'#ff4757';
-  const icon = L.divIcon({
-    className:'leaflet-div-icon',
-    html:`<div class="pulse-wrap"><div class="pulse-dot" style="background:${color}"></div><div class="pulse-ring" style="border-color:${color}"></div></div>`,
-    iconSize:[60,60], iconAnchor:[30,30]
-  });
-  curMarker = L.marker([loc.lat,loc.lng],{icon,interactive:false}).addTo(leafMap);
-}
-
-function revealOnMap(loc) {
-  if (curMarker) curMarker.remove();
-  const color = TYPE_COLORS[loc.type]||'#ff4757';
-  const icon = L.divIcon({
-    className:'leaflet-div-icon',
-    html:`<div class="pulse-wrap"><div class="pulse-dot" style="background:${color}"></div></div>`,
-    iconSize:[60,60], iconAnchor:[30,30]
-  });
-  curMarker = L.marker([loc.lat,loc.lng],{icon}).addTo(leafMap);
-  curMarker.bindPopup(`<div style="font-family:Heebo,Arial;font-weight:700;color:#6a11cb">${loc.name}</div>`,{closeButton:false}).openPopup();
-  leafMap.flyTo([loc.lat,loc.lng],8,{animate:true,duration:1});
-}
-
-function handleAnswer(btn, isCorrect, correctText) {
-  if (answered) return;
-  answered = true;
-  document.querySelectorAll('.answer-btn').forEach(b => b.disabled=true);
-  document.querySelectorAll('.answer-btn').forEach(b => { if (b.textContent===correctText) b.classList.add('correct'); });
-  const fb = document.getElementById('feedback');
-  const locType = currentLoc ? currentLoc.type : 'gk';
-  if (!breakdown.byType[locType]) breakdown.byType[locType] = {c:0,w:0};
-  if (isCorrect) {
-    score += 10;
+function handleAnswer(btn,isCorrect,correctText){
+  if(answered)return;answered=true;
+  document.querySelectorAll('.answer-btn').forEach(b=>{b.disabled=true;});
+  document.querySelectorAll('.answer-btn').forEach(b=>{if(b.textContent===correctText)b.classList.add('correct');});
+  const locType=currentLoc?currentLoc.type:'gk';
+  if(!breakdown.byType[locType])breakdown.byType[locType]={c:0,w:0};
+  const fb=document.getElementById('feedback');
+  if(isCorrect){
+    score+=10;
     btn.classList.add('correct');
-    fb.innerHTML  = '✅ &nbsp;כל הכבוד! תשובה נכונה! 🎉';
-    fb.style.color = '#0f9b58';
+    fb.innerHTML='✅ &nbsp;כל הכבוד! תשובה נכונה! 🎉';
+    fb.style.color='#0f9b58';
     spawnStars(btn);
-    breakdown.correct++;
-    breakdown.byType[locType].c = (breakdown.byType[locType].c||0)+1;
-  } else {
-    btn.classList.add('wrong');
-    btn.classList.add('shake');
-    fb.innerHTML  = '❌ &nbsp;לא נכון! התשובה: <strong>'+correctText+'</strong>';
-    fb.style.color = '#cb2d3e';
-    breakdown.wrong++;
-    breakdown.byType[locType].w = (breakdown.byType[locType].w||0)+1;
+    breakdown.correct++;breakdown.byType[locType].c=(breakdown.byType[locType].c||0)+1;
+  }else{
+    btn.classList.add('wrong');btn.classList.add('shake');
+    fb.innerHTML='❌ &nbsp;לא נכון! התשובה: <strong>'+correctText+'</strong>';
+    fb.style.color='#cb2d3e';
+    breakdown.wrong++;breakdown.byType[locType].w=(breakdown.byType[locType].w||0)+1;
   }
-  if (gMode==='clue' && currentLoc) revealOnMap(currentLoc);
-  setTimeout(() => showInfoCard(gMode==='gk' ? null : currentLoc, gMode==='gk' ? currentGK : null), 1200);
+  if((gMode==='map'||gMode==='clue')&&currentLoc)revealDot(currentLoc);
+  setTimeout(()=>showInfoCard(gMode==='gk'?null:currentLoc,gMode==='gk'?currentGK:null),1200);
 }
 
-function showInfoCard(loc, gk) {
-  if (loc) {
-    document.getElementById('icIcon').textContent  = loc.icon;
-    document.getElementById('icTitle').textContent = loc.name;
-    document.getElementById('icType').textContent  = TYPE_LABELS[loc.type]+' · '+loc.region;
-    const badges = [];
-    if (loc.pop)  badges.push('👥 '+loc.pop.toLocaleString()+' תושבים');
-    if (loc.len)  badges.push('📏 '+loc.len+' ק"מ');
-    if (loc.area) badges.push('🌳 '+loc.area.toLocaleString()+' דונם');
-    if (loc.elev) badges.push('⛰️ '+loc.elev.toLocaleString()+' מ\'');
+function showInfoCard(loc,gk){
+  if(loc){
+    document.getElementById('icIcon').textContent=loc.icon;
+    document.getElementById('icTitle').textContent=loc.name;
+    document.getElementById('icType').textContent=TYPE_LABELS[loc.type]+' · '+loc.region;
+    const badges=[];
+    if(loc.pop)badges.push('👥 '+loc.pop.toLocaleString()+' תושבים');
     badges.push('⭐'.repeat(loc.diff));
-    document.getElementById('icBadges').innerHTML = badges.map(b=>'<span class="ic-badge">'+b+'</span>').join('');
-    document.getElementById('icFact').textContent = loc.fact;
-  } else if (gk) {
-    document.getElementById('icIcon').textContent  = '🧠';
-    document.getElementById('icTitle').textContent = gk.q;
-    document.getElementById('icType').textContent  = 'ידע כללי';
-    document.getElementById('icBadges').innerHTML  = '<span class="ic-badge">✅ '+gk.a+'</span>';
-    document.getElementById('icFact').textContent  = gk.fact;
+    document.getElementById('icBadges').innerHTML=badges.map(b=>'<span class="ic-badge">'+b+'</span>').join('');
+    document.getElementById('icFact').textContent=loc.fact;
+  }else if(gk){
+    document.getElementById('icIcon').textContent='🧠';
+    document.getElementById('icTitle').textContent=gk.q;
+    document.getElementById('icType').textContent='ידע כללי';
+    document.getElementById('icBadges').innerHTML='<span class="ic-badge">✅ '+gk.a+'</span>';
+    document.getElementById('icFact').textContent=gk.fact;
   }
   document.getElementById('infoOverlay').classList.add('show');
 }
 
-function closeInfoCard() {
-  document.getElementById('infoOverlay').classList.remove('show');
-  nextQuestion();
-}
+function closeInfoCard(){document.getElementById('infoOverlay').classList.remove('show');nextQuestion();}
 
-function spawnStars(elem) {
+function spawnStars(elem){
   const r=elem.getBoundingClientRect();
-  const cx=r.left+r.width/2, cy=r.top+r.height/2;
-  ['⭐','🌟','✨','🎊'].forEach((em,i) => {
-    const el=document.createElement('div');
-    el.className='float-star'; el.textContent=em;
-    el.style.left=(cx+(Math.random()-.5)*100)+'px';
-    el.style.top=cy+'px'; el.style.animationDelay=(i*.09)+'s';
-    document.body.appendChild(el);
+  const cx=r.left+r.width/2,cy=r.top+r.height/2;
+  ['⭐','🌟','✨','🎊'].forEach((em,i)=>{
+    const el=document.createElement('div');el.className='float-star';el.textContent=em;
+    el.style.left=(cx+(Math.random()-.5)*100)+'px';el.style.top=cy+'px';
+    el.style.animationDelay=(i*.09)+'s';document.body.appendChild(el);
     el.addEventListener('animationend',()=>el.remove());
   });
 }
 
-function showResults() {
-  document.getElementById('gameScreen').style.display   = 'none';
-  document.getElementById('resultsScreen').style.display = 'block';
-  document.getElementById('progFill').style.width = '100%';
-  if (curMarker) { curMarker.remove(); curMarker=null; }
-  const pct = score/(TOTAL*10)*100;
+function showResults(){
+  document.getElementById('gameScreen').style.display='none';
+  document.getElementById('resultsScreen').style.display='block';
+  document.getElementById('progFill').style.width='100%';
+  const pct=score/(TOTAL*10)*100;
   let emoji,msg,color;
-  if      (pct>=90){emoji='🏆';msg='מדהים! אתה/את אלוף/ה ידיעת הארץ!'; color='#f39c12';}
-  else if (pct>=70){emoji='🥇';msg='מצוין! כל הכבוד!';                 color='#00b894';}
-  else if (pct>=50){emoji='👍';msg='יפה! כדאי לתרגל עוד!';             color='#6c5ce7';}
-  else             {emoji='📚';msg='תמשיך/י לתרגל – תצליח/י!';         color='#e17055';}
-  const stars = '⭐'.repeat(Math.round(pct/20))||'—';
-  const typeHeb = {city:'ערים',river:'נהרות',forest:'יערות',mountain:'הרים',lake:'ימים',gk:'ידע כללי'};
-  const bkHtml = Object.entries(breakdown.byType).map(([t,v])=>
+  if(pct>=90){emoji='🏆';msg='מדהים! אתה/את אלוף/ה ידיעת הארץ!';color='#f39c12';}
+  else if(pct>=70){emoji='🥇';msg='מצוין! כל הכבוד!';color='#00b894';}
+  else if(pct>=50){emoji='👍';msg='יפה! כדאי לתרגל עוד!';color='#6c5ce7';}
+  else{emoji='📚';msg='תמשיך/י לתרגל – תצליח/י!';color='#e17055';}
+  const stars='⭐'.repeat(Math.round(pct/20))||'—';
+  const typeHeb={city:'ערים',river:'נהרות',forest:'יערות',mountain:'הרים',lake:'ימים',gk:'ידע כללי'};
+  const bk=Object.entries(breakdown.byType).map(([t,v])=>
     '<div class="res-item"><div class="ri-label">'+(typeHeb[t]||t)+'</div><div class="ri-val">'+(v.c||0)+'/'+(( v.c||0)+(v.w||0))+'</div></div>').join('');
-  document.getElementById('resultsScreen').innerHTML =
+  document.getElementById('resultsScreen').innerHTML=
     '<div class="res-emoji">'+emoji+'</div>'+
     '<div class="res-msg" style="color:'+color+'">'+msg+'</div>'+
     '<div class="res-score">קיבלת <strong>'+score+'</strong> מתוך <strong>'+(TOTAL*10)+'</strong> נקודות</div>'+
     '<div class="res-stars">'+stars+'</div>'+
-    '<div class="res-breakdown">'+bkHtml+'</div>'+
+    '<div class="res-breakdown">'+bk+'</div>'+
     '<button class="btn-start" onclick="backToMenu()">🏠 תפריט ראשי</button>&nbsp;'+
     '<button class="btn-start" style="margin-top:10px;background:linear-gradient(135deg,#00b894,#00cec9)" onclick="startGame()">🔄 שחק שוב</button>';
 }
 
-function backToMenu() {
-  document.getElementById('resultsScreen').style.display = 'none';
-  document.getElementById('menuScreen').style.display    = 'block';
-  document.getElementById('hdrStats').style.display      = 'none';
-  document.getElementById('progFill').style.width        = '0%';
+function backToMenu(){
+  document.getElementById('resultsScreen').style.display='none';
+  document.getElementById('menuScreen').style.display='block';
+  document.getElementById('hdrStats').style.display='none';
+  document.getElementById('progFill').style.width='0%';
 }
 </script>
 </body>
