@@ -509,7 +509,6 @@ const dLbl=km=>km<1?Math.round(km*1000)+" מ'":km.toFixed(1)+' ק"מ';
 function BNav(active){
   const items=[
     {id:"home",     lbl:"בית",    em:"🏠"},
-    {id:"nearby",   lbl:"קרוב",   em:"📍"},
     {id:"community",lbl:"קהילה",  em:"🌐"},
     {id:"messages", lbl:"הודעות", em:"💬",badge:userChats.filter(c=>c.unread).length||null},
     {id:"parent",   lbl:"הורים",  em:"🔐"},
@@ -4560,12 +4559,15 @@ function Teacher(){
 
       <!-- Videos section in public profile -->
       ${publicTeacherVideos.length>0?`
-      <div class="card" style="padding:16px">
+      ${(()=>{
+        const filtPubVids=S.teacherCat?publicTeacherVideos.filter(v=>v.cat===S.teacherCat):publicTeacherVideos;
+        if(!filtPubVids.length)return '';
+        return `<div class="card" style="padding:16px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-          <h4 style="margin:0;font-weight:900;font-size:16px;color:#0F1A1F">📹 סרטוני הדגמה</h4>
-          <span style="background:rgba(168,85,247,0.12);color:#A855F7;font-size:11px;font-weight:800;padding:4px 10px;border-radius:50px">${publicTeacherVideos.length} סרטונים</span>
+          <h4 style="margin:0;font-weight:900;font-size:16px;color:#0F1A1F">📹 סרטוני הדגמה${S.teacherCat?(()=>{const c=CATS.find(x=>x.id===S.teacherCat);return c?' – '+c.em+' '+c.lbl:'';})():''}</h4>
+          <span style="background:rgba(168,85,247,0.12);color:#A855F7;font-size:11px;font-weight:800;padding:4px 10px;border-radius:50px">${filtPubVids.length} סרטונים</span>
         </div>
-        ${publicTeacherVideos.slice(0,5).map(v=>{
+        ${filtPubVids.slice(0,5).map(v=>{
           const ytId=v.platform==='youtube'?(v.url||'').match(/(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/)([^&?\s]+)/)?.[1]:null;
           const thumb=v.thumbnail||(ytId?'https://img.youtube.com/vi/'+ytId+'/hqdefault.jpg':null);
           const platLabel=v.platform==='youtube'?'YouTube':v.platform==='instagram'?'Instagram':v.platform==='tiktok'?'TikTok':'וידאו';
@@ -4587,7 +4589,8 @@ function Teacher(){
             </div>
           </div>`;
         }).join('')}
-      </div>`:''}
+      </div>`;
+      })()}
 
       <!-- SOS + Share row -->
       <div style="display:flex;gap:10px;margin-bottom:16px">
@@ -4941,25 +4944,38 @@ function Chat(){
 function Profile(){
   const tab=S.pTab;
   let content="";
-  if(tab==="videos") content=`
+  if(tab==="videos"){
+    const myT=TEACHERS.find(x=>x.id===currentUser?.uid);
+    const myCats=myT?.cats&&myT.cats.length?myT.cats:(myT?.cat?[myT.cat]:[]);
+    const selCat=S.profileVideoCat||null;
+    const filteredVids=selCat?teacherVideos.filter(v=>v.cat===selCat):teacherVideos;
+    content=`
+    ${myCats.length>1?`<div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px">
+      <button onclick="S.profileVideoCat=null;render()" style="border-radius:50px;padding:7px 16px;font-size:12px;font-weight:800;cursor:pointer;border:1.5px solid ${!selCat?'#A855F7':'rgba(100,116,139,0.3)'};background:${!selCat?'linear-gradient(135deg,#A855F7,#7E22CE)':'rgba(100,116,139,0.08)'};color:${!selCat?'#fff':'#64748B'}">הכל</button>
+      ${myCats.map(cid=>{const c=CATS.find(x=>x.id===cid)||{em:'🎓',lbl:cid,col:'#14B8A6'};const on=selCat===cid;return `<button onclick="S.profileVideoCat='${cid}';render()" style="border-radius:50px;padding:7px 16px;font-size:12px;font-weight:800;cursor:pointer;border:1.5px solid ${on?c.col:'rgba(100,116,139,0.3)'};background:${on?c.col+'22':'rgba(100,116,139,0.06)'};color:${on?c.col:'#64748B'}">${c.em} ${c.lbl}</button>`;}).join('')}
+    </div>`:''}
     <div style="display:flex;justify-content:space-between;align-items:center;margin:0 0 14px">
       <span></span>
-      <p style="font-weight:800;font-size:15px;margin:0">📹 הסרטונים שלי (${teacherVideos.length})</p>
+      <p style="font-weight:800;font-size:15px;margin:0">📹 ${selCat?(()=>{const c=CATS.find(x=>x.id===selCat);return (c?c.em+' '+c.lbl:'מקצוע')+' ('+filteredVids.length+')'})():'הסרטונים שלי ('+teacherVideos.length+')'}</p>
     </div>
-    ${teacherVideos.length===0?`
+    ${filteredVids.length===0?`
       <div style="background:rgba(255,255,255,0.7);backdrop-filter:blur(10px);border-radius:20px;padding:32px 20px;text-align:center">
         <div style="font-size:54px;margin-bottom:12px">🎥</div>
         <h3 style="font-weight:900;font-size:16px;margin:0 0 8px;color:#0F1A1F">עדיין לא העלית סרטונים</h3>
         <p style="color:#64748B;font-size:13px;line-height:1.7;margin:0 0 18px">עבור ללשונית "⬆️ העלאה" כדי להעלות סרטון ראשון</p>
       </div>
-    `:teacherVideos.map(v=>{
+    `:filteredVids.map(v=>{
       const ytId=v.platform==='youtube'?(v.url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/)([^&?\s]+)/)?.[1]):null;
       const thumb=ytId?`https://img.youtube.com/vi/${ytId}/hqdefault.jpg`:null;
+      const catObj=v.cat?CATS.find(c=>c.id===v.cat):null;
       return `<div class="card" style="padding:0;overflow:hidden;position:relative">
         <div style="aspect-ratio:16/9;background:${thumb?'url('+thumb+') center/cover,':''}linear-gradient(135deg,#14B8A6,#A855F7);position:relative;cursor:pointer" onclick="window.open('${v.url}','_blank')">
           <div style="position:absolute;inset:0;background:rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center"><div style="background:rgba(255,255,255,0.95);width:54px;height:54px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px">▶️</div></div>
           ${v.approved===true?`<div style="position:absolute;top:10px;right:10px;background:rgba(16,185,129,0.95);color:#fff;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:800">✓ פורסם</div>`:v.approved==='rejected'?`<div style="position:absolute;top:10px;right:10px;background:rgba(239,68,68,0.95);color:#fff;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:800">✗ לא מאושר</div>`:`<div style="position:absolute;top:10px;right:10px;background:rgba(245,158,11,0.95);color:#fff;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:800">⏳ מחכה לאישור</div>`}
-          <div style="position:absolute;bottom:8px;left:10px;background:rgba(0,0,0,0.7);color:#fff;padding:3px 9px;border-radius:8px;font-size:11px;font-weight:700">${v.platform==='youtube'?'YouTube':v.platform==='instagram'?'Instagram':v.platform==='tiktok'?'TikTok':'וידאו'}</div>
+          <div style="position:absolute;bottom:8px;left:10px;display:flex;gap:5px">
+            <span style="background:rgba(0,0,0,0.7);color:#fff;padding:3px 9px;border-radius:8px;font-size:11px;font-weight:700">${v.platform==='youtube'?'YouTube':v.platform==='instagram'?'Instagram':v.platform==='tiktok'?'TikTok':'וידאו'}</span>
+            ${catObj?`<span style="background:${catObj.col}cc;color:#fff;padding:3px 9px;border-radius:8px;font-size:11px;font-weight:700">${catObj.em} ${catObj.lbl}</span>`:''}
+          </div>
         </div>
         <div style="padding:13px 15px">
           <p style="margin:0 0 5px;font-weight:800;font-size:14px;color:#0F1A1F">${v.title}</p>
@@ -4973,6 +4989,7 @@ function Profile(){
           </div>
         </div>
       </div>`;}).join("")}`;
+  }
 
   if(tab==="upload") content=currentUserData?.role==='teacher'?`
     <h3 style="font-weight:800;font-size:16px;margin:0 0 6px">⬆️ העלאת סרטון</h3>
@@ -5026,7 +5043,7 @@ function Profile(){
     ${(()=>{const myTeacher=TEACHERS.find(x=>x.id===currentUser?.uid);return myTeacher&&myTeacher.tags?.length?`<div class="card"><h4 style="margin:0 0 12px;font-weight:800">🏷 תחומי הוראה</h4><div style="display:flex;gap:8px;flex-wrap:wrap">${myTeacher.tags.map(tg=>`<span style="background:rgba(155,89,182,.12);color:#0F766E;padding:7px 16px;border-radius:50px;font-size:13px;font-weight:700">${tg}</span>`).join("")}</div></div>`:'';})()}
     <!-- Referral -->
     <div class="ref-card"><h4 style="margin:0 0 6px;font-weight:900;font-size:16px">🎁 הפנה חבר – קבל ₪15!</h4><p style="margin:0 0 14px;font-size:13px;opacity:.9;line-height:1.6">על כל חבר שנרשם דרכך תקבל ₪15 לחשבון שלך.</p><button onclick="shareApp()" style="background:rgba(255,255,255,.2);border:1.5px solid rgba(255,255,255,.3);color:#fff;border-radius:50px;padding:10px 20px;font-weight:700;cursor:pointer;font-size:13px">📤 שתף את Kidemy</button></div>
-    ${[["✏️","ערוך פרופיל","showEditProfileDialog()"],["💰","ניהול תשלומים",""],["🏆","ראה לידרבורד","go('leaderboard')"],["🚪","התנתקות","confirmLogout()"]].map(([e,l,fn])=>`<div class="card-sm" style="display:flex;align-items:center;gap:13px;cursor:pointer" onclick="${fn}"><span style="font-size:22px">${e}</span><span style="font-weight:700;font-size:15px;color:${l==="התנתקות"?"#E74C3C":"#1A1A2E"}">${l}</span><span style="margin-right:auto;color:#8A94A6">←</span></div>`).join("")}`;
+    ${[["✏️","ערוך פרופיל","showEditProfileDialog()"],["💰","ניהול תשלומים","showPaymentManagement()"],["🏆","ראה לידרבורד","go('leaderboard')"],["🚪","התנתקות","confirmLogout()"]].map(([e,l,fn])=>`<div class="card-sm" style="display:flex;align-items:center;gap:13px;cursor:pointer" onclick="${fn}"><span style="font-size:22px">${e}</span><span style="font-weight:700;font-size:15px;color:${l==="התנתקות"?"#E74C3C":"#1A1A2E"}">${l}</span><span style="margin-right:auto;color:#8A94A6">←</span></div>`).join("")}`;
 
   return `<div class="screen" style="background:linear-gradient(165deg,#CCFBF1 0%,#A5F3FC 50%,#7DD3FC 100%);padding-bottom:100px">
     <div style="background:linear-gradient(135deg,#0F766E,#8E44AD);padding:32px 20px 40px;border-radius:0 0 32px 32px;text-align:center;color:#fff;position:relative;overflow:hidden">
@@ -5718,10 +5735,78 @@ async function saveProfileEdits(){
   }catch(e){showFireToast('❌ '+e.message);}
 }
 
+function showPaymentManagement(){
+  if(!currentUser){showFireToast('❌ לא מחובר');return;}
+  const isTeacher=currentUserData?.role==='teacher';
+  const bookings=isTeacher?teacherPendingBookings:studentBookings;
+  const approved=bookings.filter(b=>b.status==='approved'||b.status==='completed');
+  const pending=bookings.filter(b=>b.status==='pending');
+  const totalEarned=isTeacher
+    ?approved.reduce((s,b)=>s+(b.price||0),0)
+    :approved.reduce((s,b)=>s+(b.price||0),0);
+
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:9999;display:flex;align-items:flex-end;justify-content:center;direction:rtl;backdrop-filter:blur(10px)';
+  ov.innerHTML=`
+    <div style="background:#fff;border-radius:28px 28px 0 0;padding:24px 20px 48px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto">
+      <div style="width:40px;height:4px;background:#E2E8F0;border-radius:50px;margin:0 auto 20px"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <button onclick="this.closest('div[style*=fixed]').remove()" style="background:rgba(100,116,139,0.1);border:none;color:#64748B;font-size:18px;cursor:pointer;border-radius:50%;width:36px;height:36px">✕</button>
+        <h3 style="margin:0;font-weight:900;font-size:19px">💰 ניהול תשלומים</h3>
+        <span style="width:36px"></span>
+      </div>
+
+      <!-- Summary cards -->
+      <div style="display:flex;gap:10px;margin-bottom:20px">
+        <div style="flex:1;background:linear-gradient(135deg,#10B981,#14B8A6);border-radius:18px;padding:16px;text-align:center;color:#fff">
+          <div style="font-size:13px;opacity:0.85;font-weight:700;margin-bottom:4px">${isTeacher?'הכנסה כוללת':'סה"כ שולם'}</div>
+          <div style="font-size:26px;font-weight:900">₪${totalEarned}</div>
+          <div style="font-size:11px;opacity:0.75;margin-top:2px">${approved.length} שיעורים</div>
+        </div>
+        <div style="flex:1;background:linear-gradient(135deg,#F59E0B,#D97706);border-radius:18px;padding:16px;text-align:center;color:#fff">
+          <div style="font-size:13px;opacity:0.85;font-weight:700;margin-bottom:4px">ממתין לאישור</div>
+          <div style="font-size:26px;font-weight:900">${pending.length}</div>
+          <div style="font-size:11px;opacity:0.75;margin-top:2px">₪${pending.reduce((s,b)=>s+(b.price||0),0)}</div>
+        </div>
+      </div>
+
+      ${bookings.length===0?`
+        <div style="text-align:center;padding:32px 20px;color:#94A3B8">
+          <div style="font-size:54px;margin-bottom:12px">📭</div>
+          <p style="font-weight:700;font-size:15px;margin:0">עדיין אין שיעורים</p>
+        </div>
+      `:`
+        <h4 style="font-weight:900;font-size:14px;margin:0 0 12px;color:#0F1A1F">היסטוריית שיעורים</h4>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          ${bookings.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)).map(b=>{
+            const statusColor=b.status==='approved'||b.status==='completed'?'#10B981':b.status==='pending'?'#F59E0B':'#EF4444';
+            const statusLabel=b.status==='approved'?'✓ מאושר':b.status==='completed'?'✅ הושלם':b.status==='pending'?'⏳ ממתין':'❌ נדחה';
+            const otherName=isTeacher?(b.studentName||b.from||'תלמיד'):(b.teacherName||'מורה');
+            return `<div style="background:rgba(248,250,252,1);border:1.5px solid rgba(226,232,240,1);border-radius:16px;padding:14px 16px;display:flex;align-items:center;gap:12px">
+              <div style="width:44px;height:44px;border-radius:14px;background:${statusColor}18;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">📚</div>
+              <div style="flex:1;min-width:0">
+                <div style="font-weight:800;font-size:14px;color:#0F1A1F;margin-bottom:2px">${otherName}</div>
+                <div style="font-size:12px;color:#64748B">${b.day||''} ${b.time||''} ${b.subject||b.cat||''}</div>
+              </div>
+              <div style="text-align:left;flex-shrink:0">
+                <div style="font-weight:900;font-size:15px;color:#0F1A1F">₪${b.price||0}</div>
+                <div style="font-size:11px;font-weight:700;color:${statusColor}">${statusLabel}</div>
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+      `}
+    </div>`;
+  document.body.appendChild(ov);
+  ov.onclick=e=>{if(e.target===ov)ov.remove();};
+}
+
 function showEditTeacherProfileDialog(){
   if(!currentUser){showFireToast('❌ לא מחובר');return;}
   const t=TEACHERS.find(x=>x.id===currentUser.uid)||{};
+  window._etCats=[...(t.cats&&t.cats.length?t.cats:[t.cat||''].filter(Boolean))];
   const ov=document.createElement('div');
+  ov.id='_etOv';
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:flex-end;justify-content:center;padding:0;direction:rtl;backdrop-filter:blur(8px)';
   ov.innerHTML=`
     <div style="background:#fff;border-radius:28px 28px 0 0;padding:24px 20px 48px;width:100%;max-width:500px;max-height:92vh;overflow-y:auto">
@@ -5730,8 +5815,23 @@ function showEditTeacherProfileDialog(){
         <h3 style="margin:0;font-weight:900;font-size:18px">✏️ ערוך פרופיל מורה</h3>
         <button onclick="this.closest('div[style*=fixed]').remove()" style="background:rgba(168,85,247,0.1);border:none;color:#A855F7;font-size:20px;cursor:pointer;border-radius:50%;width:36px;height:36px">✕</button>
       </div>
+
+      <!-- מקצועות הוראה -->
+      <div style="margin-bottom:16px">
+        <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:8px">🎓 מקצועות הוראה</label>
+        <div id="_etCatsList" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+          ${_etRenderCatPills()}
+        </div>
+        <div style="position:relative">
+          <select id="_etAddCatSel" onchange="_etAddCat(this)" style="width:100%;background:rgba(168,85,247,0.06);border:1.5px dashed rgba(168,85,247,0.35);border-radius:12px;padding:10px;font-size:13px;font-family:inherit;direction:rtl;outline:none;color:#A855F7;font-weight:700">
+            <option value="">＋ הוסף מקצוע נוסף...</option>
+            ${CATS.filter(c=>!window._etCats.includes(c.id)).map(c=>`<option value="${c.id}">${c.em} ${c.lbl}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+
       <div style="margin-bottom:14px">
-        <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:6px">📚 תיאור (קצת עליך)</label>
+        <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:6px">📚 תיאור כללי</label>
         <textarea id="_etDesc" class="inp" placeholder="ספר על עצמך כמורה..." style="min-height:80px;resize:none;border-radius:14px">${(t.desc||'').split(String.fromCharCode(96)).join("'")}</textarea>
       </div>
       <div style="margin-bottom:14px">
@@ -5743,13 +5843,36 @@ function showEditTeacherProfileDialog(){
         <input id="_etCity" class="inp" value="${t.city||''}" placeholder="עיר בה אתה מלמד">
       </div>
       <div style="margin-bottom:14px">
-        <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:6px">🏷 תגיות (מופרדות בפסיק)</label>
+        <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:6px">🏷 תגיות כלליות (מופרדות בפסיק)</label>
         <input id="_etTags" class="inp" value="${(t.tags||[]).join(', ')}" placeholder="למשל: מתחילים, פופ, רוק">
       </div>
-      <div class="warn" style="margin-top:8px"><span>⚠️</span><span>שינויים מהותיים יעברו אישור מחדש תוך 24 שעות.</span></div>
+      <div class="warn" style="margin-top:8px"><span>⚠️</span><span>לכל מקצוע ניתן להוסיף תיאור ותגיות נפרדים דרך כפתור "ערוך" בפרופיל.</span></div>
     </div>`;
   document.body.appendChild(ov);
   ov.onclick=e=>{if(e.target===ov)ov.remove();};
+}
+function _etRenderCatPills(){
+  return (window._etCats||[]).map((cid,i)=>{
+    const c=CATS.find(x=>x.id===cid)||{em:'🎓',lbl:cid,col:'#14B8A6'};
+    return `<span style="display:inline-flex;align-items:center;gap:6px;background:${c.col}18;border:1.5px solid ${c.col}44;color:${c.col};border-radius:50px;padding:6px 12px;font-size:13px;font-weight:800">${c.em} ${c.lbl}${(window._etCats||[]).length>1?`<button onclick="_etRemoveCat(${i})" style="background:none;border:none;color:${c.col};cursor:pointer;font-size:14px;padding:0;line-height:1;margin-right:2px">✕</button>`:''}</span>`;
+  }).join('');
+}
+function _etAddCat(sel){
+  const cid=sel.value;if(!cid)return;
+  if(!window._etCats.includes(cid))window._etCats.push(cid);
+  const el=document.getElementById('_etCatsList');
+  if(el)el.innerHTML=_etRenderCatPills();
+  // Refresh select options
+  sel.innerHTML=`<option value="">＋ הוסף מקצוע נוסף...</option>${CATS.filter(c=>!window._etCats.includes(c.id)).map(c=>`<option value="${c.id}">${c.em} ${c.lbl}</option>`).join('')}`;
+  sel.value='';
+}
+function _etRemoveCat(i){
+  if((window._etCats||[]).length<=1){showFireToast('❌ חייב לפחות מקצוע אחד');return;}
+  window._etCats.splice(i,1);
+  const el=document.getElementById('_etCatsList');
+  if(el)el.innerHTML=_etRenderCatPills();
+  const sel=document.getElementById('_etAddCatSel');
+  if(sel)sel.innerHTML=`<option value="">＋ הוסף מקצוע נוסף...</option>${CATS.filter(c=>!window._etCats.includes(c.id)).map(c=>`<option value="${c.id}">${c.em} ${c.lbl}</option>`).join('')}`;
 }
 function showEditCatProfileDialog(catId){
   if(!currentUser){showFireToast('❌ לא מחובר');return;}
@@ -5796,14 +5919,16 @@ async function saveTeacherProfileEdits(){
   const city=document.getElementById('_etCity')?.value.trim();
   const tagsRaw=document.getElementById('_etTags')?.value.trim();
   const tags=tagsRaw?tagsRaw.split(',').map(s=>s.trim()).filter(Boolean):[];
+  const cats=(window._etCats&&window._etCats.length)?window._etCats:(TEACHERS.find(x=>x.id===currentUser?.uid)?.cats||[]);
   if(!desc){showFireToast('❌ תיאור לא יכול להיות ריק');return;}
   if(price<10||price>500){showFireToast('❌ מחיר בין 10 ל-500');return;}
+  if(!cats.length){showFireToast('❌ חייב לפחות מקצוע אחד');return;}
   try{
-    const updates={desc,price,city,tags};
+    const updates={desc,price,city,tags,cats,cat:cats[0]};
     await db.ref('teachers/'+currentUser.uid).update(updates);
     const t=TEACHERS.find(x=>x.id===currentUser.uid);
     if(t)Object.assign(t,updates);
-    document.querySelector('div[style*=fixed]')?.remove();
+    document.getElementById('_etOv')?.remove();
     showFireToast('✅ הפרופיל עודכן!');
     render();
   }catch(e){showFireToast('❌ '+e.message);}
