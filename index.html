@@ -5804,33 +5804,45 @@ function showEditTeacherProfileDialog(){
   if(!currentUser){showFireToast('❌ לא מחובר');return;}
   const t=TEACHERS.find(x=>x.id===currentUser.uid)||{};
   window._etCats=[...(t.cats&&t.cats.length?t.cats:[t.cat||''].filter(Boolean))];
+  window._etCustomCats=[...(t.customCats||[])];
   const ov=document.createElement('div');
   ov.id='_etOv';
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:flex-end;justify-content:center;padding:0;direction:rtl;backdrop-filter:blur(8px)';
   ov.innerHTML=`
     <div style="background:#fff;border-radius:28px 28px 0 0;padding:24px 20px 48px;width:100%;max-width:500px;max-height:92vh;overflow-y:auto">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
         <button onclick="saveTeacherProfileEdits()" style="background:linear-gradient(135deg,#A855F7,#7E22CE);border:none;color:#fff;border-radius:50px;padding:10px 22px;font-weight:800;font-size:14px;cursor:pointer">💾 שמור</button>
         <h3 style="margin:0;font-weight:900;font-size:18px">✏️ ערוך פרופיל מורה</h3>
-        <button onclick="this.closest('div[style*=fixed]').remove()" style="background:rgba(168,85,247,0.1);border:none;color:#A855F7;font-size:20px;cursor:pointer;border-radius:50%;width:36px;height:36px">✕</button>
+        <button onclick="document.getElementById('_etOv').remove()" style="background:rgba(168,85,247,0.1);border:none;color:#A855F7;font-size:20px;cursor:pointer;border-radius:50%;width:36px;height:36px">✕</button>
       </div>
 
-      <!-- מקצועות הוראה -->
-      <div style="margin-bottom:16px">
-        <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:8px">🎓 מקצועות הוראה</label>
-        <div id="_etCatsList" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px">
-          ${_etRenderCatPills()}
+      <!-- מקצועות הוראה — כמו בהרשמה -->
+      <div style="background:rgba(20,184,166,0.04);border:1.5px solid rgba(20,184,166,0.18);border-radius:18px;padding:16px;margin-bottom:16px">
+        <h3 style="font-weight:900;font-size:15px;margin:0 0 4px;color:#14B8A6">📚 במה אתה מלמד?</h3>
+        <p style="color:#64748B;font-size:12px;margin:0 0 12px">אפשר לבחור יותר ממקצוע אחד!</p>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+          ${CATS.map(c=>{
+            const sel=window._etCats.includes(c.id);
+            return `<button type="button" onclick="toggleEtCat(this,'${c.id}')"
+              style="background:${sel?'linear-gradient(135deg,#14B8A6,#06B6D4)':'rgba(20,184,166,0.07)'};border:1.5px solid ${sel?'transparent':'rgba(20,184,166,0.2)'};border-radius:50px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;color:${sel?'#fff':'#0F1A1F'};transition:all 0.2s">
+              ${c.em} ${c.lbl}${sel?' ✓':''}
+            </button>`;
+          }).join('')}
         </div>
-        <div style="position:relative">
-          <select id="_etAddCatSel" onchange="_etAddCat(this)" style="width:100%;background:rgba(168,85,247,0.06);border:1.5px dashed rgba(168,85,247,0.35);border-radius:12px;padding:10px;font-size:13px;font-family:inherit;direction:rtl;outline:none;color:#A855F7;font-weight:700">
-            <option value="">＋ הוסף מקצוע נוסף...</option>
-            ${CATS.filter(c=>!window._etCats.includes(c.id)).map(c=>`<option value="${c.id}">${c.em} ${c.lbl}</option>`).join('')}
-          </select>
+        <div style="border-top:1px solid rgba(20,184,166,0.15);padding-top:12px">
+          <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:6px">➕ מקצוע שלא ברשימה?</label>
+          <div style="display:flex;gap:8px">
+            <input id="_etCustomInp" class="inp" placeholder="לדוגמה: יוגה, שחמט, צילום..." style="flex:1">
+            <button type="button" onclick="addEtCustomCat()" style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:12px;padding:10px 14px;font-weight:800;cursor:pointer;white-space:nowrap">הוסף</button>
+          </div>
+          <div id="_etCustomList" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">
+            ${window._etCustomCats.map(cc=>`<span style="background:rgba(168,85,247,0.15);border:1px solid rgba(168,85,247,0.3);border-radius:50px;padding:5px 12px;font-size:12px;font-weight:700;color:#A855F7;display:inline-flex;align-items:center;gap:6px">✨ ${cc} <span onclick="removeEtCustomCat('${cc}',this)" style="color:#EF4444;font-weight:900;cursor:pointer">✕</span></span>`).join('')}
+          </div>
         </div>
       </div>
 
       <div style="margin-bottom:14px">
-        <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:6px">📚 תיאור כללי</label>
+        <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:6px">📝 תיאור כללי</label>
         <textarea id="_etDesc" class="inp" placeholder="ספר על עצמך כמורה..." style="min-height:80px;resize:none;border-radius:14px">${(t.desc||'').split(String.fromCharCode(96)).join("'")}</textarea>
       </div>
       <div style="margin-bottom:14px">
@@ -5842,36 +5854,48 @@ function showEditTeacherProfileDialog(){
         <input id="_etCity" class="inp" value="${t.city||''}" placeholder="עיר בה אתה מלמד">
       </div>
       <div style="margin-bottom:14px">
-        <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:6px">🏷 תגיות כלליות (מופרדות בפסיק)</label>
+        <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:6px">🏷 תגיות (מופרדות בפסיק)</label>
         <input id="_etTags" class="inp" value="${(t.tags||[]).join(', ')}" placeholder="למשל: מתחילים, פופ, רוק">
       </div>
-      <div class="warn" style="margin-top:8px"><span>⚠️</span><span>לכל מקצוע ניתן להוסיף תיאור ותגיות נפרדים דרך כפתור "ערוך" בפרופיל.</span></div>
+      <div class="warn" style="margin-top:8px"><span>💡</span><span>לכל מקצוע ניתן להוסיף תיאור ותגיות נפרדים דרך כפתור "ערוך" בפרופיל המורה.</span></div>
     </div>`;
   document.body.appendChild(ov);
   ov.onclick=e=>{if(e.target===ov)ov.remove();};
 }
-function _etRenderCatPills(){
-  return (window._etCats||[]).map((cid,i)=>{
-    const c=CATS.find(x=>x.id===cid)||{em:'🎓',lbl:cid,col:'#14B8A6'};
-    return `<span style="display:inline-flex;align-items:center;gap:6px;background:${c.col}18;border:1.5px solid ${c.col}44;color:${c.col};border-radius:50px;padding:6px 12px;font-size:13px;font-weight:800">${c.em} ${c.lbl}${(window._etCats||[]).length>1?`<button onclick="_etRemoveCat(${i})" style="background:none;border:none;color:${c.col};cursor:pointer;font-size:14px;padding:0;line-height:1;margin-right:2px">✕</button>`:''}</span>`;
-  }).join('');
+function toggleEtCat(btn,catId){
+  const idx=window._etCats.indexOf(catId);
+  if(idx>-1){
+    window._etCats.splice(idx,1);
+    btn.style.background='rgba(20,184,166,0.07)';
+    btn.style.borderColor='rgba(20,184,166,0.2)';
+    btn.style.color='#0F1A1F';
+    btn.innerHTML=btn.innerHTML.replace(' ✓','');
+  }else{
+    window._etCats.push(catId);
+    btn.style.background='linear-gradient(135deg,#14B8A6,#06B6D4)';
+    btn.style.borderColor='transparent';
+    btn.style.color='#fff';
+    if(!btn.innerHTML.includes(' ✓'))btn.innerHTML+=' ✓';
+  }
 }
-function _etAddCat(sel){
-  const cid=sel.value;if(!cid)return;
-  if(!window._etCats.includes(cid))window._etCats.push(cid);
-  const el=document.getElementById('_etCatsList');
-  if(el)el.innerHTML=_etRenderCatPills();
-  // Refresh select options
-  sel.innerHTML=`<option value="">＋ הוסף מקצוע נוסף...</option>${CATS.filter(c=>!window._etCats.includes(c.id)).map(c=>`<option value="${c.id}">${c.em} ${c.lbl}</option>`).join('')}`;
-  sel.value='';
+function addEtCustomCat(){
+  const inp=document.getElementById('_etCustomInp');
+  const val=inp?.value.trim();
+  if(!val){showFireToast('❌ הכנס שם מקצוע');return;}
+  if(window._etCustomCats.includes(val)){showFireToast('כבר קיים');return;}
+  window._etCustomCats.push(val);
+  inp.value='';
+  const container=document.getElementById('_etCustomList');
+  if(container){
+    const tag=document.createElement('span');
+    tag.style.cssText='background:rgba(168,85,247,0.15);border:1px solid rgba(168,85,247,0.3);border-radius:50px;padding:5px 12px;font-size:12px;font-weight:700;color:#A855F7;display:inline-flex;align-items:center;gap:6px';
+    tag.innerHTML=`✨ ${val} <span onclick="removeEtCustomCat('${val}',this)" style="color:#EF4444;font-weight:900;cursor:pointer">✕</span>`;
+    container.appendChild(tag);
+  }
 }
-function _etRemoveCat(i){
-  if((window._etCats||[]).length<=1){showFireToast('❌ חייב לפחות מקצוע אחד');return;}
-  window._etCats.splice(i,1);
-  const el=document.getElementById('_etCatsList');
-  if(el)el.innerHTML=_etRenderCatPills();
-  const sel=document.getElementById('_etAddCatSel');
-  if(sel)sel.innerHTML=`<option value="">＋ הוסף מקצוע נוסף...</option>${CATS.filter(c=>!window._etCats.includes(c.id)).map(c=>`<option value="${c.id}">${c.em} ${c.lbl}</option>`).join('')}`;
+function removeEtCustomCat(val,el){
+  window._etCustomCats=(window._etCustomCats||[]).filter(c=>c!==val);
+  el.closest('span').remove();
 }
 function showEditCatProfileDialog(catId){
   if(!currentUser){showFireToast('❌ לא מחובר');return;}
@@ -5919,12 +5943,18 @@ async function saveTeacherProfileEdits(){
   const tagsRaw=document.getElementById('_etTags')?.value.trim();
   const tags=tagsRaw?tagsRaw.split(',').map(s=>s.trim()).filter(Boolean):[];
   const cats=(window._etCats&&window._etCats.length)?window._etCats:(TEACHERS.find(x=>x.id===currentUser?.uid)?.cats||[]);
+  const customCats=window._etCustomCats||[];
+  const allCats=[...cats,...customCats.map(c=>'custom:'+c)];
   if(!desc){showFireToast('❌ תיאור לא יכול להיות ריק');return;}
   if(price<10||price>500){showFireToast('❌ מחיר בין 10 ל-500');return;}
-  if(!cats.length){showFireToast('❌ חייב לפחות מקצוע אחד');return;}
+  if(!allCats.length){showFireToast('❌ חייב לפחות מקצוע אחד');return;}
   try{
-    const updates={desc,price,city,tags,cats,cat:cats[0]};
+    const updates={desc,price,city,tags,cats:allCats,cat:allCats[0],customCats};
     await db.ref('teachers/'+currentUser.uid).update(updates);
+    // שמור מקצועות מותאמים לאישור מנהל
+    for(const cc of customCats){
+      await db.ref('pendingCategories').push({teacherId:currentUser.uid,teacherName:currentUserData?.name||'',category:cc,createdAt:Date.now(),status:'pending'}).catch(()=>{});
+    }
     const t=TEACHERS.find(x=>x.id===currentUser.uid);
     if(t)Object.assign(t,updates);
     document.getElementById('_etOv')?.remove();
