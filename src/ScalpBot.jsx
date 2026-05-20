@@ -96,9 +96,14 @@ export default function ScalpBot() {
   const [status,  setStatus]         = useState("connecting");
   const [position, setPositionState] = useState(null);
   const [trades,  setTrades]         = useState([]);
-  const posRef       = useRef(null);
-  const wsRef        = useRef(null);
-  const processedRef = useRef(new Set());
+  const [signal,  setSignal]         = useState(null);
+  const [flashOn, setFlashOn]        = useState(false);
+  const posRef        = useRef(null);
+  const wsRef         = useRef(null);
+  const processedRef  = useRef(new Set());
+  const flashTimer    = useRef(null);
+  const signalTimer   = useRef(null);
+  const prevPosRef    = useRef(null);
 
   const setPosition = useCallback((p) => { posRef.current = p; setPositionState(p); }, []);
 
@@ -195,6 +200,72 @@ export default function ScalpBot() {
     }
   }, [chartData, setPosition]);
 
+  // ── 10-min comprehensive signal ────────────────────────────────────────────
+  const analyzeSignal = useCallback(() => {
+    const data = chartData;
+    if (data.length < 22) return;
+    const cur = data[data.length - 1];
+    const prev = data[data.length - 2];
+    const last5 = data.slice(-5);
+    let score = 0;
+    const reasons = [];
+
+    // EMA direction
+    if (cur.ema9 > cur.ema21) { score += 2; reasons.push("EMA9 מעל EMA21 ↑"); }
+    else                       { score -= 2; reasons.push("EMA9 מתחת EMA21 ↓"); }
+
+    // EMA momentum (narrowing or widening)
+    const gapNow  = cur.ema9 - cur.ema21;
+    const gapPrev = prev.ema9 - prev.ema21;
+    if (gapNow > 0 && gapNow > gapPrev) { score += 1; reasons.push("פער EMA מתרחב ▲"); }
+    if (gapNow < 0 && gapNow < gapPrev) { score -= 1; reasons.push("פער EMA מתרחב ▼"); }
+
+    // Price vs EMAs
+    if (cur.close > cur.ema21) score += 1; else score -= 1;
+    if (cur.close > cur.ema9)  score += 1; else score -= 1;
+
+    // RSI
+    const rsi = cur.rsi;
+    if (rsi < 30)      { score += 3; reasons.push(`RSI ${rsi.toFixed(0)} — Oversold 🟢`); }
+    else if (rsi < 45) { score += 1; reasons.push(`RSI ${rsi.toFixed(0)} — נמוך`); }
+    else if (rsi > 70) { score -= 3; reasons.push(`RSI ${rsi.toFixed(0)} — Overbought 🔴`); }
+    else if (rsi > 55) { score -= 1; reasons.push(`RSI ${rsi.toFixed(0)} — גבוה`); }
+    else                             reasons.push(`RSI ${rsi.toFixed(0)} — ניטרלי`);
+
+    // Price momentum (last 5 candles)
+    const momentum = (cur.close - last5[0].close) / last5[0].close * 100;
+    if (momentum > 0.15)       { score += 2; reasons.push(`מומנטום +${momentum.toFixed(2)}% ↑`); }
+    else if (momentum > 0.05)  { score += 1; reasons.push(`מומנטום +${momentum.toFixed(2)}%`); }
+    else if (momentum < -0.15) { score -= 2; reasons.push(`מומנטום ${momentum.toFixed(2)}% ↓`); }
+    else if (momentum < -0.05) { score -= 1; reasons.push(`מומנטום ${momentum.toFixed(2)}%`); }
+
+    // Candle direction (last 3)
+    const upCount = last5.slice(-3).filter(c => c.close >= c.open).length;
+    if (upCount >= 3)      { score += 1; reasons.push("3/3 נרות עולים"); }
+    else if (upCount === 0){ score -= 1; reasons.push("3/3 נרות יורדים"); }
+
+    let dir = score >= 4 ? "LONG" : score <= -4 ? "SHORT" : "WAIT";
+    setSignal({ dir, score, reasons, time: new Date().toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" }) });
+  }, [chartData]);
+
+  // run on load + every 10 min
+  useEffect(() => {
+    if (chartData.length < 22) return;
+    analyzeSignal();
+    signalTimer.current = setInterval(analyzeSignal, 10 * 60 * 1000);
+    return () => clearInterval(signalTimer.current);
+  }, [chartData.length >= 22 ? 1 : 0]); // eslint-disable-line
+
+  // flash when new position opens
+  useEffect(() => {
+    if (position && !prevPosRef.current) {
+      setFlashOn(true);
+      clearTimeout(flashTimer.current);
+      flashTimer.current = setTimeout(() => setFlashOn(false), 8000);
+    }
+    prevPosRef.current = position;
+  }, [position]);
+
   const latest  = chartData[chartData.length - 1];
   const first   = chartData[0];
   const change  = latest && first ? ((latest.close - first.close) / first.close * 100) : 0;
@@ -216,7 +287,9 @@ export default function ScalpBot() {
         ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1)}
         @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.4)}}
         @keyframes up{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+        @keyframes flash{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.7;transform:scale(1.02)}}
         .fade{animation:up 0.25s ease}
+        .flash{animation:flash 0.6s ease infinite}
       `}</style>
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
@@ -252,6 +325,76 @@ export default function ScalpBot() {
           )}
         </div>
       </div>
+
+      {/* ── Flash banner ── */}
+      {flashOn && position && (
+        <div className="flash" style={{
+          marginBottom: 10, borderRadius: 18, padding: "16px 20px",
+          background: position.dir === "LONG"
+            ? `linear-gradient(135deg, rgba(0,255,176,0.25), rgba(0,255,176,0.1))`
+            : `linear-gradient(135deg, rgba(255,61,107,0.25), rgba(255,61,107,0.1))`,
+          border: `2px solid ${position.dir === "LONG" ? G.green : G.red}`,
+          boxShadow: `0 0 30px ${position.dir === "LONG" ? G.green : G.red}60`,
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+        }}>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: 2, color: position.dir === "LONG" ? G.green : G.red, marginBottom: 4 }}>
+              ⚡ כנס עכשיו!
+            </div>
+            <div style={{ fontFamily: "monospace", fontSize: 28, fontWeight: 900, color: position.dir === "LONG" ? G.green : G.red }}>
+              {position.dir === "LONG" ? "▲ LONG" : "▼ SHORT"}
+            </div>
+          </div>
+          <div style={{ textAlign: "right" }}>
+            <div style={{ fontSize: 11, color: G.mid }}>כניסה</div>
+            <div style={{ fontFamily: "monospace", fontSize: 20, fontWeight: 900, color: G.text }}>${position.entry.toFixed(5)}</div>
+            <div style={{ fontSize: 10, color: position.dir === "LONG" ? G.green : G.red, marginTop: 4 }}>
+              SL ${position.sl.toFixed(4)} · TP ${position.tp.toFixed(4)}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 10-min signal ── */}
+      {signal && (
+        <div style={{
+          ...card,
+          background: signal.dir === "LONG"
+            ? `linear-gradient(135deg, rgba(0,255,176,0.1), rgba(0,0,0,0.05))`
+            : signal.dir === "SHORT"
+            ? `linear-gradient(135deg, rgba(255,61,107,0.1), rgba(0,0,0,0.05))`
+            : `linear-gradient(135deg, rgba(255,208,0,0.07), rgba(0,0,0,0.05))`,
+          border: `1px solid ${signal.dir === "LONG" ? G.greenB : signal.dir === "SHORT" ? G.redB : G.amberB}`,
+        }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+            <span style={lbl}>ניתוח כל 10 דקות</span>
+            <span style={{ fontSize: 10, color: G.muted }}>עודכן {signal.time}</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
+            <div style={{
+              fontFamily: "monospace", fontSize: 26, fontWeight: 900,
+              color: signal.dir === "LONG" ? G.green : signal.dir === "SHORT" ? G.red : G.amber,
+              textShadow: `0 0 20px ${signal.dir === "LONG" ? G.green : signal.dir === "SHORT" ? G.red : G.amber}80`,
+            }}>
+              {signal.dir === "LONG" ? "▲ LONG" : signal.dir === "SHORT" ? "▼ SHORT" : "⏸ WAIT"}
+            </div>
+            <div style={{
+              fontSize: 12, fontWeight: 900, padding: "4px 12px", borderRadius: 10,
+              color: G.bg, background: signal.dir === "LONG" ? G.green : signal.dir === "SHORT" ? G.red : G.amber,
+            }}>
+              ציון {signal.score > 0 ? "+" : ""}{signal.score}
+            </div>
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {signal.reasons.map((r, i) => (
+              <span key={i} style={{
+                fontSize: 10, fontWeight: 700, padding: "3px 8px", borderRadius: 8,
+                background: "rgba(255,255,255,0.07)", color: G.mid, border: `1px solid ${G.border}`,
+              }}>{r}</span>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div style={card}>
         <div style={{ display: "flex", gap: 14, marginBottom: 10, flexWrap: "wrap", alignItems: "center" }}>
