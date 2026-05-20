@@ -4558,7 +4558,6 @@ function Teacher(){
       </div>
 
       <!-- Videos section in public profile -->
-      ${publicTeacherVideos.length>0?`
       ${(()=>{
         const filtPubVids=S.teacherCat?publicTeacherVideos.filter(v=>v.cat===S.teacherCat):publicTeacherVideos;
         if(!filtPubVids.length)return '';
