@@ -5,13 +5,13 @@ import {
 } from "recharts";
 
 const G = {
-  bg: "#060A14", panel: "rgba(255,255,255,0.04)", border: "rgba(255,255,255,0.08)",
-  borderHi: "rgba(255,255,255,0.15)", text: "#F0F4FF", mid: "#9BAACB", muted: "#4A5C7A",
-  green: "#00E5A0", greenL: "rgba(0,229,160,0.1)",  greenB: "rgba(0,229,160,0.28)",
-  red:   "#FF4D72", redL:   "rgba(255,77,114,0.1)", redB:   "rgba(255,77,114,0.28)",
-  blue:  "#4DABFF", blueL:  "rgba(77,171,255,0.1)", blueB:  "rgba(77,171,255,0.28)",
-  amber: "#FFB800", amberL: "rgba(255,184,0,0.1)",  amberB: "rgba(255,184,0,0.28)",
-  orange: "#FF8C00",
+  bg: "#0B1120", panel: "rgba(255,255,255,0.07)", border: "rgba(255,255,255,0.14)",
+  borderHi: "rgba(255,255,255,0.25)", text: "#FFFFFF", mid: "#C8D8F0", muted: "#6B82A8",
+  green: "#00FFB0", greenL: "rgba(0,255,176,0.13)", greenB: "rgba(0,255,176,0.35)",
+  red:   "#FF3D6B", redL:   "rgba(255,61,107,0.13)", redB:  "rgba(255,61,107,0.35)",
+  blue:  "#5BB8FF", blueL:  "rgba(91,184,255,0.13)", blueB: "rgba(91,184,255,0.35)",
+  amber: "#FFD000", amberL: "rgba(255,208,0,0.13)",  amberB:"rgba(255,208,0,0.35)",
+  orange: "#FFA030",
 };
 
 const card = {
@@ -19,7 +19,7 @@ const card = {
   padding: "14px 16px", marginBottom: 10,
   backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
 };
-const lbl = { fontSize: 9, fontWeight: 800, letterSpacing: 2, color: G.muted, textTransform: "uppercase", marginBottom: 10, display: "block" };
+const lbl = { fontSize: 10, fontWeight: 900, letterSpacing: 2.5, color: G.muted, textTransform: "uppercase", marginBottom: 10, display: "block" };
 
 function calcEMA(arr, p) {
   if (arr.length < p) return arr.map(() => null);
@@ -221,13 +221,13 @@ export default function ScalpBot() {
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
         <div>
-          <div style={{ fontSize: 10, color: G.muted, fontWeight: 700, letterSpacing: 2, marginBottom: 4 }}>XRP / USDT · 5M · BINANCE</div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontFamily: "monospace", fontSize: 30, fontWeight: 900, color: change >= 0 ? G.green : G.red }}>
+          <div style={{ fontSize: 11, color: G.muted, fontWeight: 800, letterSpacing: 2.5, marginBottom: 6 }}>XRP / USDT · 5M · BINANCE</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{ fontFamily: "monospace", fontSize: 36, fontWeight: 900, color: change >= 0 ? G.green : G.red, textShadow: `0 0 24px ${change >= 0 ? G.green : G.red}80` }}>
               {latest ? `$${latest.close.toFixed(5)}` : <span style={{ color: G.muted }}>—</span>}
             </span>
             {latest && (
-              <span style={{ fontSize: 12, fontWeight: 800, padding: "2px 8px", borderRadius: 6, color: change >= 0 ? G.green : G.red, background: change >= 0 ? G.greenL : G.redL }}>
+              <span style={{ fontSize: 14, fontWeight: 900, padding: "4px 10px", borderRadius: 8, color: change >= 0 ? G.green : G.red, background: change >= 0 ? G.greenL : G.redL, border: `1px solid ${change >= 0 ? G.greenB : G.redB}` }}>
                 {change >= 0 ? "▲" : "▼"} {Math.abs(change).toFixed(2)}%
               </span>
             )}
@@ -298,7 +298,7 @@ export default function ScalpBot() {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
             <span style={{ ...lbl, marginBottom: 0 }}>RSI 14</span>
             {latest?.rsi && (
-              <span style={{ fontFamily: "monospace", fontSize: 15, fontWeight: 900, color: latest.rsi > 70 ? G.red : latest.rsi < 30 ? G.green : G.amber }}>
+              <span style={{ fontFamily: "monospace", fontSize: 18, fontWeight: 900, color: latest.rsi > 70 ? G.red : latest.rsi < 30 ? G.green : G.amber }}>
                 {latest.rsi.toFixed(1)}{latest.rsi > 70 ? " OB" : latest.rsi < 30 ? " OS" : ""}
               </span>
             )}
@@ -336,7 +336,7 @@ export default function ScalpBot() {
             </div>
             <div style={{ textAlign: "right" }}>
               <div style={{ fontSize: 10, color: G.muted, marginBottom: 4 }}>LIVE P&L</div>
-              <div style={{ fontFamily: "monospace", fontSize: 28, fontWeight: 900, color: livePnl >= 0 ? G.green : G.red }}>
+              <div style={{ fontFamily: "monospace", fontSize: 32, fontWeight: 900, color: livePnl >= 0 ? G.green : G.red, textShadow: `0 0 20px ${livePnl >= 0 ? G.green : G.red}80` }}>
                 {livePnl >= 0 ? "+" : ""}{livePnl?.toFixed(3)}%
               </div>
             </div>
