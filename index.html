@@ -2469,6 +2469,9 @@ async function adminDeleteUser(uid,name,role){
       });
       await Promise.all(delRevs.map(p=>db.ref(p).remove()));
     }
+    // חסום ואלץ ניתוק מהמכשיר
+    await db.ref('bannedUsers/'+uid).set({deletedAt:Date.now(),deletedBy:currentUser?.uid||'admin'});
+    await db.ref('forceSignout/'+uid).set({ts:Date.now()});
     showFireToast('✅ המשתמש נמחק');
     await loadAdminData();renderAdminPanel();
   }catch(e){showFireToast('❌ '+e.message);}
@@ -3327,8 +3330,7 @@ function confirmDeleteOldUsers(){
       <h3 style="font-weight:900;font-size:20px;margin:0 0 12px;color:#F59E0B">מחיקת משתמשים ישנים</h3>
       <div style="background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.25);border-radius:14px;padding:14px;margin-bottom:16px;text-align:right">
         <p style="margin:0;font-size:13px;line-height:1.7;color:#0F1A1F">הפעולה תמחק <strong>את כל</strong> המשתמשים והמורים מהמסד, כולל ממתינים לאישור, מלבד:<br>
-        ✅ rotemshaer@gmail.com<br>
-        ✅ eyalxbeja+kidemyteacher@gmail.com<br><br>
+        ✅ rotemshaer@gmail.com<br><br>
         נמחקים: פרופיל, לוח זמנים, סרטונים, הזמנות, התראות.<br>
         המשתמשים שיימחקו יצטרכו להירשם מחדש.</p>
       </div>
@@ -3343,7 +3345,7 @@ function confirmDeleteOldUsers(){
 
 async function adminDeleteOldUsers(){
   if(!isAdmin()){showFireToast('🚫 אין הרשאה');return;}
-  const KEEP=['rotemshaer@gmail.com','eyalxbeja+kidemyteacher@gmail.com'];
+  const KEEP=['rotemshaer@gmail.com'];
   try{
     showFireToast('⏳ סורק ומוחק...');
     let deleted=0;
@@ -3389,6 +3391,8 @@ async function adminDeleteOldUsers(){
       if(keepUids.has(uid)) continue;
       const promises=allPaths.map(path=>db.ref(path+'/'+uid).remove().catch(()=>{}));
       await Promise.all(promises);
+      await db.ref('bannedUsers/'+uid).set({deletedAt:Date.now(),deletedBy:currentUser?.uid||'admin'}).catch(()=>{});
+      await db.ref('forceSignout/'+uid).set({ts:Date.now()}).catch(()=>{});
       deleted++;
     }
 
@@ -6026,6 +6030,30 @@ let currentUser=null, currentUserData=null;
 auth.onAuthStateChanged(async user=>{
   loadRealTeachers();
   if(user){
+    // בדוק אם המשתמש נחסם על ידי מנהל
+    if(!S._registering){
+      try{
+        const bannedSnap=await db.ref('bannedUsers/'+user.uid).get();
+        if(bannedSnap.exists()){
+          try{await user.delete();}catch(e2){}
+          await auth.signOut().catch(()=>{});
+          currentUser=null;currentUserData=null;
+          showFireToast('❌ חשבון זה הוסר מהמערכת');
+          go('login');return;
+        }
+      }catch(e2){}
+      // האזן לניתוק כפוי (admin מחק בזמן שמשתמש מחובר)
+      db.ref('forceSignout/'+user.uid).on('value',async snap=>{
+        if(snap.exists()&&snap.val()?.ts){
+          db.ref('forceSignout/'+user.uid).off('value');
+          try{await auth.currentUser?.delete();}catch(e2){}
+          await auth.signOut().catch(()=>{});
+          currentUser=null;currentUserData=null;
+          showFireToast('❌ חשבון זה הוסר מהמערכת');
+          go('login');
+        }
+      });
+    }
     currentUser=user;
     try{
       const snap=await db.ref('users/'+user.uid).get();
@@ -6097,6 +6125,7 @@ auth.onAuthStateChanged(async user=>{
 async function firebaseRegister(email,password,userData){
   try{
     showFireToast('⏳ יוצר חשבון...');
+    S._registering=true;
     const cred=await auth.createUserWithEmailAndPassword(email,password);
     // שמירת פרטים ב-Database
     await db.ref('users/'+cred.user.uid).set({
@@ -6151,13 +6180,32 @@ async function firebaseRegister(email,password,userData){
       sessionStorage.removeItem('_rEmail');
     }catch(e){}
     S.safetyConfirmed=false;S.parentRegData=null;
+    S._registering=false;
     // מציג מסך הצלחה במקום ה-render הרגיל
     S.screen='regSuccess';
     S.regEmail=email;
     render();
   }catch(e){
+    S._registering=false;
+    if(e.code==='auth/email-already-in-use'){
+      // בדוק אם המייל שייך לחשבון שנמחק/נחסם — אם כן, מאפשרים הרשמה מחדש
+      try{
+        const sc=await auth.signInWithEmailAndPassword(email,password);
+        const bannedSnap=await db.ref('bannedUsers/'+sc.user.uid).get();
+        if(bannedSnap.exists()){
+          await sc.user.delete();
+          await db.ref('bannedUsers/'+sc.user.uid).remove().catch(()=>{});
+          return await firebaseRegister(email,password,userData);
+        }else{
+          await auth.signOut().catch(()=>{});
+          showFireToast('❌ המייל כבר קיים במערכת - נסה מייל אחר');
+        }
+      }catch(signInErr){
+        showFireToast('❌ המייל כבר קיים במערכת - נסה מייל אחר');
+      }
+      return;
+    }
     const m={
-      'auth/email-already-in-use':'❌ המייל כבר קיים – נסה להתחבר',
       'auth/weak-password':'❌ סיסמה חלשה מדי – לפחות 6 תווים',
       'auth/invalid-email':'❌ כתובת מייל לא תקינה',
       'auth/network-request-failed':'❌ אין חיבור לאינטרנט'
