@@ -69,6 +69,27 @@ function SellDot(props) {
   );
 }
 
+function FlashEntryDot({ cx, cy, dir }) {
+  if (cx == null || cy == null || isNaN(cx) || isNaN(cy)) return null;
+  const c = dir === "LONG" ? G.green : G.red;
+  const yOff = dir === "LONG" ? -28 : 28;
+  const pts  = dir === "LONG"
+    ? `${cx},${cy-22} ${cx-12},${cy-4} ${cx+12},${cy-4}`
+    : `${cx},${cy+22} ${cx-12},${cy+4} ${cx+12},${cy+4}`;
+  return (
+    <g>
+      <circle cx={cx} cy={cy} r={26} fill="none" stroke={c} strokeWidth={1.5}
+        strokeOpacity={0.5} style={{ animation: "ripple1 1.2s ease-out infinite" }}/>
+      <circle cx={cx} cy={cy} r={18} fill="none" stroke={c} strokeWidth={2}
+        strokeOpacity={0.7} style={{ animation: "ripple1 1.2s ease-out infinite 0.4s" }}/>
+      <circle cx={cx} cy={cy} r={10} fill={c} fillOpacity={0.25} stroke={c} strokeWidth={2}
+        style={{ filter: `drop-shadow(0 0 10px ${c})` }}/>
+      <polygon points={pts} fill={c} stroke={G.bg} strokeWidth={1.5}
+        style={{ filter: `drop-shadow(0 0 8px ${c})` }}/>
+    </g>
+  );
+}
+
 function PriceTip({ active, payload }) {
   if (!active || !payload?.[0]) return null;
   const d = payload[0].payload;
@@ -96,14 +117,16 @@ export default function ScalpBot() {
   const [status,  setStatus]         = useState("connecting");
   const [position, setPositionState] = useState(null);
   const [trades,  setTrades]         = useState([]);
-  const [signal,  setSignal]         = useState(null);
-  const [flashOn, setFlashOn]        = useState(false);
+  const [signal,    setSignal]        = useState(null);
+  const [flashOn,   setFlashOn]       = useState(false);
+  const [countdown, setCountdown]     = useState(600);
   const posRef        = useRef(null);
   const wsRef         = useRef(null);
   const processedRef  = useRef(new Set());
   const flashTimer    = useRef(null);
   const signalTimer   = useRef(null);
   const prevPosRef    = useRef(null);
+  const cdRef         = useRef(600);
 
   const setPosition = useCallback((p) => { posRef.current = p; setPositionState(p); }, []);
 
@@ -246,6 +269,7 @@ export default function ScalpBot() {
 
     let dir = score >= 4 ? "LONG" : score <= -4 ? "SHORT" : "WAIT";
     setSignal({ dir, score, reasons, time: new Date().toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" }) });
+    cdRef.current = 600; setCountdown(600);
   }, [chartData]);
 
   // run on load + every 10 min
@@ -256,6 +280,15 @@ export default function ScalpBot() {
     return () => clearInterval(signalTimer.current);
   }, [chartData.length >= 22 ? 1 : 0]); // eslint-disable-line
 
+  // countdown tick every second
+  useEffect(() => {
+    const t = setInterval(() => {
+      cdRef.current = Math.max(0, cdRef.current - 1);
+      setCountdown(cdRef.current);
+    }, 1000);
+    return () => clearInterval(t);
+  }, []);
+
   // flash when new position opens
   useEffect(() => {
     if (position && !prevPosRef.current) {
@@ -265,6 +298,16 @@ export default function ScalpBot() {
     }
     prevPosRef.current = position;
   }, [position]);
+
+  const flashData = useMemo(() => {
+    if (!flashOn || !position || chartData.length === 0) return chartData;
+    return chartData.map((d, i) => ({
+      ...d, flashSignal: i === chartData.length - 1 ? d.close : null,
+    }));
+  }, [chartData, flashOn, position]);
+
+  const cdMins = String(Math.floor(countdown / 60)).padStart(2, "0");
+  const cdSecs = String(countdown % 60).padStart(2, "0");
 
   const latest  = chartData[chartData.length - 1];
   const first   = chartData[0];
@@ -288,6 +331,7 @@ export default function ScalpBot() {
         @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.4)}}
         @keyframes up{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
         @keyframes flash{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.7;transform:scale(1.02)}}
+        @keyframes ripple1{0%{r:8;opacity:0.9}100%{r:32;opacity:0}}
         .fade{animation:up 0.25s ease}
         .flash{animation:flash 0.6s ease infinite}
       `}</style>
@@ -368,7 +412,15 @@ export default function ScalpBot() {
         }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
             <span style={lbl}>ניתוח כל 10 דקות</span>
-            <span style={{ fontSize: 10, color: G.muted }}>עודכן {signal.time}</span>
+            <div style={{ textAlign: "right" }}>
+              <div style={{ fontSize: 10, color: G.muted }}>עודכן {signal.time}</div>
+              <div style={{ fontFamily: "monospace", fontSize: 18, fontWeight: 900,
+                color: countdown < 60 ? G.red : countdown < 120 ? G.amber : G.green,
+                textShadow: countdown < 60 ? `0 0 10px ${G.red}80` : "none",
+              }}>
+                ⏱ {cdMins}:{cdSecs}
+              </div>
+            </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
             <div style={{
@@ -410,7 +462,7 @@ export default function ScalpBot() {
           </div>
         ) : (
           <ResponsiveContainer width="100%" height={220}>
-            <ComposedChart data={chartData.slice(-60)} margin={{ top: 20, right: 62, bottom: 0, left: 0 }}>
+            <ComposedChart data={flashData.slice(-60)} margin={{ top: 20, right: 62, bottom: 0, left: 0 }}>
               <defs>
                 <linearGradient id="pg" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%"  stopColor={G.blue} stopOpacity={0.15}/>
@@ -431,6 +483,11 @@ export default function ScalpBot() {
               <Line  type="monotone" dataKey="ema21"      stroke={G.orange} strokeWidth={1.5} dot={false} activeDot={false} strokeOpacity={0.75} connectNulls={false}/>
               <Line  type="monotone" dataKey="buySignal"  stroke="transparent" dot={<BuyDot/>}  activeDot={false} isAnimationActive={false} connectNulls={false}/>
               <Line  type="monotone" dataKey="sellSignal" stroke="transparent" dot={<SellDot/>} activeDot={false} isAnimationActive={false} connectNulls={false}/>
+              {flashOn && position && (
+                <Line type="monotone" dataKey="flashSignal" stroke="transparent"
+                  dot={<FlashEntryDot dir={position.dir}/>} activeDot={false}
+                  isAnimationActive={false} connectNulls={false}/>
+              )}
             </ComposedChart>
           </ResponsiveContainer>
         )}
