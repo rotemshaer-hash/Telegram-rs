@@ -2707,11 +2707,11 @@ function _vidCheckReady(){
     const u=(document.getElementById('_vidUrl')?.value||'').trim();
     return u.startsWith('http')&&!!detectVideoPlatform(u);
   })();
-  const ready=(hasVideo||hasLink)&&title.length>=3;
+  const hasContent=hasVideo||hasLink;
   const sub=document.getElementById('_vidSubmitWrap');
   const thmb=document.getElementById('_thumbSection');
-  if(sub)sub.style.display=ready?'block':'none';
-  if(thmb)thmb.style.display=(hasVideo||hasLink)?'block':'none';
+  if(sub)sub.style.display=hasContent?'block':'none';
+  if(thmb)thmb.style.display=hasContent?'block':'none';
 }
 
 function _onThumbFile(f){
@@ -2839,6 +2839,12 @@ function previewGalleryVideo(input){
   if(info){
     const sizeMB=(file.size/1024/1024).toFixed(1);
     info.textContent=`📦 ${file.name} | ${sizeMB}MB`;
+  }
+  // auto-fill title from filename if empty
+  const titleEl=document.getElementById('_vidTitle');
+  if(titleEl&&!titleEl.value.trim()){
+    const baseName=file.name.replace(/\.[^.]+$/,'').replace(/[-_]/g,' ').trim();
+    if(baseName.length>=3)titleEl.value=baseName;
   }
   _vidCheckReady();
   // לכוד פריימים אוטומטית אחרי טעינת המטאדאטה
