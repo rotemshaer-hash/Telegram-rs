@@ -4525,8 +4525,8 @@ function Teacher(){
       ${(()=>{
         const cat=S.teacherCat?CATS.find(x=>x.id===S.teacherCat):null;
         const catProfile=S.teacherCat&&t.catProfiles?.[S.teacherCat];
-        const desc=catProfile?.desc||t.desc||'';
-        const tags=catProfile?.tags||t.tags||[];
+        const desc=S.teacherCat?(catProfile?.desc||''):(t.desc||'');
+        const tags=S.teacherCat?(catProfile?.tags||[]):(t.tags||[]);
         const isOwn=currentUser&&t.id===currentUser.uid;
         return `
         ${cat?`<div style="background:linear-gradient(135deg,${t.col}15,${t.col}08);border:1.5px solid ${t.col}30;border-radius:18px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:10px">
@@ -5037,12 +5037,32 @@ function Profile(){
       ${ACHIEVEMENTS.map(a=>{const own=(currentUserData?.achievements||[]).includes(a.id);return `<div class="ach ${own?"":"locked"}"><div style="font-size:28px;margin-bottom:7px">${a.em}</div><div style="font-size:11px;font-weight:800;line-height:1.3">${a.ttl}</div>${own?`<div style="font-size:10px;color:${a.col};margin-top:4px;font-weight:700">✓ הושג</div>`:`<div style="font-size:9px;color:${C.muted};margin-top:4px">${a.desc}</div>`}</div>`;}).join("")}
     </div>`;
 
-  if(tab==="about") content=`
+  if(tab==="about"){
+    const myT=TEACHERS.find(x=>x.id===currentUser?.uid);
+    const isTeacher=currentUserData?.role==='teacher'&&myT;
+    const tCats=isTeacher&&myT.cats?.length?myT.cats:(myT?.cat?[myT.cat]:[]);
+    const selCat=isTeacher?(S.profileAboutCat||(tCats[0]||null)):null;
+    const catProfile=selCat&&myT?.catProfiles?.[selCat];
+    const catObj=selCat?CATS.find(x=>x.id===selCat):null;
+    content=`
     <div class="card"><h4 style="margin:0 0 10px;font-weight:800">👋 קצת עליי</h4><p style="margin:0;font-size:14px;line-height:1.7">${currentUserData?.bio||'עדיין לא כתבת קצת על עצמך. לחץ על "ערוך פרופיל" כדי להוסיף.'}</p></div>
-    ${(()=>{const myTeacher=TEACHERS.find(x=>x.id===currentUser?.uid);return myTeacher&&myTeacher.tags?.length?`<div class="card"><h4 style="margin:0 0 12px;font-weight:800">🏷 תחומי הוראה</h4><div style="display:flex;gap:8px;flex-wrap:wrap">${myTeacher.tags.map(tg=>`<span style="background:rgba(155,89,182,.12);color:#0F766E;padding:7px 16px;border-radius:50px;font-size:13px;font-weight:700">${tg}</span>`).join("")}</div></div>`:'';})()}
-    <!-- Referral -->
+    ${isTeacher&&tCats.length>0?`
+      ${tCats.length>1?`<div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px">
+        ${tCats.map(cid=>{const c=CATS.find(x=>x.id===cid)||{em:'🎓',lbl:cid,col:'#14B8A6'};const on=selCat===cid;return `<button onclick="S.profileAboutCat='${cid}';render()" style="border-radius:50px;padding:8px 18px;font-size:13px;font-weight:800;cursor:pointer;border:1.5px solid ${on?c.col:'rgba(100,116,139,0.3)'};background:${on?c.col:'rgba(100,116,139,0.06)'};color:${on?'#fff':'#64748B'};transition:all 0.2s">${c.em} ${c.lbl}</button>`;}).join('')}
+      </div>`:''}
+      ${catObj?`<div style="background:${catObj.col}10;border:1.5px solid ${catObj.col}30;border-radius:18px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:10px"><span style="font-size:26px">${catObj.em}</span><div><div style="font-weight:900;font-size:15px;color:${catObj.col}">${catObj.lbl}</div><div style="font-size:11px;color:#64748B">פרופיל מקצוע</div></div></div>
+        <button onclick="showEditTeacherProfileDialog()" style="background:${catObj.col}18;border:1px solid ${catObj.col}40;color:${catObj.col};border-radius:50px;padding:7px 14px;font-size:12px;font-weight:800;cursor:pointer">✏️ ערוך</button>
+      </div>`:''}
+      <div class="card">
+        <h4 style="margin:0 0 10px;font-weight:800">📝 תיאור${catObj?' ב'+catObj.lbl:''}</h4>
+        <p style="margin:0;font-size:14px;line-height:1.7">${catProfile?.desc||'עדיין לא הוספת תיאור למקצוע זה. לחץ על "ערוך" כדי להוסיף.'}</p>
+      </div>
+      ${catProfile?.tags?.length?`<div class="card"><h4 style="margin:0 0 12px;font-weight:800">🏷 מה אני מלמד/ת ב${catObj?.lbl||''}</h4><div style="display:flex;gap:8px;flex-wrap:wrap">${catProfile.tags.map(tg=>`<span style="background:${catObj?.col||'#14B8A6'}18;color:${catObj?.col||'#14B8A6'};padding:7px 16px;border-radius:50px;font-size:13px;font-weight:700">${tg}</span>`).join('')}</div></div>`:''}
+    `:''}
     <div class="ref-card"><h4 style="margin:0 0 6px;font-weight:900;font-size:16px">🎁 הפנה חבר – קבל ₪15!</h4><p style="margin:0 0 14px;font-size:13px;opacity:.9;line-height:1.6">על כל חבר שנרשם דרכך תקבל ₪15 לחשבון שלך.</p><button onclick="shareApp()" style="background:rgba(255,255,255,.2);border:1.5px solid rgba(255,255,255,.3);color:#fff;border-radius:50px;padding:10px 20px;font-weight:700;cursor:pointer;font-size:13px">📤 שתף את Kidemy</button></div>
     ${[["✏️","ערוך פרופיל",currentUserData?.role==='teacher'?"showEditTeacherProfileDialog()":`showEditProfileDialog()`],["💰","ניהול תשלומים","showPaymentManagement()"],["🏆","ראה לידרבורד","go('leaderboard')"],["🚪","התנתקות","confirmLogout()"]].map(([e,l,fn])=>`<div class="card-sm" style="display:flex;align-items:center;gap:13px;cursor:pointer" onclick="${fn}"><span style="font-size:22px">${e}</span><span style="font-weight:700;font-size:15px;color:${l==="התנתקות"?"#E74C3C":"#1A1A2E"}">${l}</span><span style="margin-right:auto;color:#8A94A6">←</span></div>`).join("")}`;
+  }
 
   return `<div class="screen" style="background:linear-gradient(165deg,#CCFBF1 0%,#A5F3FC 50%,#7DD3FC 100%);padding-bottom:100px">
     <div style="background:linear-gradient(135deg,#0F766E,#8E44AD);padding:32px 20px 40px;border-radius:0 0 32px 32px;text-align:center;color:#fff;position:relative;overflow:hidden">
@@ -5858,10 +5878,11 @@ function showEditTeacherProfileDialog(){
         </div>
       </div>
 
-      <div style="margin-bottom:14px">
-        <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:6px">📝 תיאור כללי</label>
-        <textarea id="_etDesc" class="inp" placeholder="ספר על עצמך כמורה..." style="min-height:80px;resize:none;border-radius:14px">${(t.desc||'').split(String.fromCharCode(96)).join("'")}</textarea>
+      <!-- תיאור ותגיות לכל מקצוע בנפרד -->
+      <div id="_etSubjectDescs">
+        ${_etRenderSubjectDescs(t)}
       </div>
+
       <div style="margin-bottom:14px">
         <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:6px">💰 מחיר לשיעור (₪)</label>
         <input id="_etPrice" class="inp" type="number" min="10" max="500" value="${t.price||60}" placeholder="מחיר לשיעור">
@@ -5870,14 +5891,31 @@ function showEditTeacherProfileDialog(){
         <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:6px">🏙 עיר</label>
         <input id="_etCity" class="inp" value="${t.city||''}" placeholder="עיר בה אתה מלמד">
       </div>
-      <div style="margin-bottom:14px">
-        <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:6px">🏷 תגיות (מופרדות בפסיק)</label>
-        <input id="_etTags" class="inp" value="${(t.tags||[]).join(', ')}" placeholder="למשל: מתחילים, פופ, רוק">
-      </div>
-      <div class="warn" style="margin-top:8px"><span>💡</span><span>לכל מקצוע ניתן להוסיף תיאור ותגיות נפרדים דרך כפתור "ערוך" בפרופיל המורה.</span></div>
     </div>`;
   document.body.appendChild(ov);
   ov.onclick=e=>{if(e.target===ov)ov.remove();};
+}
+function _etRenderSubjectDescs(t){
+  return (window._etCats||[]).map(cid=>{
+    const c=CATS.find(x=>x.id===cid)||{em:'🎓',lbl:cid,col:'#14B8A6'};
+    const existing=(t?.catProfiles||{})[cid]||{};
+    const desc=(existing.desc||'').replace(/`/g,"'");
+    const tags=(existing.tags||[]).join(', ');
+    return `<div style="background:${c.col}09;border:1.5px solid ${c.col}30;border-radius:16px;padding:14px 15px;margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+        <span style="font-size:22px">${c.em}</span>
+        <span style="font-weight:900;font-size:15px;color:${c.col}">${c.lbl}</span>
+      </div>
+      <div style="margin-bottom:10px">
+        <label style="font-size:11px;color:#64748B;font-weight:700;display:block;margin-bottom:5px">📝 תיאור ל${c.lbl}</label>
+        <textarea id="_etDesc_${cid}" class="inp" placeholder="ספר על עצמך כמורה ל${c.lbl}..." style="min-height:70px;resize:none;border-radius:12px">${desc}</textarea>
+      </div>
+      <div>
+        <label style="font-size:11px;color:#64748B;font-weight:700;display:block;margin-bottom:5px">🏷 תגיות ל${c.lbl} (בפסיק)</label>
+        <input id="_etTags_${cid}" class="inp" value="${tags}" placeholder="למשל: מתחילים, פופ, רוק">
+      </div>
+    </div>`;
+  }).join('');
 }
 function toggleEtCat(btn,catId){
   const idx=window._etCats.indexOf(catId);
@@ -5894,6 +5932,8 @@ function toggleEtCat(btn,catId){
     btn.style.color='#fff';
     if(!btn.innerHTML.includes(' ✓'))btn.innerHTML+=' ✓';
   }
+  const el=document.getElementById('_etSubjectDescs');
+  if(el){const t2=TEACHERS.find(x=>x.id===currentUser?.uid)||{};el.innerHTML=_etRenderSubjectDescs(t2);}
 }
 function addEtCustomCat(){
   const inp=document.getElementById('_etCustomInp');
@@ -5957,34 +5997,39 @@ async function saveTeacherProfileEdits(){
   const name=document.getElementById('_etName')?.value.trim();
   const age=parseInt(document.getElementById('_etAge')?.value)||0;
   const bio=document.getElementById('_etBio')?.value.trim();
-  const desc=document.getElementById('_etDesc')?.value.trim();
   const price=parseInt(document.getElementById('_etPrice')?.value)||0;
   const city=document.getElementById('_etCity')?.value.trim();
-  const tagsRaw=document.getElementById('_etTags')?.value.trim();
-  const tags=tagsRaw?tagsRaw.split(',').map(s=>s.trim()).filter(Boolean):[];
   const cats=(window._etCats&&window._etCats.length)?window._etCats:(TEACHERS.find(x=>x.id===currentUser?.uid)?.cats||[]);
   const customCats=window._etCustomCats||[];
   const allCats=[...cats,...customCats.map(c=>'custom:'+c)];
   if(!name){showFireToast('❌ שם לא יכול להיות ריק');return;}
-  if(!desc){showFireToast('❌ תיאור לא יכול להיות ריק');return;}
   if(price<10||price>500){showFireToast('❌ מחיר בין 10 ל-500');return;}
   if(!allCats.length){showFireToast('❌ חייב לפחות מקצוע אחד');return;}
+  // קרא תיאורים ותגיות לכל מקצוע
+  const catProfileUpdates={};
+  let firstDesc='';
+  for(const cid of cats){
+    const d=document.getElementById('_etDesc_'+cid)?.value.trim()||'';
+    const tr=document.getElementById('_etTags_'+cid)?.value.trim()||'';
+    const tg=tr?tr.split(',').map(s=>s.trim()).filter(Boolean):[];
+    catProfileUpdates[cid]={desc:d,tags:tg};
+    if(!firstDesc)firstDesc=d;
+  }
   try{
-    // עדכן פרטי משתמש בסיסיים
     const userUpdates={name};
     if(age)userUpdates.age=age;
     if(bio!==undefined)userUpdates.bio=bio;
     if(city)userUpdates.city=city;
     await db.ref('users/'+currentUser.uid).update(userUpdates);
     if(currentUserData)Object.assign(currentUserData,userUpdates);
-    // עדכן פרופיל מורה
-    const teacherUpdates={desc,price,city,tags,cats:allCats,cat:allCats[0],customCats,name};
+    const teacherUpdates={desc:firstDesc,price,city,cats:allCats,cat:allCats[0],customCats,name};
     await db.ref('teachers/'+currentUser.uid).update(teacherUpdates);
+    await db.ref('teachers/'+currentUser.uid+'/catProfiles').update(catProfileUpdates);
     for(const cc of customCats){
       await db.ref('pendingCategories').push({teacherId:currentUser.uid,teacherName:name,category:cc,createdAt:Date.now(),status:'pending'}).catch(()=>{});
     }
     const t=TEACHERS.find(x=>x.id===currentUser.uid);
-    if(t)Object.assign(t,teacherUpdates);
+    if(t){Object.assign(t,teacherUpdates);if(!t.catProfiles)t.catProfiles={};Object.assign(t.catProfiles,catProfileUpdates);}
     document.getElementById('_etOv')?.remove();
     showFireToast('✅ הפרופיל עודכן!');
     render();
