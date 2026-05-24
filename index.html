@@ -280,10 +280,12 @@ async function loadPublicTeacherVideos(teacherId){
   try{
     const snap=await db.ref('videos/'+teacherId).get();
     publicTeacherVideos=[];
+    const isOwner=currentUser?.uid===teacherId;
     if(snap.exists())snap.forEach(c=>{
       const v={id:c.key,...c.val()};
-      if(v.approved===true){
-        // show video if: no cat filter, or video has no cat (legacy), or cat matches
+      // owner sees all non-rejected; others see only approved
+      const visible=isOwner?(v.approved!=='rejected'):(v.approved===true);
+      if(visible){
         if(!S.teacherCat||!v.cat||v.cat===S.teacherCat) publicTeacherVideos.push(v);
       }
     });
@@ -4587,6 +4589,7 @@ function Teacher(){
                 ${catObj?`<span style="background:${catObj.col}cc;color:#fff;padding:3px 9px;border-radius:8px;font-size:10px;font-weight:700">${catObj.em} ${catObj.lbl}</span>`:''}
               </div>
               ${v.views>0?`<div style="position:absolute;top:9px;left:10px;background:rgba(0,0,0,0.6);color:#fff;padding:3px 9px;border-radius:8px;font-size:10px;font-weight:700">👁 ${v.views}</div>`:''}
+              ${v.approved!==true&&currentUser?.uid===t.id?`<div style="position:absolute;top:9px;right:10px;background:rgba(245,158,11,0.92);color:#fff;padding:3px 9px;border-radius:8px;font-size:10px;font-weight:800">⏳ ממתין לאישור</div>`:''}
             </div>
             <div style="padding:12px 14px 14px">
               <p style="margin:0 0 5px;font-weight:900;font-size:14px;color:#0F1A1F;line-height:1.35">${v.title||'סרטון הדגמה'}</p>
