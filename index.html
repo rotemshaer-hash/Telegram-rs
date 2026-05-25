@@ -2313,7 +2313,7 @@ async function _requestBrowserNotifPermission(){
   }
 }
 
-let adminAllUsers=[],adminAllTeachers=[],adminAllVideos=[],adminAllReports=[],adminAllBookings=[],adminIncompleteTeachers=[];
+let adminAllUsers=[],adminAllTeachers=[],adminAllVideos=[],adminAllReports=[],adminAllBookings=[],adminIncompleteTeachers=[],adminAllPosts=[];
 let adminTab='users';
 let _adminPendingCount=0;
 
@@ -2374,6 +2374,10 @@ async function loadAdminData(){
       });
     }
     adminAllBookings.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+    const postsSnap=await db.ref('communityPosts').get();
+    adminAllPosts=[];
+    if(postsSnap.exists())postsSnap.forEach(c=>adminAllPosts.push({id:c.key,...c.val()}));
+    adminAllPosts.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
   }catch(e){showFireToast('❌ '+e.message);}
 }
 
@@ -2528,6 +2532,25 @@ async function adminDeleteVideo(teacherId,videoId){
     await db.ref('videos/'+teacherId+'/'+videoId).remove();
     showFireToast('🗑 הסרטון נמחק');
     await loadAdminData();renderAdminPanel();
+  }catch(e){showFireToast('❌ '+e.message);}
+}
+
+async function adminApprovePost(postId){
+  try{
+    await db.ref('communityPosts/'+postId+'/status').set('approved');
+    const p=adminAllPosts.find(x=>x.id===postId);
+    if(p)p.status='approved';
+    renderAdminPanel();
+    showFireToast('✅ פוסט אושר!');
+  }catch(e){showFireToast('❌ '+e.message);}
+}
+async function adminRejectPost(postId){
+  if(!confirm('למחוק את הפוסט?'))return;
+  try{
+    await db.ref('communityPosts/'+postId).remove();
+    adminAllPosts=adminAllPosts.filter(x=>x.id!==postId);
+    renderAdminPanel();
+    showFireToast('🗑 פוסט נמחק');
   }catch(e){showFireToast('❌ '+e.message);}
 }
 
@@ -3545,7 +3568,7 @@ function renderAdminPanel(){
     </div>
     <div style="background:#fff;padding:0 16px;border-bottom:1px solid rgba(20,184,166,0.15)">
       <div style="display:flex;gap:4px;overflow-x:auto;padding:8px 0">
-        ${[['users','👥 כל המשתמשים',adminAllUsers.length],['students','🎒 תלמידים',adminAllUsers.filter(u=>u.role!=='teacher').length],['teachers','🎓 מורים',totalPending],['bookings','📅 הזמנות',adminAllBookings.filter(b=>b.status==='pending').length],['videos','📹 סרטונים',pendingVideos.length],['reports','🚨 דיווחים',adminAllReports.filter(r=>r.status==='open').length],['stats','📊 סטטיסטיקות',null]].map(([id,lbl,badge])=>`
+        ${[['users','👥 כל המשתמשים',adminAllUsers.length],['students','🎒 תלמידים',adminAllUsers.filter(u=>u.role!=='teacher').length],['teachers','🎓 מורים',totalPending],['bookings','📅 הזמנות',adminAllBookings.filter(b=>b.status==='pending').length],['videos','📹 סרטונים',pendingVideos.length],['posts','📝 פוסטים',adminAllPosts.filter(p=>p.status==='pending').length],['reports','🚨 דיווחים',adminAllReports.filter(r=>r.status==='open').length],['stats','📊 סטטיסטיקות',null]].map(([id,lbl,badge])=>`
           <button onclick="adminTab='${id}';renderAdminPanel()" style="background:${adminTab===id?'linear-gradient(135deg,#14B8A6,#06B6D4)':'rgba(20,184,166,0.06)'};color:${adminTab===id?'#fff':'#14B8A6'};border:none;border-radius:50px;padding:10px 14px;font-size:12px;font-weight:800;cursor:pointer;flex-shrink:0;display:flex;align-items:center;gap:6px;white-space:nowrap">
             ${lbl}${badge>0?`<span style="background:${adminTab===id?'rgba(255,255,255,0.3)':'#EF4444'};color:#fff;border-radius:50px;padding:1px 7px;font-size:10px">${badge}</span>`:''}
           </button>`).join('')}
@@ -3773,6 +3796,41 @@ function renderAdminTab(){
           <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
             <div style="flex:1;min-width:0"><div style="font-weight:800;font-size:13px;color:#0F1A1F;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">🎬 ${v.title}</div><div style="font-size:11px;color:#64748B">${v.teacherName} • ${v.views||0} צפיות</div></div>
             <button onclick="adminDeleteVideo('${v.teacherId}','${v.id}')" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#EF4444;border-radius:50px;padding:6px 12px;font-size:11px;font-weight:800;cursor:pointer">🗑</button>
+          </div>
+        </div>`).join('');
+    }
+    return html;
+  }
+  if(adminTab==='posts'){
+    const pendingPosts=adminAllPosts.filter(p=>p.status==='pending');
+    const approvedPosts=adminAllPosts.filter(p=>p.status==='approved');
+    if(adminAllPosts.length===0)return '<div style="text-align:center;padding:40px;color:#64748B"><div style="font-size:48px;margin-bottom:10px">📝</div>אין פוסטים</div>';
+    let html='';
+    if(pendingPosts.length>0){
+      html+=`<h4 style="font-weight:800;font-size:14px;color:#F59E0B;margin:0 0 10px">⏳ ממתינים לאישור (${pendingPosts.length})</h4>`;
+      html+=pendingPosts.map(p=>`
+        <div style="background:rgba(245,158,11,0.05);border:1.5px solid rgba(245,158,11,0.3);border-radius:18px;padding:14px;margin-bottom:10px">
+          <div style="margin-bottom:10px">
+            <div style="font-weight:900;font-size:13px;color:#0F1A1F">${p.author||'?'} <span style="font-size:11px;color:#64748B;font-weight:400">${p.role||''}</span></div>
+            <div style="font-size:12px;color:#475569;margin-top:6px;line-height:1.5">${(p.text||'').substring(0,200)}</div>
+            <div style="font-size:10px;color:#94A3B8;margin-top:5px">${new Date(p.createdAt||0).toLocaleString('he-IL')}</div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button onclick="adminApprovePost('${p.id}')" style="flex:2;background:#10B981;border:none;color:#fff;border-radius:50px;padding:9px;font-size:11px;font-weight:800;cursor:pointer">✅ אשר</button>
+            <button onclick="adminRejectPost('${p.id}')" style="flex:1;background:rgba(239,68,68,0.9);border:none;color:#fff;border-radius:50px;padding:9px;font-size:11px;font-weight:800;cursor:pointer">🗑 דחה</button>
+          </div>
+        </div>`).join('');
+    }
+    if(approvedPosts.length>0){
+      html+=`<h4 style="font-weight:800;font-size:14px;color:#10B981;margin:14px 0 10px">✅ מאושרים (${approvedPosts.length})</h4>`;
+      html+=approvedPosts.slice(0,15).map(p=>`
+        <div style="background:rgba(16,185,129,0.05);border:1px solid rgba(16,185,129,0.2);border-radius:14px;padding:11px;margin-bottom:8px">
+          <div style="display:flex;justify-content:space-between;align-items:start;gap:10px">
+            <div style="flex:1;min-width:0">
+              <div style="font-weight:800;font-size:13px;color:#0F1A1F">${p.author||'?'}</div>
+              <div style="font-size:12px;color:#64748B;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${(p.text||'').substring(0,80)}</div>
+            </div>
+            <button onclick="adminRejectPost('${p.id}')" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#EF4444;border-radius:50px;padding:6px 12px;font-size:11px;font-weight:800;cursor:pointer;flex-shrink:0">🗑</button>
           </div>
         </div>`).join('');
     }
@@ -4576,6 +4634,8 @@ function Teacher(){
         <div style="text-align:center"><div style="font-size:22px;font-weight:900;color:#FF9800">₪${Math.round(t.price/2)}</div><div style="font-size:11px;color:${C.muted};text-decoration:line-through">₪${t.price}</div></div>
       </div>
 
+      ${(t.instagram||t.tiktok||t.facebook)?`<div style="display:flex;gap:8px;margin-bottom:16px">${t.instagram?`<a href="${t.instagram}" target="_blank" rel="noopener" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;background:linear-gradient(135deg,#E1306C,#833AB4);color:#fff;border-radius:50px;padding:12px;font-weight:800;font-size:12px;text-decoration:none">📸 Instagram</a>`:''} ${t.tiktok?`<a href="${t.tiktok}" target="_blank" rel="noopener" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;background:linear-gradient(135deg,#010101,#EE1D52);color:#fff;border-radius:50px;padding:12px;font-weight:800;font-size:12px;text-decoration:none">🎵 TikTok</a>`:''} ${t.facebook?`<a href="${t.facebook}" target="_blank" rel="noopener" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;background:#1877F2;color:#fff;border-radius:50px;padding:12px;font-weight:800;font-size:12px;text-decoration:none">👍 Facebook</a>`:''}</div>`:''}
+
       <!-- About — per category if selected -->
       ${(()=>{
         const cat=S.teacherCat?CATS.find(x=>x.id===S.teacherCat):null;
@@ -4652,6 +4712,8 @@ function Teacher(){
         <button class="sos" onclick="sendSOS('${(t.name||'').replace(/'/g,"\\'").replace(/"/g,'&quot;')}')">🆘 כפתור SOS</button>
         <button onclick="shareTeacher(S.teacher)" style="background:linear-gradient(135deg,#833AB4,#FD1D1D,#F77737);color:#fff;border:none;border-radius:50px;padding:12px 20px;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:7px;white-space:nowrap;flex:1;justify-content:center">📤 שתף מורה</button>
       </div>
+
+      ${currentUser&&t.id!==currentUser?.uid?`<button onclick="S.chat={otherUid:'${t.id}',otherName:'${(t.name||'').replace(/'/g,"\\'")}'}; go('chat')" style="width:100%;background:rgba(6,182,212,0.1);border:1.5px solid rgba(6,182,212,0.3);color:#06B6D4;border-radius:50px;padding:13px;font-weight:800;font-size:14px;cursor:pointer;margin-bottom:14px;display:flex;align-items:center;justify-content:center;gap:8px">💬 שלח הודעה פרטית</button>`:''}
 
       <!-- Book -->
       ${S.booked
@@ -5227,7 +5289,7 @@ function Community(){
       <div style="padding:15px 15px 11px;display:flex;gap:11px;align-items:center">
         <div style="width:46px;height:46px;border-radius:14px;flex-shrink:0;background:${p.col||'#14B8A6'}20;display:flex;align-items:center;justify-content:center;font-size:24px;overflow:hidden">${p.photo?`<img src="${p.photo}" style="width:100%;height:100%;object-fit:cover" alt="">`:p.av||'😊'}</div>
         <div style="flex:1">
-          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="font-weight:800;font-size:15px">${p.author||'משתמש'}</span>${isMine?'<span style="background:rgba(20,184,166,0.15);color:#14B8A6;font-size:9px;font-weight:800;padding:2px 6px;border-radius:50px">אני</span>':''}</div>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="font-weight:800;font-size:15px">${p.author||'משתמש'}</span>${isMine?'<span style="background:rgba(20,184,166,0.15);color:#14B8A6;font-size:9px;font-weight:800;padding:2px 6px;border-radius:50px">אני</span>':''}${p.status==='pending'?'<span style="background:rgba(245,158,11,0.15);color:#F59E0B;font-size:9px;font-weight:800;padding:2px 6px;border-radius:50px">⏳ בבדיקה</span>':''}</div>
           <div style="font-size:11px;color:${p.col||'#14B8A6'};font-weight:700">${p.role||''}${p.area?' • 📍 '+p.area:''}</div>
         </div>
         <div style="text-align:left">
@@ -5369,17 +5431,18 @@ async function postNew(){
     likes:0,
     likedBy:{},
     reps:[],
-    createdAt:Date.now()
+    createdAt:Date.now(),
+    status:'pending'
   };
   try{
-    showFireToast('⏳ מפרסם...');
+    showFireToast('⏳ שולח...');
     const ref=db.ref('communityPosts').push();
     await ref.set(post);
     post.id=ref.key;
     post.time='עכשיו';
     S.posts.unshift(post);
     S.showCompose=false;
-    showFireToast('✅ פורסם!');
+    showFireToast('✅ הפוסט נשלח לאישור מנהל');
     render();
   }catch(e){
     console.error('Post error:',e);
@@ -5405,6 +5468,7 @@ async function loadCommunityPosts(){
     if(snap.exists()){
       snap.forEach(c=>{
         const p={id:c.key,...c.val()};
+        if(p.status==='pending'&&(!currentUser||p.authUid!==currentUser.uid))return;
         if(p.reps&&typeof p.reps==='object'&&!Array.isArray(p.reps)){
           p.reps=Object.values(p.reps);
         }
@@ -5918,6 +5982,21 @@ function showEditTeacherProfileDialog(){
         <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:6px">🏙 עיר</label>
         <input id="_etCity" class="inp" value="${t.city||''}" placeholder="עיר בה אתה מלמד">
       </div>
+      <div style="background:rgba(168,85,247,0.04);border:1.5px solid rgba(168,85,247,0.15);border-radius:18px;padding:16px;margin-bottom:16px">
+        <h3 style="font-weight:900;font-size:15px;margin:0 0 12px;color:#A855F7">📱 רשתות חברתיות</h3>
+        <div style="margin-bottom:11px">
+          <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">📸 Instagram</label>
+          <input id="_etInsta" class="inp" value="${(t.instagram||'').replace(/"/g,'&quot;')}" placeholder="https://instagram.com/...">
+        </div>
+        <div style="margin-bottom:11px">
+          <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">🎵 TikTok</label>
+          <input id="_etTiktok" class="inp" value="${(t.tiktok||'').replace(/"/g,'&quot;')}" placeholder="https://tiktok.com/@...">
+        </div>
+        <div style="margin-bottom:0">
+          <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">👍 Facebook</label>
+          <input id="_etFacebook" class="inp" value="${(t.facebook||'').replace(/"/g,'&quot;')}" placeholder="https://facebook.com/...">
+        </div>
+      </div>
     </div>`;
   document.body.appendChild(ov);
   ov.onclick=e=>{if(e.target===ov)ov.remove();};
@@ -6026,6 +6105,9 @@ async function saveTeacherProfileEdits(){
   const bio=document.getElementById('_etBio')?.value.trim();
   const price=parseInt(document.getElementById('_etPrice')?.value)||0;
   const city=document.getElementById('_etCity')?.value.trim();
+  const instagram=document.getElementById('_etInsta')?.value.trim()||'';
+  const tiktok=document.getElementById('_etTiktok')?.value.trim()||'';
+  const facebook=document.getElementById('_etFacebook')?.value.trim()||'';
   const cats=(window._etCats&&window._etCats.length)?window._etCats:(TEACHERS.find(x=>x.id===currentUser?.uid)?.cats||[]);
   const customCats=window._etCustomCats||[];
   const allCats=[...cats,...customCats.map(c=>'custom:'+c)];
@@ -6049,7 +6131,7 @@ async function saveTeacherProfileEdits(){
     if(city)userUpdates.city=city;
     await db.ref('users/'+currentUser.uid).update(userUpdates);
     if(currentUserData)Object.assign(currentUserData,userUpdates);
-    const teacherUpdates={desc:firstDesc,price,city,cats:allCats,cat:allCats[0],customCats,name};
+    const teacherUpdates={desc:firstDesc,price,city,cats:allCats,cat:allCats[0],customCats,name,instagram,tiktok,facebook};
     await db.ref('teachers/'+currentUser.uid).update(teacherUpdates);
     await db.ref('teachers/'+currentUser.uid+'/catProfiles').update(catProfileUpdates);
     for(const cc of customCats){
