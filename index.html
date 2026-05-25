@@ -5566,6 +5566,11 @@ async function loadCommunityPosts(){
     if(snap.exists()){
       snap.forEach(c=>{
         const p={id:c.key,...c.val()};
+        // פוסטים של אדמין שנשמרו לפני התיקון — אשר אוטומטית
+        if(p.status==='pending'&&isAdmin()&&p.authUid===currentUser?.uid){
+          db.ref('communityPosts/'+c.key+'/status').set('approved').catch(()=>{});
+          p.status='approved';
+        }
         if(p.status==='pending'&&(!currentUser||p.authUid!==currentUser.uid))return;
         if(p.reps&&typeof p.reps==='object'&&!Array.isArray(p.reps)){
           p.reps=Object.values(p.reps);
