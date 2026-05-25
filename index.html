@@ -2986,6 +2986,12 @@ async function _saveVideoToFirebase(title,url,desc,platform,thumbnail=null,cat=n
       createdAt:Date.now()
     };
     if(thumbnail)entry.thumbnail=thumbnail;
+    // Auto-assign cat if teacher has only one category and no cat selected
+    if(!cat){
+      const myT=TEACHERS.find(x=>x.id===currentUser?.uid);
+      const myCats=myT?.cats||[];
+      if(myCats.length===1)cat=myCats[0];
+    }
     if(cat)entry.cat=cat;
     await ref.set(entry);
     try{
@@ -3009,6 +3015,7 @@ async function assignVideoCategory(videoId,catId){
     await db.ref('videos/'+currentUser.uid+'/'+videoId+'/cat').set(catId);
     const v=teacherVideos.find(x=>x.id===videoId);
     if(v)v.cat=catId;
+    if(S.screen==='teacher'&&S.teacher?.id===currentUser?.uid)await loadPublicTeacherVideos(currentUser.uid);
     showFireToast('✅ המקצוע עודכן!');
     render();
   }catch(e){showFireToast('❌ '+e.message);}
@@ -4735,11 +4742,12 @@ function Teacher(){
 
       <!-- Videos section in public profile -->
       ${(()=>{
-        const filtPubVids=S.teacherCat?publicTeacherVideos.filter(v=>v.cat===S.teacherCat):publicTeacherVideos;
+        const _strictMatch=S.teacherCat?publicTeacherVideos.filter(v=>v.cat===S.teacherCat):publicTeacherVideos;
+        const filtPubVids=S.teacherCat?(_strictMatch.length>0?_strictMatch:publicTeacherVideos.filter(v=>!v.cat)):publicTeacherVideos;
         if(!filtPubVids.length)return '';
         return `<div class="card" style="padding:16px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-          <h4 style="margin:0;font-weight:900;font-size:16px;color:#0F1A1F">📹 סרטוני הדגמה${S.teacherCat?(()=>{const c=CATS.find(x=>x.id===S.teacherCat);return c?' – '+c.em+' '+c.lbl:'';})():''}</h4>
+          <h4 style="margin:0;font-weight:900;font-size:16px;color:#0F1A1F">📹 סרטוני הדגמה${S.teacherCat?(()=>{const c=CATS.find(x=>x.id===S.teacherCat);return c?' – '+c.em+' '+c.lbl:'';})():''}${S.teacherCat&&_strictMatch.length===0&&filtPubVids.length>0?' (ללא קטגוריה)':''}</h4>
           <span style="background:rgba(168,85,247,0.12);color:#A855F7;font-size:11px;font-weight:800;padding:4px 10px;border-radius:50px">${filtPubVids.length} סרטונים</span>
         </div>
         ${filtPubVids.slice(0,5).map(v=>{
@@ -5133,7 +5141,7 @@ function Profile(){
     const catVids=teacherVideos.filter(v=>v.cat===tab);
     content=`
     <div style="background:${catObj.col}12;border:1.5px solid ${catObj.col}30;border-radius:20px;padding:15px 18px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between">
-      <div style="display:flex;align-items:center;gap:12px"><span style="font-size:32px">${catObj.em}</span><div><div style="font-weight:900;font-size:17px;color:${catObj.col}">${catObj.lbl}</div><div style="font-size:12px;color:#64748B">${catVids.length} סרטונים</div></div></div>
+      <div style="display:flex;align-items:center;gap:12px"><span style="font-size:32px">${catObj.em}</span><div><div style="font-weight:900;font-size:17px;color:${catObj.col}">${catObj.lbl}</div><div style="font-size:12px;color:#64748B">${catVids.length>0?catVids.length:teacherVideos.filter(v=>!v.cat).length} סרטונים${catVids.length===0&&teacherVideos.filter(v=>!v.cat).length>0?' ⚠️':''}</div></div></div>
       <button onclick="showEditSubjectDialog('${tab}')" style="background:${catObj.col};border:none;color:#fff;border-radius:50px;padding:9px 18px;font-size:13px;font-weight:800;cursor:pointer;box-shadow:0 4px 12px ${catObj.col}44">✏️ ערוך</button>
     </div>
     ${catProfile?.desc?`<div class="card"><h4 style="margin:0 0 8px;font-weight:800">📝 תיאור</h4><p style="margin:0;font-size:14px;line-height:1.7">${catProfile.desc}</p></div>`:'<div class="card" style="text-align:center;padding:22px"><p style="margin:0;font-size:13px;color:#64748B">עדיין לא הוספת תיאור — לחץ <strong>ערוך</strong></p></div>'}
@@ -6249,7 +6257,7 @@ function showEditSubjectDialog(catId){
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
         <p style="font-weight:800;font-size:14px;margin:0">📹 סרטונים (${catVids.length})</p>
-        <button onclick="showVideoUploadDialog()" style="background:linear-gradient(135deg,${catObj.col},#A855F7);border:none;color:#fff;border-radius:50px;padding:7px 14px;font-size:12px;font-weight:800;cursor:pointer">+ הוסף סרטון</button>
+        <button onclick="showVideoUploadDialog('${catId}')" style="background:linear-gradient(135deg,${catObj.col},#A855F7);border:none;color:#fff;border-radius:50px;padding:7px 14px;font-size:12px;font-weight:800;cursor:pointer">+ הוסף סרטון</button>
       </div>
       ${catVids.length===0?'<p style="text-align:center;color:#94A3B8;font-size:13px;padding:12px 0">אין סרטונים למקצוע זה עדיין</p>':catVids.map(v=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:rgba(100,116,139,0.06);border-radius:12px;margin-bottom:7px"><span style="font-size:13px;font-weight:700;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${v.title}</span><button onclick="deleteMyVideo('${v.id}')" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#EF4444;border-radius:50px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0;margin-right:8px">🗑</button></div>`).join('')}
       <button onclick="_saveSubjectEdit('${catId}')" style="width:100%;background:linear-gradient(135deg,${catObj.col},#A855F7);border:none;color:#fff;border-radius:50px;padding:13px;font-weight:800;font-size:15px;cursor:pointer;margin-top:14px;box-shadow:0 4px 14px ${catObj.col}44">💾 שמור</button>
