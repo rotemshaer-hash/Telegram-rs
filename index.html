@@ -6715,7 +6715,7 @@ auth.onAuthStateChanged(async user=>{
     }catch(e){console.warn('Auth error:',e);}
     if(S.screen==='splash'||S.screen==='login'){go('home');}
     else render();
-  } else {currentUser=null;currentUserData=null;teacherPendingBookings=[];studentBookings=[];}
+  } else {currentUser=null;currentUserData=null;teacherPendingBookings=[];studentBookings=[];if(S.screen==='splash')go('home');else render();}
 });
 
 async function firebaseRegister(email,password,userData){
