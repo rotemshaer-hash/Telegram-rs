@@ -724,7 +724,6 @@ function Splash(){
     <div style="margin-top:42px;display:flex;flex-direction:column;gap:12px;width:100%;max-width:300px;position:relative;z-index:1">
       <button class="btn bp" onclick="go('register')">✨ הצטרף עכשיו – חינם!</button>
       <button class="btn bd" onclick="go('login')">🔑 כבר רשום? התחבר</button>
-      <button class="btn bd" style="background:rgba(255,255,255,.05)" onclick="go('home')">🔍 עיין בלי הרשמה</button>
       <button onclick="go('about')" style="background:none;border:none;color:rgba(94,234,212,0.6);font-size:13px;cursor:pointer;font-weight:600;margin-top:4px">📖 הסיפור שלנו</button>
     </div>
     <p style="color:rgba(255,255,255,.3);font-size:11px;margin-top:24px;position:relative;z-index:1">מיועד לילדים 8–18 בליווי הורים</p>
@@ -6715,7 +6714,7 @@ auth.onAuthStateChanged(async user=>{
     }catch(e){console.warn('Auth error:',e);}
     if(S.screen==='splash'||S.screen==='login'){go('home');}
     else render();
-  } else {currentUser=null;currentUserData=null;teacherPendingBookings=[];studentBookings=[];if(S.screen==='splash')go('home');else render();}
+  } else {currentUser=null;currentUserData=null;teacherPendingBookings=[];studentBookings=[];}
 });
 
 async function firebaseRegister(email,password,userData){
