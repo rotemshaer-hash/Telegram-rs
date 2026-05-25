@@ -3244,6 +3244,50 @@ async function toggleFreeTrial(){
   }catch(e){showFireToast('❌ '+e.message);}
 }
 
+// ─── טבלת קואורדינטות ערים ישראליות (גיבוי כשאין GPS) ──────────────────
+const CITY_COORDS={
+  'תל אביב':{lat:32.0853,lng:34.7818},'תל אביב יפו':{lat:32.0853,lng:34.7818},
+  'ירושלים':{lat:31.7683,lng:35.2137},'חיפה':{lat:32.7940,lng:34.9896},
+  'ראשון לציון':{lat:31.9730,lng:34.7925},'פתח תקווה':{lat:32.0869,lng:34.8878},
+  'אשדוד':{lat:31.8014,lng:34.6552},'נתניה':{lat:32.3215,lng:34.8532},
+  'באר שבע':{lat:31.2589,lng:34.7995},'בני ברק':{lat:32.0839,lng:34.8336},
+  'חולון':{lat:32.0125,lng:34.7794},'רמת גן':{lat:32.0684,lng:34.8248},
+  'אשקלון':{lat:31.6688,lng:34.5710},'רחובות':{lat:31.8928,lng:34.8113},
+  'בת ים':{lat:32.0212,lng:34.7506},'הרצליה':{lat:32.1638,lng:34.8436},
+  'כפר סבא':{lat:32.1753,lng:34.9075},'מודיעין':{lat:31.8969,lng:35.0104},
+  'רמלה':{lat:31.9274,lng:34.8709},'לוד':{lat:31.9516,lng:34.8958},
+  'נצרת':{lat:32.7021,lng:35.2978},'עכו':{lat:32.9279,lng:35.0818},
+  'אילת':{lat:29.5577,lng:34.9519},'טבריה':{lat:32.7940,lng:35.5300},
+  'צפת':{lat:32.9646,lng:35.4956},'קריית שמונה':{lat:33.2070,lng:35.5697},
+  'נהריה':{lat:33.0066,lng:35.0941},'עפולה':{lat:32.6075,lng:35.2897},
+  'הוד השרון':{lat:32.1500,lng:34.8942},'גבעתיים':{lat:32.0695,lng:34.8132},
+  'קריית ביאליק':{lat:32.8370,lng:35.0861},'קריית אתא':{lat:32.8111,lng:35.1078},
+  'קריית מוצקין':{lat:32.8361,lng:35.0726},'אור יהודה':{lat:32.0289,lng:34.8556},
+  'נס ציונה':{lat:31.9298,lng:34.7985},'קריית גת':{lat:31.6100,lng:34.7642},
+  'דימונה':{lat:31.0689,lng:35.0342},'יהוד':{lat:32.0378,lng:34.8881},
+  'גדרה':{lat:31.8119,lng:34.7765},'רעננה':{lat:32.1842,lng:34.8710},
+  'כפר יונה':{lat:32.3184,lng:34.9353},'טירת כרמל':{lat:32.7569,lng:34.9709},
+  'נוף הגליל':{lat:32.7054,lng:35.3321},'מעלות תרשיחא':{lat:33.0139,lng:35.2721},
+  'שפרעם':{lat:32.8010,lng:35.1696},'אום אל פחם':{lat:32.5167,lng:35.1500},
+  'סכנין':{lat:32.8667,lng:35.3000},'רהט':{lat:31.3924,lng:34.7542},
+  'טייבה':{lat:32.2667,lng:35.0000},'קלנסווה':{lat:32.2833,lng:34.9833},
+  'ירכא':{lat:32.9500,lng:35.1830},'מגדל העמק':{lat:32.6784,lng:35.2395},
+  'קצרין':{lat:32.9953,lng:35.6906},'אריאל':{lat:32.1065,lng:35.1713},
+  'מודיעין עילית':{lat:31.9314,lng:35.0428},'ביתר עילית':{lat:31.6941,lng:35.1183},
+  'אלעד':{lat:32.0530,lng:34.9519},'גן יבנה':{lat:31.7922,lng:34.7090},
+  'יבנה':{lat:31.8742,lng:34.7404},'קרית ים':{lat:32.8571,lng:35.0742},
+  'קרית אונו':{lat:32.0622,lng:34.8561},'פרדס חנה כרכור':{lat:32.4697,lng:34.9706},
+  'זכרון יעקב':{lat:32.5697,lng:34.9497},'בית שאן':{lat:32.5027,lng:35.4997},
+};
+function getCityCoords(city){
+  if(!city)return null;
+  const c=city.trim();
+  if(CITY_COORDS[c])return CITY_COORDS[c];
+  // חיפוש חלקי
+  const key=Object.keys(CITY_COORDS).find(k=>c.includes(k)||k.includes(c));
+  return key?CITY_COORDS[key]:null;
+}
+
 // ─── GPS אמיתי 🗺️ ───────────────────────────────────────────────────────
 let userGPS=null;
 let gpsLoading=false;
@@ -3343,9 +3387,15 @@ async function refreshNearbyTeachers(){
 }
 
 function getTeachersByDistance(){
-  const teachersWithGps=TEACHERS.filter(t=>t.gps&&t.gps.lat&&t.gps.lng);
-  if(!userGPS)return teachersWithGps.map(t=>({...t,distance:null}));
-  return teachersWithGps.map(t=>({
+  // כלול מורים עם GPS אמיתי + מורים עם עיר ידועה כגיבוי
+  const withCoords=TEACHERS.map(t=>{
+    if(t.gps&&t.gps.lat&&t.gps.lng)return {...t,_coordType:'gps'};
+    const cityCoords=getCityCoords(t.city||t.area||'');
+    if(cityCoords)return {...t,gps:cityCoords,_coordType:'city'};
+    return null;
+  }).filter(Boolean);
+  if(!userGPS)return withCoords.map(t=>({...t,distance:null}));
+  return withCoords.map(t=>({
     ...t,
     distance:calcDistanceKm(userGPS.lat,userGPS.lng,t.gps.lat,t.gps.lng)
   })).sort((a,b)=>(a.distance||9999)-(b.distance||9999));
@@ -4479,8 +4529,9 @@ function Home(){
 
 // ─── NEARBY (GPS) ─────────────────────────────────────────────────────────────
 function Nearby(){
-  const teachersWithGps=TEACHERS.filter(t=>t.gps&&t.gps.lat&&t.gps.lng);
   const sorted=getTeachersByDistance();
+  const teachersWithGps=sorted.filter(t=>t._coordType==='gps');
+  const teachersWithCity=sorted.filter(t=>t._coordType==='city');
   const r=S.nearbyR||2; // ק"מ
   const inRange=userGPS?sorted.filter(t=>t.distance!==null&&t.distance<=r):[];
   
@@ -4493,11 +4544,11 @@ function Nearby(){
         <p style="color:#64748B;font-size:14px;line-height:1.7;margin-bottom:20px">נשתמש ב-GPS שלך למצוא מורים אמיתיים בסביבה. <strong>המיקום שלך פרטי לחלוטין</strong> ולא נשמר.</p>
         <div style="background:rgba(20,184,166,0.06);border:1px solid rgba(20,184,166,0.2);border-radius:14px;padding:14px;margin-bottom:18px;text-align:right">
           <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px"><span style="font-size:18px">🔒</span><span style="font-size:12px;font-weight:700;color:#0F766E">המיקום נשאר אצלך בלבד</span></div>
-          <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px"><span style="font-size:18px">📊</span><span style="font-size:12px;font-weight:700;color:#0F766E">${teachersWithGps.length} מורים עם GPS פעיל</span></div>
-          <div style="display:flex;gap:10px;align-items:center"><span style="font-size:18px">⚡</span><span style="font-size:12px;font-weight:700;color:#0F766E">חישוב מרחק מדויק במטרים</span></div>
+          <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px"><span style="font-size:18px">📡</span><span style="font-size:12px;font-weight:700;color:#0F766E">${teachersWithGps.length} מורים עם GPS מדויק</span></div>
+          <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px"><span style="font-size:18px">🏙️</span><span style="font-size:12px;font-weight:700;color:#0F766E">${teachersWithCity.length} מורים לפי עיר</span></div>
+          <div style="display:flex;gap:10px;align-items:center"><span style="font-size:18px">⚡</span><span style="font-size:12px;font-weight:700;color:#0F766E">חישוב מרחק לפי מיקום/עיר</span></div>
         </div>
         ${gpsLoading?`<p style="color:#14B8A6;font-weight:800;font-size:15px">📡 מאתר מיקום... המתן רגע</p>`:`<button class="btn bs" onclick="refreshNearbyTeachers()">📍 אתר אותי עכשיו</button>`}
-        ${teachersWithGps.length===0?`<div style="margin-top:16px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);border-radius:12px;padding:11px;font-size:12px;color:#92400E;line-height:1.5">⚠️ אין עדיין מורים עם GPS פעיל. מורים יכולים להפעיל את זה בפרופיל שלהם.</div>`:''}
       </div>
     </div>`;
   } else {
@@ -4532,15 +4583,15 @@ function Nearby(){
           <div style="background:rgba(255,255,255,0.85);backdrop-filter:blur(12px);border-radius:24px;padding:32px 20px;text-align:center">
             <div style="font-size:54px;margin-bottom:14px">🗺</div>
             <h3 style="font-weight:900;font-size:17px;margin:0 0 8px;color:#0F1A1F">אין מורים בטווח ${formatDistance(r)}</h3>
-            <p style="color:#64748B;font-size:13px;line-height:1.7;margin:0 0 16px">${teachersWithGps.length===0?'עדיין אין מורים עם GPS פעיל':'נסה להגדיל את הטווח'}</p>
-            ${teachersWithGps.length>0?`<button onclick="S.nearbyR=20;render()" style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:10px 22px;font-weight:800;font-size:13px;cursor:pointer">הצג בכל הארץ</button>`:''}
+            <p style="color:#64748B;font-size:13px;line-height:1.7;margin:0 0 16px">${sorted.length===0?'אין מורים רשומים עדיין':'נסה להגדיל את הטווח'}</p>
+            ${sorted.length>0?`<button onclick="S.nearbyR=20;render()" style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:10px 22px;font-weight:800;font-size:13px;cursor:pointer">הצג בכל הארץ</button>`:''}
           </div>
         `:inRange.map(t=>`
           <button class="tc" onclick="go('teacher',{teacher:TEACHERS.find(x=>x.id==='${t.id}')})">
             <div class="tc-av" style="background:${t.col}20">${t.av}${t.online?`<div class="online-dot"></div>`:""}</div>
             <div style="flex:1">
               <div style="display:flex;justify-content:space-between;align-items:flex-start">
-                <span style="background:linear-gradient(135deg,#14B8A6,#06B6D4);color:#fff;font-weight:900;font-size:11px;padding:3px 10px;border-radius:50px;box-shadow:0 2px 8px rgba(20,184,166,0.3)">📍 ${formatDistance(t.distance)}</span>
+                <span style="background:${t._coordType==='gps'?'linear-gradient(135deg,#14B8A6,#06B6D4)':'linear-gradient(135deg,#F59E0B,#F97316)'};color:#fff;font-weight:900;font-size:11px;padding:3px 10px;border-radius:50px;box-shadow:0 2px 8px rgba(20,184,166,0.3)">${t._coordType==='gps'?'📍':'🏙️'} ${formatDistance(t.distance)}</span>
                 <span style="font-weight:800;font-size:14px">${t.name}</span>
               </div>
               <div style="font-size:12px;color:${C.muted};margin-top:3px">${CATS.find(c=>c.id===t.cat)?.lbl||''} • ${t.city}</div>
