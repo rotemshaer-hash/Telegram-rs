@@ -487,6 +487,9 @@ function go(scr,extra={}){
     const ou=(extra.chat||S.chat).otherUid;
     db.ref('userChats/'+currentUser.uid+'/'+ou+'/unread').set(false).catch(()=>{});
   }
+  if(scr==='profile'&&currentUser&&currentUserData?.role==='teacher'){
+    loadTeacherVideos().then(()=>render());
+  }
   if(scr==='teacher'&&(extra.teacher||S.teacher)){
     const tid=(extra.teacher||S.teacher)?.id;
     if(tid)loadPublicTeacherVideos(tid);
@@ -2203,7 +2206,7 @@ async function sendChatMessage(otherUid,otherName){
       otherName:otherName
     };
     await db.ref('userChats/'+currentUser.uid+'/'+otherUid).set({...last,otherUid});
-    await db.ref('userChats/'+otherUid+'/'+currentUser.uid).set({...last,otherUid:currentUser.uid,otherName:currentUserData?.name||currentUser.email.split('@')[0]});
+    await db.ref('userChats/'+otherUid+'/'+currentUser.uid).set({...last,otherUid:currentUser.uid,otherName:currentUserData?.name||currentUser.email.split('@')[0],unread:true});
     // התראה לצד השני
     await db.ref('notifications/'+otherUid).push({
       type:'newMessage',
@@ -6783,6 +6786,13 @@ auth.onAuthStateChanged(async user=>{
           n.type==='newBooking'?'📚 הזמנת שיעור חדשה!':'🔔 התראה חדשה',
           n.type==='newBooking'?`${n.from||''} · יום ${n.day||''} ${n.time||''}`:(n.from||''));
         loadNotifications().then(()=>{if(S.screen)render();});
+      });
+      // האזנה בזמן אמת לשיחות (לעדכון תג הודעות שלא נקראו)
+      db.ref('userChats/'+user.uid).on('value',snap=>{
+        userChats=[];
+        if(snap.exists())snap.forEach(c=>userChats.push(c.val()));
+        userChats.sort((a,b)=>(b.lastTime||0)-(a.lastTime||0));
+        render();
       });
       // האזנה ל-adminNotifs (מורים חדשים, סרטונים, משתמשים) – ללא חיפוש UID
       if(isAdmin()){
