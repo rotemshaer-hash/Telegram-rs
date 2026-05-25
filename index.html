@@ -2608,7 +2608,7 @@ const CLOUDINARY_CLOUD='dnfgtpxnb'; // Cloud name של Kidemy
 const CLOUDINARY_PRESET='kidemy_videos'; // Upload preset
 const CLOUDINARY_ENABLED=true; // מופעל!
 
-function showVideoUploadDialog(){
+function showVideoUploadDialog(defaultCat=null){
   if(!currentUser){showFireToast('❌ צריך להתחבר');return;}
   if(currentUserData?.role!=='teacher'){showFireToast('🎓 רק מורים יכולים להעלות');return;}
 
@@ -2646,7 +2646,7 @@ function showVideoUploadDialog(){
         <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:6px">🎯 לאיזה מקצוע שייך הסרטון?</label>
         <select id="_vidCat" style="width:100%;background:rgba(168,85,247,0.06);border:1.5px solid rgba(168,85,247,0.25);border-radius:12px;padding:11px;font-size:13px;font-family:inherit;direction:rtl;outline:none;color:#0F1A1F">
           <option value="">כל המקצועות (כללי)</option>
-          ${(()=>{const t=TEACHERS.find(x=>x.id===currentUser?.uid);const cats=t?.cats||[];return cats.map(cid=>{const c=CATS.find(x=>x.id===cid);return c?`<option value="${cid}">${c.em} ${c.lbl}</option>`:''}).join('');})()}
+          ${(()=>{const t=TEACHERS.find(x=>x.id===currentUser?.uid);const cats=t?.cats||[];return cats.map(cid=>{const c=CATS.find(x=>x.id===cid);return c?`<option value="${cid}" ${cid===defaultCat?'selected':''}>${c.em} ${c.lbl}</option>`:''}).join('');})()}
         </select>
       </div>
 
@@ -3002,6 +3002,17 @@ async function _saveVideoToFirebase(title,url,desc,platform,thumbnail=null,cat=n
   }catch(e){showFireToast('❌ '+e.message);}
 }
 
+
+async function assignVideoCategory(videoId,catId){
+  if(!currentUser)return;
+  try{
+    await db.ref('videos/'+currentUser.uid+'/'+videoId+'/cat').set(catId);
+    const v=teacherVideos.find(x=>x.id===videoId);
+    if(v)v.cat=catId;
+    showFireToast('✅ המקצוע עודכן!');
+    render();
+  }catch(e){showFireToast('❌ '+e.message);}
+}
 
 async function deleteMyVideo(videoId){
   if(!confirm('למחוק את הסרטון?'))return;
@@ -5129,9 +5140,19 @@ function Profile(){
     ${catProfile?.tags?.length?`<div class="card"><h4 style="margin:0 0 10px;font-weight:800">🏷 נושאים</h4><div style="display:flex;gap:8px;flex-wrap:wrap">${catProfile.tags.map(tg=>`<span style="background:${catObj.col}18;color:${catObj.col};padding:6px 14px;border-radius:50px;font-size:13px;font-weight:700">${tg}</span>`).join('')}</div></div>`:''}
     <div style="display:flex;justify-content:space-between;align-items:center;margin:14px 0 10px">
       <p style="font-weight:800;font-size:15px;margin:0">📹 סרטונים (${catVids.length})</p>
-      <button onclick="showVideoUploadDialog()" style="background:linear-gradient(135deg,${catObj.col},#A855F7);border:none;color:#fff;border-radius:50px;padding:8px 16px;font-size:12px;font-weight:800;cursor:pointer">+ הוסף סרטון</button>
+      <button onclick="showVideoUploadDialog('${tab}')" style="background:linear-gradient(135deg,${catObj.col},#A855F7);border:none;color:#fff;border-radius:50px;padding:8px 16px;font-size:12px;font-weight:800;cursor:pointer">+ הוסף סרטון</button>
     </div>
-    ${catVids.length===0?`<div style="background:rgba(255,255,255,0.7);backdrop-filter:blur(10px);border-radius:20px;padding:32px 20px;text-align:center"><div style="font-size:54px;margin-bottom:12px">🎥</div><h3 style="font-weight:900;font-size:16px;margin:0 0 8px;color:#0F1A1F">עדיין לא העלית סרטונים</h3><p style="color:#64748B;font-size:13px;margin:0">לחץ "+ הוסף סרטון" כדי להוסיף</p></div>`:catVids.map(v=>{const ytId=v.platform==='youtube'?(v.url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/)([^&?\s]+)/)?.[1]):null;const thumb=ytId?`https://img.youtube.com/vi/${ytId}/hqdefault.jpg`:null;return `<div class="card" style="padding:0;overflow:hidden"><div style="aspect-ratio:16/9;background:${thumb?'url('+thumb+') center/cover,':''}linear-gradient(135deg,#14B8A6,#A855F7);position:relative;cursor:pointer" onclick="window.open('${v.url}','_blank')"><div style="position:absolute;inset:0;background:rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center"><div style="background:rgba(255,255,255,0.95);width:54px;height:54px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px">▶️</div></div>${v.approved===true?`<div style="position:absolute;top:10px;right:10px;background:rgba(16,185,129,0.95);color:#fff;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:800">✓ פורסם</div>`:v.approved==='rejected'?`<div style="position:absolute;top:10px;right:10px;background:rgba(239,68,68,0.95);color:#fff;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:800">✗ לא מאושר</div>`:`<div style="position:absolute;top:10px;right:10px;background:rgba(245,158,11,0.95);color:#fff;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:800">⏳ מחכה לאישור</div>`}</div><div style="padding:13px 15px"><p style="margin:0 0 5px;font-weight:800;font-size:14px">${v.title}</p>${v.desc?`<p style="margin:0 0 7px;font-size:12px;color:#64748B;line-height:1.5">${v.desc}</p>`:''}<div style="display:flex;gap:14px;align-items:center;justify-content:space-between"><button onclick="deleteMyVideo('${v.id}')" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#EF4444;border-radius:50px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer">🗑 מחק</button><div style="display:flex;gap:14px"><span style="font-size:12px;color:${C.muted}">👁 ${v.views||0}</span><span style="font-size:12px;color:${C.muted}">❤️ ${v.likes||0}</span></div></div></div></div>`;}).join("")}`;
+    ${(()=>{
+      const uncat=teacherVideos.filter(v=>!v.cat);
+      const showVids=catVids.length>0?catVids:uncat;
+      if(showVids.length===0)return `<div style="background:rgba(255,255,255,0.7);backdrop-filter:blur(10px);border-radius:20px;padding:32px 20px;text-align:center"><div style="font-size:54px;margin-bottom:12px">🎥</div><h3 style="font-weight:900;font-size:16px;margin:0 0 8px;color:#0F1A1F">עדיין לא העלית סרטונים</h3><p style="color:#64748B;font-size:13px;margin:0">לחץ "+ הוסף סרטון" כדי להוסיף</p></div>`;
+      const warning=catVids.length===0&&uncat.length>0?`<div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.3);border-radius:12px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#92400E;font-weight:700">⚠️ ${uncat.length} סרטונים ללא מקצוע — לחץ "שייך" כדי לשייכם ל${catObj.lbl}</div>`:'';
+      return warning+showVids.map(v=>{
+        const ytId=v.platform==='youtube'?(v.url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/)([^&?\s]+)/)?.[1]):null;
+        const thumb=ytId?`https://img.youtube.com/vi/${ytId}/hqdefault.jpg`:null;
+        return `<div class="card" style="padding:0;overflow:hidden"><div style="aspect-ratio:16/9;background:${thumb?'url('+thumb+') center/cover,':''}linear-gradient(135deg,#14B8A6,#A855F7);position:relative;cursor:pointer" onclick="window.open('${v.url}','_blank')"><div style="position:absolute;inset:0;background:rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center"><div style="background:rgba(255,255,255,0.95);width:54px;height:54px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px">▶️</div></div>${v.approved===true?`<div style="position:absolute;top:10px;right:10px;background:rgba(16,185,129,0.95);color:#fff;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:800">✓ פורסם</div>`:v.approved==='rejected'?`<div style="position:absolute;top:10px;right:10px;background:rgba(239,68,68,0.95);color:#fff;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:800">✗ לא מאושר</div>`:`<div style="position:absolute;top:10px;right:10px;background:rgba(245,158,11,0.95);color:#fff;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:800">⏳ מחכה לאישור</div>`}</div><div style="padding:13px 15px"><p style="margin:0 0 5px;font-weight:800;font-size:14px">${v.title}</p>${v.desc?`<p style="margin:0 0 7px;font-size:12px;color:#64748B;line-height:1.5">${v.desc}</p>`:''}<div style="display:flex;gap:8px;align-items:center;justify-content:space-between">${!v.cat?`<button onclick="assignVideoCategory('${v.id}','${tab}')" style="background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.4);color:#B45309;border-radius:50px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer">🏷 שייך ל${catObj.lbl}</button>`:`<div></div>`}<div style="display:flex;gap:8px"><button onclick="deleteMyVideo('${v.id}')" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#EF4444;border-radius:50px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer">🗑</button><span style="font-size:12px;color:${C.muted};align-self:center">👁 ${v.views||0}</span></div></div></div></div>`;
+      }).join('');
+    })()}`;
   }
 
   if(!isTeacher&&tab==="videos"){
