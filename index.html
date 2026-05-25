@@ -96,6 +96,12 @@ input,textarea,select{font-family:inherit;-webkit-appearance:none;appearance:non
 .nb-dot{width:4px;height:4px;border-radius:50%;background:var(--p);margin-top:1px}
 .nb-badge{position:absolute;top:-4px;right:-7px;background:#E74C3C;color:#fff;font-size:8px;font-weight:900;border-radius:50%;width:15px;height:15px;display:flex;align-items:center;justify-content:center}
 
+/* REFRESH BTN */
+.rfsh-btn{position:fixed;bottom:80px;left:16px;z-index:95;width:42px;height:42px;border-radius:50%;background:rgba(20,184,166,0.85);backdrop-filter:blur(10px);border:none;color:#fff;font-size:19px;cursor:pointer;box-shadow:0 4px 16px rgba(20,184,166,0.45);display:flex;align-items:center;justify-content:center;transition:transform .15s,opacity .15s}
+.rfsh-btn:active{transform:scale(.9)}
+.rfsh-btn.spinning svg,.rfsh-btn.spinning{animation:rfsh-spin .7s linear infinite}
+@keyframes rfsh-spin{to{transform:rotate(360deg)}}
+
 /* BTNS */
 .btn{border:none;cursor:pointer;font-family:inherit;font-weight:800;border-radius:50px;padding:15px 24px;font-size:16px;display:block;width:100%;transition:transform .15s}
 .btn:active{transform:scale(.97)}
@@ -6574,7 +6580,9 @@ const SCREENS={splash:Splash,safety:Safety,parentReg:ParentReg,register:Register
 
 function render(){
   const fn=SCREENS[S.screen]||Home;
-  document.getElementById("app").innerHTML=fn()+SharePanel();
+  const noRefreshScreens=['splash','login','register','safety','parentReg','teacherReg','teacherPending'];
+  const showRefresh=!noRefreshScreens.includes(S.screen);
+  document.getElementById("app").innerHTML=fn()+SharePanel()+(showRefresh?`<button id="_rfshBtn" class="rfsh-btn" onclick="refreshCurrentScreen()" title="רענן">↻</button>`:'')
   document.querySelectorAll("[data-tid]").forEach(el=>{
     el.addEventListener("click",()=>{const tid=parseInt(el.dataset.tid);S.teacher=TEACHERS.find(t=>t.id===tid)||TEACHERS[0];go("teacher");});
   });
@@ -6584,12 +6592,41 @@ function render(){
 
 render();
 
-async function refreshApp(){
-  showFireToast('⏳ מרענן...');
-  await loadRealTeachers();
-  render();
-  showFireToast('✅ עודכן!');
+async function refreshCurrentScreen(){
+  const btn=document.getElementById('_rfshBtn');
+  if(btn){btn.classList.add('spinning');btn.disabled=true;}
+  try{
+    const scr=S.screen;
+    const loads=[];
+    // תמיד טוען מורים (משפיע על רוב הדפים)
+    loads.push(loadRealTeachers());
+    if(['home','nearby','search'].includes(scr)){}// כבר טוען מורים
+    if(scr==='community')loads.push(loadCommunityPosts());
+    if(scr==='messages')loads.push(loadUserChats());
+    if(scr==='profile'){
+      if(currentUserData?.role==='teacher')loads.push(loadTeacherVideos());
+      loads.push(loadNotifications());
+    }
+    if(scr==='teacher'&&(S.teacher?.id)){
+      loads.push(loadPublicTeacherVideos(S.teacher.id));
+    }
+    if(scr==='notifications')loads.push(loadNotifications());
+    if(scr==='parent')loads.push(loadParentChildren());
+    if(scr==='admin')loads.push(loadAdminData());
+    if(scr==='chat'&&S.chat?.otherUid){
+      chatMessages=[];
+      if(chatListener)try{chatListener.off();}catch(e){}
+      listenToChat(S.chat.otherUid);
+    }
+    await Promise.all(loads);
+    render();
+    showFireToast('✅ עודכן!');
+  }catch(e){showFireToast('❌ '+e.message);}
+  finally{
+    if(btn){btn.classList.remove('spinning');btn.disabled=false;}
+  }
 }
+async function refreshApp(){return refreshCurrentScreen();}
 
 // ─── WhatsApp Click-to-Chat 📱 ───────────────────────────────────────────────
 function openWhatsApp(phone,message){
