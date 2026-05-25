@@ -6784,20 +6784,26 @@ async function firebaseRegister(email,password,userData){
   }catch(e){
     S._registering=false;
     if(e.code==='auth/email-already-in-use'){
-      // בדוק אם המייל שייך לחשבון שנמחק/נחסם — אם כן, מאפשרים הרשמה מחדש
+      // בדוק אם המייל שייך לחשבון שנמחק ע"י מנהל — אם כן, מאפשרים הרשמה מחדש
       try{
         const sc=await auth.signInWithEmailAndPassword(email,password);
-        const bannedSnap=await db.ref('bannedUsers/'+sc.user.uid).get();
-        if(bannedSnap.exists()){
+        const uid=sc.user.uid;
+        const [bannedSnap,userSnap]=await Promise.all([
+          db.ref('bannedUsers/'+uid).get(),
+          db.ref('users/'+uid).get()
+        ]);
+        // אפשר הרשמה מחדש אם: חסום OR אין רשומה ב-DB (נמחק ע"י מנהל)
+        if(bannedSnap.exists()||!userSnap.exists()){
           await sc.user.delete();
-          await db.ref('bannedUsers/'+sc.user.uid).remove().catch(()=>{});
+          await db.ref('bannedUsers/'+uid).remove().catch(()=>{});
           return await firebaseRegister(email,password,userData);
         }else{
           await auth.signOut().catch(()=>{});
-          showFireToast('❌ המייל כבר קיים במערכת - נסה מייל אחר');
+          showFireToast('❌ המייל כבר קיים במערכת - נסה להתחבר');
         }
       }catch(signInErr){
-        showFireToast('❌ המייל כבר קיים במערכת - נסה מייל אחר');
+        // סיסמה שגויה — המשתמש קיים עם סיסמה אחרת
+        showFireToast('❌ המייל כבר רשום — נסה להתחבר או השתמש במייל אחר');
       }
       return;
     }
