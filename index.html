@@ -1005,14 +1005,22 @@ function Register(){
             <button type="button" id="genderO" onclick="selectGender('other')" style="flex:1;background:rgba(20,184,166,0.08);color:#14B8A6;border:2px solid rgba(20,184,166,0.2);border-radius:12px;padding:10px;font-weight:700;font-size:13px;cursor:pointer">🧒 אחר</button>
           </div>
         </div>
-        <div class="ing"><label>כתובת מייל</label>
-          <input id="regEmail" class="inp" type="email" placeholder="המייל שלך"
-            value="${(()=>{try{return sessionStorage.getItem('_rEmail')||'';}catch(e){return '';}})()} "
-            oninput="try{sessionStorage.setItem('_rEmail',this.value);}catch(e){}"></div>
         <div class="ing"><label>סיסמה (לפחות 6 תווים)</label>
           <input id="regPass" class="inp" type="password" placeholder="בחר סיסמה"></div>
-        <div class="ing" style="margin-bottom:0"><label>אישור סיסמה</label>
+        <div class="ing"><label>אישור סיסמה</label>
           <input id="regPass2" class="inp" type="password" placeholder="הקלד שוב את הסיסמה"></div>
+      </div>
+
+      <!-- הודעת אימות טלפוני -->
+      <div style="background:linear-gradient(135deg,rgba(245,158,11,0.12),rgba(239,68,68,0.08));border:2px solid rgba(245,158,11,0.5);border-radius:18px;padding:16px;margin-bottom:16px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+          <span style="font-size:26px">📞</span>
+          <strong style="font-size:14px;color:#92400E">שים לב — אישור הרשמה</strong>
+        </div>
+        <p style="font-size:13px;color:#78350F;line-height:1.7;margin:0">
+          השלמת ההרשמה <strong>מותנית בשיחת אימות טלפונית</strong> עם מנהל הפאנל.<br>
+          לאחר ההרשמה, מנהל האפליקציה יצור איתך קשר לאישור סופי.
+        </p>
       </div>
 
       <!-- אישורים -->
@@ -1064,7 +1072,6 @@ function selectRole(r){
 async function quickRegister(){
   const name=document.getElementById('regName');
   const age=document.getElementById('regAge');
-  const email=document.getElementById('regEmail');
   const pass=document.getElementById('regPass');
   const pass2=document.getElementById('regPass2');
   const pr=S.parentRegData;
@@ -1072,13 +1079,16 @@ async function quickRegister(){
   if(!pr){showFireToast('❌ פרטי הורה חסרים – חזור לשלב 1');go('parentReg');return;}
   if(!name||!name.value.trim()){showFireToast('❌ הכנס שם מלא');return;}
   if(!age||!age.value||parseInt(age.value)<8||parseInt(age.value)>18){showFireToast('❌ גיל חייב להיות בין 8-18');return;}
-  if(!email||!email.value){showFireToast('❌ הכנס כתובת מייל');return;}
-  if(email.value.toLowerCase()===pr.email){showFireToast('❌ מייל הילד חייב להיות שונה ממייל ההורה');return;}
   if(!pass||pass.value.length<6){showFireToast('❌ סיסמה לפחות 6 תווים');return;}
   if(!pass2||pass.value!==pass2.value){showFireToast('❌ הסיסמאות לא תואמות');return;}
   if(!kcbChecked('regTerms')){showFireToast('❌ נדרש אישור תנאי שימוש');return;}
 
-  await firebaseRegister(email.value, pass.value, {
+  // יצירת מייל אוטומטי לחשבון הילד (לכניסה מאוחר)
+  const rand=Math.random().toString(36).substring(2,8);
+  const cleanName=name.value.trim().replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_֐-׿]/g,'').substring(0,10)||'user';
+  const autoEmail=cleanName+'_'+rand+'@kidemy.app';
+
+  await firebaseRegister(autoEmail, pass.value, {
     name:name.value.trim(),
     age:parseInt(age.value),
     gender:_selectedGender,
@@ -6995,15 +7005,23 @@ function RegSuccess(){
       </div>
     </div>
 
-    <!-- אימות מייל -->
+    <!-- פרטי כניסה -->
     <div style="background:linear-gradient(135deg,rgba(20,184,166,0.08),rgba(168,85,247,0.06));border:1.5px solid rgba(20,184,166,0.25);border-radius:24px;padding:18px;margin-bottom:18px">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-        <span style="font-size:24px">📧</span>
-        <h3 style="font-weight:900;font-size:15px;margin:0;color:#14B8A6">אנחנו שולחים לך מייל אימות</h3>
+        <span style="font-size:24px">🔑</span>
+        <h3 style="font-weight:900;font-size:15px;margin:0;color:#14B8A6">פרטי הכניסה שלך</h3>
       </div>
-      <p style="font-size:13px;color:#0F766E;line-height:1.7;margin:0 0 10px">
-        ל-<strong style="color:#14B8A6">${S.regEmail||currentUser?.email||''}</strong>
-      </p>
+      <p style="font-size:12px;color:#64748B;margin:0 0 8px;line-height:1.6">שמור את הפרטים האלה — תצטרך אותם בכניסה הבאה:</p>
+      <div style="background:rgba(255,255,255,0.85);border:1.5px solid rgba(20,184,166,0.3);border-radius:12px;padding:12px;margin-bottom:10px;direction:ltr;text-align:left">
+        <div style="font-size:11px;color:#64748B;font-weight:700;margin-bottom:4px;direction:rtl;text-align:right">מייל לכניסה (נוצר אוטומטי):</div>
+        <div style="font-size:13px;font-weight:900;color:#0F1A1F;word-break:break-all">${S.regEmail||currentUser?.email||''}</div>
+      </div>
+      <!-- אימות טלפוני -->
+      <div style="background:linear-gradient(135deg,rgba(245,158,11,0.1),rgba(239,68,68,0.06));border:1.5px solid rgba(245,158,11,0.4);border-radius:12px;padding:12px">
+        <div style="font-size:13px;font-weight:900;color:#92400E;margin-bottom:4px">📞 שלב אחרון — אימות טלפוני</div>
+        <div style="font-size:12px;color:#78350F;line-height:1.6">מנהל האפליקציה יצור איתך קשר לשיחת אימות טלפונית לפני שחשבונך יהיה פעיל במלואו.</div>
+      </div>
+      <p style="font-size:13px;color:#0F766E;line-height:1.7;margin:10px 0 0">
       <div style="background:rgba(255,255,255,0.7);border-radius:12px;padding:11px;margin-bottom:10px">
         <p style="margin:0;font-size:11px;line-height:1.6;color:#475569"><strong>📌 חשוב:</strong> אם המייל לא הגיע תוך דקה – בדוק בתיקיית <strong style="color:#A855F7">ספאם</strong> או <strong style="color:#A855F7">קידום מכירות</strong>! המייל מגיע מ-noreply@kidemy-83a17.firebaseapp.com</p>
       </div>
