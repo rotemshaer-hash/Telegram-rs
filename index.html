@@ -5549,14 +5549,22 @@ async function postNew(){
     status:isAdmin()?'approved':'pending'
   };
   try{
-    showFireToast(isAdmin()?'⏳ מפרסם...':'⏳ שולח...');
-    const ref=db.ref('communityPosts').push();
-    await ref.set(post);
-    post.id=ref.key;
-    post.time='עכשיו';
-    S.posts.unshift(post);
-    S.showCompose=false;
-    showFireToast(isAdmin()?'✅ פורסם!':'✅ הפוסט נשלח לאישור מנהל');
+    if(isAdmin()){
+      showFireToast('⏳ מפרסם...');
+      const ref=db.ref('communityPosts').push();
+      await ref.set(post);
+      post.id=ref.key;
+      post.time='עכשיו';
+      S.posts.unshift(post);
+      S.showCompose=false;
+      showFireToast('✅ פורסם!');
+    } else {
+      showFireToast('⏳ שולח...');
+      await db.ref('communityPosts').push(post);
+      S.showCompose=false;
+      t.value='';
+      showFireToast('✅ הפוסט נשלח לאישור מנהל ויפורסם בקרוב');
+    }
     render();
   }catch(e){
     console.error('Post error:',e);
@@ -5587,7 +5595,8 @@ async function loadCommunityPosts(){
           db.ref('communityPosts/'+c.key+'/status').set('approved').catch(()=>{});
           p.status='approved';
         }
-        if(p.status==='pending'&&(!currentUser||p.authUid!==currentUser.uid))return;
+        // פוסטים pending לא מופיעים בפיד — רק approved
+        if(p.status!=='approved')return;
         if(p.reps&&typeof p.reps==='object'&&!Array.isArray(p.reps)){
           p.reps=Object.values(p.reps);
         }
