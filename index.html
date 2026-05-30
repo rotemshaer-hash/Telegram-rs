@@ -3642,6 +3642,19 @@ function showAdminPanel(forceTab=null){
   });
 }
 
+async function adminSwitchTab(id){
+  adminTab=id;
+  if(id==='posts'){
+    try{
+      const s=await db.ref('communityPosts').get();
+      adminAllPosts=[];
+      if(s.exists())s.forEach(c=>adminAllPosts.push({id:c.key,...c.val()}));
+      adminAllPosts.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+    }catch(e){showFireToast('❌ '+e.message);}
+  }
+  renderAdminPanel();
+}
+
 function renderAdminPanel(){
   document.getElementById('_adminPanel')?.remove();
   const pendingTeachers=adminAllTeachers.filter(t=>!t.verified);
@@ -3675,7 +3688,7 @@ function renderAdminPanel(){
     <div style="background:#fff;padding:0 16px;border-bottom:1px solid rgba(20,184,166,0.15)">
       <div style="display:flex;gap:4px;overflow-x:auto;padding:8px 0">
         ${[['users','👥 כל המשתמשים',adminAllUsers.length],['students','🎒 תלמידים',adminAllUsers.filter(u=>u.role!=='teacher').length],['teachers','🎓 מורים',totalPending],['bookings','📅 הזמנות',adminAllBookings.filter(b=>b.status==='pending').length],['videos','📹 סרטונים',pendingVideos.length],['posts','📝 פוסטים',adminAllPosts.filter(p=>p.status==='pending').length],['reports','🚨 דיווחים',adminAllReports.filter(r=>r.status==='open').length],['stats','📊 סטטיסטיקות',null]].map(([id,lbl,badge])=>`
-          <button onclick="adminTab='${id}';${id==='posts'?'db.ref(\'communityPosts\').get().then(s=>{adminAllPosts=[];if(s.exists())s.forEach(c=>adminAllPosts.push({id:c.key,...c.val()}));adminAllPosts.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));renderAdminPanel();});':'renderAdminPanel()'}" style="background:${adminTab===id?'linear-gradient(135deg,#14B8A6,#06B6D4)':'rgba(20,184,166,0.06)'};color:${adminTab===id?'#fff':'#14B8A6'};border:none;border-radius:50px;padding:10px 14px;font-size:12px;font-weight:800;cursor:pointer;flex-shrink:0;display:flex;align-items:center;gap:6px;white-space:nowrap">
+          <button onclick="adminSwitchTab('${id}')" style="background:${adminTab===id?'linear-gradient(135deg,#14B8A6,#06B6D4)':'rgba(20,184,166,0.06)'};color:${adminTab===id?'#fff':'#14B8A6'};border:none;border-radius:50px;padding:10px 14px;font-size:12px;font-weight:800;cursor:pointer;flex-shrink:0;display:flex;align-items:center;gap:6px;white-space:nowrap">
             ${lbl}${badge>0?`<span style="background:${adminTab===id?'rgba(255,255,255,0.3)':'#EF4444'};color:#fff;border-radius:50px;padding:1px 7px;font-size:10px">${badge}</span>`:''}
           </button>`).join('')}
       </div>
