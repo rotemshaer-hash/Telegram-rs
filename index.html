@@ -3646,11 +3646,17 @@ async function adminSwitchTab(id){
   adminTab=id;
   if(id==='posts'){
     try{
+      showFireToast('⏳ טוען פוסטים...');
       const s=await db.ref('communityPosts').get();
       adminAllPosts=[];
       if(s.exists())s.forEach(c=>adminAllPosts.push({id:c.key,...c.val()}));
       adminAllPosts.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
-    }catch(e){showFireToast('❌ '+e.message);}
+      console.log('[Admin Posts] loaded:',adminAllPosts.length,'posts',adminAllPosts.map(p=>({id:p.id,status:p.status,text:p.text?.substring(0,20)})));
+      showFireToast('📝 נמצאו '+adminAllPosts.length+' פוסטים');
+    }catch(e){
+      console.error('[Admin Posts] error:',e);
+      showFireToast('❌ שגיאה בטעינת פוסטים: '+e.message);
+    }
   }
   renderAdminPanel();
 }
@@ -3921,10 +3927,11 @@ function renderAdminTab(){
     return html;
   }
   if(adminTab==='posts'){
-    const pendingPosts=adminAllPosts.filter(p=>p.status==='pending');
+    // pending = status==='pending' או ללא status (פוסטים ישנים)
+    const pendingPosts=adminAllPosts.filter(p=>p.status==='pending'||!p.status);
     const approvedPosts=adminAllPosts.filter(p=>p.status==='approved');
-    if(adminAllPosts.length===0)return '<div style="text-align:center;padding:40px;color:#64748B"><div style="font-size:48px;margin-bottom:10px">📝</div>אין פוסטים</div>';
-    let html='';
+    if(adminAllPosts.length===0)return `<div style="text-align:center;padding:40px;color:#64748B"><div style="font-size:48px;margin-bottom:10px">📝</div><p>אין פוסטים</p><button onclick="adminSwitchTab('posts')" style="background:#14B8A6;border:none;color:#fff;border-radius:50px;padding:10px 20px;font-weight:800;cursor:pointer">🔄 נסה שוב</button></div>`;
+    let html=`<button onclick="adminSwitchTab('posts')" style="width:100%;background:rgba(20,184,166,0.08);border:1px solid rgba(20,184,166,0.3);color:#14B8A6;border-radius:50px;padding:8px;font-size:12px;font-weight:800;cursor:pointer;margin-bottom:14px">🔄 רענן פוסטים (${adminAllPosts.length} סה"כ)</button>`;
     if(pendingPosts.length>0){
       html+=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><h4 style="font-weight:800;font-size:14px;color:#F59E0B;margin:0">⏳ ממתינים לאישור (${pendingPosts.length})</h4><button onclick="adminApproveAllPosts()" style="background:#10B981;border:none;color:#fff;border-radius:50px;padding:7px 14px;font-size:11px;font-weight:800;cursor:pointer">🟢 אשר הכל</button></div>`;
       html+=pendingPosts.map(p=>`
