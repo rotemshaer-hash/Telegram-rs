@@ -3627,13 +3627,17 @@ async function adminSendTestEmail(){
   }
 }
 
-function showAdminPanel(){
+function showAdminPanel(forceTab=null){
   if(!isAdmin()){showFireToast('🚫 אין הרשאת מנהל');return;}
   loadAdminData().then(()=>{
-    const hasPendingTeachers=(adminAllTeachers.filter(t=>!t.verified).length+adminIncompleteTeachers.length)>0;
-    const hasPendingVideos=adminAllVideos.filter(v=>!v.approved).length>0;
-    if(hasPendingTeachers) adminTab='teachers';
-    else if(hasPendingVideos) adminTab='videos';
+    if(forceTab){
+      adminTab=forceTab;
+    } else {
+      const hasPendingTeachers=(adminAllTeachers.filter(t=>!t.verified).length+adminIncompleteTeachers.length)>0;
+      const hasPendingVideos=adminAllVideos.filter(v=>!v.approved).length>0;
+      if(hasPendingTeachers) adminTab='teachers';
+      else if(hasPendingVideos) adminTab='videos';
+    }
     renderAdminPanel();
   });
 }
@@ -5555,8 +5559,8 @@ async function postNew(){
     S.showCompose=false;
     showFireToast('✅ הפוסט נשלח לאישור מנהל');
     if(isAdmin()){
-      // קיצור דרך לאדמין — פתח ישירות את טאב הפוסטים
-      setTimeout(()=>{S.adminTab='posts';go('admin');},800);
+      // קיצור דרך לאדמין — פתח ישירות טאב פוסטים בפאנל
+      setTimeout(()=>showAdminPanel('posts'),800);
     }
     await loadCommunityPosts();
   }catch(e){
