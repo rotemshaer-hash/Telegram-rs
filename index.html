@@ -5546,25 +5546,20 @@ async function postNew(){
     likedBy:{},
     reps:[],
     createdAt:Date.now(),
-    status:isAdmin()?'approved':'pending'
+    status:'pending'
   };
   try{
-    if(isAdmin()){
-      showFireToast('⏳ מפרסם...');
-      const ref=db.ref('communityPosts').push();
-      await ref.set(post);
-      showFireToast('✅ פורסם!');
-    } else {
-      showFireToast('⏳ שולח...');
-      await db.ref('communityPosts').push(post);
-      showFireToast('✅ הפוסט נשלח לאישור מנהל ויפורסם בקרוב');
-    }
+    showFireToast('⏳ שולח...');
+    await db.ref('communityPosts').push(post);
     t.value='';
     S.showCompose=false;
-    // טעינה מחדש מ-Firebase — מבטיחה שרק approved יוצגו
+    showFireToast('✅ הפוסט נשלח לאישור מנהל');
+    if(isAdmin()){
+      // קיצור דרך לאדמין — פתח ישירות את טאב הפוסטים
+      setTimeout(()=>{S.adminTab='posts';go('admin');},800);
+    }
     await loadCommunityPosts();
   }catch(e){
-    console.error('Post error:',e);
     showFireToast('❌ שגיאה: '+e.message);
   }
 }
@@ -5578,12 +5573,7 @@ async function loadCommunityPosts(){
     if(snap.exists()){
       snap.forEach(c=>{
         const p={id:c.key,...c.val()};
-        // פוסטים של אדמין שנשמרו לפני התיקון — אשר אוטומטית
-        if(p.status==='pending'&&isAdmin()&&p.authUid===currentUser?.uid){
-          db.ref('communityPosts/'+c.key+'/status').set('approved').catch(()=>{});
-          p.status='approved';
-        }
-        // פוסטים pending לא מופיעים בפיד — רק approved
+        // רק פוסטים מאושרים מוצגים — ללא יוצאים מן הכלל
         if(p.status!=='approved')return;
         if(p.reps&&typeof p.reps==='object'&&!Array.isArray(p.reps)){
           p.reps=Object.values(p.reps);
