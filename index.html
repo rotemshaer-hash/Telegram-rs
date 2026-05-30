@@ -5452,14 +5452,15 @@ function Parent(){
 function Community(){
   const CC=[{id:"all",l:"הכל",e:"🌐"},{id:"math",l:"לימודים",e:"📚"},{id:"music",l:"מוזיקה",e:"🎸"},{id:"art",l:"אמנות",e:"🎨"},{id:"sport",l:"ספורט",e:"⚽"},{id:"coding",l:"קוד",e:"💻"},{id:"beauty",l:"יופי",e:"💅"},{id:"freelance",l:"חופשיים",e:"🌟"},{id:"general",l:"כללי",e:"💬"}];
   const myArea=currentUserData?.area||currentUserData?.city||'';
-  let vis=(S.comFilter==="all"?S.posts:S.posts.filter(p=>p.pcat===S.comFilter)).filter(p=>p.status==='approved');
+  let vis=(S.comFilter==="all"?S.posts:S.posts.filter(p=>p.pcat===S.comFilter)).filter(p=>p.status==='approved'||(currentUser&&p.authUid===currentUser.uid&&p.status==='pending'));
   if(S.areaOnly&&myArea){
     vis=vis.filter(p=>p.area===myArea||(p.area&&myArea&&(p.area.includes(myArea)||myArea.includes(p.area))));
   }
   const postCards=vis.map(p=>{
     const isMine=currentUser&&p.authUid===currentUser.uid;
     return `
-    <div class="post">
+    <div class="post" style="${p.status==='pending'?'border:2px solid rgba(245,158,11,0.5);opacity:0.9':''}">
+      ${p.status==='pending'?`<div style="background:linear-gradient(135deg,rgba(245,158,11,0.15),rgba(234,179,8,0.1));padding:8px 15px;font-size:12px;font-weight:800;color:#92400E;border-bottom:1px solid rgba(245,158,11,0.2);border-radius:18px 18px 0 0;text-align:center">⏳ הפוסט שלך ממתין לאישור מנהל — גלוי לך בלבד</div>`:''}
       <div style="padding:15px 15px 11px;display:flex;gap:11px;align-items:center">
         <div style="width:46px;height:46px;border-radius:14px;flex-shrink:0;background:${p.col||'#14B8A6'}20;display:flex;align-items:center;justify-content:center;font-size:24px;overflow:hidden">${p.photo?`<img src="${p.photo}" style="width:100%;height:100%;object-fit:cover" alt="">`:p.av||'😊'}</div>
         <div style="flex:1">
@@ -5629,8 +5630,10 @@ async function loadCommunityPosts(){
     if(snap.exists()){
       snap.forEach(c=>{
         const p={id:c.key,...c.val()};
-        // רק פוסטים מאושרים מוצגים — ללא יוצאים מן הכלל
-        if(p.status!=='approved')return;
+        // מאושרים — מוצגים לכולם. פוסט ממתין — מוצג רק לכותב עצמו
+        if(p.status!=='approved'){
+          if(!currentUser||p.authUid!==currentUser.uid||p.status!=='pending')return;
+        }
         if(p.reps&&typeof p.reps==='object'&&!Array.isArray(p.reps)){
           p.reps=Object.values(p.reps);
         }
