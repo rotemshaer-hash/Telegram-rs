@@ -1083,10 +1083,10 @@ async function quickRegister(){
   if(!pass2||pass.value!==pass2.value){showFireToast('❌ הסיסמאות לא תואמות');return;}
   if(!kcbChecked('regTerms')){showFireToast('❌ נדרש אישור תנאי שימוש');return;}
 
-  // יצירת מייל אוטומטי לחשבון הילד (לכניסה מאוחר)
+  // יצירת מייל אוטומטי לחשבון הילד — מבוסס על קידומת מייל ההורה + רנדום
   const rand=Math.random().toString(36).substring(2,8);
-  const cleanName=name.value.trim().replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_֐-׿]/g,'').substring(0,10)||'user';
-  const autoEmail=cleanName+'_'+rand+'@kidemy.app';
+  const parentPrefix=(pr.email||'').split('@')[0].replace(/[^a-zA-Z0-9]/g,'').substring(0,12)||'parent';
+  const autoEmail='child_'+parentPrefix+'_'+rand+'@kidemy.app';
 
   await firebaseRegister(autoEmail, pass.value, {
     name:name.value.trim(),
