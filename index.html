@@ -2236,6 +2236,25 @@ async function sendChatMessage(otherUid,otherName){
   }catch(e){showFireToast('❌ '+e.message);}
 }
 
+async function sendAdminNotification(toUid, toName, text){
+  if(!currentUser||!toUid)return;
+  try{
+    const chatId=getChatId(currentUser.uid,toUid);
+    const adminName='צוות Kidemy';
+    await db.ref('messages/'+chatId).push({
+      from:currentUser.uid,
+      fromName:adminName,
+      to:toUid,
+      toName:toName||'',
+      text:text,
+      createdAt:Date.now()
+    });
+    const last={lastMessage:text,lastTime:Date.now(),otherUid:toUid,otherName:toName};
+    await db.ref('userChats/'+currentUser.uid+'/'+toUid).set({...last,otherUid:toUid});
+    await db.ref('userChats/'+toUid+'/'+currentUser.uid).set({...last,otherUid:currentUser.uid,otherName:adminName,unread:true});
+  }catch(e){console.error('sendAdminNotification error:',e);}
+}
+
 let userChats=[];
 async function loadUserChats(){
   if(!currentUser)return;
@@ -2557,7 +2576,13 @@ async function adminApprovePost(postId){
   try{
     await db.ref('communityPosts/'+postId+'/status').set('approved');
     const p=adminAllPosts.find(x=>x.id===postId);
-    if(p)p.status='approved';
+    if(p){
+      p.status='approved';
+      if(p.authUid&&p.authUid!==currentUser.uid){
+        const preview=p.text?p.text.substring(0,30):'הפוסט שלך';
+        await sendAdminNotification(p.authUid,p.author||'משתמש','✅ הפוסט שלך אושר ופורסם בקהילה! "'+preview+(p.text?.length>30?'...':'')+'"');
+      }
+    }
     renderAdminPanel();
     showFireToast('✅ פוסט אושר!');
   }catch(e){showFireToast('❌ '+e.message);}
@@ -2574,6 +2599,16 @@ async function adminApproveAllPosts(){
     });
     if(!Object.keys(updates).length){showFireToast('✅ כל הפוסטים כבר מאושרים');return;}
     await db.ref('communityPosts').update(updates);
+    // שלח הודעות לכותבים
+    const notified=new Set();
+    snap.forEach(c=>{
+      const v=c.val();
+      if((!v.status||v.status==='pending')&&v.authUid&&v.authUid!==currentUser.uid&&!notified.has(v.authUid)){
+        notified.add(v.authUid);
+        const preview=v.text?v.text.substring(0,30):'הפוסט שלך';
+        sendAdminNotification(v.authUid,v.author||'משתמש','✅ הפוסט שלך אושר ופורסם בקהילה! "'+preview+(v.text?.length>30?'...':'')+'"');
+      }
+    });
     showFireToast('✅ אושרו '+Object.keys(updates).length+' פוסטים!');
     await loadAdminData();renderAdminPanel();
   }catch(e){showFireToast('❌ '+e.message);}
