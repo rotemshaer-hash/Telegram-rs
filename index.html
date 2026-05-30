@@ -5392,7 +5392,7 @@ function Parent(){
 function Community(){
   const CC=[{id:"all",l:"הכל",e:"🌐"},{id:"math",l:"לימודים",e:"📚"},{id:"music",l:"מוזיקה",e:"🎸"},{id:"art",l:"אמנות",e:"🎨"},{id:"sport",l:"ספורט",e:"⚽"},{id:"coding",l:"קוד",e:"💻"},{id:"beauty",l:"יופי",e:"💅"},{id:"freelance",l:"חופשיים",e:"🌟"},{id:"general",l:"כללי",e:"💬"}];
   const myArea=currentUserData?.area||currentUserData?.city||'';
-  let vis=S.comFilter==="all"?S.posts:S.posts.filter(p=>p.pcat===S.comFilter);
+  let vis=(S.comFilter==="all"?S.posts:S.posts.filter(p=>p.pcat===S.comFilter)).filter(p=>p.status==='approved');
   if(S.areaOnly&&myArea){
     vis=vis.filter(p=>p.area===myArea||(p.area&&myArea&&(p.area.includes(myArea)||myArea.includes(p.area))));
   }
@@ -5553,31 +5553,19 @@ async function postNew(){
       showFireToast('⏳ מפרסם...');
       const ref=db.ref('communityPosts').push();
       await ref.set(post);
-      post.id=ref.key;
-      post.time='עכשיו';
-      S.posts.unshift(post);
-      S.showCompose=false;
       showFireToast('✅ פורסם!');
     } else {
       showFireToast('⏳ שולח...');
       await db.ref('communityPosts').push(post);
-      S.showCompose=false;
-      t.value='';
       showFireToast('✅ הפוסט נשלח לאישור מנהל ויפורסם בקרוב');
     }
-    render();
+    t.value='';
+    S.showCompose=false;
+    // טעינה מחדש מ-Firebase — מבטיחה שרק approved יוצגו
+    await loadCommunityPosts();
   }catch(e){
     console.error('Post error:',e);
-    if(e.code==='PERMISSION_DENIED'||String(e.message).includes('PERMISSION_DENIED')){
-      showFireToast('❌ שגיאת הרשאות – עדכן Firebase Rules');
-      post.id='local_'+Date.now();
-      post.time='עכשיו';
-      S.posts.unshift(post);
-      S.showCompose=false;
-      render();
-    } else {
-      showFireToast('❌ שגיאה: '+e.message);
-    }
+    showFireToast('❌ שגיאה: '+e.message);
   }
 }
 
