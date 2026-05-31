@@ -2356,6 +2356,7 @@ async function _requestBrowserNotifPermission(){
 }
 
 let adminAllUsers=[],adminAllTeachers=[],adminAllVideos=[],adminAllReports=[],adminAllBookings=[],adminIncompleteTeachers=[],adminAllPosts=[];
+let adminAlertStudents=[],adminAlertPosts=[]; // מקור ראשי לממתינים
 let adminTab='users';
 let _adminPendingCount=0;
 
@@ -2369,11 +2370,17 @@ function _updateAdminBadge(n){
 function _startAdminAlertsListener(){
   if(!isAdmin())return;
   db.ref('adminAlerts').on('value',snap=>{
-    let n=0;
-    if(snap.exists())snap.forEach(cat=>cat.forEach(()=>n++));
+    adminAlertStudents=[];adminAlertPosts=[];
+    if(snap.exists()){
+      const st=snap.child('students');
+      if(st.exists())st.forEach(c=>adminAlertStudents.push({uid:c.key,...c.val()}));
+      const po=snap.child('posts');
+      if(po.exists())po.forEach(c=>adminAlertPosts.push({id:c.key,...c.val()}));
+    }
+    const n=adminAlertStudents.length+adminAlertPosts.length;
     _updateAdminBadge(n);
-    // אם הפאנל פתוח — עדכן אותו
-    if(document.getElementById('_adminPanel')){loadAdminData().then(()=>renderAdminPanel());}
+    // אם הפאנל פתוח — רנדר מחדש עם הנתונים החדשים
+    if(document.getElementById('_adminPanel'))renderAdminPanel();
   });
 }
 
@@ -2466,12 +2473,15 @@ async function adminRejectBooking(teacherId,bookingId){
 
 async function adminVerifyStudent(uid){
   try{
-    await db.ref('users/'+uid+'/verified').set(true);
+    // כתוב ב-users/ וגם ב-adminAlerts (גם אם אחד נכשל)
+    await Promise.allSettled([
+      db.ref('users/'+uid+'/verified').set(true),
+      db.ref('users/'+uid+'/role').set('student'),
+    ]);
     await db.ref('adminAlerts/students/'+uid).remove().catch(()=>{});
-    await db.ref('notifications/'+uid).push({type:'studentApproved',read:false,createdAt:Date.now()});
-    const uSnap=await db.ref('users/'+uid).get();
-    const ud=uSnap.val()||{};
-    showFireToast('✅ התלמיד אושר — '+(ud.name||uid));
+    await db.ref('notifications/'+uid).push({type:'studentApproved',read:false,createdAt:Date.now()}).catch(()=>{});
+    const alertRec=adminAlertStudents.find(s=>s.uid===uid);
+    showFireToast('✅ התלמיד אושר — '+(alertRec?.name||uid));
     await loadAdminData();renderAdminPanel();
   }catch(e){showFireToast('❌ '+e.message);}
 }
@@ -3704,11 +3714,11 @@ function showAdminPanel(forceTab=null){
     if(forceTab){
       adminTab=forceTab;
     } else {
-      const pendingStudents=adminAllUsers.filter(u=>u.role!=='teacher'&&u.verified===false).length;
-      const pendingPosts=adminAllPosts.filter(p=>p.status==='pending'||!p.status).length;
+      // adminAlerts = מקור ראשי, adminAllUsers/Posts = גיבוי
+      const pendingStudents=adminAlertStudents.length||adminAllUsers.filter(u=>u.role!=='teacher'&&u.verified===false).length;
+      const pendingPosts=adminAlertPosts.length||adminAllPosts.filter(p=>p.status==='pending'||!p.status).length;
       const hasPendingTeachers=(adminAllTeachers.filter(t=>!t.verified).length+adminIncompleteTeachers.length)>0;
       const hasPendingVideos=adminAllVideos.filter(v=>!v.approved&&v.approved!=='rejected').length>0;
-      // נווט לטאב הכי דחוף עם ממתינים
       if(pendingStudents>0) adminTab='students';
       else if(pendingPosts>0) adminTab='posts';
       else if(hasPendingTeachers) adminTab='teachers';
@@ -3774,12 +3784,12 @@ function renderAdminPanel(){
       <div style="background:linear-gradient(135deg,#A855F7,#EC4899);border-radius:18px;padding:14px;color:#fff"><div style="font-size:28px;font-weight:900">${adminAllTeachers.length}</div><div style="font-size:11px;opacity:0.95">מורים</div></div>
       <div style="background:linear-gradient(135deg,#F59E0B,#EF4444);border-radius:18px;padding:14px;color:#fff"><div style="font-size:28px;font-weight:900">${totalPending}</div><div style="font-size:11px;opacity:0.95">ממתינים לטיפול</div></div>
       <div style="background:linear-gradient(135deg,#06B6D4,#0EA5E9);border-radius:18px;padding:14px;color:#fff"><div style="font-size:28px;font-weight:900">${pendingVideos.length}</div><div style="font-size:11px;opacity:0.95">סרטונים ממתינים</div></div>
-      <div onclick="adminSwitchTab('posts')" style="background:linear-gradient(135deg,#8B5CF6,#EC4899);border-radius:18px;padding:14px;color:#fff;cursor:pointer"><div style="font-size:28px;font-weight:900">${adminAllPosts.filter(p=>p.status==='pending').length}</div><div style="font-size:11px;opacity:0.95">פוסטים ממתינים</div></div>
+      <div onclick="adminSwitchTab('posts')" style="background:linear-gradient(135deg,#8B5CF6,#EC4899);border-radius:18px;padding:14px;color:#fff;cursor:pointer"><div style="font-size:28px;font-weight:900">${Math.max(adminAlertPosts.length,adminAllPosts.filter(p=>p.status==='pending').length)}</div><div style="font-size:11px;opacity:0.95">פוסטים ממתינים</div></div>
       <div style="background:linear-gradient(135deg,#10B981,#14B8A6);border-radius:18px;padding:14px;color:#fff"><div style="font-size:28px;font-weight:900">${adminAllBookings.filter(b=>b.status==='pending').length}</div><div style="font-size:11px;opacity:0.95">הזמנות ממתינות</div></div>
     </div>
     <div style="background:#fff;padding:0 16px;border-bottom:1px solid rgba(20,184,166,0.15)">
       <div style="display:flex;gap:4px;overflow-x:auto;padding:8px 0">
-        ${[['users','👥 כל המשתמשים',adminAllUsers.length],['students','🎒 תלמידים',adminAllUsers.filter(u=>u.role!=='teacher'&&u.verified===false).length],['teachers','🎓 מורים',totalPending],['posts','📝 פוסטים',adminAllPosts.filter(p=>p.status==='pending').length],['bookings','📅 הזמנות',adminAllBookings.filter(b=>b.status==='pending').length],['videos','📹 סרטונים',pendingVideos.length],['reports','🚨 דיווחים',adminAllReports.filter(r=>r.status==='open').length],['stats','📊 סטטיסטיקות',null]].map(([id,lbl,badge])=>`
+        ${[['users','👥 כל המשתמשים',adminAllUsers.length],['students','🎒 תלמידים',Math.max(adminAlertStudents.length,adminAllUsers.filter(u=>u.role!=='teacher'&&u.verified===false).length)],['teachers','🎓 מורים',totalPending],['posts','📝 פוסטים',Math.max(adminAlertPosts.length,adminAllPosts.filter(p=>p.status==='pending').length)],['bookings','📅 הזמנות',adminAllBookings.filter(b=>b.status==='pending').length],['videos','📹 סרטונים',pendingVideos.length],['reports','🚨 דיווחים',adminAllReports.filter(r=>r.status==='open').length],['stats','📊 סטטיסטיקות',null]].map(([id,lbl,badge])=>`
           <button onclick="adminSwitchTab('${id}')" style="background:${adminTab===id?'linear-gradient(135deg,#14B8A6,#06B6D4)':'rgba(20,184,166,0.06)'};color:${adminTab===id?'#fff':'#14B8A6'};border:none;border-radius:50px;padding:10px 14px;font-size:12px;font-weight:800;cursor:pointer;flex-shrink:0;display:flex;align-items:center;gap:6px;white-space:nowrap">
             ${lbl}${badge>0?`<span style="background:${adminTab===id?'rgba(255,255,255,0.3)':'#EF4444'};color:#fff;border-radius:50px;padding:1px 7px;font-size:10px">${badge}</span>`:''}
           </button>`).join('')}
@@ -3843,11 +3853,15 @@ function renderAdminTab(){
   }
   if(adminTab==='students'){
     const students=adminAllUsers.filter(u=>u.role!=='teacher');
-    const pendingStudents=students.filter(u=>u.verified===false);
-    if(students.length===0)return '<div style="text-align:center;padding:40px;color:#64748B"><div style="font-size:48px;margin-bottom:10px">🎒</div>אין עדיין תלמידים</div>';
+    // מקור ראשי: adminAlertStudents — גם אם users/ read נכשל
+    const alertStudentUids=new Set(adminAlertStudents.map(s=>s.uid));
+    const pendingFromAlerts=adminAlertStudents.filter(s=>!students.find(u=>u.uid===s.uid));
+    const pendingStudents=[...students.filter(u=>u.verified===false),...pendingFromAlerts.map(s=>({...s,_fromAlert:true,role:'student'}))];
+    const allStudents=[...students,...pendingFromAlerts.map(s=>({...s,_fromAlert:true,role:'student'}))];
     let html='';
+    if(pendingStudents.length===0&&allStudents.length===0)return '<div style="text-align:center;padding:40px;color:#64748B"><div style="font-size:48px;margin-bottom:10px">🎒</div>אין עדיין תלמידים</div>';
     if(pendingStudents.length>0){html+=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><h4 style="font-weight:800;font-size:14px;color:#F59E0B;margin:0">⏳ ממתינים לאישור (${pendingStudents.length})</h4></div>`;}
-    return html+students.map(u=>`
+    return html+allStudents.map(u=>`
       <div style="background:${u.blocked?'rgba(239,68,68,0.05)':u.verified===false?'rgba(245,158,11,0.05)':'#fff'};border:1.5px solid ${u.blocked?'rgba(239,68,68,0.3)':u.verified===false?'rgba(245,158,11,0.4)':'rgba(6,182,212,0.15)'};border-radius:18px;padding:14px;margin-bottom:10px">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
           <div style="flex:1;min-width:0">
@@ -3870,11 +3884,11 @@ function renderAdminTab(){
           </div>
         </div>
         <div style="display:flex;gap:8px">
-          ${u.parentEmail?`<button onclick='showWhatsAppDialog("${u.parentPhone||''}","שלום ${u.parentName||""}, פנייה מטעם Kidemy בעניין ${u.name}.","פניה להורה")' style="flex:1;background:linear-gradient(135deg,#25D366,#128C7E);border:none;color:#fff;border-radius:50px;padding:8px;font-size:11px;font-weight:800;cursor:pointer">📱 פנה להורה</button>`:''}
-          ${u.verified===false&&!u.blocked?`<button onclick="adminVerifyStudent('${u.uid}')" style="flex:2;background:#10B981;border:none;color:#fff;border-radius:50px;padding:8px;font-size:11px;font-weight:800;cursor:pointer">✅ אשר תלמיד</button>`:''}
-          ${u.blocked?
+          ${(u.parentEmail||u.parentPhone)?`<button onclick='showWhatsAppDialog("${u.parentPhone||''}","שלום ${(u.parentName||'').replace(/"/g,'')}, פנייה מטעם Kidemy בעניין ${(u.name||'').replace(/"/g,'')}.","פניה להורה")' style="flex:1;background:linear-gradient(135deg,#25D366,#128C7E);border:none;color:#fff;border-radius:50px;padding:8px;font-size:11px;font-weight:800;cursor:pointer">📱 פנה להורה</button>`:''}
+          ${(u.verified===false||u._fromAlert)&&!u.blocked?`<button onclick="adminVerifyStudent('${u.uid}')" style="flex:2;background:#10B981;border:none;color:#fff;border-radius:50px;padding:8px;font-size:11px;font-weight:800;cursor:pointer">✅ אשר תלמיד</button>`:''}
+          ${!u._fromAlert&&(u.blocked?
             `<button onclick="adminUnblockUser('${u.uid}')" style="flex:1;background:#10B981;border:none;color:#fff;border-radius:50px;padding:8px;font-size:11px;font-weight:800;cursor:pointer">🔓 שחרר חסימה</button>`:
-            `<button onclick="adminBlockUser('${u.uid}')" style="flex:1;background:rgba(231,76,60,0.85);border:none;color:#fff;border-radius:50px;padding:8px;font-size:11px;font-weight:800;cursor:pointer">⛔ חסימה</button>`}
+            `<button onclick="adminBlockUser('${u.uid}')" style="flex:1;background:rgba(231,76,60,0.85);border:none;color:#fff;border-radius:50px;padding:8px;font-size:11px;font-weight:800;cursor:pointer">⛔ חסימה</button>`):'' }
         </div>
       </div>`).join('');
   }
@@ -4018,11 +4032,14 @@ function renderAdminTab(){
     return html;
   }
   if(adminTab==='posts'){
-    // pending = status==='pending' או ללא status (פוסטים ישנים)
-    const pendingPosts=adminAllPosts.filter(p=>p.status==='pending'||!p.status);
+    // מקור ראשי: adminAlertPosts — גם אם communityPosts read נחסם
+    const alertPostIds=new Set(adminAlertPosts.map(p=>p.id));
+    const pendingFromAlerts=adminAlertPosts.filter(ap=>!adminAllPosts.find(p=>p.id===ap.id));
+    const pendingPosts=[...adminAllPosts.filter(p=>p.status==='pending'||!p.status),...pendingFromAlerts.map(p=>({...p,status:'pending',_fromAlert:true}))];
     const approvedPosts=adminAllPosts.filter(p=>p.status==='approved');
-    if(adminAllPosts.length===0)return `<div style="text-align:center;padding:40px;color:#64748B"><div style="font-size:48px;margin-bottom:10px">📝</div><p>אין פוסטים</p><button onclick="adminSwitchTab('posts')" style="background:#14B8A6;border:none;color:#fff;border-radius:50px;padding:10px 20px;font-weight:800;cursor:pointer">🔄 נסה שוב</button></div>`;
-    let html=`<button onclick="adminSwitchTab('posts')" style="width:100%;background:rgba(20,184,166,0.08);border:1px solid rgba(20,184,166,0.3);color:#14B8A6;border-radius:50px;padding:8px;font-size:12px;font-weight:800;cursor:pointer;margin-bottom:14px">🔄 רענן פוסטים (${adminAllPosts.length} סה"כ)</button>`;
+    const totalPosts=adminAllPosts.length+pendingFromAlerts.length;
+    if(totalPosts===0&&adminAlertPosts.length===0)return `<div style="text-align:center;padding:40px;color:#64748B"><div style="font-size:48px;margin-bottom:10px">📝</div><p>אין פוסטים</p><button onclick="adminSwitchTab('posts')" style="background:#14B8A6;border:none;color:#fff;border-radius:50px;padding:10px 20px;font-weight:800;cursor:pointer">🔄 נסה שוב</button></div>`;
+    let html=`<button onclick="adminSwitchTab('posts')" style="width:100%;background:rgba(20,184,166,0.08);border:1px solid rgba(20,184,166,0.3);color:#14B8A6;border-radius:50px;padding:8px;font-size:12px;font-weight:800;cursor:pointer;margin-bottom:14px">🔄 רענן פוסטים (${totalPosts} סה"כ)</button>`;
     if(pendingPosts.length>0){
       html+=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><h4 style="font-weight:800;font-size:14px;color:#F59E0B;margin:0">⏳ ממתינים לאישור (${pendingPosts.length})</h4><button onclick="adminApproveAllPosts()" style="background:#10B981;border:none;color:#fff;border-radius:50px;padding:7px 14px;font-size:11px;font-weight:800;cursor:pointer">🟢 אשר הכל</button></div>`;
       html+=pendingPosts.map(p=>`
