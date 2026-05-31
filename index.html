@@ -7042,8 +7042,9 @@ async function firebaseRegister(email,password,userData){
     }catch(emailErr){
       console.warn('Email verification failed:',emailErr);
     }
-    // מייל ברכה אישי למשתמש
-    await sendWelcomeEmail(email, userData.name||email.split('@')[0], userData.role||'student');
+    // מייל ברכה — שלח למייל אמיתי בלבד (לא לכתובות אוטומטיות @kidemy.app)
+    const realEmail=email.endsWith('@kidemy.app')?userData.parentEmail||null:email;
+    if(realEmail) await sendWelcomeEmail(realEmail, userData.name||email.split('@')[0], userData.role||'student');
     // מייל להורה על הצטרפות הילד
     if(userData.parentEmail){
       const roleHe=(userData.role||'student')==='teacher'?'מורה':'תלמיד/ה';
