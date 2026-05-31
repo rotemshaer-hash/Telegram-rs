@@ -2222,17 +2222,22 @@ async function sendChatMessage(otherUid,otherName){
       otherName:otherName
     };
     await db.ref('userChats/'+currentUser.uid+'/'+otherUid).set({...last,otherUid});
-    await db.ref('userChats/'+otherUid+'/'+currentUser.uid).set({...last,otherUid:currentUser.uid,otherName:currentUserData?.name||currentUser.email.split('@')[0],unread:true});
+    // עדכון userChats של הצד המקבל — שגיאה כאן לא תמחק את ההודעה
+    try{
+      await db.ref('userChats/'+otherUid+'/'+currentUser.uid).set({...last,otherUid:currentUser.uid,otherName:currentUserData?.name||currentUser.email.split('@')[0],unread:true});
+    }catch(chatErr){console.warn('Could not update receiver chat entry:',chatErr);}
     // התראה לצד השני
-    await db.ref('notifications/'+otherUid).push({
-      type:'newMessage',
-      bookingId:null,
-      from:currentUserData?.name||currentUser.email.split('@')[0],
-      fromUid:currentUser.uid,
-      preview:text.substring(0,40),
-      read:false,
-      createdAt:Date.now()
-    });
+    try{
+      await db.ref('notifications/'+otherUid).push({
+        type:'newMessage',
+        bookingId:null,
+        from:currentUserData?.name||currentUser.email.split('@')[0],
+        fromUid:currentUser.uid,
+        preview:text.substring(0,40),
+        read:false,
+        createdAt:Date.now()
+      });
+    }catch(notifErr){console.warn('Could not send notification:',notifErr);}
   }catch(e){showFireToast('❌ '+e.message);}
 }
 
@@ -2411,11 +2416,15 @@ async function loadAdminData(){
       });
     }
     adminAllBookings.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+  }catch(e){showFireToast('❌ שגיאה בטעינת נתונים: '+e.message);console.error('loadAdminData error:',e);}
+  // טען פוסטים בנפרד — כשל כאן לא יחסום את שאר הנתונים
+  try{
     const postsSnap=await db.ref('communityPosts').get();
     adminAllPosts=[];
     if(postsSnap.exists())postsSnap.forEach(c=>adminAllPosts.push({id:c.key,...c.val()}));
     adminAllPosts.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
-  }catch(e){showFireToast('❌ '+e.message);}
+    console.log('[Admin] loaded',adminAllPosts.length,'posts,',adminAllPosts.filter(p=>p.status==='pending').length,'pending');
+  }catch(postsErr){console.error('[Admin] posts load error:',postsErr);adminAllPosts=[];}
 }
 
 async function adminApproveBooking(teacherId,bookingId){
@@ -2440,6 +2449,16 @@ async function adminRejectBooking(teacherId,bookingId){
   }catch(e){showFireToast('❌ '+e.message);}
 }
 
+async function adminVerifyStudent(uid){
+  try{
+    await db.ref('users/'+uid+'/verified').set(true);
+    await db.ref('notifications/'+uid).push({type:'studentApproved',read:false,createdAt:Date.now()});
+    const uSnap=await db.ref('users/'+uid).get();
+    const ud=uSnap.val()||{};
+    showFireToast('✅ התלמיד אושר — '+( ud.name||uid));
+    await loadAdminData();renderAdminPanel();
+  }catch(e){showFireToast('❌ '+e.message);}
+}
 async function adminApproveTeacher(uid){
   try{
     await db.ref('teachers/'+uid+'/verified').set(true);
@@ -3729,7 +3748,7 @@ function renderAdminPanel(){
     </div>
     <div style="background:#fff;padding:0 16px;border-bottom:1px solid rgba(20,184,166,0.15)">
       <div style="display:flex;gap:4px;overflow-x:auto;padding:8px 0">
-        ${[['users','👥 כל המשתמשים',adminAllUsers.length],['students','🎒 תלמידים',adminAllUsers.filter(u=>u.role!=='teacher').length],['teachers','🎓 מורים',totalPending],['posts','📝 פוסטים',adminAllPosts.filter(p=>p.status==='pending').length],['bookings','📅 הזמנות',adminAllBookings.filter(b=>b.status==='pending').length],['videos','📹 סרטונים',pendingVideos.length],['reports','🚨 דיווחים',adminAllReports.filter(r=>r.status==='open').length],['stats','📊 סטטיסטיקות',null]].map(([id,lbl,badge])=>`
+        ${[['users','👥 כל המשתמשים',adminAllUsers.length],['students','🎒 תלמידים',adminAllUsers.filter(u=>u.role!=='teacher'&&u.verified===false).length],['teachers','🎓 מורים',totalPending],['posts','📝 פוסטים',adminAllPosts.filter(p=>p.status==='pending').length],['bookings','📅 הזמנות',adminAllBookings.filter(b=>b.status==='pending').length],['videos','📹 סרטונים',pendingVideos.length],['reports','🚨 דיווחים',adminAllReports.filter(r=>r.status==='open').length],['stats','📊 סטטיסטיקות',null]].map(([id,lbl,badge])=>`
           <button onclick="adminSwitchTab('${id}')" style="background:${adminTab===id?'linear-gradient(135deg,#14B8A6,#06B6D4)':'rgba(20,184,166,0.06)'};color:${adminTab===id?'#fff':'#14B8A6'};border:none;border-radius:50px;padding:10px 14px;font-size:12px;font-weight:800;cursor:pointer;flex-shrink:0;display:flex;align-items:center;gap:6px;white-space:nowrap">
             ${lbl}${badge>0?`<span style="background:${adminTab===id?'rgba(255,255,255,0.3)':'#EF4444'};color:#fff;border-radius:50px;padding:1px 7px;font-size:10px">${badge}</span>`:''}
           </button>`).join('')}
@@ -3793,15 +3812,19 @@ function renderAdminTab(){
   }
   if(adminTab==='students'){
     const students=adminAllUsers.filter(u=>u.role!=='teacher');
+    const pendingStudents=students.filter(u=>u.verified===false);
     if(students.length===0)return '<div style="text-align:center;padding:40px;color:#64748B"><div style="font-size:48px;margin-bottom:10px">🎒</div>אין עדיין תלמידים</div>';
-    return students.map(u=>`
-      <div style="background:${u.blocked?'rgba(239,68,68,0.05)':'#fff'};border:1.5px solid ${u.blocked?'rgba(239,68,68,0.3)':'rgba(6,182,212,0.15)'};border-radius:18px;padding:14px;margin-bottom:10px">
+    let html='';
+    if(pendingStudents.length>0){html+=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><h4 style="font-weight:800;font-size:14px;color:#F59E0B;margin:0">⏳ ממתינים לאישור (${pendingStudents.length})</h4></div>`;}
+    return html+students.map(u=>`
+      <div style="background:${u.blocked?'rgba(239,68,68,0.05)':u.verified===false?'rgba(245,158,11,0.05)':'#fff'};border:1.5px solid ${u.blocked?'rgba(239,68,68,0.3)':u.verified===false?'rgba(245,158,11,0.4)':'rgba(6,182,212,0.15)'};border-radius:18px;padding:14px;margin-bottom:10px">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
           <div style="flex:1;min-width:0">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">
               <span style="font-weight:900;font-size:15px;color:#0F1A1F">🎒 ${u.name||'ללא שם'}</span>
               ${u.age?`<span style="background:rgba(6,182,212,0.15);color:#06B6D4;font-size:10px;font-weight:800;padding:2px 8px;border-radius:50px">גיל ${u.age}</span>`:''}
               ${u.blocked?'<span style="background:rgba(239,68,68,0.15);color:#EF4444;font-size:10px;font-weight:800;padding:2px 8px;border-radius:50px">🚫 חסום</span>':''}
+              ${u.verified===false&&!u.blocked?'<span style="background:rgba(245,158,11,0.15);color:#F59E0B;font-size:10px;font-weight:800;padding:2px 8px;border-radius:50px">⏳ ממתין לאישור</span>':''}
             </div>
             <div style="font-size:12px;color:#64748B;direction:ltr;text-align:right;margin-bottom:4px">📧 ${u.email||''}</div>
             ${u.parentName?`
@@ -3817,6 +3840,7 @@ function renderAdminTab(){
         </div>
         <div style="display:flex;gap:8px">
           ${u.parentEmail?`<button onclick='showWhatsAppDialog("${u.parentPhone||''}","שלום ${u.parentName||""}, פנייה מטעם Kidemy בעניין ${u.name}.","פניה להורה")' style="flex:1;background:linear-gradient(135deg,#25D366,#128C7E);border:none;color:#fff;border-radius:50px;padding:8px;font-size:11px;font-weight:800;cursor:pointer">📱 פנה להורה</button>`:''}
+          ${u.verified===false&&!u.blocked?`<button onclick="adminVerifyStudent('${u.uid}')" style="flex:2;background:#10B981;border:none;color:#fff;border-radius:50px;padding:8px;font-size:11px;font-weight:800;cursor:pointer">✅ אשר תלמיד</button>`:''}
           ${u.blocked?
             `<button onclick="adminUnblockUser('${u.uid}')" style="flex:1;background:#10B981;border:none;color:#fff;border-radius:50px;padding:8px;font-size:11px;font-weight:800;cursor:pointer">🔓 שחרר חסימה</button>`:
             `<button onclick="adminBlockUser('${u.uid}')" style="flex:1;background:rgba(231,76,60,0.85);border:none;color:#fff;border-radius:50px;padding:8px;font-size:11px;font-weight:800;cursor:pointer">⛔ חסימה</button>`}
@@ -5956,6 +5980,66 @@ function TeacherPending(){
   </div>`;
 }
 
+function StudentPending(){
+  const name=currentUserData?.name||currentUser?.email?.split('@')[0]||'תלמיד';
+  const parentName=currentUserData?.parentName||'';
+  const parentPhone=currentUserData?.parentPhone||'';
+  const createdAt=currentUserData?.createdAt?new Date(currentUserData.createdAt).toLocaleDateString('he-IL'):'היום';
+  return `<div class="screen" style="background:linear-gradient(165deg,#0F1A1F 0%,#1A2530 50%,#1E1B4B 100%);min-height:100dvh;padding:0;direction:rtl">
+    <div style="padding:24px 20px 20px;text-align:center;border-bottom:1px solid rgba(255,255,255,0.08)">
+      <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:4px">
+        <span style="font-size:28px">🎒</span>
+        <span style="color:#fff;font-size:24px;font-weight:900;letter-spacing:-0.02em">Kidemy</span>
+      </div>
+      <p style="color:rgba(255,255,255,0.5);font-size:12px;margin:0">ילדים מלמדים ילדים</p>
+    </div>
+    <div style="padding:20px 16px">
+      <div style="background:rgba(255,255,255,0.06);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.1);border-radius:20px;overflow:hidden">
+        <div style="padding:16px 16px 0;display:flex;justify-content:space-between;align-items:start">
+          <div style="background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);border-radius:50px;padding:4px 12px;font-size:11px;font-weight:700;color:#FBBF24;display:flex;align-items:center;gap:5px">
+            <span style="width:7px;height:7px;border-radius:50%;background:#FBBF24;display:inline-block;animation:fadeUp 1s ease infinite alternate"></span>
+            ממתין לאישור מנהל
+          </div>
+          <p style="color:rgba(255,255,255,0.4);font-size:11px;margin:0">נרשם: ${createdAt}</p>
+        </div>
+        <div style="padding:18px">
+          <div style="display:flex;gap:14px;align-items:center;margin-bottom:18px">
+            <div style="width:52px;height:52px;border-radius:16px;background:linear-gradient(135deg,#06B6D4,#A855F7);display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0">🎒</div>
+            <div>
+              <h3 style="color:#fff;font-weight:900;font-size:17px;margin:0 0 4px">${name}</h3>
+              <p style="color:#06B6D4;font-size:13px;font-weight:700;margin:0">תלמיד • גיל ${currentUserData?.age||'?'}</p>
+            </div>
+          </div>
+          <div style="background:rgba(20,184,166,0.08);border:1px solid rgba(20,184,166,0.2);border-radius:14px;padding:14px;margin-bottom:16px">
+            <h4 style="color:#14B8A6;font-size:13px;font-weight:800;margin:0 0 10px">📋 מה קורה עכשיו?</h4>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <div style="width:22px;height:22px;border-radius:50%;background:#F59E0B;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;flex-shrink:0">1</div>
+                <span style="color:rgba(255,255,255,0.7);font-size:12px">ההרשמה התקבלה בהצלחה</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <div style="width:22px;height:22px;border-radius:50%;background:#06B6D4;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;flex-shrink:0">2</div>
+                <span style="color:rgba(255,255,255,0.7);font-size:12px">מנהל Kidemy יצור קשר עם ההורה לאימות טלפוני</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <div style="width:22px;height:22px;border-radius:50%;background:#A855F7;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;flex-shrink:0">3</div>
+                <span style="color:rgba(255,255,255,0.7);font-size:12px">לאחר אישור — גישה מלאה לאפליקציה!</span>
+              </div>
+            </div>
+          </div>
+          ${parentName?`<div style="background:rgba(168,85,247,0.08);border-radius:12px;padding:10px 14px;margin-bottom:14px">
+            <div style="font-size:11px;color:#A855F7;font-weight:800;margin-bottom:4px">👨‍👩‍👧 הורה אחראי</div>
+            <div style="color:#fff;font-size:13px;font-weight:700">${parentName}</div>
+            ${parentPhone?`<div style="color:rgba(255,255,255,0.6);font-size:12px;direction:ltr;text-align:right">📱 ${parentPhone}</div>`:''}
+          </div>`:''}
+          <button onclick="auth.signOut().then(()=>go('login'))" style="width:100%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.7);border-radius:50px;padding:12px;font-size:13px;font-weight:700;cursor:pointer">← התנתק</button>
+        </div>
+      </div>
+      <p style="text-align:center;color:rgba(255,255,255,0.3);font-size:11px;margin-top:14px">הדף מתרענן אוטומטית כשהחשבון מאושר 🔄</p>
+    </div>
+  </div>`;
+}
+
 // ─── EDIT PROFILE DIALOGS ─────────────────────────────────────────────────────
 function showEditProfileDialog(){
   if(!currentUser){showFireToast('❌ לא מחובר');return;}
@@ -6632,11 +6716,11 @@ async function _closeGroup(groupId){
   }catch(e){showFireToast('❌ '+e.message);}
 }
 
-const SCREENS={splash:Splash,safety:Safety,parentReg:ParentReg,register:Register,login:Login,regSuccess:RegSuccess,teacherSetup:TeacherSetup,teacherPending:TeacherPending,home:Home,nearby:Nearby,teacher:Teacher,booking:Booking,messages:Messages,chat:Chat,profile:Profile,parent:Parent,community:Community,leaderboard:Leaderboard,about:About};
+const SCREENS={splash:Splash,safety:Safety,parentReg:ParentReg,register:Register,login:Login,regSuccess:RegSuccess,teacherSetup:TeacherSetup,teacherPending:TeacherPending,studentPending:StudentPending,home:Home,nearby:Nearby,teacher:Teacher,booking:Booking,messages:Messages,chat:Chat,profile:Profile,parent:Parent,community:Community,leaderboard:Leaderboard,about:About};
 
 function render(){
   const fn=SCREENS[S.screen]||Home;
-  const noRefreshScreens=['splash','login','register','safety','parentReg','teacherReg','teacherPending'];
+  const noRefreshScreens=['splash','login','register','safety','parentReg','teacherReg','teacherPending','studentPending'];
   const showRefresh=!noRefreshScreens.includes(S.screen);
   document.getElementById("app").innerHTML=fn()+SharePanel()+(showRefresh?`<button id="_rfshBtn" class="rfsh-btn" onclick="refreshCurrentScreen()" title="רענן">↻</button>`:'')
   document.querySelectorAll("[data-tid]").forEach(el=>{
@@ -6867,6 +6951,11 @@ auth.onAuthStateChanged(async user=>{
         }
       }
 
+      // ── בדיקת תלמיד שלא אושר עדיין ──────────────────────────────
+      if(currentUserData?.role==='student'&&currentUserData?.verified===false&&!isAdmin()){
+        go('studentPending');return;
+      }
+
       await loadStudentBookings();
       await loadParentChildren();
       await loadFavorites();
@@ -6910,6 +6999,15 @@ auth.onAuthStateChanged(async user=>{
         db.ref('teachers/'+user.uid+'/verified').on('value',snap=>{
           if(snap.val()===true&&S.screen==='teacherPending'){
             showFireToast('🎉 הפרופיל שלך אושר! ברוך הבא!');
+            go('home');
+          }
+        });
+      }
+      // האזנה לאישור תלמיד
+      if(currentUserData?.role==='student'&&currentUserData?.verified===false){
+        db.ref('users/'+user.uid+'/verified').on('value',snap=>{
+          if(snap.val()===true&&S.screen==='studentPending'){
+            showFireToast('🎉 חשבונך אושר! ברוך הבא ל-Kidemy!');
             go('home');
           }
         });
