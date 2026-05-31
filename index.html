@@ -2359,16 +2359,31 @@ let adminAllUsers=[],adminAllTeachers=[],adminAllVideos=[],adminAllReports=[],ad
 let adminTab='users';
 let _adminPendingCount=0;
 
+function _updateAdminBadge(n){
+  _adminPendingCount=n;
+  const badge=document.getElementById('_adminPendingBadge');
+  if(badge){badge.textContent=n;badge.style.display=n>0?'inline-flex':'none';}
+}
+
+// האזן לכל הממתינים בזמן אמת דרך נתיב adminAlerts
+function _startAdminAlertsListener(){
+  if(!isAdmin())return;
+  db.ref('adminAlerts').on('value',snap=>{
+    let n=0;
+    if(snap.exists())snap.forEach(cat=>cat.forEach(()=>n++));
+    _updateAdminBadge(n);
+    // אם הפאנל פתוח — עדכן אותו
+    if(document.getElementById('_adminPanel')){loadAdminData().then(()=>renderAdminPanel());}
+  });
+}
+
 async function _checkAdminBadge(){
   if(!isAdmin())return;
   try{
-    const snap=await db.ref('teachers').get();
+    const snap=await db.ref('adminAlerts').get();
     let n=0;
-    if(snap.exists())snap.forEach(c=>{if(!c.val()?.verified)n++;});
-    _adminPendingCount=n;
-    // update badge if profile screen is visible
-    const badge=document.getElementById('_adminPendingBadge');
-    if(badge){badge.textContent=n;badge.style.display=n>0?'inline-flex':'none';}
+    if(snap.exists())snap.forEach(cat=>cat.forEach(()=>n++));
+    _updateAdminBadge(n);
   }catch(e){}
 }
 
@@ -2452,10 +2467,11 @@ async function adminRejectBooking(teacherId,bookingId){
 async function adminVerifyStudent(uid){
   try{
     await db.ref('users/'+uid+'/verified').set(true);
+    await db.ref('adminAlerts/students/'+uid).remove().catch(()=>{});
     await db.ref('notifications/'+uid).push({type:'studentApproved',read:false,createdAt:Date.now()});
     const uSnap=await db.ref('users/'+uid).get();
     const ud=uSnap.val()||{};
-    showFireToast('✅ התלמיד אושר — '+( ud.name||uid));
+    showFireToast('✅ התלמיד אושר — '+(ud.name||uid));
     await loadAdminData();renderAdminPanel();
   }catch(e){showFireToast('❌ '+e.message);}
 }
@@ -2594,6 +2610,7 @@ async function adminDeleteVideo(teacherId,videoId){
 async function adminApprovePost(postId){
   try{
     await db.ref('communityPosts/'+postId+'/status').set('approved');
+    await db.ref('adminAlerts/posts/'+postId).remove().catch(()=>{});
     const p=adminAllPosts.find(x=>x.id===postId);
     if(p){
       p.status='approved';
@@ -3687,9 +3704,14 @@ function showAdminPanel(forceTab=null){
     if(forceTab){
       adminTab=forceTab;
     } else {
+      const pendingStudents=adminAllUsers.filter(u=>u.role!=='teacher'&&u.verified===false).length;
+      const pendingPosts=adminAllPosts.filter(p=>p.status==='pending'||!p.status).length;
       const hasPendingTeachers=(adminAllTeachers.filter(t=>!t.verified).length+adminIncompleteTeachers.length)>0;
-      const hasPendingVideos=adminAllVideos.filter(v=>!v.approved).length>0;
-      if(hasPendingTeachers) adminTab='teachers';
+      const hasPendingVideos=adminAllVideos.filter(v=>!v.approved&&v.approved!=='rejected').length>0;
+      // נווט לטאב הכי דחוף עם ממתינים
+      if(pendingStudents>0) adminTab='students';
+      else if(pendingPosts>0) adminTab='posts';
+      else if(hasPendingTeachers) adminTab='teachers';
       else if(hasPendingVideos) adminTab='videos';
     }
     renderAdminPanel();
@@ -3705,12 +3727,21 @@ async function adminSwitchTab(id){
       adminAllPosts=[];
       if(s.exists())s.forEach(c=>adminAllPosts.push({id:c.key,...c.val()}));
       adminAllPosts.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
-      console.log('[Admin Posts] loaded:',adminAllPosts.length,'posts',adminAllPosts.map(p=>({id:p.id,status:p.status,text:p.text?.substring(0,20)})));
-      showFireToast('📝 נמצאו '+adminAllPosts.length+' פוסטים');
+      const pending=adminAllPosts.filter(p=>p.status==='pending'||!p.status).length;
+      showFireToast(pending>0?'📝 '+pending+' פוסטים ממתינים לאישור':'📝 '+adminAllPosts.length+' פוסטים (אין ממתינים)');
     }catch(e){
       console.error('[Admin Posts] error:',e);
       showFireToast('❌ שגיאה בטעינת פוסטים: '+e.message);
     }
+  }
+  if(id==='students'){
+    try{
+      const s=await db.ref('users').get();
+      adminAllUsers=[];
+      if(s.exists())s.forEach(c=>adminAllUsers.push({uid:c.key,...c.val()}));
+      const pending=adminAllUsers.filter(u=>u.role!=='teacher'&&u.verified===false).length;
+      if(pending>0)showFireToast('🎒 '+pending+' תלמידים ממתינים לאישור');
+    }catch(e){console.error('[Admin Students] error:',e);}
   }
   renderAdminPanel();
 }
@@ -5635,7 +5666,9 @@ async function postNew(){
   };
   try{
     showFireToast('⏳ שולח...');
-    await db.ref('communityPosts').push(post);
+    const ref=await db.ref('communityPosts').push(post);
+    // עדכן adminAlerts כדי שהמנהל יראה התראה בזמן אמת
+    db.ref('adminAlerts/posts/'+ref.key).set({author:post.author,text:(post.text||'').substring(0,60),createdAt:Date.now()}).catch(()=>{});
     t.value='';
     S.showCompose=false;
     showFireToast('✅ הפוסט נשלח לאישור מנהל');
@@ -6966,7 +6999,7 @@ auth.onAuthStateChanged(async user=>{
       if(currentUserData?.role==='teacher')await loadTeacherVideos();
 
       // האזנה בזמן אמת להתראות + לאישור מנהל
-      if(isAdmin())_requestBrowserNotifPermission();
+      if(isAdmin()){_requestBrowserNotifPermission();_startAdminAlertsListener();}
       db.ref('notifications/'+user.uid).on('child_added',snap=>{
         const n=snap.val();
         if(n&&!n.read)_sendBrowserNotif(
@@ -7057,6 +7090,15 @@ async function firebaseRegister(email,password,userData){
     try{
       const roleHe=(userData.role||'student')==='teacher'?'מורה':'תלמיד/ה';
       const isTeacher=(userData.role||'student')==='teacher';
+      // כתוב ל-adminAlerts כדי שהמנהל יראה בזמן אמת
+      if(!isTeacher){
+        db.ref('adminAlerts/students/'+cred.user.uid).set({
+          name:userData.name||email,
+          parentName:userData.parentName||'',
+          parentPhone:userData.parentPhone||'',
+          createdAt:Date.now()
+        }).catch(()=>{});
+      }
       await notifyAdmin({
         type: isTeacher?'newTeacher':'newUser',
         from: userData.name||email,
