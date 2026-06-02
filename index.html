@@ -5766,16 +5766,17 @@ async function postNew(){
     likedBy:{},
     reps:[],
     createdAt:Date.now(),
-    status:'pending'
+    status:isAdmin()?'approved':'pending'
   };
   try{
     showFireToast('⏳ שולח...');
     const ref=await db.ref('communityPosts').push(post);
-    // עדכן adminAlerts כדי שהמנהל יראה התראה בזמן אמת
-    db.ref('adminAlerts/posts/'+ref.key).set({author:post.author,text:(post.text||'').substring(0,60),createdAt:Date.now()}).catch(()=>{});
+    if(!isAdmin()){
+      db.ref('adminAlerts/posts/'+ref.key).set({author:post.author,text:(post.text||'').substring(0,60),createdAt:Date.now()}).catch(()=>{});
+    }
     t.value='';
     S.showCompose=false;
-    showFireToast('✅ הפוסט נשלח לאישור מנהל');
+    showFireToast(isAdmin()?'✅ הפוסט פורסם!':'✅ הפוסט נשלח לאישור מנהל');
     await loadCommunityPosts();
   }catch(e){
     showFireToast('❌ שגיאה: '+e.message);
