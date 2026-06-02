@@ -3886,9 +3886,9 @@ function renderAdminTab(){
         <div style="display:flex;gap:8px">
           ${(u.parentEmail||u.parentPhone)?`<button onclick='showWhatsAppDialog("${u.parentPhone||''}","שלום ${(u.parentName||'').replace(/"/g,'')}, פנייה מטעם Kidemy בעניין ${(u.name||'').replace(/"/g,'')}.","פניה להורה")' style="flex:1;background:linear-gradient(135deg,#25D366,#128C7E);border:none;color:#fff;border-radius:50px;padding:8px;font-size:11px;font-weight:800;cursor:pointer">📱 פנה להורה</button>`:''}
           ${(u.verified===false||u._fromAlert)&&!u.blocked?`<button onclick="adminVerifyStudent('${u.uid}')" style="flex:2;background:#10B981;border:none;color:#fff;border-radius:50px;padding:8px;font-size:11px;font-weight:800;cursor:pointer">✅ אשר תלמיד</button>`:''}
-          ${!u._fromAlert&&(u.blocked?
+          ${!u._fromAlert?(u.blocked?
             `<button onclick="adminUnblockUser('${u.uid}')" style="flex:1;background:#10B981;border:none;color:#fff;border-radius:50px;padding:8px;font-size:11px;font-weight:800;cursor:pointer">🔓 שחרר חסימה</button>`:
-            `<button onclick="adminBlockUser('${u.uid}')" style="flex:1;background:rgba(231,76,60,0.85);border:none;color:#fff;border-radius:50px;padding:8px;font-size:11px;font-weight:800;cursor:pointer">⛔ חסימה</button>`):'' }
+            `<button onclick="adminBlockUser('${u.uid}')" style="flex:1;background:rgba(231,76,60,0.85);border:none;color:#fff;border-radius:50px;padding:8px;font-size:11px;font-weight:800;cursor:pointer">⛔ חסימה</button>`):''}
         </div>
       </div>`).join('');
   }
