@@ -2399,8 +2399,9 @@ async function loadAdminData(){
   try{
     showFireToast('⏳ טוען נתוני מערכת...');
     const usersSnap=await db.ref('users').get();
-    adminAllUsers=[];
-    if(usersSnap.exists())usersSnap.forEach(c=>adminAllUsers.push({uid:c.key,...c.val()}));
+    const freshUsers=[];
+    if(usersSnap.exists())usersSnap.forEach(c=>freshUsers.push({uid:c.key,...c.val()}));
+    adminAllUsers=freshUsers;
     const teachersSnap=await db.ref('teachers').get();
     adminAllTeachers=[];
     if(teachersSnap.exists())teachersSnap.forEach(c=>adminAllTeachers.push({uid:c.key,...c.val()}));
@@ -2663,9 +2664,21 @@ async function adminRejectPost(postId){
   if(!confirm('למחוק את הפוסט?'))return;
   try{
     await db.ref('communityPosts/'+postId).remove();
+    await db.ref('adminAlerts/posts/'+postId).remove().catch(()=>{});
     adminAllPosts=adminAllPosts.filter(x=>x.id!==postId);
     renderAdminPanel();
     showFireToast('🗑 פוסט נמחק');
+  }catch(e){showFireToast('❌ '+e.message);}
+}
+async function adminDeleteAllPosts(){
+  if(!confirm('למחוק את כל הפוסטים בקהילה לצמיתות?\n\nפעולה זו תמחק את כל הפוסטים — ממתינים ומאושרים.\n\n⚠️ לא ניתן לבטל!'))return;
+  try{
+    await db.ref('communityPosts').remove();
+    await db.ref('adminAlerts/posts').remove().catch(()=>{});
+    adminAllPosts=[];
+    S.posts=[];
+    renderAdminPanel();
+    showFireToast('🗑 כל הפוסטים נמחקו');
   }catch(e){showFireToast('❌ '+e.message);}
 }
 
@@ -3747,11 +3760,13 @@ async function adminSwitchTab(id){
   if(id==='students'){
     try{
       const s=await db.ref('users').get();
-      adminAllUsers=[];
-      if(s.exists())s.forEach(c=>adminAllUsers.push({uid:c.key,...c.val()}));
+      const fresh=[];
+      if(s.exists())s.forEach(c=>fresh.push({uid:c.key,...c.val()}));
+      adminAllUsers=fresh;
       const pending=adminAllUsers.filter(u=>u.role!=='teacher'&&u.verified===false).length;
       if(pending>0)showFireToast('🎒 '+pending+' תלמידים ממתינים לאישור');
-    }catch(e){console.error('[Admin Students] error:',e);}
+      else showFireToast('🎒 '+adminAllUsers.filter(u=>u.role!=='teacher').length+' תלמידים');
+    }catch(e){console.error('[Admin Students] error:',e);showFireToast('⚠️ שגיאה בטעינת תלמידים — מציג נתונים קיימים');}
   }
   renderAdminPanel();
 }
@@ -3780,7 +3795,7 @@ function renderAdminPanel(){
       <button onclick="document.getElementById('_adminPanel').remove();go('teacherSetup')" style="width:100%;background:linear-gradient(135deg,#F59E0B,#EF4444);border:none;color:#fff;border-radius:50px;padding:11px;font-weight:900;font-size:13px;cursor:pointer">🎓 הגדר פרופיל מורה עכשיו</button>
     </div>`:''}
     <div style="padding:16px;display:grid;grid-template-columns:repeat(2,1fr);gap:10px">
-      <div style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border-radius:18px;padding:14px;color:#fff"><div style="font-size:28px;font-weight:900">${adminAllUsers.filter(u=>u.role!=='teacher').length}</div><div style="font-size:11px;opacity:0.95">תלמידים</div></div>
+      <div style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border-radius:18px;padding:14px;color:#fff"><div style="font-size:28px;font-weight:900">${adminAllUsers.filter(u=>u.role!=='teacher').length+adminAlertStudents.filter(s=>!adminAllUsers.find(u=>u.uid===s.uid)).length}</div><div style="font-size:11px;opacity:0.95">תלמידים</div></div>
       <div style="background:linear-gradient(135deg,#A855F7,#EC4899);border-radius:18px;padding:14px;color:#fff"><div style="font-size:28px;font-weight:900">${adminAllTeachers.length}</div><div style="font-size:11px;opacity:0.95">מורים</div></div>
       <div style="background:linear-gradient(135deg,#F59E0B,#EF4444);border-radius:18px;padding:14px;color:#fff"><div style="font-size:28px;font-weight:900">${totalPending}</div><div style="font-size:11px;opacity:0.95">ממתינים לטיפול</div></div>
       <div style="background:linear-gradient(135deg,#06B6D4,#0EA5E9);border-radius:18px;padding:14px;color:#fff"><div style="font-size:28px;font-weight:900">${pendingVideos.length}</div><div style="font-size:11px;opacity:0.95">סרטונים ממתינים</div></div>
@@ -4038,8 +4053,8 @@ function renderAdminTab(){
     const pendingPosts=[...adminAllPosts.filter(p=>p.status==='pending'||!p.status),...pendingFromAlerts.map(p=>({...p,status:'pending',_fromAlert:true}))];
     const approvedPosts=adminAllPosts.filter(p=>p.status==='approved');
     const totalPosts=adminAllPosts.length+pendingFromAlerts.length;
-    if(totalPosts===0&&adminAlertPosts.length===0)return `<div style="text-align:center;padding:40px;color:#64748B"><div style="font-size:48px;margin-bottom:10px">📝</div><p>אין פוסטים</p><button onclick="adminSwitchTab('posts')" style="background:#14B8A6;border:none;color:#fff;border-radius:50px;padding:10px 20px;font-weight:800;cursor:pointer">🔄 נסה שוב</button></div>`;
-    let html=`<button onclick="adminSwitchTab('posts')" style="width:100%;background:rgba(20,184,166,0.08);border:1px solid rgba(20,184,166,0.3);color:#14B8A6;border-radius:50px;padding:8px;font-size:12px;font-weight:800;cursor:pointer;margin-bottom:14px">🔄 רענן פוסטים (${totalPosts} סה"כ)</button>`;
+    if(totalPosts===0&&adminAlertPosts.length===0)return `<div style="text-align:center;padding:40px;color:#64748B"><div style="font-size:48px;margin-bottom:10px">📝</div><p>אין פוסטים</p><div style="display:flex;gap:8px;justify-content:center;margin-top:10px"><button onclick="adminSwitchTab('posts')" style="background:#14B8A6;border:none;color:#fff;border-radius:50px;padding:10px 20px;font-weight:800;cursor:pointer">🔄 נסה שוב</button></div></div>`;
+    let html=`<div style="display:flex;gap:8px;margin-bottom:14px"><button onclick="adminSwitchTab('posts')" style="flex:1;background:rgba(20,184,166,0.08);border:1px solid rgba(20,184,166,0.3);color:#14B8A6;border-radius:50px;padding:8px;font-size:12px;font-weight:800;cursor:pointer">🔄 רענן (${totalPosts} סה"כ)</button><button onclick="adminDeleteAllPosts()" style="flex:1;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);color:#EF4444;border-radius:50px;padding:8px;font-size:12px;font-weight:800;cursor:pointer">🗑 מחק הכל</button></div>`;
     if(pendingPosts.length>0){
       html+=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><h4 style="font-weight:800;font-size:14px;color:#F59E0B;margin:0">⏳ ממתינים לאישור (${pendingPosts.length})</h4><button onclick="adminApproveAllPosts()" style="background:#10B981;border:none;color:#fff;border-radius:50px;padding:7px 14px;font-size:11px;font-weight:800;cursor:pointer">🟢 אשר הכל</button></div>`;
       html+=pendingPosts.map(p=>`
