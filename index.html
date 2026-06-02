@@ -437,6 +437,9 @@ const ACHIEVEMENTS=[
   {id:6,em:"👥",ttl:"שיעור קבוצתי",desc:"לימדת קבוצה של 4 תלמידים",col:"#27AE60"},
 ];
 
+const APP_VERSION='2.6.2';
+const APP_BUILD='02-06-2026';
+
 // ─── STATE ────────────────────────────────────────────────────────────────────
 let S={
   screen:"splash", prev:"home",
@@ -5971,6 +5974,7 @@ function About(){
         ${[["story","📖 הסיפור"],["safety","🛡 בטיחות"],["values","💎 ערכים"]].map(([id,lbl])=>`<button class="${tab===id?"on":""}" onclick="S.aTab='${id}';render()">${lbl}</button>`).join("")}
       </div>
       ${content}
+      <div style="text-align:center;padding:12px 0 4px;font-size:11px;color:#94A3B8">גרסה ${APP_VERSION} · ${APP_BUILD}</div>
     </div>
     ${BNav("about")}
   </div>`;
@@ -6881,7 +6885,7 @@ const SCREENS={splash:Splash,safety:Safety,parentReg:ParentReg,register:Register
 
 function render(){
   const fn=SCREENS[S.screen]||Home;
-  const noRefreshScreens=['splash','login','register','safety','parentReg','teacherReg','teacherPending','studentPending'];
+  const noRefreshScreens=['splash','login','register','safety','parentReg','teacherReg','teacherPending','studentPending','regSuccess'];
   const showRefresh=!noRefreshScreens.includes(S.screen);
   document.getElementById("app").innerHTML=fn()+SharePanel()+(showRefresh?`<button id="_rfshBtn" class="rfsh-btn" onclick="refreshCurrentScreen()" title="רענן">↻</button>`:'')
   document.querySelectorAll("[data-tid]").forEach(el=>{
