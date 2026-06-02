@@ -544,7 +544,6 @@ function BNav(active){
     {id:"home",     lbl:"בית",    em:"🏠"},
     {id:"community",lbl:"קהילה",  em:"🌐"},
     {id:"messages", lbl:"הודעות", em:"💬",badge:userChats.filter(c=>c.unread).length||null},
-    {id:"parent",   lbl:"הורים",  em:"🔐"},
     {id:"about",    lbl:"אודות",  em:"📖"},
   ];
   return `<nav class="bnav">${items.map(it=>`
@@ -994,6 +993,12 @@ function Register(){
           <input id="regName" class="inp" type="text" placeholder="השם שלך"
             value="${(()=>{try{return sessionStorage.getItem('_rName')||'';}catch(e){return '';}})()} "
             oninput="try{sessionStorage.setItem('_rName',this.value);}catch(e){}"></div>
+        <div class="ing"><label>שם משתמש (לכניסה)</label>
+          <input id="regUsername" class="inp" type="text" placeholder="לדוגמה: yossi123" autocapitalize="none" autocomplete="username"
+            value="${(()=>{try{return sessionStorage.getItem('_rUser')||'';}catch(e){return '';}})()} "
+            oninput="try{sessionStorage.setItem('_rUser',this.value);}catch(e){}">
+          <span style="font-size:11px;color:#64748B;margin-top:2px;display:block">אותיות אנגליות, מספרים וקו תחתון בלבד</span>
+        </div>
         <div class="ing"><label>גיל</label>
           <input id="regAge" class="inp" type="number" min="8" max="18" placeholder="גיל בין 8-18"
             value="${(()=>{try{return sessionStorage.getItem('_rAge')||'';}catch(e){return '';}})()} "
@@ -1076,20 +1081,25 @@ async function quickRegister(){
   const pass2=document.getElementById('regPass2');
   const pr=S.parentRegData;
 
+  const usernameEl=document.getElementById('regUsername');
   if(!pr){showFireToast('❌ פרטי הורה חסרים – חזור לשלב 1');go('parentReg');return;}
   if(!name||!name.value.trim()){showFireToast('❌ הכנס שם מלא');return;}
+  if(!usernameEl||!usernameEl.value.trim()){showFireToast('❌ הכנס שם משתמש');return;}
+  const rawUsername=usernameEl.value.trim().toLowerCase().replace(/[^a-z0-9_]/g,'');
+  if(rawUsername.length<3){showFireToast('❌ שם משתמש חייב להכיל לפחות 3 תווים');return;}
+  if(rawUsername.length>20){showFireToast('❌ שם משתמש ארוך מדי – עד 20 תווים');return;}
   if(!age||!age.value||parseInt(age.value)<8||parseInt(age.value)>18){showFireToast('❌ גיל חייב להיות בין 8-18');return;}
   if(!pass||pass.value.length<6){showFireToast('❌ סיסמה לפחות 6 תווים');return;}
   if(!pass2||pass.value!==pass2.value){showFireToast('❌ הסיסמאות לא תואמות');return;}
   if(!kcbChecked('regTerms')){showFireToast('❌ נדרש אישור תנאי שימוש');return;}
 
-  // יצירת מייל אוטומטי לחשבון הילד — מבוסס על קידומת מייל ההורה + רנדום
-  const rand=Math.random().toString(36).substring(2,8);
-  const parentPrefix=(pr.email||'').split('@')[0].replace(/[^a-zA-Z0-9]/g,'').substring(0,12)||'parent';
-  const autoEmail='child_'+parentPrefix+'_'+rand+'@kidemy.app';
+  // כתובת Firebase Auth: username@kidemy.app
+  const autoEmail=rawUsername+'@kidemy.app';
 
   await firebaseRegister(autoEmail, pass.value, {
     name:name.value.trim(),
+    username:rawUsername,
+    password:pass.value, // נשמר לשליחה להורה בעת אישור
     age:parseInt(age.value),
     gender:_selectedGender,
     role:_selectedRole,
@@ -1107,7 +1117,7 @@ function TeacherSetup(){
   return `<div class="screen" style="background:linear-gradient(165deg,#CCFBF1 0%,#A5F3FC 50%,#7DD3FC 100%);min-height:100dvh;padding-bottom:80px">
     <div style="background:linear-gradient(135deg,#14B8A6 0%,#06B6D4 50%,#A855F7 100%);padding:24px 20px 32px;border-radius:0 0 32px 32px;color:#fff;position:relative;overflow:hidden">
       <div style="position:absolute;top:-60px;right:-60px;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,0.08)"></div>
-      <button onclick="S.skippedSetup=true;go('home')" style="background:rgba(255,255,255,0.15);border:none;color:#fff;font-size:14px;cursor:pointer;border-radius:50px;padding:8px 16px;font-weight:700">← דלג לעת עתה</button>
+      <button onclick="auth.signOut().then(()=>go('login'))" style="background:rgba(255,255,255,0.15);border:none;color:#fff;font-size:14px;cursor:pointer;border-radius:50px;padding:8px 16px;font-weight:700">← יציאה</button>
       <h2 style="font-size:24px;font-weight:900;margin:14px 0 6px;position:relative;z-index:1">🎓 השלם פרופיל מורה</h2>
       <p style="color:rgba(255,255,255,0.9);font-size:13px;margin:0;position:relative;z-index:1">תלמידים יראו את הפרופיל הזה כשיחפשו מורים</p>
     </div>
@@ -1510,6 +1520,13 @@ async function processPayment(payMethod,totalAmount){
       const teacherEmail=tSnap.val()?.email||ADMIN_EMAIL;
       await sendEmail(teacherEmail,'📚 הזמנת שיעור חדשה ב-Kidemy!',
         `שלום ${t.name}!\n\nתלמיד חדש הזמין שיעור:\n👤 תלמיד: ${bookingData.studentName}\n📅 יום: ${bookingData.day} בשעה ${bookingData.time}\n💰 מחיר: ₪${totalAmount}\n\nכנס לאפליקציה לאישור:\nhttps://kidemy-app.netlify.app`);
+      // מייל מעקב להורה
+      if(currentUserData?.parentEmail){
+        sendEmail(currentUserData.parentEmail,
+          `📚 ${currentUserData.name||bookingData.studentName} הזמין/ה שיעור ב-Kidemy`,
+          `שלום ${currentUserData.parentName||'הורה יקר'},\n\nילדך הזמין/ה שיעור חדש:\n👨‍🏫 מורה: ${t.name}\n📅 תאריך: ${bookingData.day}\n🕐 שעה: ${bookingData.time}\n💰 מחיר: ₪${totalAmount}\n\nתוכלו לעקוב באפליקציה:\nhttps://kidemy-app.netlify.app\n\n– צוות Kidemy`
+        ).catch(()=>{});
+      }
     }catch(e){}
     S.lastBookingId=bookingId;
     S.bookStep=3;
@@ -1609,11 +1626,19 @@ async function rejectBooking(bookingId){
 }
 
 // פותח חדר Jitsi
-function joinJitsi(jitsiUrl,room){
+function joinJitsi(jitsiUrl,room,bookingData){
   showFireToast('🎥 פותח שיעור...');
   setTimeout(()=>{
     window.open(jitsiUrl||('https://meet.jit.si/'+room),'_blank');
   },300);
+  // מייל מעקב להורה על תחילת שיעור
+  if(currentUserData?.parentEmail&&bookingData){
+    const b=typeof bookingData==='string'?JSON.parse(bookingData):bookingData;
+    sendEmail(currentUserData.parentEmail,
+      `📹 ${currentUserData.name||''} התחיל/ה שיעור עכשיו`,
+      `שלום ${currentUserData.parentName||'הורה יקר'},\n\nילדך ${currentUserData.name||''} החל/ה שיעור כרגע:\n👨‍🏫 מורה: ${b.teacherName||''}\n📅 ${b.day||''} בשעה ${b.time||''}\n\nקישור לשיעור:\n${jitsiUrl||('https://meet.jit.si/'+room)}\n\n– צוות Kidemy`
+    ).catch(()=>{});
+  }
 }
 
 // סיום שיעור והעלאת דירוג
@@ -1629,6 +1654,17 @@ async function completeLesson(bookingId){
     const tSnap=await db.ref('teachers/'+b.teacherId+'/lessons').get();
     const cur=(tSnap.val()||0)+1;
     await db.ref('teachers/'+b.teacherId+'/lessons').set(cur);
+    // מייל מעקב להורה על סיום שיעור
+    try{
+      const stuSnap=await db.ref('users/'+b.studentId).get();
+      const stu=stuSnap.val()||{};
+      if(stu.parentEmail){
+        sendEmail(stu.parentEmail,
+          `✅ שיעור הושלם – ${stu.name||b.studentName}`,
+          `שלום ${stu.parentName||'הורה יקר'},\n\nהשיעור של ${stu.name||b.studentName} הסתיים:\n👨‍🏫 מורה: ${b.teacherName||''}\n📅 ${b.day||''} בשעה ${b.time||''}\n💰 מחיר: ₪${b.price||0}\n\nתוכלו לצפות בסיכום ובדירוגים באפליקציה:\nhttps://kidemy-app.netlify.app\n\n– צוות Kidemy`
+        ).catch(()=>{});
+      }
+    }catch(e2){}
     // פתיחת חלון דירוג
     showRatingDialog(bookingId,b);
   }catch(e){
@@ -2475,15 +2511,44 @@ async function adminRejectBooking(teacherId,bookingId){
 
 async function adminVerifyStudent(uid){
   try{
-    // כתוב ב-users/ וגם ב-adminAlerts (גם אם אחד נכשל)
     await Promise.allSettled([
       db.ref('users/'+uid+'/verified').set(true),
       db.ref('users/'+uid+'/role').set('student'),
+      db.ref('users/'+uid+'/rejected').set(false),
     ]);
     await db.ref('adminAlerts/students/'+uid).remove().catch(()=>{});
     await db.ref('notifications/'+uid).push({type:'studentApproved',read:false,createdAt:Date.now()}).catch(()=>{});
-    const alertRec=adminAlertStudents.find(s=>s.uid===uid);
+    // שלח מייל להורה עם פרטי הכניסה
+    try{
+      const uSnap=await db.ref('users/'+uid).get();
+      if(uSnap.exists()){
+        const u=uSnap.val();
+        if(u.parentEmail){
+          const roleHe=u.role==='teacher'?'מורה':'תלמיד/ה';
+          await sendEmail(u.parentEmail,
+            `✅ ${u.name||''} אושר/ה ל-Kidemy!`,
+            `שלום ${u.parentName||'הורה יקר'},\n\nילדך ${u.name||''} אושר/ה ל-Kidemy כ${roleHe}!\n\n` +
+            `🔑 פרטי הכניסה לאפליקציה:\n• שם משתמש: ${u.username||u.email?.split('@')[0]||''}\n• סיסמה: ${u.password||'(הסיסמה שנבחרה בהרשמה)'}\n\n` +
+            `🌐 כניסה לאפליקציה:\nhttps://kidemy-app.netlify.app\n\n` +
+            `📌 שמרו מייל זה לפרטי הכניסה.\n\n– צוות Kidemy`
+          ).catch(()=>{});
+        }
+      }
+    }catch(emailErr){console.warn('Parent email error:',emailErr);}
+    const alertRec=adminAlertStudents.find(s=>s.uid===uid)||adminAllUsers.find(u=>u.uid===uid);
     showFireToast('✅ התלמיד אושר — '+(alertRec?.name||uid));
+    await loadAdminData();renderAdminPanel();
+  }catch(e){showFireToast('❌ '+e.message);}
+}
+async function adminRejectStudent(uid){
+  if(!confirm('לדחות את הבקשה?\n\nהתלמיד יקבל הודעת "לא אושר" ויראה את פרטי יצירת הקשר עם המנהל.'))return;
+  try{
+    await Promise.allSettled([
+      db.ref('users/'+uid+'/rejected').set(true),
+      db.ref('users/'+uid+'/verified').set(false),
+    ]);
+    await db.ref('adminAlerts/students/'+uid).remove().catch(()=>{});
+    showFireToast('🚫 הבקשה נדחתה');
     await loadAdminData();renderAdminPanel();
   }catch(e){showFireToast('❌ '+e.message);}
 }
@@ -2503,12 +2568,13 @@ async function adminApproveTeacher(uid){
 }
 
 async function adminRejectTeacher(uid){
-  if(!confirm('לדחות את המורה?'))return;
+  if(!confirm('לדחות את המורה?\n\nהמורה יקבל הודעת "לא אושר" ויראה את פרטי יצירת הקשר עם המנהל.'))return;
   try{
-    await db.ref('teachers/'+uid).remove();
-    // reset role in users/ if record exists
-    const uSnap=await db.ref('users/'+uid).get();
-    if(uSnap.exists()) await db.ref('users/'+uid+'/role').set('student');
+    await Promise.allSettled([
+      db.ref('users/'+uid+'/rejected').set(true),
+      db.ref('users/'+uid+'/verified').set(false),
+    ]);
+    await db.ref('teachers/'+uid).remove().catch(()=>{});
     showFireToast('🚫 המורה נדחה');
     await loadAdminData();renderAdminPanel();
   }catch(e){showFireToast('❌ '+e.message);}
@@ -3903,7 +3969,7 @@ function renderAdminTab(){
         </div>
         <div style="display:flex;gap:8px">
           ${(u.parentEmail||u.parentPhone)?`<button onclick='showWhatsAppDialog("${u.parentPhone||''}","שלום ${(u.parentName||'').replace(/"/g,'')}, פנייה מטעם Kidemy בעניין ${(u.name||'').replace(/"/g,'')}.","פניה להורה")' style="flex:1;background:linear-gradient(135deg,#25D366,#128C7E);border:none;color:#fff;border-radius:50px;padding:8px;font-size:11px;font-weight:800;cursor:pointer">📱 פנה להורה</button>`:''}
-          ${(u.verified===false||u._fromAlert)&&!u.blocked?`<button onclick="adminVerifyStudent('${u.uid}')" style="flex:2;background:#10B981;border:none;color:#fff;border-radius:50px;padding:8px;font-size:11px;font-weight:800;cursor:pointer">✅ אשר תלמיד</button>`:''}
+          ${(u.verified===false||u._fromAlert)&&!u.blocked?`<button onclick="adminVerifyStudent('${u.uid}')" style="flex:2;background:#10B981;border:none;color:#fff;border-radius:50px;padding:8px;font-size:11px;font-weight:800;cursor:pointer">✅ אשר</button><button onclick="adminRejectStudent('${u.uid}')" style="flex:1;background:rgba(239,68,68,0.9);border:none;color:#fff;border-radius:50px;padding:8px;font-size:11px;font-weight:800;cursor:pointer">🚫 דחה</button>`:''}
           ${!u._fromAlert?(u.blocked?
             `<button onclick="adminUnblockUser('${u.uid}')" style="flex:1;background:#10B981;border:none;color:#fff;border-radius:50px;padding:8px;font-size:11px;font-weight:800;cursor:pointer">🔓 שחרר חסימה</button>`:
             `<button onclick="adminBlockUser('${u.uid}')" style="flex:1;background:rgba(231,76,60,0.85);border:none;color:#fff;border-radius:50px;padding:8px;font-size:11px;font-weight:800;cursor:pointer">⛔ חסימה</button>`):''}
@@ -5228,7 +5294,7 @@ function Messages(){
               </div>
               <span style="background:rgba(16,185,129,0.15);color:#059669;font-size:10px;font-weight:800;padding:4px 10px;border-radius:50px">✓ מאושר</span>
             </div>
-            <button onclick="joinJitsi('${b.jitsiUrl||''}','${b.jitsiRoom||''}')" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:14px;padding:12px;font-weight:800;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:8px">
+            <button onclick="joinJitsi('${b.jitsiUrl||''}','${b.jitsiRoom||''}',${JSON.stringify({teacherName:b.teacherName||'',day:b.day||'',time:b.time||''}).replace(/'/g,'&apos;')})" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:14px;padding:12px;font-weight:800;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:8px">
               📹 הצטרף לשיעור (Jitsi)
             </button>
             <div style="display:flex;gap:8px;margin-bottom:0">
@@ -5914,23 +5980,23 @@ function Login(){
     <p style="color:#8A94A6;font-size:14px;margin-bottom:32px;text-align:center">התחבר לחשבון Kidemy שלך</p>
 
     <div style="width:100%;max-width:360px">
-      <div class="ing"><label>כתובת מייל</label>
-        <input id="loginEmail" class="inp" type="email" placeholder="המייל שלך"></div>
+      <div class="ing"><label>שם משתמש</label>
+        <input id="loginEmail" class="inp" type="text" placeholder="שם המשתמש שלך" autocomplete="username" autocapitalize="none"></div>
       <div class="ing"><label>סיסמה</label>
         <input id="loginPass" class="inp" type="password" placeholder="הסיסמה שלך"></div>
 
       <button class="btn bp" style="margin-bottom:14px" onclick="
         const e=document.getElementById('loginEmail');
         const p=document.getElementById('loginPass');
-        if(e&&p&&e.value&&p.value){
-          firebaseLogin(e.value,p.value);
+        if(e&&p&&e.value.trim()&&p.value){
+          firebaseLogin(e.value.trim(),p.value);
         } else {
-          showFireToast('❌ מלא מייל וסיסמה');
+          showFireToast('❌ מלא שם משתמש וסיסמה');
         }
       ">🔑 התחבר</button>
 
       <button onclick="sendResetEmail()" style="width:100%;background:none;border:none;padding:10px;font-size:13px;color:var(--p);cursor:pointer;font-weight:700;margin-bottom:8px">
-        🔑 שכחתי סיסמה – שלח מייל איפוס
+        🔑 שכחתי סיסמה
       </button>
 
       <button onclick="go('register')" style="width:100%;background:none;border:2px solid rgba(20,184,166,.3);border-radius:50px;padding:14px;font-size:15px;font-weight:700;color:var(--s);cursor:pointer">
@@ -5950,6 +6016,7 @@ function TeacherPending(){
   const name=currentUserData?.name||currentUser?.email?.split('@')[0]||'מורה';
   const cat=CATS.find(c=>c.id===t.cat)||{lbl:'',em:'📚'};
   const createdAt=t.createdAt?new Date(t.createdAt).toLocaleDateString('he-IL'):'היום';
+  const rejected=currentUserData?.rejected===true;
 
   return `<div class="screen" style="background:linear-gradient(165deg,#0F1A1F 0%,#1A2530 50%,#1E1B4B 100%);min-height:100dvh;padding:0;direction:rtl">
     
@@ -5974,9 +6041,9 @@ function TeacherPending(){
         
         <!-- Card Header with pulsing status -->
         <div style="padding:16px 16px 0;display:flex;justify-content:space-between;align-items:start">
-          <div style="background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);border-radius:50px;padding:4px 12px;font-size:11px;font-weight:700;color:#FBBF24;display:flex;align-items:center;gap:5px">
-            <span style="width:7px;height:7px;border-radius:50%;background:#FBBF24;display:inline-block;animation:fadeUp 1s ease infinite alternate"></span>
-            ממתין לאישור
+          <div style="background:${rejected?'rgba(239,68,68,0.15)':'rgba(245,158,11,0.15)'};border:1px solid ${rejected?'rgba(239,68,68,0.4)':'rgba(245,158,11,0.3)'};border-radius:50px;padding:4px 12px;font-size:11px;font-weight:700;color:${rejected?'#EF4444':'#FBBF24'};display:flex;align-items:center;gap:5px">
+            <span style="width:7px;height:7px;border-radius:50%;background:${rejected?'#EF4444':'#FBBF24'};display:inline-block"></span>
+            ${rejected?'לא אושר':'ממתין לאישור'}
           </div>
           <div style="text-align:left">
             <p style="color:rgba(255,255,255,0.4);font-size:11px;margin:0">נרשם: ${createdAt}</p>
@@ -6009,6 +6076,16 @@ function TeacherPending(){
             </div>`:''}
           </div>
 
+          ${rejected?`
+          <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:14px;padding:16px;margin-bottom:14px;text-align:center">
+            <div style="font-size:36px;margin-bottom:8px">❌</div>
+            <h4 style="color:#EF4444;font-size:14px;font-weight:800;margin:0 0 8px">הפרופיל לא אושר</h4>
+            <p style="color:rgba(255,255,255,0.7);font-size:13px;margin:0 0 12px;line-height:1.6">לצורך פרטים נוספים, פנה למנהל האפליקציה:</p>
+            <div style="background:rgba(255,255,255,0.06);border-radius:10px;padding:10px">
+              <div style="color:#14B8A6;font-size:13px;font-weight:700">${ADMIN_EMAIL}</div>
+            </div>
+          </div>
+          `:`
           <!-- Status message -->
           <div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.25);border-radius:14px;padding:14px;margin-bottom:14px">
             <p style="color:#FBBF24;font-size:13px;font-weight:700;margin:0 0 6px;text-align:right">⏳ ממתין לאישור המנהל</p>
@@ -6033,17 +6110,17 @@ function TeacherPending(){
               </div>
             </div>
           </div>
+          `}
 
           <!-- Actions -->
           <div style="display:flex;gap:10px">
-            <button onclick="showWhatsAppDialog('',WA_TEMPLATES.inviteFriend(),'שתף חברים')" style="flex:1;background:linear-gradient(135deg,#25D366,#128C7E);border:none;color:#fff;border-radius:50px;padding:12px;font-size:13px;font-weight:800;cursor:pointer">📱 שתף חברים</button>
+            ${!rejected?`<button onclick="showWhatsAppDialog('',WA_TEMPLATES.inviteFriend(),'שתף חברים')" style="flex:1;background:linear-gradient(135deg,#25D366,#128C7E);border:none;color:#fff;border-radius:50px;padding:12px;font-size:13px;font-weight:800;cursor:pointer">📱 שתף חברים</button>`:''}
             <button onclick="auth.signOut();go('login')" style="flex:1;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.6);border-radius:50px;padding:12px;font-size:13px;font-weight:700;cursor:pointer">יציאה</button>
           </div>
         </div>
       </div>
 
-      <!-- Refresh hint -->
-      <p style="text-align:center;color:rgba(255,255,255,0.3);font-size:11px;margin-top:14px">הדף מתרענן אוטומטית כשהפרופיל מאושר 🔄</p>
+      ${!rejected?'<p style="text-align:center;color:rgba(255,255,255,0.3);font-size:11px;margin-top:14px">הדף מתרענן אוטומטית כשהפרופיל מאושר 🔄</p>':''}
     </div>
   </div>`;
 }
@@ -6053,6 +6130,7 @@ function StudentPending(){
   const parentName=currentUserData?.parentName||'';
   const parentPhone=currentUserData?.parentPhone||'';
   const createdAt=currentUserData?.createdAt?new Date(currentUserData.createdAt).toLocaleDateString('he-IL'):'היום';
+  const rejected=currentUserData?.rejected===true;
   return `<div class="screen" style="background:linear-gradient(165deg,#0F1A1F 0%,#1A2530 50%,#1E1B4B 100%);min-height:100dvh;padding:0;direction:rtl">
     <div style="padding:24px 20px 20px;text-align:center;border-bottom:1px solid rgba(255,255,255,0.08)">
       <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:4px">
@@ -6062,11 +6140,11 @@ function StudentPending(){
       <p style="color:rgba(255,255,255,0.5);font-size:12px;margin:0">ילדים מלמדים ילדים</p>
     </div>
     <div style="padding:20px 16px">
-      <div style="background:rgba(255,255,255,0.06);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.1);border-radius:20px;overflow:hidden">
+      <div style="background:rgba(255,255,255,0.06);backdrop-filter:blur(12px);border:1px solid ${rejected?'rgba(239,68,68,0.4)':'rgba(255,255,255,0.1)'};border-radius:20px;overflow:hidden">
         <div style="padding:16px 16px 0;display:flex;justify-content:space-between;align-items:start">
-          <div style="background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);border-radius:50px;padding:4px 12px;font-size:11px;font-weight:700;color:#FBBF24;display:flex;align-items:center;gap:5px">
-            <span style="width:7px;height:7px;border-radius:50%;background:#FBBF24;display:inline-block;animation:fadeUp 1s ease infinite alternate"></span>
-            ממתין לאישור מנהל
+          <div style="background:${rejected?'rgba(239,68,68,0.15)':'rgba(245,158,11,0.15)'};border:1px solid ${rejected?'rgba(239,68,68,0.4)':'rgba(245,158,11,0.3)'};border-radius:50px;padding:4px 12px;font-size:11px;font-weight:700;color:${rejected?'#EF4444':'#FBBF24'};display:flex;align-items:center;gap:5px">
+            <span style="width:7px;height:7px;border-radius:50%;background:${rejected?'#EF4444':'#FBBF24'};display:inline-block"></span>
+            ${rejected?'לא אושר':'ממתין לאישור מנהל'}
           </div>
           <p style="color:rgba(255,255,255,0.4);font-size:11px;margin:0">נרשם: ${createdAt}</p>
         </div>
@@ -6078,6 +6156,16 @@ function StudentPending(){
               <p style="color:#06B6D4;font-size:13px;font-weight:700;margin:0">תלמיד • גיל ${currentUserData?.age||'?'}</p>
             </div>
           </div>
+          ${rejected?`
+          <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:14px;padding:16px;margin-bottom:16px;text-align:center">
+            <div style="font-size:36px;margin-bottom:8px">❌</div>
+            <h4 style="color:#EF4444;font-size:14px;font-weight:800;margin:0 0 8px">הבקשה לא אושרה</h4>
+            <p style="color:rgba(255,255,255,0.7);font-size:13px;margin:0 0 12px;line-height:1.6">לצורך פרטים נוספים, פנה למנהל האפליקציה:</p>
+            <div style="background:rgba(255,255,255,0.06);border-radius:10px;padding:10px">
+              <div style="color:#14B8A6;font-size:13px;font-weight:700">${ADMIN_EMAIL}</div>
+            </div>
+          </div>
+          `:`
           <div style="background:rgba(20,184,166,0.08);border:1px solid rgba(20,184,166,0.2);border-radius:14px;padding:14px;margin-bottom:16px">
             <h4 style="color:#14B8A6;font-size:13px;font-weight:800;margin:0 0 10px">📋 מה קורה עכשיו?</h4>
             <div style="display:flex;flex-direction:column;gap:8px">
@@ -6087,7 +6175,7 @@ function StudentPending(){
               </div>
               <div style="display:flex;align-items:center;gap:8px">
                 <div style="width:22px;height:22px;border-radius:50%;background:#06B6D4;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;flex-shrink:0">2</div>
-                <span style="color:rgba(255,255,255,0.7);font-size:12px">מנהל Kidemy יצור קשר עם ההורה לאימות טלפוני</span>
+                <span style="color:rgba(255,255,255,0.7);font-size:12px">מנהל Kidemy יצור קשר עם ההורה לאימות</span>
               </div>
               <div style="display:flex;align-items:center;gap:8px">
                 <div style="width:22px;height:22px;border-radius:50%;background:#A855F7;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;flex-shrink:0">3</div>
@@ -6095,7 +6183,8 @@ function StudentPending(){
               </div>
             </div>
           </div>
-          ${parentName?`<div style="background:rgba(168,85,247,0.08);border-radius:12px;padding:10px 14px;margin-bottom:14px">
+          `}
+          ${parentName&&!rejected?`<div style="background:rgba(168,85,247,0.08);border-radius:12px;padding:10px 14px;margin-bottom:14px">
             <div style="font-size:11px;color:#A855F7;font-weight:800;margin-bottom:4px">👨‍👩‍👧 הורה אחראי</div>
             <div style="color:#fff;font-size:13px;font-weight:700">${parentName}</div>
             ${parentPhone?`<div style="color:rgba(255,255,255,0.6);font-size:12px;direction:ltr;text-align:right">📱 ${parentPhone}</div>`:''}
@@ -6103,7 +6192,7 @@ function StudentPending(){
           <button onclick="auth.signOut().then(()=>go('login'))" style="width:100%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.7);border-radius:50px;padding:12px;font-size:13px;font-weight:700;cursor:pointer">← התנתק</button>
         </div>
       </div>
-      <p style="text-align:center;color:rgba(255,255,255,0.3);font-size:11px;margin-top:14px">הדף מתרענן אוטומטית כשהחשבון מאושר 🔄</p>
+      ${!rejected?'<p style="text-align:center;color:rgba(255,255,255,0.3);font-size:11px;margin-top:14px">הדף מתרענן אוטומטית כשהחשבון מאושר 🔄</p>':''}
     </div>
   </div>`;
 }
@@ -6784,7 +6873,7 @@ async function _closeGroup(groupId){
   }catch(e){showFireToast('❌ '+e.message);}
 }
 
-const SCREENS={splash:Splash,safety:Safety,parentReg:ParentReg,register:Register,login:Login,regSuccess:RegSuccess,teacherSetup:TeacherSetup,teacherPending:TeacherPending,studentPending:StudentPending,home:Home,nearby:Nearby,teacher:Teacher,booking:Booking,messages:Messages,chat:Chat,profile:Profile,parent:Parent,community:Community,leaderboard:Leaderboard,about:About};
+const SCREENS={splash:Splash,safety:Safety,parentReg:ParentReg,register:Register,login:Login,regSuccess:RegSuccess,teacherSetup:TeacherSetup,teacherPending:TeacherPending,studentPending:StudentPending,home:Home,nearby:Nearby,teacher:Teacher,booking:Booking,messages:Messages,chat:Chat,profile:Profile,community:Community,leaderboard:Leaderboard,about:About};
 
 function render(){
   const fn=SCREENS[S.screen]||Home;
@@ -6819,7 +6908,6 @@ async function refreshCurrentScreen(){
       loads.push(loadPublicTeacherVideos(S.teacher.id));
     }
     if(scr==='notifications')loads.push(loadNotifications());
-    if(scr==='parent')loads.push(loadParentChildren());
     if(scr==='admin')loads.push(loadAdminData());
     if(scr==='chat'&&S.chat?.otherUid){
       chatMessages=[];
@@ -7062,21 +7150,33 @@ auth.onAuthStateChanged(async user=>{
         });
       }
 
-      // האזנה לשינוי אישור מנהל (מורה ממתין)
+      // האזנה לשינוי אישור/דחיה — מורה ממתין
       if(currentUserData?.role==='teacher'){
         db.ref('teachers/'+user.uid+'/verified').on('value',snap=>{
           if(snap.val()===true&&S.screen==='teacherPending'){
-            showFireToast('🎉 הפרופיל שלך אושר! ברוך הבא!');
+            if(S._firstApproval){S._firstApproval=false;showFireToast('🎉 ברוכים הבאים ל-Kidemy!');}
             go('home');
           }
         });
+        db.ref('users/'+user.uid+'/rejected').on('value',snap=>{
+          if(snap.val()===true&&S.screen==='teacherPending'){
+            currentUserData={...(currentUserData||{}),rejected:true};
+            render();
+          }
+        });
       }
-      // האזנה לאישור תלמיד
+      // האזנה לאישור/דחיה — תלמיד ממתין
       if(currentUserData?.role==='student'&&currentUserData?.verified===false){
-        db.ref('users/'+user.uid+'/verified').on('value',snap=>{
-          if(snap.val()===true&&S.screen==='studentPending'){
-            showFireToast('🎉 חשבונך אושר! ברוך הבא ל-Kidemy!');
+        db.ref('users/'+user.uid).on('value',snap=>{
+          if(!snap.exists())return;
+          const d=snap.val();
+          if(d.verified===true&&S.screen==='studentPending'){
+            currentUserData={...(currentUserData||{}),verified:true,rejected:false};
+            if(S._firstApproval){S._firstApproval=false;showFireToast('🎉 ברוכים הבאים ל-Kidemy!');}
             go('home');
+          } else if(d.rejected===true&&S.screen==='studentPending'){
+            currentUserData={...(currentUserData||{}),rejected:true};
+            render();
           }
         });
       }
@@ -7156,10 +7256,15 @@ async function firebaseRegister(email,password,userData){
     }catch(e){}
     S.safetyConfirmed=false;S.parentRegData=null;
     S._registering=false;
-    // מציג מסך הצלחה במקום ה-render הרגיל
-    S.screen='regSuccess';
-    S.regEmail=email;
-    render();
+    try{sessionStorage.removeItem('_rUser');}catch(e){}
+    S._firstApproval=true; // flag — "ברוכים הבאים" רק בפעם הראשונה
+    // נעל גישה מיד — נווט ל-pending
+    const regRole=userData.role||'student';
+    if(regRole==='teacher'){
+      go('teacherSetup'); // מורה צריך להשלים פרופיל קודם
+    } else {
+      go('studentPending');
+    }
   }catch(e){
     S._registering=false;
     if(e.code==='auth/email-already-in-use'){
@@ -7178,11 +7283,10 @@ async function firebaseRegister(email,password,userData){
           return await firebaseRegister(email,password,userData);
         }else{
           await auth.signOut().catch(()=>{});
-          showFireToast('❌ המייל כבר קיים במערכת - נסה להתחבר');
+          showFireToast('❌ שם המשתמש תפוס – בחר שם אחר');
         }
       }catch(signInErr){
-        // סיסמה שגויה — המשתמש קיים עם סיסמה אחרת
-        showFireToast('❌ המייל כבר רשום — נסה להתחבר או השתמש במייל אחר');
+        showFireToast('❌ שם המשתמש כבר קיים – בחר שם אחר');
       }
       return;
     }
@@ -7275,12 +7379,15 @@ async function resendVerification(){
 async function sendResetEmail(){
   const e=document.getElementById('loginEmail');
   if(!e||!e.value||!e.value.trim()){
-    showFireToast('❌ הכנס כתובת מייל קודם');return;
+    showFireToast('❌ הכנס שם משתמש קודם');return;
   }
-  const email=e.value.trim();
-  if(!email.includes('@')||!email.includes('.')){
-    showFireToast('❌ כתובת מייל לא תקינה');return;
+  const raw=e.value.trim();
+  // אם הוזן שם משתמש — לא ניתן לשלוח reset למייל @kidemy.app
+  // הפנה לפנייה למנהל
+  if(!raw.includes('@')||raw.endsWith('@kidemy.app')){
+    showFireToast('לשחזור סיסמה פנה למנהל: '+ADMIN_EMAIL);return;
   }
+  const email=raw;
   try{
     showFireToast('⏳ שולח מייל איפוס...');
     await auth.sendPasswordResetEmail(email,{
@@ -7315,16 +7422,18 @@ async function sendResetEmail(){
   }
 }
 
-async function firebaseLogin(email,password){
+async function firebaseLogin(usernameOrEmail,password){
   try{
     showFireToast('⏳ מתחבר...');
+    // אם הוזן שם משתמש בלבד (לא מייל), הוסף @kidemy.app
+    const email=usernameOrEmail.includes('@')?usernameOrEmail:usernameOrEmail.toLowerCase()+'@kidemy.app';
     await auth.signInWithEmailAndPassword(email,password);
     showFireToast('✅ ברוך הבא!');go('home');
   }catch(e){
     const m={
-      'auth/user-not-found':'❌ המייל לא קיים במערכת',
+      'auth/user-not-found':'❌ שם משתמש לא קיים',
       'auth/wrong-password':'❌ סיסמה שגויה',
-      'auth/invalid-credential':'❌ מייל או סיסמה שגויים'
+      'auth/invalid-credential':'❌ שם משתמש או סיסמה שגויים'
     };
     showFireToast(m[e.code]||'❌ '+e.message);
   }
