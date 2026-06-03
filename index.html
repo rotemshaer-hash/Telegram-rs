@@ -2665,6 +2665,31 @@ async function adminDeleteUser(uid,name,role){
   }catch(e){showFireToast('❌ '+e.message);}
 }
 
+async function adminDeleteAllStudents(){
+  if(!isAdmin()){showFireToast('❌ אין הרשאה');return;}
+  if(!confirm('מחיקת כל התלמידים?\n\nפעולה זו תמחק:\n• כל המשתמשים עם role=student\n• כל הרשומות ב-adminAlerts/students\n\n⚠️ לא ניתן לבטל!'))return;
+  try{
+    showFireToast('⏳ מנקה...');
+    const usersSnap=await db.ref('users').get();
+    const toDelete=[];
+    if(usersSnap.exists())usersSnap.forEach(c=>{const u=c.val();if(u.role==='student')toDelete.push(c.key);});
+    await Promise.all(toDelete.map(async uid=>{
+      await db.ref('users/'+uid).remove().catch(()=>{});
+      await db.ref('adminAlerts/students/'+uid).remove().catch(()=>{});
+      await db.ref('notifications/'+uid).remove().catch(()=>{});
+      await db.ref('userChats/'+uid).remove().catch(()=>{});
+      await db.ref('userBookings/'+uid).remove().catch(()=>{});
+      await db.ref('favorites/'+uid).remove().catch(()=>{});
+      await db.ref('bannedUsers/'+uid).set({deletedAt:Date.now(),by:'admin-cleanup'}).catch(()=>{});
+    }));
+    await db.ref('adminAlerts/students').remove().catch(()=>{});
+    realStats.students=0;
+    adminAlertStudents=[];
+    showFireToast('✅ נמחקו '+toDelete.length+' תלמידים');
+    await loadAdminData();renderAdminPanel();
+  }catch(e){showFireToast('❌ '+e.message);}
+}
+
 async function adminApproveVideo(teacherId,videoId){
   try{
     await db.ref('videos/'+teacherId+'/'+videoId+'/approved').set(true);
@@ -3942,13 +3967,12 @@ function renderAdminTab(){
       </div>`;
   }
   if(adminTab==='students'){
-    const students=adminAllUsers.filter(u=>u.role!=='teacher');
-    // מקור ראשי: adminAlertStudents — גם אם users/ read נכשל
+    const students=adminAllUsers.filter(u=>u.role==='student');
     const alertStudentUids=new Set(adminAlertStudents.map(s=>s.uid));
     const pendingFromAlerts=adminAlertStudents.filter(s=>!students.find(u=>u.uid===s.uid));
     const pendingStudents=[...students.filter(u=>u.verified===false),...pendingFromAlerts.map(s=>({...s,_fromAlert:true,role:'student'}))];
     const allStudents=[...students,...pendingFromAlerts.map(s=>({...s,_fromAlert:true,role:'student'}))];
-    let html='';
+    let html=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><span style="font-size:12px;color:#64748B">סה"כ ${allStudents.length} תלמידים רשומים (כולל ${pendingStudents.length} ממתינים)</span><button onclick="adminDeleteAllStudents()" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#EF4444;border-radius:50px;padding:6px 12px;font-size:11px;font-weight:800;cursor:pointer">🗑 מחק כל התלמידים</button></div>`;
     if(pendingStudents.length===0&&allStudents.length===0)return '<div style="text-align:center;padding:40px;color:#64748B"><div style="font-size:48px;margin-bottom:10px">🎒</div>אין עדיין תלמידים</div>';
     if(pendingStudents.length>0){html+=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><h4 style="font-weight:800;font-size:14px;color:#F59E0B;margin:0">⏳ ממתינים לאישור (${pendingStudents.length})</h4></div>`;}
     return html+allStudents.map(u=>`
@@ -4195,7 +4219,7 @@ function renderAdminTab(){
     return html;
   }
   if(adminTab==='stats'){
-    const studentCount=adminAllUsers.filter(u=>u.role!=='teacher').length;
+    const studentCount=adminAllUsers.filter(u=>u.role==='student').length;
     const teacherCount=adminAllUsers.filter(u=>u.role==='teacher').length;
     const verifiedTeachers=adminAllTeachers.filter(t=>t.verified).length;
     const blockedUsers=adminAllUsers.filter(u=>u.blocked).length;
@@ -4247,14 +4271,26 @@ function renderAdminTab(){
         </div>
       </div>
       ${topCats.length>0?`
-      <div style="background:#fff;border:1.5px solid rgba(20,184,166,0.15);border-radius:18px;padding:16px">
+      <div style="background:#fff;border:1.5px solid rgba(20,184,166,0.15);border-radius:18px;padding:16px;margin-bottom:14px">
         <h4 style="margin:0 0 12px;font-weight:900;font-size:15px;color:#14B8A6">🏆 קטגוריות פופולריות</h4>
         ${topCats.map(([cId,count])=>{
           const cat=CATS.find(c=>c.id===cId);
           const pct=Math.round((count/adminAllTeachers.length)*100);
           return `<div style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;margin-bottom:3px"><span style="color:#64748B">${count} מורים</span><span style="color:#0F1A1F">${cat?.em||''} ${cat?.lbl||cId}</span></div><div style="height:8px;background:rgba(20,184,166,0.1);border-radius:50px;overflow:hidden"><div style="width:${pct}%;height:100%;background:linear-gradient(90deg,#14B8A6,#06B6D4,#A855F7);border-radius:50px"></div></div></div>`;
         }).join('')}
-      </div>`:''}`;
+      </div>`:''}
+      <div style="background:rgba(239,68,68,0.05);border:1.5px solid rgba(239,68,68,0.2);border-radius:16px;padding:14px;margin-bottom:14px">
+        <h4 style="margin:0 0 10px;font-weight:900;font-size:13px;color:#EF4444">🔬 דיאגנוסטיקה — נתוני Firebase אמיתיים</h4>
+        <div style="font-size:12px;color:#374151;line-height:2">
+          <div>📋 <b>users/ כל הנרשמים:</b> ${adminAllUsers.length}</div>
+          <div style="padding-right:12px;color:#64748B">${adminAllUsers.map(u=>`• ${u.name||'ללא שם'} [${u.role||'?'}]${u.verified===false?' ⏳':u.verified?' ✅':''}`).join('<br>')}</div>
+          <div>⚠️ <b>adminAlerts/students:</b> ${adminAlertStudents.length}</div>
+          <div style="padding-right:12px;color:#64748B">${adminAlertStudents.map(s=>`• ${s.name||s.uid}`).join('<br>')}</div>
+          <div>📊 <b>realStats.students:</b> ${realStats.students}</div>
+          <div>🎓 <b>TEACHERS רשומים:</b> ${TEACHERS.length}</div>
+        </div>
+        <button onclick="adminDeleteAllStudents()" style="margin-top:10px;width:100%;background:linear-gradient(135deg,#EF4444,#B91C1C);border:none;color:#fff;border-radius:50px;padding:10px;font-weight:800;font-size:12px;cursor:pointer">🗑 מחק כל התלמידים מ-Firebase</button>
+      </div>`;
   }
   return '';
 }
