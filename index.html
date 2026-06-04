@@ -437,7 +437,7 @@ const ACHIEVEMENTS=[
   {id:6,em:"👥",ttl:"שיעור קבוצתי",desc:"לימדת קבוצה של 4 תלמידים",col:"#27AE60"},
 ];
 
-const APP_VERSION='2.9.0';
+const APP_VERSION='3.0.0';
 const APP_BUILD='04-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -2529,13 +2529,20 @@ async function adminRejectBooking(teacherId,bookingId){
 async function adminVerifyStudent(uid){
   _adminActionInProgress=true;
   try{
-    // שלב 1: קרא נתונים קיימים כדי לא לאבד שדות
-    const existingSnap=await db.ref('users/'+uid).get();
+    // שלב 1: קרא נתונים קיימים — משתי מקורות: users/ ו-adminAlerts/students/
+    const [existingSnap,alertSnap]=await Promise.all([
+      db.ref('users/'+uid).get(),
+      db.ref('adminAlerts/students/'+uid).get()
+    ]);
     const existing=existingSnap.exists()?existingSnap.val():{};
+    // אם אין רשומה ב-users/, השתמש בנתוני ההרשמה מ-adminAlerts/students/
+    const alertData=alertSnap.exists()?alertSnap.val():(adminAlertStudents.find(s=>s.uid===uid)||{});
+    // מיזוג: alertData מספק שם/אימייל/הורה; existing מנצח על כל שדה שכבר קיים
+    const baseData={...alertData,...existing};
     // שלב 2: בנה אובייקט מעודכן
-    const updatedUser={...existing,verified:true,role:'student',rejected:false,verifiedAt:Date.now()};
-    // שלב 3: כתוב ל-Firebase (update שומר שדות קיימים)
-    await db.ref('users/'+uid).update(updatedUser);
+    const updatedUser={...baseData,uid,verified:true,role:'student',rejected:false,verifiedAt:Date.now()};
+    // שלב 3: כתוב ל-Firebase (set כדי ליצור רשומה מלאה אם לא קיימת)
+    await db.ref('users/'+uid).set(updatedUser);
     await db.ref('adminAlerts/students/'+uid).remove().catch(()=>{});
     await db.ref('notifications/'+uid).push({type:'studentApproved',read:false,createdAt:Date.now()}).catch(()=>{});
     // שלב 4: עדכן זיכרון מיד — ללא loadAdminData (למנוע race condition)
@@ -2691,15 +2698,19 @@ function adminFilterStudents(){
   const listDiv=document.getElementById('_studentListDiv');
   if(!listDiv)return;
   const sv=_adminStudentSearch.trim().toLowerCase();
-  const students=adminAllUsers.filter(u=>u.role==='student');
+  const _teacherUids=new Set([...adminAllTeachers.map(t=>t.uid),...adminAllUsers.filter(u=>u.role==='teacher').map(u=>u.uid)]);
+  const students=adminAllUsers.filter(u=>u.role==='student'||((u.email||'').endsWith('@kidemy.app')&&!_teacherUids.has(u.uid)&&!ADMIN_EMAILS.includes(u.email)));
   const pendingFromAlerts=adminAlertStudents.filter(s=>!students.find(u=>u.uid===s.uid));
   const allStudents=[...students,...pendingFromAlerts.map(s=>({...s,_fromAlert:true,role:'student'}))];
-  const displayList=sv?allStudents.filter(u=>(u.name||'').toLowerCase().includes(sv)||(u.email||'').toLowerCase().includes(sv)):allStudents;
-  if(displayList.length===0){
+  const pendingStudents=[...students.filter(u=>u.verified===false),...pendingFromAlerts.map(s=>({...s,_fromAlert:true,role:'student'}))];
+  const approvedStudents=allStudents.filter(u=>u.verified===true&&!u.blocked);
+  const dPending=sv?pendingStudents.filter(u=>(u.name||'').toLowerCase().includes(sv)||(u.email||'').toLowerCase().includes(sv)):pendingStudents;
+  const dApproved=sv?approvedStudents.filter(u=>(u.name||'').toLowerCase().includes(sv)||(u.email||'').toLowerCase().includes(sv)):approvedStudents;
+  if(dPending.length===0&&dApproved.length===0){
     listDiv.innerHTML=sv?`<div style="text-align:center;padding:30px;color:#64748B">לא נמצאו תלמידים עבור: "${sv}"</div>`:'<div style="text-align:center;padding:30px;color:#64748B">אין תלמידים</div>';
     return;
   }
-  listDiv.innerHTML=displayList.map(u=>`
+  const cardHtml=u=>`
     <div style="background:${u.blocked?'rgba(239,68,68,0.05)':u.verified===false?'rgba(245,158,11,0.05)':'#fff'};border:1.5px solid ${u.blocked?'rgba(239,68,68,0.3)':u.verified===false?'rgba(245,158,11,0.4)':'rgba(6,182,212,0.15)'};border-radius:18px;padding:14px;margin-bottom:10px">
       <div style="font-weight:900;font-size:14px;margin-bottom:4px">🎒 ${u.name||'ללא שם'}</div>
       <div style="font-size:12px;color:#64748B;direction:ltr;text-align:right">${u.email||''}</div>
@@ -2707,7 +2718,11 @@ function adminFilterStudents(){
       <div style="display:flex;gap:8px;margin-top:8px">
         ${(u.verified===false||u._fromAlert)&&!u.blocked?`<button onclick="adminVerifyStudent('${u.uid}')" style="flex:2;background:#10B981;border:none;color:#fff;border-radius:50px;padding:8px;font-size:12px;font-weight:800;cursor:pointer">✅ אשר</button><button onclick="adminRejectStudent('${u.uid}')" style="flex:1;background:rgba(239,68,68,0.9);border:none;color:#fff;border-radius:50px;padding:8px;font-size:12px;font-weight:800;cursor:pointer">🚫 דחה</button>`:''}
       </div>
-    </div>`).join('');
+    </div>`;
+  let out='';
+  if(dPending.length>0){out+=`<div style="font-weight:800;font-size:13px;color:#F59E0B;margin-bottom:8px">⏳ ממתינים (${dPending.length})</div>`+dPending.map(cardHtml).join('');}
+  if(dApproved.length>0){out+=`<h4 style="font-weight:800;font-size:13px;color:#10B981;margin:${dPending.length>0?'12px':0} 0 8px">✅ מאושרים (${dApproved.length})</h4>`+dApproved.map(cardHtml).join('');}
+  listDiv.innerHTML=out;
 }
 
 // סרוק את כל Firebase ומצא כל רשומה — כולל תלמידים שנעלמו
@@ -4069,11 +4084,12 @@ function renderAdminTab(){
       <input id="_studSearch" placeholder="🔍 חפש לפי שם..." value="${_adminStudentSearch}" oninput="_adminStudentSearch=this.value;adminFilterStudents()" style="flex:1;background:rgba(20,184,166,0.06);border:1.5px solid rgba(20,184,166,0.25);border-radius:14px;padding:10px 14px;font-size:13px;font-family:inherit;outline:none;direction:rtl">
       <button onclick="adminSearchAllFirebase()" style="background:linear-gradient(135deg,#F59E0B,#EF4444);border:none;color:#fff;border-radius:14px;padding:10px 14px;font-size:11px;font-weight:900;cursor:pointer;white-space:nowrap">🔬 הצג הכל</button>
     </div>`;
-    const displayList=searchVal?allStudents.filter(u=>(u.name||'').toLowerCase().includes(searchVal)||(u.email||'').toLowerCase().includes(searchVal)):allStudents;
+    const approvedStudents=allStudents.filter(u=>u.verified===true&&!u.blocked);
+    const displayPending=searchVal?pendingStudents.filter(u=>(u.name||'').toLowerCase().includes(searchVal)||(u.email||'').toLowerCase().includes(searchVal)):pendingStudents;
+    const displayApproved=searchVal?approvedStudents.filter(u=>(u.name||'').toLowerCase().includes(searchVal)||(u.email||'').toLowerCase().includes(searchVal)):approvedStudents;
     if(pendingStudents.length===0&&allStudents.length===0)return html+'<div id="_studentListDiv"><div style="text-align:center;padding:40px;color:#64748B"><div style="font-size:48px;margin-bottom:10px">🎒</div>אין עדיין תלמידים</div></div>';
-    if(pendingStudents.length>0){html+=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><h4 style="font-weight:800;font-size:14px;color:#F59E0B;margin:0">⏳ ממתינים לאישור (${pendingStudents.length})</h4></div>`;}
-    if(searchVal&&displayList.length===0){return html+'<div id="_studentListDiv"><div style="text-align:center;padding:30px;color:#64748B">לא נמצאו תלמידים עבור: "'+searchVal+'"</div></div>';}
-    return html+'<div id="_studentListDiv">'+displayList.map(u=>`
+    if(searchVal&&displayPending.length===0&&displayApproved.length===0){return html+'<div id="_studentListDiv"><div style="text-align:center;padding:30px;color:#64748B">לא נמצאו תלמידים עבור: "'+searchVal+'"</div></div>';}
+    const _renderStudentCard=u=>`
       <div style="background:${u.blocked?'rgba(239,68,68,0.05)':u.verified===false?'rgba(245,158,11,0.05)':'#fff'};border:1.5px solid ${u.blocked?'rgba(239,68,68,0.3)':u.verified===false?'rgba(245,158,11,0.4)':'rgba(6,182,212,0.15)'};border-radius:18px;padding:14px;margin-bottom:10px">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
           <div style="flex:1;min-width:0">
@@ -4102,7 +4118,17 @@ function renderAdminTab(){
             `<button onclick="adminUnblockUser('${u.uid}')" style="flex:1;background:#10B981;border:none;color:#fff;border-radius:50px;padding:8px;font-size:11px;font-weight:800;cursor:pointer">🔓 שחרר חסימה</button>`:
             `<button onclick="adminBlockUser('${u.uid}')" style="flex:1;background:rgba(231,76,60,0.85);border:none;color:#fff;border-radius:50px;padding:8px;font-size:11px;font-weight:800;cursor:pointer">⛔ חסימה</button>`):''}
         </div>
-      </div>`).join('')+'</div>';
+      </div>`;
+    let studentListHtml='';
+    if(displayPending.length>0){
+      studentListHtml+=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><h4 style="font-weight:800;font-size:14px;color:#F59E0B;margin:0">⏳ ממתינים לאישור (${displayPending.length})</h4></div>`;
+      studentListHtml+=displayPending.map(_renderStudentCard).join('');
+    }
+    if(displayApproved.length>0){
+      studentListHtml+=`<h4 style="font-weight:800;font-size:14px;color:#10B981;margin:${displayPending.length>0?'14px':0} 0 10px">✅ מאושרים (${displayApproved.length})</h4>`;
+      studentListHtml+=displayApproved.map(_renderStudentCard).join('');
+    }
+    return html+'<div id="_studentListDiv">'+studentListHtml+'</div>';
   }
   if(adminTab==='users'){
     if(adminAllUsers.length===0)return '<div style="text-align:center;padding:40px;color:#64748B">אין משתמשים</div>';
