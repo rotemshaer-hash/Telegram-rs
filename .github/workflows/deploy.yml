@@ -1,0 +1,21 @@
+name: Deploy to Netlify
+
+on:
+  push:
+    branches:
+      - claude/file-processing-app-g5lED
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Netlify CLI
+        run: npm install -g netlify-cli
+
+      - name: Deploy to Netlify
+        run: netlify deploy --prod --dir=. --site=d7a8591e-3052-4f35-9b69-d2c4633f70c1
+        env:
+          NETLIFY_AUTH_TOKEN: nfp_tcPKNRrbrJ5ULV63qhYLVxyD3tTqQ4cv18d7
