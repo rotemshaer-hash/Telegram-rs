@@ -39,7 +39,7 @@ const db   = firebase.database();
 <!-- iOS Apple Touch Icon -->
 <link rel="apple-touch-icon" href='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="%2314B8A6"/><stop offset="50" stop-color="%2306B6D4"/><stop offset="1" stop-color="%23A855F7"/></linearGradient></defs><rect width="180" height="180" rx="40" fill="url(%23g)"/><text x="90" y="125" font-size="100" text-anchor="middle">🎓</text></svg>'>
 <link rel="icon" type="image/svg+xml" href='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="%2314B8A6"/><stop offset="50" stop-color="%2306B6D4"/><stop offset="1" stop-color="%23A855F7"/></linearGradient></defs><rect width="64" height="64" rx="14" fill="url(%23g)"/><text x="32" y="46" font-size="38" text-anchor="middle">🎓</text></svg>'>
-<title>Kidemy – ילדים מלמדים ילדים</title>
+<title>Kidemy v2.7 – ילדים מלמדים ילדים</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&family=Rubik:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -377,7 +377,7 @@ async function loadRealTeachers(){
     const usersSnap=await db.ref('users').get();
     if(usersSnap.exists()){
       let students=0;
-      usersSnap.forEach(c=>{const u=c.val();if(u.role==='student')students++;});
+      usersSnap.forEach(c=>{const u=c.val();if(u.role==='student'&&u.verified===true)students++;});
       realStats.students=students;
     }
     teachersLoaded=true;
@@ -436,6 +436,9 @@ const ACHIEVEMENTS=[
   {id:5,em:"💎",ttl:"מורה מוסמך",  desc:"אושרת על ידי צוות Kidemy", col:"#1B4FCC"},
   {id:6,em:"👥",ttl:"שיעור קבוצתי",desc:"לימדת קבוצה של 4 תלמידים",col:"#27AE60"},
 ];
+
+const APP_VERSION='2.8.0';
+const APP_BUILD='04-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
 let S={
@@ -735,6 +738,7 @@ function Splash(){
       <button onclick="go('about')" style="background:none;border:none;color:rgba(94,234,212,0.6);font-size:13px;cursor:pointer;font-weight:600;margin-top:4px">📖 הסיפור שלנו</button>
     </div>
     <p style="color:rgba(255,255,255,.3);font-size:11px;margin-top:24px;position:relative;z-index:1">מיועד לילדים 8–18 בליווי הורים</p>
+    <p style="color:rgba(94,234,212,0.35);font-size:10px;margin-top:6px;position:relative;z-index:1">v${APP_VERSION} · ${APP_BUILD}</p>
   </div>`;
 }
 
@@ -2402,10 +2406,14 @@ function _updateAdminBadge(n){
   if(badge){badge.textContent=n;badge.style.display=n>0?'inline-flex':'none';}
 }
 
+let _adminStudentSearch=''; // שמור ערך חיפוש בין רינדורים — לא לאפס בין רינדורים
+let _adminActionInProgress=false; // מנגנון נגד race-condition בזמן אישור תלמיד
 // האזן לכל הממתינים בזמן אמת דרך נתיב adminAlerts
+let _adminDataLoading=false; // מנע listener מלאפס נתונים בזמן טעינה
 function _startAdminAlertsListener(){
   if(!isAdmin())return;
   db.ref('adminAlerts').on('value',snap=>{
+    if(_adminDataLoading)return; // loadAdminData רץ — אל תאפס
     adminAlertStudents=[];adminAlertPosts=[];
     if(snap.exists()){
       const st=snap.child('students');
@@ -2415,8 +2423,8 @@ function _startAdminAlertsListener(){
     }
     const n=adminAlertStudents.length+adminAlertPosts.length;
     _updateAdminBadge(n);
-    // אם הפאנל פתוח — רנדר מחדש עם הנתונים החדשים
-    if(document.getElementById('_adminPanel'))renderAdminPanel();
+    // אם הפאנל פתוח ואין פעולת אישור בביצוע — רנדר מחדש
+    if(document.getElementById('_adminPanel')&&!_adminActionInProgress)renderAdminPanel();
   });
 }
 
@@ -2432,14 +2440,20 @@ async function _checkAdminBadge(){
 
 async function loadAdminData(){
   if(!isAdmin()){showFireToast('🚫 אין הרשאת מנהל');return;}
+  _adminDataLoading=true; // נעל listener
   try{
-    showFireToast('⏳ טוען נתוני מערכת...');
-    const usersSnap=await db.ref('users').get();
+    // קרא users + adminAlerts/students במקביל
+    const [usersSnap,alertsSnap]=await Promise.all([
+      db.ref('users').get(),
+      db.ref('adminAlerts/students').get()
+    ]);
     const freshUsers=[];
     if(usersSnap.exists())usersSnap.forEach(c=>freshUsers.push({uid:c.key,...c.val()}));
     adminAllUsers=freshUsers;
-    // עדכן realStats.students כדי שיהיה עקבי עם דף הבית
-    realStats.students=adminAllUsers.filter(u=>u.role==='student').length+adminAlertStudents.filter(s=>!adminAllUsers.find(u=>u.uid===s.uid)).length;
+    // סנכרן adminAlertStudents מ-Firebase ישירות
+    adminAlertStudents=[];
+    if(alertsSnap.exists())alertsSnap.forEach(c=>adminAlertStudents.push({uid:c.key,...c.val()}));
+    realStats.students=adminAllUsers.filter(u=>u.role==='student'&&u.verified===true).length;
     const teachersSnap=await db.ref('teachers').get();
     adminAllTeachers=[];
     if(teachersSnap.exists())teachersSnap.forEach(c=>adminAllTeachers.push({uid:c.key,...c.val()}));
@@ -2487,6 +2501,7 @@ async function loadAdminData(){
     adminAllPosts=freshPosts2;
     console.log('[Admin] loaded',adminAllPosts.length,'posts,',adminAllPosts.filter(p=>p.status==='pending').length,'pending');
   }catch(postsErr){console.error('[Admin] posts load error:',postsErr);}
+  finally{_adminDataLoading=false;} // שחרר נעילה
 }
 
 async function adminApproveBooking(teacherId,bookingId){
@@ -2512,35 +2527,44 @@ async function adminRejectBooking(teacherId,bookingId){
 }
 
 async function adminVerifyStudent(uid){
+  _adminActionInProgress=true;
   try{
-    await Promise.allSettled([
-      db.ref('users/'+uid+'/verified').set(true),
-      db.ref('users/'+uid+'/role').set('student'),
-      db.ref('users/'+uid+'/rejected').set(false),
-    ]);
+    // שלב 1: קרא נתונים קיימים כדי לא לאבד שדות
+    const existingSnap=await db.ref('users/'+uid).get();
+    const existing=existingSnap.exists()?existingSnap.val():{};
+    // שלב 2: בנה אובייקט מעודכן
+    const updatedUser={...existing,verified:true,role:'student',rejected:false,verifiedAt:Date.now()};
+    // שלב 3: כתוב ל-Firebase (update שומר שדות קיימים)
+    await db.ref('users/'+uid).update(updatedUser);
     await db.ref('adminAlerts/students/'+uid).remove().catch(()=>{});
     await db.ref('notifications/'+uid).push({type:'studentApproved',read:false,createdAt:Date.now()}).catch(()=>{});
-    // שלח מייל להורה עם פרטי הכניסה
+    // שלב 4: עדכן זיכרון מיד — ללא loadAdminData (למנוע race condition)
+    const freshUser={uid,...updatedUser};
+    const idx=adminAllUsers.findIndex(u=>u.uid===uid);
+    if(idx>=0)adminAllUsers[idx]=freshUser;
+    else adminAllUsers.push(freshUser);
+    // הסר גם מרשימת ההתראות בזיכרון
+    adminAlertStudents=adminAlertStudents.filter(s=>s.uid!==uid);
+    realStats.students=adminAllUsers.filter(u=>u.role==='student'&&u.verified===true).length;
+    // שלב 5: שלח מייל להורה
     try{
-      const uSnap=await db.ref('users/'+uid).get();
-      if(uSnap.exists()){
-        const u=uSnap.val();
-        if(u.parentEmail){
-          const roleHe=u.role==='teacher'?'מורה':'תלמיד/ה';
-          await sendEmail(u.parentEmail,
-            `✅ ${u.name||''} אושר/ה ל-Kidemy!`,
-            `שלום ${u.parentName||'הורה יקר'},\n\nילדך ${u.name||''} אושר/ה ל-Kidemy כ${roleHe}!\n\n` +
-            `🔑 פרטי הכניסה לאפליקציה:\n• שם משתמש: ${u.username||u.email?.split('@')[0]||''}\n• סיסמה: ${u.password||'(הסיסמה שנבחרה בהרשמה)'}\n\n` +
-            `🌐 כניסה לאפליקציה:\nhttps://kidemy-app.netlify.app\n\n` +
-            `📌 שמרו מייל זה לפרטי הכניסה.\n\n– צוות Kidemy`
-          ).catch(()=>{});
-        }
+      if(updatedUser.parentEmail){
+        await sendEmail(updatedUser.parentEmail,
+          `✅ ${updatedUser.name||''} אושר/ה ל-Kidemy!`,
+          `שלום ${updatedUser.parentName||'הורה יקר'},\n\nילדך ${updatedUser.name||''} אושר/ה ל-Kidemy כתלמיד/ה!\n\n` +
+          `🔑 פרטי הכניסה לאפליקציה:\n• מייל: ${updatedUser.email||''}\n• סיסמה: ${updatedUser.password||'(הסיסמה שנבחרה בהרשמה)'}\n\n` +
+          `🌐 כניסה לאפליקציה:\nhttps://kidemy-app.netlify.app\n\n` +
+          `📌 שמרו מייל זה לפרטי הכניסה.\n\n– צוות Kidemy`
+        ).catch(()=>{});
       }
     }catch(emailErr){console.warn('Parent email error:',emailErr);}
-    const alertRec=adminAlertStudents.find(s=>s.uid===uid)||adminAllUsers.find(u=>u.uid===uid);
-    showFireToast('✅ התלמיד אושר — '+(alertRec?.name||uid));
-    await loadAdminData();renderAdminPanel();
-  }catch(e){showFireToast('❌ '+e.message);}
+    const name=updatedUser.name||adminAlertStudents.find(s=>s.uid===uid)?.name||uid;
+    showFireToast('✅ התלמיד אושר — '+name);
+    adminTab='students';
+  }finally{
+    _adminActionInProgress=false;
+    renderAdminPanel();
+  }
 }
 async function adminRejectStudent(uid){
   if(!confirm('לדחות את הבקשה?\n\nהתלמיד יקבל הודעת "לא אושר" ויראה את פרטי יצירת הקשר עם המנהל.'))return;
@@ -2658,6 +2682,131 @@ async function adminDeleteUser(uid,name,role){
     await db.ref('bannedUsers/'+uid).set({deletedAt:Date.now(),deletedBy:currentUser?.uid||'admin'});
     await db.ref('forceSignout/'+uid).set({ts:Date.now()});
     showFireToast('✅ המשתמש נמחק');
+    await loadAdminData();renderAdminPanel();
+  }catch(e){showFireToast('❌ '+e.message);}
+}
+
+// סינון תלמידים ללא re-render של כל הפאנל — רק עדכון רשימה
+function adminFilterStudents(){
+  const listDiv=document.getElementById('_studentListDiv');
+  if(!listDiv)return;
+  const sv=_adminStudentSearch.trim().toLowerCase();
+  const students=adminAllUsers.filter(u=>u.role==='student');
+  const pendingFromAlerts=adminAlertStudents.filter(s=>!students.find(u=>u.uid===s.uid));
+  const allStudents=[...students,...pendingFromAlerts.map(s=>({...s,_fromAlert:true,role:'student'}))];
+  const displayList=sv?allStudents.filter(u=>(u.name||'').toLowerCase().includes(sv)||(u.email||'').toLowerCase().includes(sv)):allStudents;
+  if(displayList.length===0){
+    listDiv.innerHTML=sv?`<div style="text-align:center;padding:30px;color:#64748B">לא נמצאו תלמידים עבור: "${sv}"</div>`:'<div style="text-align:center;padding:30px;color:#64748B">אין תלמידים</div>';
+    return;
+  }
+  listDiv.innerHTML=displayList.map(u=>`
+    <div style="background:${u.blocked?'rgba(239,68,68,0.05)':u.verified===false?'rgba(245,158,11,0.05)':'#fff'};border:1.5px solid ${u.blocked?'rgba(239,68,68,0.3)':u.verified===false?'rgba(245,158,11,0.4)':'rgba(6,182,212,0.15)'};border-radius:18px;padding:14px;margin-bottom:10px">
+      <div style="font-weight:900;font-size:14px;margin-bottom:4px">🎒 ${u.name||'ללא שם'}</div>
+      <div style="font-size:12px;color:#64748B;direction:ltr;text-align:right">${u.email||''}</div>
+      ${u.verified===false?'<div style="font-size:11px;color:#F59E0B;font-weight:700;margin-top:4px">⏳ ממתין לאישור</div>':''}
+      <div style="display:flex;gap:8px;margin-top:8px">
+        ${(u.verified===false||u._fromAlert)&&!u.blocked?`<button onclick="adminVerifyStudent('${u.uid}')" style="flex:2;background:#10B981;border:none;color:#fff;border-radius:50px;padding:8px;font-size:12px;font-weight:800;cursor:pointer">✅ אשר</button><button onclick="adminRejectStudent('${u.uid}')" style="flex:1;background:rgba(239,68,68,0.9);border:none;color:#fff;border-radius:50px;padding:8px;font-size:12px;font-weight:800;cursor:pointer">🚫 דחה</button>`:''}
+      </div>
+    </div>`).join('');
+}
+
+// הצגת טופס הוספת תלמיד ידנית (לתלמידים שנרשמו ב-Auth אך אין להם רשומה ב-DB)
+function adminShowManualAddStudent(){
+  if(!isAdmin())return;
+  const overlay=document.createElement('div');
+  overlay.id='_manualAddOverlay';
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+  overlay.innerHTML=`
+    <div style="background:#fff;border-radius:20px;padding:24px;width:100%;max-width:400px;direction:rtl">
+      <h3 style="margin:0 0 6px;font-size:17px;font-weight:900;color:#0F1A1F">➕ הוסף תלמיד ידנית</h3>
+      <p style="margin:0 0 18px;font-size:12px;color:#64748B;line-height:1.6">לתלמידים שנרשמו ב-Firebase Auth אך חסרה להם רשומה במסד הנתונים. מצא את ה-UID ב-Authentication Console של Firebase .</p>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <input id="_mAdd_uid" placeholder="Firebase UID (מ-Authentication Console)" style="width:100%;box-sizing:border-box;border:1.5px solid rgba(20,184,166,0.4);border-radius:12px;padding:10px 14px;font-size:13px;direction:ltr;font-family:monospace;outline:none">
+        <input id="_mAdd_name" placeholder="שם התלמיד" style="width:100%;box-sizing:border-box;border:1.5px solid rgba(20,184,166,0.4);border-radius:12px;padding:10px 14px;font-size:13px;direction:rtl;font-family:inherit;outline:none">
+        <input id="_mAdd_email" placeholder="אימייל (לדוגמה: username@kidemy.app)" style="width:100%;box-sizing:border-box;border:1.5px solid rgba(20,184,166,0.4);border-radius:12px;padding:10px 14px;font-size:13px;direction:ltr;font-family:inherit;outline:none">
+        <input id="_mAdd_parent" placeholder="שם הורה (אופציונלי)" style="width:100%;box-sizing:border-box;border:1.5px solid rgba(20,184,166,0.4);border-radius:12px;padding:10px 14px;font-size:13px;direction:rtl;font-family:inherit;outline:none">
+        <input id="_mAdd_phone" placeholder="טלפון הורה (אופציונלי)" style="width:100%;box-sizing:border-box;border:1.5px solid rgba(20,184,166,0.4);border-radius:12px;padding:10px 14px;font-size:13px;direction:ltr;font-family:inherit;outline:none">
+      </div>
+      <div style="display:flex;gap:10px;margin-top:18px">
+        <button onclick="adminManualAddStudentSubmit()" style="flex:2;background:linear-gradient(135deg,#10B981,#059669);border:none;color:#fff;border-radius:50px;padding:12px;font-size:13px;font-weight:900;cursor:pointer">✅ הוסף תלמיד</button>
+        <button onclick="document.getElementById('_manualAddOverlay').remove()" style="flex:1;background:rgba(100,116,139,0.1);border:1px solid rgba(100,116,139,0.3);color:#64748B;border-radius:50px;padding:12px;font-size:13px;font-weight:700;cursor:pointer">ביטול</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
+async function adminManualAddStudentSubmit(){
+  if(!isAdmin())return;
+  const uid=(document.getElementById('_mAdd_uid')||{}).value||'';
+  const name=(document.getElementById('_mAdd_name')||{}).value||'';
+  const email=(document.getElementById('_mAdd_email')||{}).value||'';
+  const parentName=(document.getElementById('_mAdd_parent')||{}).value||'';
+  const parentPhone=(document.getElementById('_mAdd_phone')||{}).value||'';
+  if(!uid.trim()||!name.trim()||!email.trim()){showFireToast('⚠️ UID, שם ואימייל הם שדות חובה');return;}
+  try{
+    showFireToast('⏳ מוסיף תלמיד...');
+    const userData={name:name.trim(),email:email.trim(),uid:uid.trim(),role:'student',verified:false,
+      parentName:parentName.trim(),parentPhone:parentPhone.trim(),createdAt:Date.now()};
+    await db.ref('users/'+uid.trim()).set(userData);
+    await db.ref('adminAlerts/students/'+uid.trim()).set({
+      name:name.trim(),email:email.trim(),parentName:parentName.trim(),parentPhone:parentPhone.trim(),createdAt:Date.now()
+    });
+    // עדכן זיכרון
+    const existing=adminAllUsers.findIndex(u=>u.uid===uid.trim());
+    if(existing>=0)adminAllUsers[existing]={...userData};
+    else adminAllUsers.push({...userData});
+    if(!adminAlertStudents.find(s=>s.uid===uid.trim()))
+      adminAlertStudents.push({uid:uid.trim(),name:name.trim(),email:email.trim(),parentName:parentName.trim(),parentPhone:parentPhone.trim(),createdAt:Date.now()});
+    document.getElementById('_manualAddOverlay').remove();
+    showFireToast('✅ תלמיד הוסף בהצלחה — ממתין לאישורך');
+    adminTab='students';renderAdminPanel();
+  }catch(e){showFireToast('❌ '+e.message);}
+}
+
+// סרוק את כל Firebase ומצא כל רשומה — כולל תלמידים שנעלמו
+async function adminSearchAllFirebase(){
+  if(!isAdmin())return;
+  showFireToast('⏳ סורק את כל Firebase...');
+  try{
+    const [usersSnap,alertsSnap]=await Promise.all([
+      db.ref('users').get(),
+      db.ref('adminAlerts/students').get()
+    ]);
+    // עדכן הכל בזיכרון
+    adminAllUsers=[];
+    if(usersSnap.exists())usersSnap.forEach(c=>adminAllUsers.push({uid:c.key,...c.val()}));
+    adminAlertStudents=[];
+    if(alertsSnap.exists())alertsSnap.forEach(c=>adminAlertStudents.push({uid:c.key,...c.val()}));
+    const total=adminAllUsers.length;
+    const students=adminAllUsers.filter(u=>u.role==='student').length;
+    const pending=adminAlertStudents.length;
+    showFireToast(`✅ נמצאו: ${total} משתמשים | ${students} תלמידים | ${pending} ממתינים`);
+    adminTab='students';
+    renderAdminPanel();
+  }catch(e){showFireToast('❌ '+e.message);}
+}
+
+async function adminDeleteAllStudents(){
+  if(!isAdmin()){showFireToast('❌ אין הרשאה');return;}
+  if(!confirm('מחיקת כל התלמידים?\n\nפעולה זו תמחק:\n• כל המשתמשים עם role=student\n• כל הרשומות ב-adminAlerts/students\n\n⚠️ לא ניתן לבטל!'))return;
+  try{
+    showFireToast('⏳ מנקה...');
+    const usersSnap=await db.ref('users').get();
+    const toDelete=[];
+    if(usersSnap.exists())usersSnap.forEach(c=>{const u=c.val();if(u.role==='student')toDelete.push(c.key);});
+    await Promise.all(toDelete.map(async uid=>{
+      await db.ref('users/'+uid).remove().catch(()=>{});
+      await db.ref('adminAlerts/students/'+uid).remove().catch(()=>{});
+      await db.ref('notifications/'+uid).remove().catch(()=>{});
+      await db.ref('userChats/'+uid).remove().catch(()=>{});
+      await db.ref('userBookings/'+uid).remove().catch(()=>{});
+      await db.ref('favorites/'+uid).remove().catch(()=>{});
+      await db.ref('bannedUsers/'+uid).set({deletedAt:Date.now(),by:'admin-cleanup'}).catch(()=>{});
+    }));
+    await db.ref('adminAlerts/students').remove().catch(()=>{});
+    realStats.students=0;
+    adminAlertStudents=[];
+    showFireToast('✅ נמחקו '+toDelete.length+' תלמידים');
     await loadAdminData();renderAdminPanel();
   }catch(e){showFireToast('❌ '+e.message);}
 }
@@ -3830,15 +3979,24 @@ async function adminSwitchTab(id){
   }
   if(id==='students'){
     try{
-      const s=await db.ref('users').get();
+      _adminDataLoading=true;
+      showFireToast('⏳ טוען תלמידים...');
+      // קרא users + adminAlerts/students במקביל
+      const [s,al]=await Promise.all([
+        db.ref('users').get(),
+        db.ref('adminAlerts/students').get()
+      ]);
       const fresh=[];
       if(s.exists())s.forEach(c=>fresh.push({uid:c.key,...c.val()}));
       adminAllUsers=fresh;
-      realStats.students=adminAllUsers.filter(u=>u.role==='student').length+adminAlertStudents.filter(s=>!adminAllUsers.find(u=>u.uid===s.uid)).length;
+      adminAlertStudents=[];
+      if(al.exists())al.forEach(c=>adminAlertStudents.push({uid:c.key,...c.val()}));
+      realStats.students=adminAllUsers.filter(u=>u.role==='student'&&u.verified===true).length;
       const pending=adminAllUsers.filter(u=>u.role==='student'&&u.verified===false).length+adminAlertStudents.filter(s=>!adminAllUsers.find(u=>u.uid===s.uid)).length;
       if(pending>0)showFireToast('🎒 '+pending+' תלמידים ממתינים לאישור');
-      else showFireToast('🎒 '+realStats.students+' תלמידים');
-    }catch(e){console.error('[Admin Students] error:',e);showFireToast('⚠️ שגיאה בטעינת תלמידים — מציג נתונים קיימים');}
+      else showFireToast('🎒 '+realStats.students+' תלמידים מאושרים');
+    }catch(e){console.error('[Admin Students] error:',e);showFireToast('⚠️ שגיאה בטעינת תלמידים');}
+    finally{_adminDataLoading=false;}
   }
   renderAdminPanel();
 }
@@ -3939,16 +4097,37 @@ function renderAdminTab(){
       </div>`;
   }
   if(adminTab==='students'){
-    const students=adminAllUsers.filter(u=>u.role!=='teacher');
-    // מקור ראשי: adminAlertStudents — גם אם users/ read נכשל
-    const alertStudentUids=new Set(adminAlertStudents.map(s=>s.uid));
+    // כלול: role=student + כל מי שנרשם עם @kidemy.app ואינו מורה (מגן על רשומות עם role שגוי)
+    const _teacherUids=new Set([...adminAllTeachers.map(t=>t.uid),...adminAllUsers.filter(u=>u.role==='teacher').map(u=>u.uid)]);
+    const students=adminAllUsers.filter(u=>
+      u.role==='student'||
+      ((u.email||'').endsWith('@kidemy.app')&&!_teacherUids.has(u.uid)&&!ADMIN_EMAILS.includes(u.email))
+    );
+    // תקן role שגוי בזיכרון מיד
+    students.forEach(u=>{if(u.role!=='student')u.role='student';});
     const pendingFromAlerts=adminAlertStudents.filter(s=>!students.find(u=>u.uid===s.uid));
     const pendingStudents=[...students.filter(u=>u.verified===false),...pendingFromAlerts.map(s=>({...s,_fromAlert:true,role:'student'}))];
     const allStudents=[...students,...pendingFromAlerts.map(s=>({...s,_fromAlert:true,role:'student'}))];
-    let html='';
-    if(pendingStudents.length===0&&allStudents.length===0)return '<div style="text-align:center;padding:40px;color:#64748B"><div style="font-size:48px;margin-bottom:10px">🎒</div>אין עדיין תלמידים</div>';
+    // כל המשתמשים מ-DB שאינם מורים (גם אם role לא מוגדר)
+    const allNonTeachers=adminAllUsers.filter(u=>u.role!=='teacher');
+    const searchVal=_adminStudentSearch.trim().toLowerCase();
+    let html=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:6px">
+      <span style="font-size:12px;color:#64748B">סה"כ ${allStudents.length} תלמידים (${pendingStudents.length} ממתינים)</span>
+      <div style="display:flex;gap:6px">
+        <button onclick="adminSwitchTab('students')" style="background:rgba(20,184,166,0.1);border:1px solid rgba(20,184,166,0.3);color:#14B8A6;border-radius:50px;padding:6px 10px;font-size:11px;font-weight:800;cursor:pointer">🔄 רענן</button>
+        <button onclick="adminDeleteAllStudents()" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#EF4444;border-radius:50px;padding:6px 10px;font-size:11px;font-weight:800;cursor:pointer">🗑 מחק הכל</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <input id="_studSearch" placeholder="🔍 חפש לפי שם..." value="${_adminStudentSearch}" oninput="_adminStudentSearch=this.value;adminFilterStudents()" style="flex:1;background:rgba(20,184,166,0.06);border:1.5px solid rgba(20,184,166,0.25);border-radius:14px;padding:10px 14px;font-size:13px;font-family:inherit;outline:none;direction:rtl">
+      <button onclick="adminSearchAllFirebase()" style="background:linear-gradient(135deg,#F59E0B,#EF4444);border:none;color:#fff;border-radius:14px;padding:10px 14px;font-size:11px;font-weight:900;cursor:pointer;white-space:nowrap">🔬 הצג הכל</button>
+      <button onclick="adminShowManualAddStudent()" style="background:linear-gradient(135deg,#8B5CF6,#6D28D9);border:none;color:#fff;border-radius:14px;padding:10px 12px;font-size:11px;font-weight:900;cursor:pointer;white-space:nowrap">➕ הוסף ידנית</button>
+    </div>`;
+    const displayList=searchVal?allStudents.filter(u=>(u.name||'').toLowerCase().includes(searchVal)||(u.email||'').toLowerCase().includes(searchVal)):allStudents;
+    if(pendingStudents.length===0&&allStudents.length===0)return html+'<div id="_studentListDiv"><div style="text-align:center;padding:40px;color:#64748B"><div style="font-size:48px;margin-bottom:10px">🎒</div>אין עדיין תלמידים</div></div>';
     if(pendingStudents.length>0){html+=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><h4 style="font-weight:800;font-size:14px;color:#F59E0B;margin:0">⏳ ממתינים לאישור (${pendingStudents.length})</h4></div>`;}
-    return html+allStudents.map(u=>`
+    if(searchVal&&displayList.length===0){return html+'<div id="_studentListDiv"><div style="text-align:center;padding:30px;color:#64748B">לא נמצאו תלמידים עבור: "'+searchVal+'"</div></div>';}
+    return html+'<div id="_studentListDiv">'+displayList.map(u=>`
       <div style="background:${u.blocked?'rgba(239,68,68,0.05)':u.verified===false?'rgba(245,158,11,0.05)':'#fff'};border:1.5px solid ${u.blocked?'rgba(239,68,68,0.3)':u.verified===false?'rgba(245,158,11,0.4)':'rgba(6,182,212,0.15)'};border-radius:18px;padding:14px;margin-bottom:10px">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
           <div style="flex:1;min-width:0">
@@ -3977,7 +4156,7 @@ function renderAdminTab(){
             `<button onclick="adminUnblockUser('${u.uid}')" style="flex:1;background:#10B981;border:none;color:#fff;border-radius:50px;padding:8px;font-size:11px;font-weight:800;cursor:pointer">🔓 שחרר חסימה</button>`:
             `<button onclick="adminBlockUser('${u.uid}')" style="flex:1;background:rgba(231,76,60,0.85);border:none;color:#fff;border-radius:50px;padding:8px;font-size:11px;font-weight:800;cursor:pointer">⛔ חסימה</button>`):''}
         </div>
-      </div>`).join('');
+      </div>`).join('')+'</div>';
   }
   if(adminTab==='users'){
     if(adminAllUsers.length===0)return '<div style="text-align:center;padding:40px;color:#64748B">אין משתמשים</div>';
@@ -4192,7 +4371,7 @@ function renderAdminTab(){
     return html;
   }
   if(adminTab==='stats'){
-    const studentCount=adminAllUsers.filter(u=>u.role!=='teacher').length;
+    const studentCount=adminAllUsers.filter(u=>u.role==='student').length;
     const teacherCount=adminAllUsers.filter(u=>u.role==='teacher').length;
     const verifiedTeachers=adminAllTeachers.filter(t=>t.verified).length;
     const blockedUsers=adminAllUsers.filter(u=>u.blocked).length;
@@ -4244,14 +4423,26 @@ function renderAdminTab(){
         </div>
       </div>
       ${topCats.length>0?`
-      <div style="background:#fff;border:1.5px solid rgba(20,184,166,0.15);border-radius:18px;padding:16px">
+      <div style="background:#fff;border:1.5px solid rgba(20,184,166,0.15);border-radius:18px;padding:16px;margin-bottom:14px">
         <h4 style="margin:0 0 12px;font-weight:900;font-size:15px;color:#14B8A6">🏆 קטגוריות פופולריות</h4>
         ${topCats.map(([cId,count])=>{
           const cat=CATS.find(c=>c.id===cId);
           const pct=Math.round((count/adminAllTeachers.length)*100);
           return `<div style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;margin-bottom:3px"><span style="color:#64748B">${count} מורים</span><span style="color:#0F1A1F">${cat?.em||''} ${cat?.lbl||cId}</span></div><div style="height:8px;background:rgba(20,184,166,0.1);border-radius:50px;overflow:hidden"><div style="width:${pct}%;height:100%;background:linear-gradient(90deg,#14B8A6,#06B6D4,#A855F7);border-radius:50px"></div></div></div>`;
         }).join('')}
-      </div>`:''}`;
+      </div>`:''}
+      <div style="background:rgba(239,68,68,0.05);border:1.5px solid rgba(239,68,68,0.2);border-radius:16px;padding:14px;margin-bottom:14px">
+        <h4 style="margin:0 0 10px;font-weight:900;font-size:13px;color:#EF4444">🔬 דיאגנוסטיקה — נתוני Firebase אמיתיים</h4>
+        <div style="font-size:12px;color:#374151;line-height:2">
+          <div>📋 <b>users/ כל הנרשמים:</b> ${adminAllUsers.length}</div>
+          <div style="padding-right:12px;color:#64748B">${adminAllUsers.map(u=>`• ${u.name||'ללא שם'} [${u.role||'?'}]${u.verified===false?' ⏳':u.verified?' ✅':''}`).join('<br>')}</div>
+          <div>⚠️ <b>adminAlerts/students:</b> ${adminAlertStudents.length}</div>
+          <div style="padding-right:12px;color:#64748B">${adminAlertStudents.map(s=>`• ${s.name||s.uid}`).join('<br>')}</div>
+          <div>📊 <b>realStats.students:</b> ${realStats.students}</div>
+          <div>🎓 <b>TEACHERS רשומים:</b> ${TEACHERS.length}</div>
+        </div>
+        <button onclick="adminDeleteAllStudents()" style="margin-top:10px;width:100%;background:linear-gradient(135deg,#EF4444,#B91C1C);border:none;color:#fff;border-radius:50px;padding:10px;font-weight:800;font-size:12px;cursor:pointer">🗑 מחק כל התלמידים מ-Firebase</button>
+      </div>`;
   }
   return '';
 }
@@ -4796,6 +4987,7 @@ function Home(){
     `}
     </div>
     ${BNav("home")}
+    <div style="text-align:center;padding:4px 0 8px;font-size:10px;color:rgba(148,163,184,0.5)">v${APP_VERSION} · ${APP_BUILD}</div>
   </div>`;
 }
 
@@ -5766,16 +5958,17 @@ async function postNew(){
     likedBy:{},
     reps:[],
     createdAt:Date.now(),
-    status:'pending'
+    status:isAdmin()?'approved':'pending'
   };
   try{
     showFireToast('⏳ שולח...');
     const ref=await db.ref('communityPosts').push(post);
-    // עדכן adminAlerts כדי שהמנהל יראה התראה בזמן אמת
-    db.ref('adminAlerts/posts/'+ref.key).set({author:post.author,text:(post.text||'').substring(0,60),createdAt:Date.now()}).catch(()=>{});
+    if(!isAdmin()){
+      db.ref('adminAlerts/posts/'+ref.key).set({author:post.author,text:(post.text||'').substring(0,60),createdAt:Date.now()}).catch(()=>{});
+    }
     t.value='';
     S.showCompose=false;
-    showFireToast('✅ הפוסט נשלח לאישור מנהל');
+    showFireToast(isAdmin()?'✅ הפוסט פורסם!':'✅ הפוסט נשלח לאישור מנהל');
     await loadCommunityPosts();
   }catch(e){
     showFireToast('❌ שגיאה: '+e.message);
@@ -5970,6 +6163,7 @@ function About(){
         ${[["story","📖 הסיפור"],["safety","🛡 בטיחות"],["values","💎 ערכים"]].map(([id,lbl])=>`<button class="${tab===id?"on":""}" onclick="S.aTab='${id}';render()">${lbl}</button>`).join("")}
       </div>
       ${content}
+      <div style="text-align:center;padding:12px 0 4px;font-size:11px;color:#94A3B8">גרסה ${APP_VERSION} · ${APP_BUILD}</div>
     </div>
     ${BNav("about")}
   </div>`;
@@ -6880,7 +7074,7 @@ const SCREENS={splash:Splash,safety:Safety,parentReg:ParentReg,register:Register
 
 function render(){
   const fn=SCREENS[S.screen]||Home;
-  const noRefreshScreens=['splash','login','register','safety','parentReg','teacherReg','teacherPending','studentPending'];
+  const noRefreshScreens=['splash','login','register','safety','parentReg','teacherReg','teacherPending','studentPending','regSuccess'];
   const showRefresh=!noRefreshScreens.includes(S.screen);
   document.getElementById("app").innerHTML=fn()+SharePanel()+(showRefresh?`<button id="_rfshBtn" class="rfsh-btn" onclick="refreshCurrentScreen()" title="רענן">↻</button>`:'')
   document.querySelectorAll("[data-tid]").forEach(el=>{
@@ -7195,15 +7389,21 @@ async function firebaseRegister(email,password,userData){
     showFireToast('⏳ יוצר חשבון...');
     S._registering=true;
     const cred=await auth.createUserWithEmailAndPassword(email,password);
-    // שמירת פרטים ב-Database
-    await db.ref('users/'+cred.user.uid).set({
-      ...userData,
-      email,
-      uid:cred.user.uid,
-      createdAt:Date.now(),
-      verified:false,
-      role:userData.role||'student'
-    });
+    // שמירת פרטים ב-Database — אם נכשל, מוחקים את חשבון ה-Auth כדי למנוע "עצמות Auth"
+    try{
+      await db.ref('users/'+cred.user.uid).set({
+        ...userData,
+        email,
+        uid:cred.user.uid,
+        createdAt:Date.now(),
+        verified:false,
+        role:userData.role||'student'
+      });
+    }catch(dbErr){
+      // rollback: מחק את חשבון ה-Auth שנוצר, כדי שהרשמה מחדש תהיה אפשרית
+      await cred.user.delete().catch(()=>{});
+      throw new Error('שגיאה בשמירת פרטי החשבון — נסה שוב');
+    }
     // שליחת מייל אימות + מייל ברכה למשתמש
     try{
       await cred.user.sendEmailVerification({
@@ -7230,8 +7430,9 @@ async function firebaseRegister(email,password,userData){
       const isTeacher=(userData.role||'student')==='teacher';
       // כתוב ל-adminAlerts כדי שהמנהל יראה בזמן אמת
       if(!isTeacher){
-        db.ref('adminAlerts/students/'+cred.user.uid).set({
+        await db.ref('adminAlerts/students/'+cred.user.uid).set({
           name:userData.name||email,
+          email:email,
           parentName:userData.parentName||'',
           parentPhone:userData.parentPhone||'',
           createdAt:Date.now()
@@ -7485,6 +7686,19 @@ window.addEventListener('appinstalled',()=>{const b=document.getElementById('ib'
 function installApp(){
   if(_dPmt){_dPmt.prompt();_dPmt.userChoice.then(()=>{_dPmt=null;const b=document.getElementById('ib');if(b)b.style.display='none';});}
   else{const h=document.getElementById('ih');if(h)h.style.display='block';}
+}
+
+// ── AUTO-UPDATE SERVICE WORKER ────────────────────────────────────────────────
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('/sw.js').then(reg=>{
+    // Force browser to check for SW update on every page load
+    reg.update();
+  });
+  // When a new SW takes over → reload the page so user gets fresh content
+  let _swReloading=false;
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{
+    if(!_swReloading){_swReloading=true;location.reload();}
+  });
 }
 </script>
 
