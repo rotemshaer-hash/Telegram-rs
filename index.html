@@ -437,7 +437,7 @@ const ACHIEVEMENTS=[
   {id:6,em:"👥",ttl:"שיעור קבוצתי",desc:"לימדת קבוצה של 4 תלמידים",col:"#27AE60"},
 ];
 
-const APP_VERSION='2.8.0';
+const APP_VERSION='2.9.0';
 const APP_BUILD='04-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -2710,59 +2710,6 @@ function adminFilterStudents(){
     </div>`).join('');
 }
 
-// הצגת טופס הוספת תלמיד ידנית (לתלמידים שנרשמו ב-Auth אך אין להם רשומה ב-DB)
-function adminShowManualAddStudent(){
-  if(!isAdmin())return;
-  const overlay=document.createElement('div');
-  overlay.id='_manualAddOverlay';
-  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
-  overlay.innerHTML=`
-    <div style="background:#fff;border-radius:20px;padding:24px;width:100%;max-width:400px;direction:rtl">
-      <h3 style="margin:0 0 6px;font-size:17px;font-weight:900;color:#0F1A1F">➕ הוסף תלמיד ידנית</h3>
-      <p style="margin:0 0 18px;font-size:12px;color:#64748B;line-height:1.6">לתלמידים שנרשמו ב-Firebase Auth אך חסרה להם רשומה במסד הנתונים. מצא את ה-UID ב-Authentication Console של Firebase .</p>
-      <div style="display:flex;flex-direction:column;gap:10px">
-        <input id="_mAdd_uid" placeholder="Firebase UID (מ-Authentication Console)" style="width:100%;box-sizing:border-box;border:1.5px solid rgba(20,184,166,0.4);border-radius:12px;padding:10px 14px;font-size:13px;direction:ltr;font-family:monospace;outline:none">
-        <input id="_mAdd_name" placeholder="שם התלמיד" style="width:100%;box-sizing:border-box;border:1.5px solid rgba(20,184,166,0.4);border-radius:12px;padding:10px 14px;font-size:13px;direction:rtl;font-family:inherit;outline:none">
-        <input id="_mAdd_email" placeholder="אימייל (לדוגמה: username@kidemy.app)" style="width:100%;box-sizing:border-box;border:1.5px solid rgba(20,184,166,0.4);border-radius:12px;padding:10px 14px;font-size:13px;direction:ltr;font-family:inherit;outline:none">
-        <input id="_mAdd_parent" placeholder="שם הורה (אופציונלי)" style="width:100%;box-sizing:border-box;border:1.5px solid rgba(20,184,166,0.4);border-radius:12px;padding:10px 14px;font-size:13px;direction:rtl;font-family:inherit;outline:none">
-        <input id="_mAdd_phone" placeholder="טלפון הורה (אופציונלי)" style="width:100%;box-sizing:border-box;border:1.5px solid rgba(20,184,166,0.4);border-radius:12px;padding:10px 14px;font-size:13px;direction:ltr;font-family:inherit;outline:none">
-      </div>
-      <div style="display:flex;gap:10px;margin-top:18px">
-        <button onclick="adminManualAddStudentSubmit()" style="flex:2;background:linear-gradient(135deg,#10B981,#059669);border:none;color:#fff;border-radius:50px;padding:12px;font-size:13px;font-weight:900;cursor:pointer">✅ הוסף תלמיד</button>
-        <button onclick="document.getElementById('_manualAddOverlay').remove()" style="flex:1;background:rgba(100,116,139,0.1);border:1px solid rgba(100,116,139,0.3);color:#64748B;border-radius:50px;padding:12px;font-size:13px;font-weight:700;cursor:pointer">ביטול</button>
-      </div>
-    </div>`;
-  document.body.appendChild(overlay);
-}
-
-async function adminManualAddStudentSubmit(){
-  if(!isAdmin())return;
-  const uid=(document.getElementById('_mAdd_uid')||{}).value||'';
-  const name=(document.getElementById('_mAdd_name')||{}).value||'';
-  const email=(document.getElementById('_mAdd_email')||{}).value||'';
-  const parentName=(document.getElementById('_mAdd_parent')||{}).value||'';
-  const parentPhone=(document.getElementById('_mAdd_phone')||{}).value||'';
-  if(!uid.trim()||!name.trim()||!email.trim()){showFireToast('⚠️ UID, שם ואימייל הם שדות חובה');return;}
-  try{
-    showFireToast('⏳ מוסיף תלמיד...');
-    const userData={name:name.trim(),email:email.trim(),uid:uid.trim(),role:'student',verified:false,
-      parentName:parentName.trim(),parentPhone:parentPhone.trim(),createdAt:Date.now()};
-    await db.ref('users/'+uid.trim()).set(userData);
-    await db.ref('adminAlerts/students/'+uid.trim()).set({
-      name:name.trim(),email:email.trim(),parentName:parentName.trim(),parentPhone:parentPhone.trim(),createdAt:Date.now()
-    });
-    // עדכן זיכרון
-    const existing=adminAllUsers.findIndex(u=>u.uid===uid.trim());
-    if(existing>=0)adminAllUsers[existing]={...userData};
-    else adminAllUsers.push({...userData});
-    if(!adminAlertStudents.find(s=>s.uid===uid.trim()))
-      adminAlertStudents.push({uid:uid.trim(),name:name.trim(),email:email.trim(),parentName:parentName.trim(),parentPhone:parentPhone.trim(),createdAt:Date.now()});
-    document.getElementById('_manualAddOverlay').remove();
-    showFireToast('✅ תלמיד הוסף בהצלחה — ממתין לאישורך');
-    adminTab='students';renderAdminPanel();
-  }catch(e){showFireToast('❌ '+e.message);}
-}
-
 // סרוק את כל Firebase ומצא כל רשומה — כולל תלמידים שנעלמו
 async function adminSearchAllFirebase(){
   if(!isAdmin())return;
@@ -4121,7 +4068,6 @@ function renderAdminTab(){
     <div style="display:flex;gap:8px;margin-bottom:14px">
       <input id="_studSearch" placeholder="🔍 חפש לפי שם..." value="${_adminStudentSearch}" oninput="_adminStudentSearch=this.value;adminFilterStudents()" style="flex:1;background:rgba(20,184,166,0.06);border:1.5px solid rgba(20,184,166,0.25);border-radius:14px;padding:10px 14px;font-size:13px;font-family:inherit;outline:none;direction:rtl">
       <button onclick="adminSearchAllFirebase()" style="background:linear-gradient(135deg,#F59E0B,#EF4444);border:none;color:#fff;border-radius:14px;padding:10px 14px;font-size:11px;font-weight:900;cursor:pointer;white-space:nowrap">🔬 הצג הכל</button>
-      <button onclick="adminShowManualAddStudent()" style="background:linear-gradient(135deg,#8B5CF6,#6D28D9);border:none;color:#fff;border-radius:14px;padding:10px 12px;font-size:11px;font-weight:900;cursor:pointer;white-space:nowrap">➕ הוסף ידנית</button>
     </div>`;
     const displayList=searchVal?allStudents.filter(u=>(u.name||'').toLowerCase().includes(searchVal)||(u.email||'').toLowerCase().includes(searchVal)):allStudents;
     if(pendingStudents.length===0&&allStudents.length===0)return html+'<div id="_studentListDiv"><div style="text-align:center;padding:40px;color:#64748B"><div style="font-size:48px;margin-bottom:10px">🎒</div>אין עדיין תלמידים</div></div>';
@@ -7285,7 +7231,19 @@ auth.onAuthStateChanged(async user=>{
     currentUser=user;
     try{
       const snap=await db.ref('users/'+user.uid).get();
-      if(snap.exists())currentUserData=snap.val();
+      if(snap.exists()){
+        currentUserData=snap.val();
+      } else if(!S._registering&&!S._reRegistering&&!isAdmin()){
+        // Auth account exists but no DB record (orphaned account from failed registration)
+        // Auto-create a pending student record — appears in admin panel immediately
+        const recoveredName=(user.displayName||user.email.split('@')[0]);
+        const autoData={uid:user.uid,email:user.email,name:recoveredName,role:'student',verified:false,createdAt:Date.now()};
+        await Promise.all([
+          db.ref('users/'+user.uid).set(autoData),
+          db.ref('adminAlerts/students/'+user.uid).set({name:recoveredName,email:user.email,createdAt:Date.now()})
+        ]).catch(()=>{});
+        currentUserData=autoData;
+      }
 
       // ── בדיקת מורה שלא אושר עדיין ──────────────────────────────
       if(currentUserData?.role==='teacher'){
@@ -7474,12 +7432,14 @@ async function firebaseRegister(email,password,userData){
     if(e.code==='auth/email-already-in-use'){
       // בדוק אם המייל שייך לחשבון שנמחק ע"י מנהל — אם כן, מאפשרים הרשמה מחדש
       try{
+        S._reRegistering=true;
         const sc=await auth.signInWithEmailAndPassword(email,password);
         const uid=sc.user.uid;
         const [bannedSnap,userSnap]=await Promise.all([
           db.ref('bannedUsers/'+uid).get(),
           db.ref('users/'+uid).get()
         ]);
+        S._reRegistering=false;
         // אפשר הרשמה מחדש אם: חסום OR אין רשומה ב-DB (נמחק ע"י מנהל)
         if(bannedSnap.exists()||!userSnap.exists()){
           await sc.user.delete();
@@ -7490,6 +7450,7 @@ async function firebaseRegister(email,password,userData){
           showFireToast('❌ שם המשתמש תפוס – בחר שם אחר');
         }
       }catch(signInErr){
+        S._reRegistering=false;
         showFireToast('❌ שם המשתמש כבר קיים – בחר שם אחר');
       }
       return;
