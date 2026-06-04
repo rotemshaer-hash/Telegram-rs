@@ -377,7 +377,7 @@ async function loadRealTeachers(){
     const usersSnap=await db.ref('users').get();
     if(usersSnap.exists()){
       let students=0;
-      usersSnap.forEach(c=>{const u=c.val();if(u.role==='student')students++;});
+      usersSnap.forEach(c=>{const u=c.val();if(u.role==='student'&&u.verified===true)students++;});
       realStats.students=students;
     }
     teachersLoaded=true;
@@ -2444,7 +2444,7 @@ async function loadAdminData(){
     if(usersSnap.exists())usersSnap.forEach(c=>freshUsers.push({uid:c.key,...c.val()}));
     adminAllUsers=freshUsers;
     // עדכן realStats.students כדי שיהיה עקבי עם דף הבית
-    realStats.students=adminAllUsers.filter(u=>u.role==='student').length+adminAlertStudents.filter(s=>!adminAllUsers.find(u=>u.uid===s.uid)).length;
+    realStats.students=adminAllUsers.filter(u=>u.role==='student'&&u.verified===true).length;
     const teachersSnap=await db.ref('teachers').get();
     adminAllTeachers=[];
     if(teachersSnap.exists())teachersSnap.forEach(c=>adminAllTeachers.push({uid:c.key,...c.val()}));
@@ -2519,46 +2519,38 @@ async function adminRejectBooking(teacherId,bookingId){
 async function adminVerifyStudent(uid){
   _adminActionInProgress=true;
   try{
-    // שלב 1: קרא את הנתונים הקיימים של התלמיד כדי לא לאבד שדות
+    // שלב 1: קרא נתונים קיימים כדי לא לאבד שדות
     const existingSnap=await db.ref('users/'+uid).get();
     const existing=existingSnap.exists()?existingSnap.val():{};
-    // שלב 2: כתוב את כל הנתונים עם עדכון סטטוס — update (לא set) כדי לשמור שדות קיימים
-    await db.ref('users/'+uid).update({
-      ...existing,
-      verified:true,
-      role:'student',
-      rejected:false,
-      verifiedAt:Date.now()
-    });
+    // שלב 2: בנה אובייקט מעודכן
+    const updatedUser={...existing,verified:true,role:'student',rejected:false,verifiedAt:Date.now()};
+    // שלב 3: כתוב ל-Firebase (update שומר שדות קיימים)
+    await db.ref('users/'+uid).update(updatedUser);
     await db.ref('adminAlerts/students/'+uid).remove().catch(()=>{});
     await db.ref('notifications/'+uid).push({type:'studentApproved',read:false,createdAt:Date.now()}).catch(()=>{});
-    // שלב 3: קרא מחדש כדי לקבל הנתונים המעודכנים
-    const freshSnap=await db.ref('users/'+uid).get();
-    const freshUser=freshSnap.exists()?{uid,...freshSnap.val()}:null;
-    // שלב 4: עדכן adminAllUsers בזיכרון מיד (לפני loadAdminData)
-    if(freshUser){
-      const idx=adminAllUsers.findIndex(u=>u.uid===uid);
-      if(idx>=0)adminAllUsers[idx]=freshUser;
-      else adminAllUsers.push(freshUser);
-    }
-    realStats.students=adminAllUsers.filter(u=>u.role==='student').length;
+    // שלב 4: עדכן זיכרון מיד — ללא loadAdminData (למנוע race condition)
+    const freshUser={uid,...updatedUser};
+    const idx=adminAllUsers.findIndex(u=>u.uid===uid);
+    if(idx>=0)adminAllUsers[idx]=freshUser;
+    else adminAllUsers.push(freshUser);
+    // הסר גם מרשימת ההתראות בזיכרון
+    adminAlertStudents=adminAlertStudents.filter(s=>s.uid!==uid);
+    realStats.students=adminAllUsers.filter(u=>u.role==='student'&&u.verified===true).length;
     // שלב 5: שלח מייל להורה
     try{
-      if(freshUser?.parentEmail){
-        await sendEmail(freshUser.parentEmail,
-          `✅ ${freshUser.name||''} אושר/ה ל-Kidemy!`,
-          `שלום ${freshUser.parentName||'הורה יקר'},\n\nילדך ${freshUser.name||''} אושר/ה ל-Kidemy כתלמיד/ה!\n\n` +
-          `🔑 פרטי הכניסה לאפליקציה:\n• שם משתמש: ${freshUser.username||freshUser.email?.split('@')[0]||''}\n• סיסמה: ${freshUser.password||'(הסיסמה שנבחרה בהרשמה)'}\n\n` +
+      if(updatedUser.parentEmail){
+        await sendEmail(updatedUser.parentEmail,
+          `✅ ${updatedUser.name||''} אושר/ה ל-Kidemy!`,
+          `שלום ${updatedUser.parentName||'הורה יקר'},\n\nילדך ${updatedUser.name||''} אושר/ה ל-Kidemy כתלמיד/ה!\n\n` +
+          `🔑 פרטי הכניסה לאפליקציה:\n• מייל: ${updatedUser.email||''}\n• סיסמה: ${updatedUser.password||'(הסיסמה שנבחרה בהרשמה)'}\n\n` +
           `🌐 כניסה לאפליקציה:\nhttps://kidemy-app.netlify.app\n\n` +
           `📌 שמרו מייל זה לפרטי הכניסה.\n\n– צוות Kidemy`
         ).catch(()=>{});
       }
     }catch(emailErr){console.warn('Parent email error:',emailErr);}
-    const name=freshUser?.name||existing?.name||adminAlertStudents.find(s=>s.uid===uid)?.name||uid;
+    const name=updatedUser.name||adminAlertStudents.find(s=>s.uid===uid)?.name||uid;
     showFireToast('✅ התלמיד אושר — '+name);
     adminTab='students';
-    // שלב 6: טען מחדש כדי לסנכרן הכל
-    await loadAdminData();
   }finally{
     _adminActionInProgress=false;
     renderAdminPanel();
@@ -3881,7 +3873,7 @@ async function adminSwitchTab(id){
       const fresh=[];
       if(s.exists())s.forEach(c=>fresh.push({uid:c.key,...c.val()}));
       adminAllUsers=fresh;
-      realStats.students=adminAllUsers.filter(u=>u.role==='student').length+adminAlertStudents.filter(s=>!adminAllUsers.find(u=>u.uid===s.uid)).length;
+      realStats.students=adminAllUsers.filter(u=>u.role==='student'&&u.verified===true).length;
       const pending=adminAllUsers.filter(u=>u.role==='student'&&u.verified===false).length+adminAlertStudents.filter(s=>!adminAllUsers.find(u=>u.uid===s.uid)).length;
       if(pending>0)showFireToast('🎒 '+pending+' תלמידים ממתינים לאישור');
       else showFireToast('🎒 '+realStats.students+' תלמידים');
@@ -4854,6 +4846,7 @@ function Home(){
     `}
     </div>
     ${BNav("home")}
+    <div style="text-align:center;padding:4px 0 8px;font-size:10px;color:rgba(148,163,184,0.5)">v${APP_VERSION} · ${APP_BUILD}</div>
   </div>`;
 }
 
