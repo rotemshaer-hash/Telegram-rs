@@ -434,7 +434,7 @@ const ACHIEVEMENTS=[
   {id:6,em:"👥",ttl:"שיעור קבוצתי",desc:"לימדת קבוצה של 4 תלמידים",col:"#27AE60"},
 ];
 
-const APP_VERSION='3.8.0';
+const APP_VERSION='3.9.0';
 const APP_BUILD='04-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -2793,17 +2793,20 @@ function adminFilterStudents(){
   listDiv.innerHTML=out;
 }
 
-// סרוק את כל Firebase ומצא כל רשומה — כולל תלמידים שנעלמו
+// סרוק את כל Firebase דרך REST API — עוקף קאש של Firebase SDK לחלוטין
 async function adminSearchAllFirebase(){
   if(!isAdmin())return;
-  showFireToast('⏳ סורק את כל Firebase...');
+  showFireToast('⏳ סורק מה-DB ישירות...');
   try{
-    const [usersSnap,alertsSnap]=await Promise.all([
-      db.ref('users').get(),
+    const token=await firebase.auth().currentUser.getIdToken(false);
+    const [usersRes,alertsSnap]=await Promise.all([
+      fetch('https://kidemy-83a17-default-rtdb.firebaseio.com/users.json?auth='+token,{cache:'no-store'}),
       db.ref('adminAlerts/students').get()
     ]);
+    const usersData=await usersRes.json();
     adminAllUsers=[];
-    if(usersSnap.exists())usersSnap.forEach(c=>adminAllUsers.push({uid:c.key,...c.val()}));
+    if(usersData&&typeof usersData==='object'&&!usersData.error)
+      Object.entries(usersData).forEach(([k,v])=>{if(v)adminAllUsers.push({uid:k,...v});});
     adminAlertStudents=[];
     if(alertsSnap.exists())alertsSnap.forEach(c=>adminAlertStudents.push({uid:c.key,...c.val()}));
     const total=adminAllUsers.length;
@@ -7455,28 +7458,27 @@ function showIOSInstallGuide(){
 // ── FIREBASE AUTH & DB ─────────────────────────────────────────────────────
 let currentUser=null, currentUserData=null;
 
-// Bypass Firebase SDK in-memory cache entirely by using the REST API directly.
-// The RTDB v8 compat SDK caches previous session data and .get() can return
-// stale results even after goOffline/goOnline. Plain fetch() has no such cache.
+// Fetch verified student count via REST API (bypasses Firebase SDK in-memory cache).
+// Called after currentUser is confirmed so getIdToken always succeeds.
 async function refreshStudentCount(){
   try{
-    let token='';
-    try{const cu=firebase.auth().currentUser;if(cu)token=await cu.getIdToken(true);}catch(e2){}
-    const url='https://kidemy-83a17-default-rtdb.firebaseio.com/users.json'+(token?'?auth='+token:'');
-    const res=await fetch(url,{cache:'no-store'});
+    const cu=firebase.auth().currentUser;
+    if(!cu)return;
+    const token=await cu.getIdToken(false);
+    const res=await fetch('https://kidemy-83a17-default-rtdb.firebaseio.com/users.json?auth='+token,{cache:'no-store'});
+    if(!res.ok){console.error('[RSC] HTTP',res.status);return;}
     const data=await res.json();
+    if(data&&data.error){console.error('[RSC] Firebase error:',data.error);return;}
     let count=0;
     if(data&&typeof data==='object')Object.values(data).forEach(u=>{if(u&&u.role==='student'&&u.verified===true)count++;});
+    console.log('[RSC] verified students from REST API:',count);
     realStats.students=count;
     document.querySelectorAll('[data-stat="students"]').forEach(el=>el.textContent=count);
-    if(S.screen==='home')render();
-  }catch(e){}
+  }catch(e){console.error('[RSC] fetch error:',e.message);}
 }
 
 auth.onAuthStateChanged(async user=>{
   loadRealTeachers();
-  // Load student count fresh from server every session
-  refreshStudentCount();
   if(user){
     // בדוק אם המשתמש נחסם על ידי מנהל
     if(!S._registering){
@@ -7503,6 +7505,7 @@ auth.onAuthStateChanged(async user=>{
       });
     }
     currentUser=user;
+    refreshStudentCount(); // auth is confirmed, token always available here
     try{
       const snap=await db.ref('users/'+user.uid).get();
       if(snap.exists()){
