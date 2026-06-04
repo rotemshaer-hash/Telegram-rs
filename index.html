@@ -4791,7 +4791,10 @@ function Home(){
     <div style="padding:16px 20px 100px;margin-top:-14px">
       <!-- Stats -->
       <div style="display:flex;gap:10px;margin-bottom:22px">
-        ${[["👩‍🏫",realStats.teachers,"מורים"],["📚",realStats.categories,"נושאים"],["📍",realStats.cities,"ערים"],["👨‍🎓",realStats.students,"תלמידים"]].map(([e,v,l])=>`<div class="card-sm" style="flex:1;text-align:center;padding:12px 6px;margin-bottom:0"><div style="font-size:18px">${e}</div><div style="font-weight:900;font-size:17px">${v}</div><div style="font-size:10px;color:${C.muted};font-weight:600">${l}</div></div>`).join("")}
+        <div class="card-sm" onclick="go('nearby')" style="flex:1;text-align:center;padding:12px 6px;margin-bottom:0;cursor:pointer"><div style="font-size:18px">👩‍🏫</div><div style="font-weight:900;font-size:17px">${realStats.teachers}</div><div style="font-size:10px;color:${C.muted};font-weight:600">מורים</div></div>
+        <div class="card-sm" onclick="go('nearby')" style="flex:1;text-align:center;padding:12px 6px;margin-bottom:0;cursor:pointer"><div style="font-size:18px">📚</div><div style="font-weight:900;font-size:17px">${realStats.categories}</div><div style="font-size:10px;color:${C.muted};font-weight:600">נושאים</div></div>
+        <div class="card-sm" onclick="go('nearby')" style="flex:1;text-align:center;padding:12px 6px;margin-bottom:0;cursor:pointer"><div style="font-size:18px">📍</div><div style="font-weight:900;font-size:17px">${realStats.cities}</div><div style="font-size:10px;color:${C.muted};font-weight:600">ערים</div></div>
+        <div class="card-sm" onclick="${isAdmin()?"showAdminPanel('students')":'go(\'nearby\')'}" style="flex:1;text-align:center;padding:12px 6px;margin-bottom:0;cursor:pointer"><div style="font-size:18px">👨‍🎓</div><div style="font-weight:900;font-size:17px">${realStats.students}</div><div style="font-size:10px;color:${C.muted};font-weight:600">תלמידים</div></div>
       </div>
 
       ${(()=>{
