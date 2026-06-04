@@ -437,7 +437,7 @@ const ACHIEVEMENTS=[
   {id:6,em:"👥",ttl:"שיעור קבוצתי",desc:"לימדת קבוצה של 4 תלמידים",col:"#27AE60"},
 ];
 
-const APP_VERSION='3.1.0';
+const APP_VERSION='3.2.0';
 const APP_BUILD='04-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -2414,13 +2414,17 @@ function _startAdminAlertsListener(){
   if(!isAdmin())return;
   db.ref('adminAlerts').on('value',snap=>{
     if(_adminDataLoading)return; // loadAdminData רץ — אל תאפס
-    adminAlertStudents=[];adminAlertPosts=[];
+    // בנה מערכים חדשים בנפרד לפני השמה (atomic update — מונע מצב ביניים)
+    const newStudents=[];
+    const newPosts=[];
     if(snap.exists()){
       const st=snap.child('students');
-      if(st.exists())st.forEach(c=>adminAlertStudents.push({uid:c.key,...c.val()}));
+      if(st.exists())st.forEach(c=>newStudents.push({uid:c.key,...c.val()}));
       const po=snap.child('posts');
-      if(po.exists())po.forEach(c=>adminAlertPosts.push({id:c.key,...c.val()}));
+      if(po.exists())po.forEach(c=>newPosts.push({id:c.key,...c.val()}));
     }
+    adminAlertStudents=newStudents;
+    adminAlertPosts=newPosts;
     const n=adminAlertStudents.length+adminAlertPosts.length;
     _updateAdminBadge(n);
     // אם הפאנל פתוח ואין פעולת אישור בביצוע — רנדר מחדש
@@ -2559,7 +2563,7 @@ async function adminVerifyStudent(uid){
         await sendEmail(updatedUser.parentEmail,
           `✅ ${updatedUser.name||''} אושר/ה ל-Kidemy!`,
           `שלום ${updatedUser.parentName||'הורה יקר'},\n\nילדך ${updatedUser.name||''} אושר/ה ל-Kidemy כתלמיד/ה!\n\n` +
-          `🔑 פרטי הכניסה לאפליקציה:\n• מייל: ${updatedUser.email||''}\n• סיסמה: ${updatedUser.password||'(הסיסמה שנבחרה בהרשמה)'}\n\n` +
+          `🔑 פרטי הכניסה לאפליקציה:\n• מייל: ${updatedUser.email||''}\n• סיסמה: הסיסמה שנבחרה בעת ההרשמה\n\n` +
           `🌐 כניסה לאפליקציה:\nhttps://kidemy-app.netlify.app\n\n` +
           `📌 שמרו מייל זה לפרטי הכניסה.\n\n– צוות Kidemy`
         ).catch(()=>{});
@@ -5915,6 +5919,10 @@ async function postNew(){
   const t=document.getElementById("ptxt");
   if(!t||!t.value.trim()){showFireToast('❌ כתוב משהו');return;}
   if(!currentUser){showFireToast('❌ צריך להתחבר');return;}
+  // בדיקה: תלמיד שטרם אושר לא יכול לפרסם
+  if(currentUserData?.role==='student'&&currentUserData?.verified!==true&&!isAdmin()){
+    showFireToast('🔒 חכה לאישור מנהל לפני פרסום');return;
+  }
   const userName=currentUserData?.name||currentUser.email.split('@')[0]||"אורח";
   const post={
     author:userName,
@@ -7294,7 +7302,7 @@ auth.onAuthStateChanged(async user=>{
       }
 
       // ── בדיקת תלמיד שלא אושר עדיין ──────────────────────────────
-      if(currentUserData?.role==='student'&&currentUserData?.verified===false&&!isAdmin()){
+      if(currentUserData?.role==='student'&&currentUserData?.verified!==true&&!isAdmin()){
         go('studentPending');return;
       }
 
@@ -7352,7 +7360,7 @@ auth.onAuthStateChanged(async user=>{
         });
       }
       // האזנה לאישור/דחיה — תלמיד ממתין
-      if(currentUserData?.role==='student'&&currentUserData?.verified===false){
+      if(currentUserData?.role==='student'&&currentUserData?.verified!==true){
         db.ref('users/'+user.uid).on('value',snap=>{
           if(!snap.exists())return;
           const d=snap.val();
@@ -7421,13 +7429,18 @@ async function firebaseRegister(email,password,userData){
       const isTeacher=(userData.role||'student')==='teacher';
       // כתוב ל-adminAlerts כדי שהמנהל יראה בזמן אמת
       if(!isTeacher){
-        await db.ref('adminAlerts/students/'+cred.user.uid).set({
-          name:userData.name||email,
-          email:email,
-          parentName:userData.parentName||'',
-          parentPhone:userData.parentPhone||'',
-          createdAt:Date.now()
-        }).catch(()=>{});
+        try{
+          await db.ref('adminAlerts/students/'+cred.user.uid).set({
+            name:userData.name||email,
+            email:email,
+            parentName:userData.parentName||'',
+            parentPhone:userData.parentPhone||'',
+            createdAt:Date.now()
+          });
+        }catch(alertErr){
+          // אל תחסום הרשמה — הפאנל מציג גם users/ עם verified:false
+          console.warn('adminAlerts write failed:',alertErr);
+        }
       }
       await notifyAdmin({
         type: isTeacher?'newTeacher':'newUser',
