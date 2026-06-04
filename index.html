@@ -434,7 +434,7 @@ const ACHIEVEMENTS=[
   {id:6,em:"👥",ttl:"שיעור קבוצתי",desc:"לימדת קבוצה של 4 תלמידים",col:"#27AE60"},
 ];
 
-const APP_VERSION='3.7.0';
+const APP_VERSION='3.8.0';
 const APP_BUILD='04-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -2456,10 +2456,18 @@ async function loadAdminData(){
     // סנכרן adminAlertStudents מ-Firebase ישירות
     adminAlertStudents=[];
     if(alertsSnap.exists())alertsSnap.forEach(c=>adminAlertStudents.push({uid:c.key,...c.val()}));
+    // נקה רשומות-רוח ב-adminAlerts/students: כניסות ללא רשומה מתאימה ב-users/
+    // (קורה כאשר מנהל מוחק תלמיד ישירות מ-Firebase Console ולא דרך הפאנל)
+    {const knownUserUids=new Set(adminAllUsers.map(u=>u.uid));
+     const staleAlerts=adminAlertStudents.filter(s=>!knownUserUids.has(s.uid));
+     if(staleAlerts.length>0){
+       await Promise.all(staleAlerts.map(s=>db.ref('adminAlerts/students/'+s.uid).remove().catch(()=>{})));
+       adminAlertStudents=adminAlertStudents.filter(s=>knownUserUids.has(s.uid));
+     }
+    }
     realStats.students=adminAllUsers.filter(u=>u.role==='student'&&u.verified===true).length;
     // עדכן ספירה בדף הבית אם מוצג
-    const homeEl=document.querySelector('[data-stat="students"]');
-    if(homeEl)homeEl.textContent=realStats.students;
+    document.querySelectorAll('[data-stat="students"]').forEach(el=>el.textContent=realStats.students);
     const teachersSnap=await db.ref('teachers').get();
     adminAllTeachers=[];
     if(teachersSnap.exists())teachersSnap.forEach(c=>adminAllTeachers.push({uid:c.key,...c.val()}));
@@ -4066,6 +4074,13 @@ async function adminSwitchTab(id){
       adminAllUsers=fresh;
       adminAlertStudents=[];
       if(al.exists())al.forEach(c=>adminAlertStudents.push({uid:c.key,...c.val()}));
+      {const knownUids=new Set(fresh.map(u=>u.uid));
+       const stale=adminAlertStudents.filter(s=>!knownUids.has(s.uid));
+       if(stale.length>0){
+         await Promise.all(stale.map(s=>db.ref('adminAlerts/students/'+s.uid).remove().catch(()=>{})));
+         adminAlertStudents=adminAlertStudents.filter(s=>knownUids.has(s.uid));
+       }
+      }
       realStats.students=adminAllUsers.filter(u=>u.role==='student'&&u.verified===true).length;
       const pending=adminAllUsers.filter(u=>u.role==='student'&&u.verified===false).length+adminAlertStudents.filter(s=>!adminAllUsers.find(u=>u.uid===s.uid)).length;
       if(pending>0)showFireToast('🎒 '+pending+' תלמידים ממתינים לאישור');
