@@ -381,6 +381,9 @@ async function loadRealTeachers(){
       realStats.students=students;
     }
     teachersLoaded=true;
+    // עדכן אלמנט הספירה בדף הבית אם כבר רונדר
+    const homeStatEl=document.querySelector('[data-stat="students"]');
+    if(homeStatEl)homeStatEl.textContent=realStats.students;
     if(['home','nearby'].includes(S.screen))render();
   }catch(e){console.warn('Failed to load teachers:',e);teachersLoaded=true;}
 }
@@ -437,7 +440,7 @@ const ACHIEVEMENTS=[
   {id:6,em:"👥",ttl:"שיעור קבוצתי",desc:"לימדת קבוצה של 4 תלמידים",col:"#27AE60"},
 ];
 
-const APP_VERSION='3.2.0';
+const APP_VERSION='3.3.0';
 const APP_BUILD='04-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -2442,6 +2445,8 @@ async function _checkAdminBadge(){
   }catch(e){}
 }
 
+let _adminCommunityOrphans=[]; // משתמשים שפרסמו בקהילה אך אין להם רשומה מאושרת
+
 async function loadAdminData(){
   if(!isAdmin()){showFireToast('🚫 אין הרשאת מנהל');return;}
   _adminDataLoading=true; // נעל listener
@@ -2458,6 +2463,9 @@ async function loadAdminData(){
     adminAlertStudents=[];
     if(alertsSnap.exists())alertsSnap.forEach(c=>adminAlertStudents.push({uid:c.key,...c.val()}));
     realStats.students=adminAllUsers.filter(u=>u.role==='student'&&u.verified===true).length;
+    // עדכן ספירה בדף הבית אם מוצג
+    const homeEl=document.querySelector('[data-stat="students"]');
+    if(homeEl)homeEl.textContent=realStats.students;
     const teachersSnap=await db.ref('teachers').get();
     adminAllTeachers=[];
     if(teachersSnap.exists())teachersSnap.forEach(c=>adminAllTeachers.push({uid:c.key,...c.val()}));
@@ -2503,7 +2511,23 @@ async function loadAdminData(){
     if(postsSnap.exists())postsSnap.forEach(c=>freshPosts2.push({id:c.key,...c.val()}));
     freshPosts2.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
     adminAllPosts=freshPosts2;
-    console.log('[Admin] loaded',adminAllPosts.length,'posts,',adminAllPosts.filter(p=>p.status==='pending').length,'pending');
+    // ── אבחון: מצא משתמשים שפרסמו בקהילה אך אין להם רשומה ב-DB ──
+    _adminCommunityOrphans=[];
+    const knownUids=new Set([...adminAllUsers.map(u=>u.uid),...adminAlertStudents.map(s=>s.uid)]);
+    const orphanMap={};
+    freshPosts2.forEach(p=>{
+      if(p.authUid&&!knownUids.has(p.authUid)&&!ADMIN_EMAILS.includes(p.authUid)){
+        if(!orphanMap[p.authUid]){
+          orphanMap[p.authUid]={uid:p.authUid,name:p.author||'ללא שם',lastPost:p.createdAt||0,posts:0};
+        }
+        orphanMap[p.authUid].posts++;
+        if((p.createdAt||0)>orphanMap[p.authUid].lastPost)orphanMap[p.authUid].lastPost=p.createdAt;
+      }
+    });
+    _adminCommunityOrphans=Object.values(orphanMap).sort((a,b)=>b.lastPost-a.lastPost);
+    if(_adminCommunityOrphans.length>0){
+      console.warn('[Admin] community orphans:',_adminCommunityOrphans.length,_adminCommunityOrphans.map(o=>o.name));
+    }
   }catch(postsErr){console.error('[Admin] posts load error:',postsErr);}
   finally{_adminDataLoading=false;} // שחרר נעילה
 }
@@ -2577,6 +2601,44 @@ async function adminVerifyStudent(uid){
     renderAdminPanel();
   }
 }
+// הוסף משתמש שפרסם בקהילה לרשימת ממתינים לאישור
+async function adminAddCommunityOrphan(uid,name){
+  try{
+    // בדוק אם כבר קיים ב-DB
+    const snap=await db.ref('users/'+uid).get();
+    if(snap.exists()){
+      // קיים אבל לא מאושר — פשוט הוסף להתראות
+      const u=snap.val();
+      await db.ref('adminAlerts/students/'+uid).set({
+        name:u.name||name,email:u.email||'',createdAt:Date.now(),_fromCommunity:true
+      });
+    } else {
+      // אין רשומה — צור רשומה ממתינה עם הנתונים שיש מהקהילה
+      const newRecord={uid,name,role:'student',verified:false,createdAt:Date.now(),_fromCommunity:true};
+      await db.ref('users/'+uid).set(newRecord);
+      await db.ref('adminAlerts/students/'+uid).set({name,email:'',createdAt:Date.now(),_fromCommunity:true});
+    }
+    _adminCommunityOrphans=_adminCommunityOrphans.filter(o=>o.uid!==uid);
+    showFireToast('✅ '+name+' נוסף לרשימת ממתינים');
+    await loadAdminData();renderAdminPanel();
+  }catch(e){showFireToast('❌ '+e.message);}
+}
+
+// מחק את כל הפוסטים של משתמש "עצמות קהילה"
+async function adminRemoveCommunityOrphanPosts(uid){
+  if(!confirm('למחוק את כל הפוסטים של משתמש זה מהקהילה?'))return;
+  try{
+    const snap=await db.ref('communityPosts').get();
+    const deletes=[];
+    if(snap.exists())snap.forEach(c=>{if(c.val().authUid===uid)deletes.push(db.ref('communityPosts/'+c.key).remove());});
+    await Promise.allSettled(deletes);
+    _adminCommunityOrphans=_adminCommunityOrphans.filter(o=>o.uid!==uid);
+    adminAllPosts=adminAllPosts.filter(p=>p.authUid!==uid);
+    showFireToast('🗑 נמחקו '+deletes.length+' פוסטים');
+    renderAdminPanel();
+  }catch(e){showFireToast('❌ '+e.message);}
+}
+
 async function adminRejectStudent(uid){
   if(!confirm('לדחות את הבקשה?\n\nהתלמיד יקבל הודעת "לא אושר" ויראה את פרטי יצירת הקשר עם המנהל.'))return;
   try{
@@ -3983,6 +4045,7 @@ function renderAdminPanel(){
       </div>
       <p style="font-size:12px;opacity:0.9;margin:4px 0 0">${currentUser?.email}</p>
       ${totalPending>0?`<div onclick="adminTab='teachers';renderAdminPanel()" style="margin-top:10px;background:rgba(239,68,68,0.85);border-radius:12px;padding:10px 14px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:8px">🔔 <span>${totalPending} מורים ממתינים לטיפול – לחץ</span></div>`:''}
+      ${_adminCommunityOrphans.length>0?`<div onclick="adminTab='students';renderAdminPanel()" style="margin-top:8px;background:rgba(239,68,68,0.75);border-radius:12px;padding:10px 14px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:8px">⚠️ <span>${_adminCommunityOrphans.length} משתמשים פרסמו בקהילה ללא אישור — לחץ לטיפול</span></div>`:''}
     </div>
     ${!adminAllTeachers.find(t=>t.uid===currentUser?.uid)?`
     <div style="margin:12px 16px 0;background:linear-gradient(135deg,rgba(245,158,11,0.12),rgba(239,68,68,0.1));border:2px solid rgba(245,158,11,0.5);border-radius:16px;padding:14px">
@@ -4124,13 +4187,40 @@ function renderAdminTab(){
         </div>
       </div>`;
     let studentListHtml='';
+    // ── עצמות קהילה: משתמשים שפרסמו בקהילה אך אין להם רשומה ב-DB ──
+    const communityOrphans=_adminCommunityOrphans.filter(o=>
+      !searchVal||o.name.toLowerCase().includes(searchVal)
+    );
+    if(communityOrphans.length>0){
+      studentListHtml+=`
+        <div style="background:rgba(239,68,68,0.06);border:1.5px solid rgba(239,68,68,0.3);border-radius:16px;padding:14px;margin-bottom:14px">
+          <h4 style="font-weight:900;font-size:14px;color:#EF4444;margin:0 0 10px">⚠️ פרסמו בקהילה — לא נמצאו ב-DB (${communityOrphans.length})</h4>
+          <p style="font-size:12px;color:#64748B;margin:0 0 10px;line-height:1.6">משתמשים אלו יצרו פוסטים אך אין להם רשומת תלמיד מאושרת. יתכן שנמחקו, או שנרשמו בעבר ללא אישור.</p>
+          ${communityOrphans.map(o=>`
+            <div style="background:#fff;border-radius:12px;padding:12px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:10px">
+              <div>
+                <div style="font-weight:800;font-size:13px;color:#0F1A1F">${o.name}</div>
+                <div style="font-size:11px;color:#64748B">${o.posts} פוסטים · ${o.lastPost?new Date(o.lastPost).toLocaleDateString('he-IL'):''}</div>
+                <div style="font-size:10px;color:#94A3B8;direction:ltr;text-align:right">UID: ${o.uid.substring(0,12)}...</div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <button onclick="adminAddCommunityOrphan('${o.uid}','${(o.name||'').replace(/'/g,'')}');renderAdminPanel()" style="background:#10B981;border:none;color:#fff;border-radius:50px;padding:7px 12px;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap">➕ הוסף לממתינים</button>
+                <button onclick="adminRemoveCommunityOrphanPosts('${o.uid}');renderAdminPanel()" style="background:rgba(239,68,68,0.85);border:none;color:#fff;border-radius:50px;padding:7px 12px;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap">🗑 מחק פוסטים</button>
+              </div>
+            </div>
+          `).join('')}
+        </div>`;
+    }
     if(displayPending.length>0){
       studentListHtml+=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><h4 style="font-weight:800;font-size:14px;color:#F59E0B;margin:0">⏳ ממתינים לאישור (${displayPending.length})</h4></div>`;
       studentListHtml+=displayPending.map(_renderStudentCard).join('');
     }
     if(displayApproved.length>0){
-      studentListHtml+=`<h4 style="font-weight:800;font-size:14px;color:#10B981;margin:${displayPending.length>0?'14px':0} 0 10px">✅ מאושרים (${displayApproved.length})</h4>`;
+      studentListHtml+=`<h4 style="font-weight:800;font-size:14px;color:#10B981;margin:${displayPending.length>0||communityOrphans.length>0?'14px':0} 0 10px">✅ מאושרים (${displayApproved.length})</h4>`;
       studentListHtml+=displayApproved.map(_renderStudentCard).join('');
+    }
+    if(communityOrphans.length===0&&displayPending.length===0&&displayApproved.length===0){
+      studentListHtml='<div style="text-align:center;padding:40px;color:#64748B"><div style="font-size:48px;margin-bottom:10px">🎒</div>אין עדיין תלמידים</div>';
     }
     return html+'<div id="_studentListDiv">'+studentListHtml+'</div>';
   }
@@ -4859,7 +4949,7 @@ function Home(){
         <div class="card-sm" onclick="go('nearby')" style="flex:1;text-align:center;padding:12px 6px;margin-bottom:0;cursor:pointer"><div style="font-size:18px">👩‍🏫</div><div style="font-weight:900;font-size:17px">${realStats.teachers}</div><div style="font-size:10px;color:${C.muted};font-weight:600">מורים</div></div>
         <div class="card-sm" onclick="go('nearby')" style="flex:1;text-align:center;padding:12px 6px;margin-bottom:0;cursor:pointer"><div style="font-size:18px">📚</div><div style="font-weight:900;font-size:17px">${realStats.categories}</div><div style="font-size:10px;color:${C.muted};font-weight:600">נושאים</div></div>
         <div class="card-sm" onclick="go('nearby')" style="flex:1;text-align:center;padding:12px 6px;margin-bottom:0;cursor:pointer"><div style="font-size:18px">📍</div><div style="font-weight:900;font-size:17px">${realStats.cities}</div><div style="font-size:10px;color:${C.muted};font-weight:600">ערים</div></div>
-        <div class="card-sm" onclick="${isAdmin()?"showAdminPanel('students')":'go(\'nearby\')'}" style="flex:1;text-align:center;padding:12px 6px;margin-bottom:0;cursor:pointer"><div style="font-size:18px">👨‍🎓</div><div style="font-weight:900;font-size:17px">${realStats.students}</div><div style="font-size:10px;color:${C.muted};font-weight:600">תלמידים</div></div>
+        <div class="card-sm" onclick="${isAdmin()?"showAdminPanel('students')":'go(\'nearby\')'}" style="flex:1;text-align:center;padding:12px 6px;margin-bottom:0;cursor:pointer"><div style="font-size:18px">👨‍🎓</div><div style="font-weight:900;font-size:17px" data-stat="students">${realStats.students}</div><div style="font-size:10px;color:${C.muted};font-weight:600">תלמידים</div></div>
       </div>
 
       ${(()=>{
