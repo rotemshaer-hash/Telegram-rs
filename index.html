@@ -7546,6 +7546,19 @@ function installApp(){
   if(_dPmt){_dPmt.prompt();_dPmt.userChoice.then(()=>{_dPmt=null;const b=document.getElementById('ib');if(b)b.style.display='none';});}
   else{const h=document.getElementById('ih');if(h)h.style.display='block';}
 }
+
+// ── AUTO-UPDATE SERVICE WORKER ────────────────────────────────────────────────
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('/sw.js').then(reg=>{
+    // Force browser to check for SW update on every page load
+    reg.update();
+  });
+  // When a new SW takes over → reload the page so user gets fresh content
+  let _swReloading=false;
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{
+    if(!_swReloading){_swReloading=true;location.reload();}
+  });
+}
 </script>
 
 <!-- INSTALL BANNER -->
