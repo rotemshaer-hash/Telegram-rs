@@ -2406,6 +2406,7 @@ function _updateAdminBadge(n){
   if(badge){badge.textContent=n;badge.style.display=n>0?'inline-flex':'none';}
 }
 
+let _adminStudentSearch=''; // שמור ערך חיפוש בין רינדורים — לא לאפס בין רינדורים
 let _adminActionInProgress=false; // מנגנון נגד race-condition בזמן אישור תלמיד
 // האזן לכל הממתינים בזמן אמת דרך נתיב adminAlerts
 function _startAdminAlertsListener(){
@@ -2680,6 +2681,30 @@ async function adminDeleteUser(uid,name,role){
     showFireToast('✅ המשתמש נמחק');
     await loadAdminData();renderAdminPanel();
   }catch(e){showFireToast('❌ '+e.message);}
+}
+
+// סינון תלמידים ללא re-render של כל הפאנל — רק עדכון רשימה
+function adminFilterStudents(){
+  const listDiv=document.getElementById('_studentListDiv');
+  if(!listDiv)return;
+  const sv=_adminStudentSearch.trim().toLowerCase();
+  const students=adminAllUsers.filter(u=>u.role==='student');
+  const pendingFromAlerts=adminAlertStudents.filter(s=>!students.find(u=>u.uid===s.uid));
+  const allStudents=[...students,...pendingFromAlerts.map(s=>({...s,_fromAlert:true,role:'student'}))];
+  const displayList=sv?allStudents.filter(u=>(u.name||'').toLowerCase().includes(sv)||(u.email||'').toLowerCase().includes(sv)):allStudents;
+  if(displayList.length===0){
+    listDiv.innerHTML=sv?`<div style="text-align:center;padding:30px;color:#64748B">לא נמצאו תלמידים עבור: "${sv}"</div>`:'<div style="text-align:center;padding:30px;color:#64748B">אין תלמידים</div>';
+    return;
+  }
+  listDiv.innerHTML=displayList.map(u=>`
+    <div style="background:${u.blocked?'rgba(239,68,68,0.05)':u.verified===false?'rgba(245,158,11,0.05)':'#fff'};border:1.5px solid ${u.blocked?'rgba(239,68,68,0.3)':u.verified===false?'rgba(245,158,11,0.4)':'rgba(6,182,212,0.15)'};border-radius:18px;padding:14px;margin-bottom:10px">
+      <div style="font-weight:900;font-size:14px;margin-bottom:4px">🎒 ${u.name||'ללא שם'}</div>
+      <div style="font-size:12px;color:#64748B;direction:ltr;text-align:right">${u.email||''}</div>
+      ${u.verified===false?'<div style="font-size:11px;color:#F59E0B;font-weight:700;margin-top:4px">⏳ ממתין לאישור</div>':''}
+      <div style="display:flex;gap:8px;margin-top:8px">
+        ${(u.verified===false||u._fromAlert)&&!u.blocked?`<button onclick="adminVerifyStudent('${u.uid}')" style="flex:2;background:#10B981;border:none;color:#fff;border-radius:50px;padding:8px;font-size:12px;font-weight:800;cursor:pointer">✅ אשר</button><button onclick="adminRejectStudent('${u.uid}')" style="flex:1;background:rgba(239,68,68,0.9);border:none;color:#fff;border-radius:50px;padding:8px;font-size:12px;font-weight:800;cursor:pointer">🚫 דחה</button>`:''}
+      </div>
+    </div>`).join('');
 }
 
 // סרוק את כל Firebase ומצא כל רשומה — כולל תלמידים שנעלמו
@@ -4020,7 +4045,7 @@ function renderAdminTab(){
     const allStudents=[...students,...pendingFromAlerts.map(s=>({...s,_fromAlert:true,role:'student'}))];
     // כל המשתמשים מ-DB שאינם מורים (גם אם role לא מוגדר)
     const allNonTeachers=adminAllUsers.filter(u=>u.role!=='teacher');
-    const searchVal=(document.getElementById('_studSearch')?.value||'').trim().toLowerCase();
+    const searchVal=_adminStudentSearch.trim().toLowerCase();
     let html=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:6px">
       <span style="font-size:12px;color:#64748B">סה"כ ${allStudents.length} תלמידים (${pendingStudents.length} ממתינים)</span>
       <div style="display:flex;gap:6px">
@@ -4029,14 +4054,14 @@ function renderAdminTab(){
       </div>
     </div>
     <div style="display:flex;gap:8px;margin-bottom:14px">
-      <input id="_studSearch" placeholder="🔍 חפש לפי שם..." oninput="renderAdminPanel()" style="flex:1;background:rgba(20,184,166,0.06);border:1.5px solid rgba(20,184,166,0.25);border-radius:14px;padding:10px 14px;font-size:13px;font-family:inherit;outline:none;direction:rtl">
+      <input id="_studSearch" placeholder="🔍 חפש לפי שם..." value="${_adminStudentSearch}" oninput="_adminStudentSearch=this.value;adminFilterStudents()" style="flex:1;background:rgba(20,184,166,0.06);border:1.5px solid rgba(20,184,166,0.25);border-radius:14px;padding:10px 14px;font-size:13px;font-family:inherit;outline:none;direction:rtl">
       <button onclick="adminSearchAllFirebase()" style="background:linear-gradient(135deg,#F59E0B,#EF4444);border:none;color:#fff;border-radius:14px;padding:10px 14px;font-size:11px;font-weight:900;cursor:pointer;white-space:nowrap">🔬 הצג הכל</button>
     </div>`;
     const displayList=searchVal?allStudents.filter(u=>(u.name||'').toLowerCase().includes(searchVal)||(u.email||'').toLowerCase().includes(searchVal)):allStudents;
-    if(pendingStudents.length===0&&allStudents.length===0)return html+'<div style="text-align:center;padding:40px;color:#64748B"><div style="font-size:48px;margin-bottom:10px">🎒</div>אין עדיין תלמידים</div>';
+    if(pendingStudents.length===0&&allStudents.length===0)return html+'<div id="_studentListDiv"><div style="text-align:center;padding:40px;color:#64748B"><div style="font-size:48px;margin-bottom:10px">🎒</div>אין עדיין תלמידים</div></div>';
     if(pendingStudents.length>0){html+=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><h4 style="font-weight:800;font-size:14px;color:#F59E0B;margin:0">⏳ ממתינים לאישור (${pendingStudents.length})</h4></div>`;}
-    if(searchVal&&displayList.length===0){return html+'<div style="text-align:center;padding:30px;color:#64748B">לא נמצאו תלמידים עבור: "'+searchVal+'"</div>';}
-    return html+displayList.map(u=>`
+    if(searchVal&&displayList.length===0){return html+'<div id="_studentListDiv"><div style="text-align:center;padding:30px;color:#64748B">לא נמצאו תלמידים עבור: "'+searchVal+'"</div></div>';}
+    return html+'<div id="_studentListDiv">'+displayList.map(u=>`
       <div style="background:${u.blocked?'rgba(239,68,68,0.05)':u.verified===false?'rgba(245,158,11,0.05)':'#fff'};border:1.5px solid ${u.blocked?'rgba(239,68,68,0.3)':u.verified===false?'rgba(245,158,11,0.4)':'rgba(6,182,212,0.15)'};border-radius:18px;padding:14px;margin-bottom:10px">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
           <div style="flex:1;min-width:0">
@@ -4065,7 +4090,7 @@ function renderAdminTab(){
             `<button onclick="adminUnblockUser('${u.uid}')" style="flex:1;background:#10B981;border:none;color:#fff;border-radius:50px;padding:8px;font-size:11px;font-weight:800;cursor:pointer">🔓 שחרר חסימה</button>`:
             `<button onclick="adminBlockUser('${u.uid}')" style="flex:1;background:rgba(231,76,60,0.85);border:none;color:#fff;border-radius:50px;padding:8px;font-size:11px;font-weight:800;cursor:pointer">⛔ חסימה</button>`):''}
         </div>
-      </div>`).join('');
+      </div>`).join('')+'</div>';
   }
   if(adminTab==='users'){
     if(adminAllUsers.length===0)return '<div style="text-align:center;padding:40px;color:#64748B">אין משתמשים</div>';
