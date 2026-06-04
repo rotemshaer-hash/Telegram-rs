@@ -434,7 +434,7 @@ const ACHIEVEMENTS=[
   {id:6,em:"👥",ttl:"שיעור קבוצתי",desc:"לימדת קבוצה של 4 תלמידים",col:"#27AE60"},
 ];
 
-const APP_VERSION='3.4.0';
+const APP_VERSION='3.5.0';
 const APP_BUILD='04-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -4087,7 +4087,7 @@ function renderAdminPanel(){
   ov.innerHTML=`
     <div style="background:linear-gradient(135deg,#7E22CE,#A855F7,#EC4899);padding:20px;color:#fff;position:sticky;top:0;z-index:2;box-shadow:0 4px 20px rgba(0,0,0,0.3)">
       <div style="display:flex;justify-content:space-between;align-items:center">
-        <button onclick="document.getElementById('_adminPanel').remove()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;border-radius:50px;padding:8px 14px;font-weight:800;font-size:13px;cursor:pointer">✕ סגור</button>
+        <button onclick="document.getElementById('_adminPanel').remove();refreshStudentCount()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;border-radius:50px;padding:8px 14px;font-weight:800;font-size:13px;cursor:pointer">✕ סגור</button>
         <h2 style="font-weight:900;font-size:22px;margin:0">👨‍💼 פאנל מנהל</h2>
       </div>
       <p style="font-size:12px;opacity:0.9;margin:4px 0 0">${currentUser?.email}</p>
@@ -7440,22 +7440,26 @@ function showIOSInstallGuide(){
 // ── FIREBASE AUTH & DB ─────────────────────────────────────────────────────
 let currentUser=null, currentUserData=null;
 
-// Real-time listener on users/ — keeps realStats.students always fresh
-// Uses a single persistent listener so the home stat is never stale
-let _studentsCountListener=null;
-function _startStudentCountListener(){
-  if(_studentsCountListener)return; // already running
-  _studentsCountListener=db.ref('users').on('value',snap=>{
+// Force-fetch student count directly from Firebase server (no cache).
+// The trick: pass {source:'server'} isn't in RTDB v8, so we detach any
+// existing listener first — without an active listener, .get() always
+// goes to the network.
+async function refreshStudentCount(){
+  try{
+    db.ref('users').off('value'); // remove any listener so .get() hits network
+    const snap=await db.ref('users').get();
     let count=0;
     if(snap.exists())snap.forEach(c=>{const u=c.val();if(u&&u.role==='student'&&u.verified===true)count++;});
     realStats.students=count;
     document.querySelectorAll('[data-stat="students"]').forEach(el=>el.textContent=count);
-  },()=>{_studentsCountListener=null;}); // reset on error so it can re-attach
+    if(S.screen==='home')render();
+  }catch(e){}
 }
 
 auth.onAuthStateChanged(async user=>{
   loadRealTeachers();
-  _startStudentCountListener();
+  // Load student count fresh from server every session
+  refreshStudentCount();
   if(user){
     // בדוק אם המשתמש נחסם על ידי מנהל
     if(!S._registering){
