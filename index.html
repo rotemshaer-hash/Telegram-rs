@@ -2409,9 +2409,11 @@ function _updateAdminBadge(n){
 let _adminStudentSearch=''; // שמור ערך חיפוש בין רינדורים — לא לאפס בין רינדורים
 let _adminActionInProgress=false; // מנגנון נגד race-condition בזמן אישור תלמיד
 // האזן לכל הממתינים בזמן אמת דרך נתיב adminAlerts
+let _adminDataLoading=false; // מנע listener מלאפס נתונים בזמן טעינה
 function _startAdminAlertsListener(){
   if(!isAdmin())return;
   db.ref('adminAlerts').on('value',snap=>{
+    if(_adminDataLoading)return; // loadAdminData רץ — אל תאפס
     adminAlertStudents=[];adminAlertPosts=[];
     if(snap.exists()){
       const st=snap.child('students');
@@ -2438,8 +2440,8 @@ async function _checkAdminBadge(){
 
 async function loadAdminData(){
   if(!isAdmin()){showFireToast('🚫 אין הרשאת מנהל');return;}
+  _adminDataLoading=true; // נעל listener
   try{
-    showFireToast('⏳ טוען נתוני מערכת...');
     // קרא users + adminAlerts/students במקביל
     const [usersSnap,alertsSnap]=await Promise.all([
       db.ref('users').get(),
@@ -2448,7 +2450,7 @@ async function loadAdminData(){
     const freshUsers=[];
     if(usersSnap.exists())usersSnap.forEach(c=>freshUsers.push({uid:c.key,...c.val()}));
     adminAllUsers=freshUsers;
-    // סנכרן adminAlertStudents מ-Firebase ישירות (לא רק מה-listener)
+    // סנכרן adminAlertStudents מ-Firebase ישירות
     adminAlertStudents=[];
     if(alertsSnap.exists())alertsSnap.forEach(c=>adminAlertStudents.push({uid:c.key,...c.val()}));
     realStats.students=adminAllUsers.filter(u=>u.role==='student'&&u.verified===true).length;
@@ -2499,6 +2501,7 @@ async function loadAdminData(){
     adminAllPosts=freshPosts2;
     console.log('[Admin] loaded',adminAllPosts.length,'posts,',adminAllPosts.filter(p=>p.status==='pending').length,'pending');
   }catch(postsErr){console.error('[Admin] posts load error:',postsErr);}
+  finally{_adminDataLoading=false;} // שחרר נעילה
 }
 
 async function adminApproveBooking(teacherId,bookingId){
@@ -2705,6 +2708,26 @@ function adminFilterStudents(){
         ${(u.verified===false||u._fromAlert)&&!u.blocked?`<button onclick="adminVerifyStudent('${u.uid}')" style="flex:2;background:#10B981;border:none;color:#fff;border-radius:50px;padding:8px;font-size:12px;font-weight:800;cursor:pointer">✅ אשר</button><button onclick="adminRejectStudent('${u.uid}')" style="flex:1;background:rgba(239,68,68,0.9);border:none;color:#fff;border-radius:50px;padding:8px;font-size:12px;font-weight:800;cursor:pointer">🚫 דחה</button>`:''}
       </div>
     </div>`).join('');
+}
+
+// תיקון אוטומטי: תקן כל משתמש @kidemy.app שאין לו role=student
+async function adminRepairStudentRoles(){
+  if(!isAdmin())return;
+  showFireToast('⏳ בודק ומתקן...');
+  try{
+    const snap=await db.ref('users').get();
+    const fixes=[];
+    if(snap.exists())snap.forEach(c=>{
+      const u=c.val();
+      if((u.email||'').endsWith('@kidemy.app')&&u.role!=='student'&&u.role!=='teacher'){
+        fixes.push({uid:c.key,...u});
+      }
+    });
+    if(fixes.length===0){showFireToast('✅ אין רשומות שדורשות תיקון');return;}
+    await Promise.all(fixes.map(u=>db.ref('users/'+u.uid+'/role').set('student').catch(()=>{})));
+    showFireToast('✅ תוקנו '+fixes.length+' רשומות ל-role=student');
+    await adminSearchAllFirebase();
+  }catch(e){showFireToast('❌ '+e.message);}
 }
 
 // סרוק את כל Firebase ומצא כל רשומה — כולל תלמידים שנעלמו
@@ -3923,6 +3946,7 @@ async function adminSwitchTab(id){
   }
   if(id==='students'){
     try{
+      _adminDataLoading=true;
       showFireToast('⏳ טוען תלמידים...');
       // קרא users + adminAlerts/students במקביל
       const [s,al]=await Promise.all([
@@ -3939,6 +3963,7 @@ async function adminSwitchTab(id){
       if(pending>0)showFireToast('🎒 '+pending+' תלמידים ממתינים לאישור');
       else showFireToast('🎒 '+realStats.students+' תלמידים מאושרים');
     }catch(e){console.error('[Admin Students] error:',e);showFireToast('⚠️ שגיאה בטעינת תלמידים');}
+    finally{_adminDataLoading=false;}
   }
   renderAdminPanel();
 }
@@ -4039,7 +4064,14 @@ function renderAdminTab(){
       </div>`;
   }
   if(adminTab==='students'){
-    const students=adminAllUsers.filter(u=>u.role==='student');
+    // כלול: role=student + כל מי שנרשם עם @kidemy.app ואינו מורה (מגן על רשומות עם role שגוי)
+    const _teacherUids=new Set([...adminAllTeachers.map(t=>t.uid),...adminAllUsers.filter(u=>u.role==='teacher').map(u=>u.uid)]);
+    const students=adminAllUsers.filter(u=>
+      u.role==='student'||
+      ((u.email||'').endsWith('@kidemy.app')&&!_teacherUids.has(u.uid)&&!ADMIN_EMAILS.includes(u.email))
+    );
+    // תקן role שגוי בזיכרון מיד
+    students.forEach(u=>{if(u.role!=='student')u.role='student';});
     const pendingFromAlerts=adminAlertStudents.filter(s=>!students.find(u=>u.uid===s.uid));
     const pendingStudents=[...students.filter(u=>u.verified===false),...pendingFromAlerts.map(s=>({...s,_fromAlert:true,role:'student'}))];
     const allStudents=[...students,...pendingFromAlerts.map(s=>({...s,_fromAlert:true,role:'student'}))];
@@ -4056,6 +4088,7 @@ function renderAdminTab(){
     <div style="display:flex;gap:8px;margin-bottom:14px">
       <input id="_studSearch" placeholder="🔍 חפש לפי שם..." value="${_adminStudentSearch}" oninput="_adminStudentSearch=this.value;adminFilterStudents()" style="flex:1;background:rgba(20,184,166,0.06);border:1.5px solid rgba(20,184,166,0.25);border-radius:14px;padding:10px 14px;font-size:13px;font-family:inherit;outline:none;direction:rtl">
       <button onclick="adminSearchAllFirebase()" style="background:linear-gradient(135deg,#F59E0B,#EF4444);border:none;color:#fff;border-radius:14px;padding:10px 14px;font-size:11px;font-weight:900;cursor:pointer;white-space:nowrap">🔬 הצג הכל</button>
+      <button onclick="adminRepairStudentRoles()" style="background:linear-gradient(135deg,#10B981,#059669);border:none;color:#fff;border-radius:14px;padding:10px 12px;font-size:11px;font-weight:900;cursor:pointer;white-space:nowrap">🔧 תקן</button>
     </div>`;
     const displayList=searchVal?allStudents.filter(u=>(u.name||'').toLowerCase().includes(searchVal)||(u.email||'').toLowerCase().includes(searchVal)):allStudents;
     if(pendingStudents.length===0&&allStudents.length===0)return html+'<div id="_studentListDiv"><div style="text-align:center;padding:40px;color:#64748B"><div style="font-size:48px;margin-bottom:10px">🎒</div>אין עדיין תלמידים</div></div>';
