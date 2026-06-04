@@ -434,7 +434,7 @@ const ACHIEVEMENTS=[
   {id:6,em:"👥",ttl:"שיעור קבוצתי",desc:"לימדת קבוצה של 4 תלמידים",col:"#27AE60"},
 ];
 
-const APP_VERSION='3.5.0';
+const APP_VERSION='3.6.0';
 const APP_BUILD='04-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -7440,13 +7440,15 @@ function showIOSInstallGuide(){
 // ── FIREBASE AUTH & DB ─────────────────────────────────────────────────────
 let currentUser=null, currentUserData=null;
 
-// Force-fetch student count directly from Firebase server (no cache).
-// The trick: pass {source:'server'} isn't in RTDB v8, so we detach any
-// existing listener first — without an active listener, .get() always
-// goes to the network.
+// Force-fetch student count by completely flushing Firebase SDK in-memory cache.
+// db.goOffline()+goOnline() is the only reliable way to evict stale RTDB cache
+// in the v8 compat SDK — detaching listeners alone is not enough.
 async function refreshStudentCount(){
   try{
-    db.ref('users').off('value'); // remove any listener so .get() hits network
+    db.goOffline();
+    await new Promise(r=>setTimeout(r,300));
+    db.goOnline();
+    await new Promise(r=>setTimeout(r,600));
     const snap=await db.ref('users').get();
     let count=0;
     if(snap.exists())snap.forEach(c=>{const u=c.val();if(u&&u.role==='student'&&u.verified===true)count++;});
