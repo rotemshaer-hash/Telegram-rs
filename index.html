@@ -437,7 +437,7 @@ const ACHIEVEMENTS=[
   {id:6,em:"👥",ttl:"שיעור קבוצתי",desc:"לימדת קבוצה של 4 תלמידים",col:"#27AE60"},
 ];
 
-const APP_VERSION='3.0.0';
+const APP_VERSION='3.1.0';
 const APP_BUILD='04-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -7259,6 +7259,11 @@ auth.onAuthStateChanged(async user=>{
       const snap=await db.ref('users/'+user.uid).get();
       if(snap.exists()){
         currentUserData=snap.val();
+        // אם הרשומה קיימת אבל חסר שם — שחזר מ-Auth displayName ועדכן ב-DB
+        if(!currentUserData.name&&user.displayName&&!isAdmin()){
+          currentUserData={...currentUserData,name:user.displayName};
+          db.ref('users/'+user.uid+'/name').set(user.displayName).catch(()=>{});
+        }
       } else if(!S._registering&&!S._reRegistering&&!isAdmin()){
         // Auth account exists but no DB record (orphaned account from failed registration)
         // Auto-create a pending student record — appears in admin panel immediately
@@ -7373,6 +7378,8 @@ async function firebaseRegister(email,password,userData){
     showFireToast('⏳ יוצר חשבון...');
     S._registering=true;
     const cred=await auth.createUserWithEmailAndPassword(email,password);
+    // שמור displayName ב-Auth עצמו — כגיבוי לשם גם אם DB יאבד
+    if(userData.name) await cred.user.updateProfile({displayName:userData.name}).catch(()=>{});
     // שמירת פרטים ב-Database — אם נכשל, מוחקים את חשבון ה-Auth כדי למנוע "עצמות Auth"
     try{
       await db.ref('users/'+cred.user.uid).set({
