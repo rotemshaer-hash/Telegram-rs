@@ -2405,6 +2405,7 @@ function _updateAdminBadge(n){
   if(badge){badge.textContent=n;badge.style.display=n>0?'inline-flex':'none';}
 }
 
+let _adminActionInProgress=false; // מנגנון נגד race-condition בזמן אישור תלמיד
 // האזן לכל הממתינים בזמן אמת דרך נתיב adminAlerts
 function _startAdminAlertsListener(){
   if(!isAdmin())return;
@@ -2418,8 +2419,8 @@ function _startAdminAlertsListener(){
     }
     const n=adminAlertStudents.length+adminAlertPosts.length;
     _updateAdminBadge(n);
-    // אם הפאנל פתוח — רנדר מחדש עם הנתונים החדשים
-    if(document.getElementById('_adminPanel'))renderAdminPanel();
+    // אם הפאנל פתוח ואין פעולת אישור בביצוע — רנדר מחדש
+    if(document.getElementById('_adminPanel')&&!_adminActionInProgress)renderAdminPanel();
   });
 }
 
@@ -2515,35 +2516,52 @@ async function adminRejectBooking(teacherId,bookingId){
 }
 
 async function adminVerifyStudent(uid){
+  _adminActionInProgress=true;
   try{
-    await Promise.allSettled([
-      db.ref('users/'+uid+'/verified').set(true),
-      db.ref('users/'+uid+'/role').set('student'),
-      db.ref('users/'+uid+'/rejected').set(false),
-    ]);
+    // שלב 1: קרא את הנתונים הקיימים של התלמיד כדי לא לאבד שדות
+    const existingSnap=await db.ref('users/'+uid).get();
+    const existing=existingSnap.exists()?existingSnap.val():{};
+    // שלב 2: כתוב את כל הנתונים עם עדכון סטטוס — update (לא set) כדי לשמור שדות קיימים
+    await db.ref('users/'+uid).update({
+      ...existing,
+      verified:true,
+      role:'student',
+      rejected:false,
+      verifiedAt:Date.now()
+    });
     await db.ref('adminAlerts/students/'+uid).remove().catch(()=>{});
     await db.ref('notifications/'+uid).push({type:'studentApproved',read:false,createdAt:Date.now()}).catch(()=>{});
-    // שלח מייל להורה עם פרטי הכניסה
+    // שלב 3: קרא מחדש כדי לקבל הנתונים המעודכנים
+    const freshSnap=await db.ref('users/'+uid).get();
+    const freshUser=freshSnap.exists()?{uid,...freshSnap.val()}:null;
+    // שלב 4: עדכן adminAllUsers בזיכרון מיד (לפני loadAdminData)
+    if(freshUser){
+      const idx=adminAllUsers.findIndex(u=>u.uid===uid);
+      if(idx>=0)adminAllUsers[idx]=freshUser;
+      else adminAllUsers.push(freshUser);
+    }
+    realStats.students=adminAllUsers.filter(u=>u.role==='student').length;
+    // שלב 5: שלח מייל להורה
     try{
-      const uSnap=await db.ref('users/'+uid).get();
-      if(uSnap.exists()){
-        const u=uSnap.val();
-        if(u.parentEmail){
-          const roleHe=u.role==='teacher'?'מורה':'תלמיד/ה';
-          await sendEmail(u.parentEmail,
-            `✅ ${u.name||''} אושר/ה ל-Kidemy!`,
-            `שלום ${u.parentName||'הורה יקר'},\n\nילדך ${u.name||''} אושר/ה ל-Kidemy כ${roleHe}!\n\n` +
-            `🔑 פרטי הכניסה לאפליקציה:\n• שם משתמש: ${u.username||u.email?.split('@')[0]||''}\n• סיסמה: ${u.password||'(הסיסמה שנבחרה בהרשמה)'}\n\n` +
-            `🌐 כניסה לאפליקציה:\nhttps://kidemy-app.netlify.app\n\n` +
-            `📌 שמרו מייל זה לפרטי הכניסה.\n\n– צוות Kidemy`
-          ).catch(()=>{});
-        }
+      if(freshUser?.parentEmail){
+        await sendEmail(freshUser.parentEmail,
+          `✅ ${freshUser.name||''} אושר/ה ל-Kidemy!`,
+          `שלום ${freshUser.parentName||'הורה יקר'},\n\nילדך ${freshUser.name||''} אושר/ה ל-Kidemy כתלמיד/ה!\n\n` +
+          `🔑 פרטי הכניסה לאפליקציה:\n• שם משתמש: ${freshUser.username||freshUser.email?.split('@')[0]||''}\n• סיסמה: ${freshUser.password||'(הסיסמה שנבחרה בהרשמה)'}\n\n` +
+          `🌐 כניסה לאפליקציה:\nhttps://kidemy-app.netlify.app\n\n` +
+          `📌 שמרו מייל זה לפרטי הכניסה.\n\n– צוות Kidemy`
+        ).catch(()=>{});
       }
     }catch(emailErr){console.warn('Parent email error:',emailErr);}
-    const alertRec=adminAlertStudents.find(s=>s.uid===uid)||adminAllUsers.find(u=>u.uid===uid);
-    showFireToast('✅ התלמיד אושר — '+(alertRec?.name||uid));
-    await loadAdminData();renderAdminPanel();
-  }catch(e){showFireToast('❌ '+e.message);}
+    const name=freshUser?.name||existing?.name||adminAlertStudents.find(s=>s.uid===uid)?.name||uid;
+    showFireToast('✅ התלמיד אושר — '+name);
+    adminTab='students';
+    // שלב 6: טען מחדש כדי לסנכרן הכל
+    await loadAdminData();
+  }finally{
+    _adminActionInProgress=false;
+    renderAdminPanel();
+  }
 }
 async function adminRejectStudent(uid){
   if(!confirm('לדחות את הבקשה?\n\nהתלמיד יקבל הודעת "לא אושר" ויראה את פרטי יצירת הקשר עם המנהל.'))return;
@@ -3972,7 +3990,7 @@ function renderAdminTab(){
     const pendingFromAlerts=adminAlertStudents.filter(s=>!students.find(u=>u.uid===s.uid));
     const pendingStudents=[...students.filter(u=>u.verified===false),...pendingFromAlerts.map(s=>({...s,_fromAlert:true,role:'student'}))];
     const allStudents=[...students,...pendingFromAlerts.map(s=>({...s,_fromAlert:true,role:'student'}))];
-    let html=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><span style="font-size:12px;color:#64748B">סה"כ ${allStudents.length} תלמידים רשומים (כולל ${pendingStudents.length} ממתינים)</span><button onclick="adminDeleteAllStudents()" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#EF4444;border-radius:50px;padding:6px 12px;font-size:11px;font-weight:800;cursor:pointer">🗑 מחק כל התלמידים</button></div>`;
+    let html=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:6px"><span style="font-size:12px;color:#64748B">סה"כ ${allStudents.length} תלמידים (${pendingStudents.length} ממתינים)</span><div style="display:flex;gap:6px"><button onclick="adminSwitchTab('students')" style="background:rgba(20,184,166,0.1);border:1px solid rgba(20,184,166,0.3);color:#14B8A6;border-radius:50px;padding:6px 10px;font-size:11px;font-weight:800;cursor:pointer">🔄 רענן</button><button onclick="adminDeleteAllStudents()" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#EF4444;border-radius:50px;padding:6px 10px;font-size:11px;font-weight:800;cursor:pointer">🗑 מחק הכל</button></div></div>`;
     if(pendingStudents.length===0&&allStudents.length===0)return '<div style="text-align:center;padding:40px;color:#64748B"><div style="font-size:48px;margin-bottom:10px">🎒</div>אין עדיין תלמידים</div>';
     if(pendingStudents.length>0){html+=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><h4 style="font-weight:800;font-size:14px;color:#F59E0B;margin:0">⏳ ממתינים לאישור (${pendingStudents.length})</h4></div>`;}
     return html+allStudents.map(u=>`
