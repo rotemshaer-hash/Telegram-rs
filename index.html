@@ -39,7 +39,7 @@ const db   = firebase.database();
 <!-- iOS Apple Touch Icon -->
 <link rel="apple-touch-icon" href='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="%2314B8A6"/><stop offset="50" stop-color="%2306B6D4"/><stop offset="1" stop-color="%23A855F7"/></linearGradient></defs><rect width="180" height="180" rx="40" fill="url(%23g)"/><text x="90" y="125" font-size="100" text-anchor="middle">🎓</text></svg>'>
 <link rel="icon" type="image/svg+xml" href='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="%2314B8A6"/><stop offset="50" stop-color="%2306B6D4"/><stop offset="1" stop-color="%23A855F7"/></linearGradient></defs><rect width="64" height="64" rx="14" fill="url(%23g)"/><text x="32" y="46" font-size="38" text-anchor="middle">🎓</text></svg>'>
-<title>Kidemy – ילדים מלמדים ילדים</title>
+<title>Kidemy v2.7 – ילדים מלמדים ילדים</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&family=Rubik:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -437,8 +437,8 @@ const ACHIEVEMENTS=[
   {id:6,em:"👥",ttl:"שיעור קבוצתי",desc:"לימדת קבוצה של 4 תלמידים",col:"#27AE60"},
 ];
 
-const APP_VERSION='2.6.2';
-const APP_BUILD='02-06-2026';
+const APP_VERSION='2.7.0';
+const APP_BUILD='04-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
 let S={
@@ -738,6 +738,7 @@ function Splash(){
       <button onclick="go('about')" style="background:none;border:none;color:rgba(94,234,212,0.6);font-size:13px;cursor:pointer;font-weight:600;margin-top:4px">📖 הסיפור שלנו</button>
     </div>
     <p style="color:rgba(255,255,255,.3);font-size:11px;margin-top:24px;position:relative;z-index:1">מיועד לילדים 8–18 בליווי הורים</p>
+    <p style="color:rgba(94,234,212,0.35);font-size:10px;margin-top:6px;position:relative;z-index:1">v${APP_VERSION} · ${APP_BUILD}</p>
   </div>`;
 }
 
