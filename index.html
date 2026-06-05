@@ -434,7 +434,7 @@ const ACHIEVEMENTS=[
   {id:6,em:"👥",ttl:"שיעור קבוצתי",desc:"לימדת קבוצה של 4 תלמידים",col:"#27AE60"},
 ];
 
-const APP_VERSION='3.9.0';
+const APP_VERSION='3.9.1';
 const APP_BUILD='04-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -7471,7 +7471,8 @@ async function refreshStudentCount(){
     if(data&&data.error){console.error('[RSC] Firebase error:',data.error);return;}
     let count=0;
     if(data&&typeof data==='object')Object.values(data).forEach(u=>{if(u&&u.role==='student'&&u.verified===true)count++;});
-    console.log('[RSC] verified students from REST API:',count);
+    const totalRecords=data&&typeof data==='object'?Object.keys(data).length:0;
+    showFireToast('📊 DB ישיר: '+totalRecords+' רשומות, '+count+' מאושרים');
     realStats.students=count;
     document.querySelectorAll('[data-stat="students"]').forEach(el=>el.textContent=count);
   }catch(e){console.error('[RSC] fetch error:',e.message);}
