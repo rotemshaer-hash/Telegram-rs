@@ -434,7 +434,7 @@ const ACHIEVEMENTS=[
   {id:6,em:"👥",ttl:"שיעור קבוצתי",desc:"לימדת קבוצה של 4 תלמידים",col:"#27AE60"},
 ];
 
-const APP_VERSION='3.9.3';
+const APP_VERSION='3.9.4';
 const APP_BUILD='04-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -2793,6 +2793,19 @@ function adminFilterStudents(){
   listDiv.innerHTML=out;
 }
 
+async function adminDeleteDuplicate(uid,btnEl){
+  if(!isAdmin())return;
+  try{
+    await db.ref('users/'+uid).remove();
+    // סגור את חלון האבחון הנוכחי
+    const modal=btnEl.closest('[style*="position:fixed"]');
+    if(modal)modal.remove();
+    showFireToast('✅ כפילות נמחקה');
+    await loadAdminData();
+    renderAdminPanel();
+  }catch(e){showFireToast('❌ '+e.message);}
+}
+
 // סרוק את כל Firebase דרך REST API — עוקף קאש של Firebase SDK לחלוטין
 async function adminSearchAllFirebase(){
   if(!isAdmin())return;
@@ -2851,7 +2864,7 @@ async function adminSearchAllFirebase(){
                 ${u.blocked?'<span style="background:rgba(239,68,68,0.15);color:#EF4444;border-radius:50px;padding:2px 8px;font-size:10px">blocked</span>':''}
               </div>
               <div style="font-size:10px;color:#94A3B8;margin-top:4px;word-break:break-all">uid: ${u.uid}</div>
-              ${isDup?`<button onclick="db.ref('users/${u.uid}').remove().then(()=>{showFireToast('✅ כפילות נמחקה');adminSearchAllFirebase()})" style="margin-top:8px;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.4);color:#D97706;border-radius:50px;padding:5px 12px;font-size:11px;font-weight:800;cursor:pointer">🗑 מחק כפילות זו</button>`:''}
+              ${isDup?`<button onclick="adminDeleteDuplicate('${u.uid}',this)" style="margin-top:8px;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.4);color:#D97706;border-radius:50px;padding:5px 12px;font-size:11px;font-weight:800;cursor:pointer">🗑 מחק כפילות זו</button>`:''}
               ${!u.name?`<button onclick="db.ref('users/${u.uid}').remove().then(()=>{showFireToast('🗑 נמחק');loadAdminData().then(()=>renderAdminPanel())})" style="margin-top:8px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#EF4444;border-radius:50px;padding:5px 12px;font-size:11px;font-weight:800;cursor:pointer">🗑 מחק רשומה זו</button>`:''}
             </div>`;
           }).join('')}
