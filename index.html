@@ -24,6 +24,8 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db   = firebase.database();
+// אין כניסה אוטומטית — המשתמש חייב להזין פרטים בכל כניסה לאפליקציה
+auth.setPersistence(firebase.auth.Auth.Persistence.NONE);
 </script>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
@@ -434,7 +436,7 @@ const ACHIEVEMENTS=[
   {id:6,em:"👥",ttl:"שיעור קבוצתי",desc:"לימדת קבוצה של 4 תלמידים",col:"#27AE60"},
 ];
 
-const APP_VERSION='3.9.6';
+const APP_VERSION='4.0.0';
 const APP_BUILD='04-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -7507,6 +7509,12 @@ async function refreshStudentCount(){
 auth.onAuthStateChanged(async user=>{
   loadRealTeachers();
   if(user){
+    // אם המשתמש נכנס אוטומטית (session ישן לפני שהגדרנו NONE) — נתק מיד
+    if(!S._registering&&!S._loggingIn){
+      await auth.signOut().catch(()=>{});
+      go('login');
+      return;
+    }
     // בדוק אם המשתמש נחסם על ידי מנהל
     if(!S._registering){
       try{
@@ -7670,6 +7678,7 @@ async function firebaseRegister(email,password,userData){
   try{
     showFireToast('⏳ יוצר חשבון...');
     S._registering=true;
+    S._loggingIn=true; // כניסה ידנית (הרשמה) — לא לנתק
     const cred=await auth.createUserWithEmailAndPassword(email,password);
     // שמור displayName ב-Auth עצמו — כגיבוי לשם גם אם DB יאבד
     if(userData.name) await cred.user.updateProfile({displayName:userData.name}).catch(()=>{});
@@ -7921,6 +7930,7 @@ async function sendResetEmail(){
 async function firebaseLogin(usernameOrEmail,password){
   try{
     showFireToast('⏳ מתחבר...');
+    S._loggingIn=true; // מסמן שזו כניסה ידנית — לא לנתק ב-onAuthStateChanged
     // אם הוזן שם משתמש בלבד (לא מייל), הוסף @kidemy.app
     const email=usernameOrEmail.includes('@')?usernameOrEmail:usernameOrEmail.toLowerCase()+'@kidemy.app';
     await auth.signInWithEmailAndPassword(email,password);
