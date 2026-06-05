@@ -434,7 +434,7 @@ const ACHIEVEMENTS=[
   {id:6,em:"👥",ttl:"שיעור קבוצתי",desc:"לימדת קבוצה של 4 תלמידים",col:"#27AE60"},
 ];
 
-const APP_VERSION='3.9.1';
+const APP_VERSION='3.9.2';
 const APP_BUILD='04-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -7471,8 +7471,6 @@ async function refreshStudentCount(){
     if(data&&data.error){console.error('[RSC] Firebase error:',data.error);return;}
     let count=0;
     if(data&&typeof data==='object')Object.values(data).forEach(u=>{if(u&&u.role==='student'&&u.verified===true)count++;});
-    const totalRecords=data&&typeof data==='object'?Object.keys(data).length:0;
-    showFireToast('📊 DB ישיר: '+totalRecords+' רשומות, '+count+' מאושרים');
     realStats.students=count;
     document.querySelectorAll('[data-stat="students"]').forEach(el=>el.textContent=count);
   }catch(e){console.error('[RSC] fetch error:',e.message);}
@@ -7517,15 +7515,30 @@ auth.onAuthStateChanged(async user=>{
           db.ref('users/'+user.uid+'/name').set(user.displayName).catch(()=>{});
         }
       } else if(!S._registering&&!S._reRegistering&&!isAdmin()){
-        // Auth account exists but no DB record (orphaned account from failed registration)
-        // Auto-create a pending student record — appears in admin panel immediately
+        // Auth account exists but no DB record — check for duplicate email before creating
         const recoveredName=(user.displayName||user.email.split('@')[0]);
-        const autoData={uid:user.uid,email:user.email,name:recoveredName,role:'student',verified:false,createdAt:Date.now()};
-        await Promise.all([
-          db.ref('users/'+user.uid).set(autoData),
-          db.ref('adminAlerts/students/'+user.uid).set({name:recoveredName,email:user.email,createdAt:Date.now()})
-        ]).catch(()=>{});
-        currentUserData=autoData;
+        let hasDuplicate=false;
+        try{
+          const allSnap=await db.ref('users').orderByChild('email').equalTo(user.email).get();
+          if(allSnap.exists()){
+            // Another UID already has this email — merge into that record instead
+            let existingUid=null;
+            allSnap.forEach(c=>{existingUid=c.key;});
+            if(existingUid&&existingUid!==user.uid){
+              const existingData=allSnap.child(existingUid).val();
+              currentUserData={...existingData,uid:existingUid};
+              hasDuplicate=true;
+            }
+          }
+        }catch(e2){}
+        if(!hasDuplicate){
+          const autoData={uid:user.uid,email:user.email,name:recoveredName,role:'student',verified:false,createdAt:Date.now()};
+          await Promise.all([
+            db.ref('users/'+user.uid).set(autoData),
+            db.ref('adminAlerts/students/'+user.uid).set({name:recoveredName,email:user.email,createdAt:Date.now()})
+          ]).catch(()=>{});
+          currentUserData=autoData;
+        }
       }
 
       // ── בדיקת מורה שלא אושר עדיין ──────────────────────────────
