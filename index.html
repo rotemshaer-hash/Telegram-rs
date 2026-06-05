@@ -434,7 +434,7 @@ const ACHIEVEMENTS=[
   {id:6,em:"👥",ttl:"שיעור קבוצתי",desc:"לימדת קבוצה של 4 תלמידים",col:"#27AE60"},
 ];
 
-const APP_VERSION='3.9.4';
+const APP_VERSION='3.9.5';
 const APP_BUILD='04-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -2445,13 +2445,16 @@ async function loadAdminData(){
   if(!isAdmin()){showFireToast('🚫 אין הרשאת מנהל');return;}
   _adminDataLoading=true; // נעל listener
   try{
-    // קרא users + adminAlerts/students במקביל
-    const [usersSnap,alertsSnap]=await Promise.all([
-      db.ref('users').get(),
+    // קרא users דרך REST API (עוקף קאש SDK) + adminAlerts/students במקביל
+    const token=await firebase.auth().currentUser.getIdToken(false);
+    const [usersRes,alertsSnap]=await Promise.all([
+      fetch('https://kidemy-83a17-default-rtdb.firebaseio.com/users.json?auth='+token,{cache:'no-store'}),
       db.ref('adminAlerts/students').get()
     ]);
+    const usersData=await usersRes.json();
     const freshUsers=[];
-    if(usersSnap.exists())usersSnap.forEach(c=>freshUsers.push({uid:c.key,...c.val()}));
+    if(usersData&&typeof usersData==='object'&&!usersData.error)
+      Object.entries(usersData).forEach(([k,v])=>{if(v)freshUsers.push({uid:k,...v});});
     adminAllUsers=freshUsers;
     // סנכרן adminAlertStudents מ-Firebase ישירות
     adminAlertStudents=[];
@@ -4090,13 +4093,16 @@ async function adminSwitchTab(id){
     try{
       _adminDataLoading=true;
       showFireToast('⏳ טוען תלמידים...');
-      // קרא users + adminAlerts/students במקביל
-      const [s,al]=await Promise.all([
-        db.ref('users').get(),
+      // קרא users דרך REST API + adminAlerts/students במקביל
+      const _tok=await firebase.auth().currentUser.getIdToken(false);
+      const [_usersRes,al]=await Promise.all([
+        fetch('https://kidemy-83a17-default-rtdb.firebaseio.com/users.json?auth='+_tok,{cache:'no-store'}),
         db.ref('adminAlerts/students').get()
       ]);
+      const _usersData=await _usersRes.json();
       const fresh=[];
-      if(s.exists())s.forEach(c=>fresh.push({uid:c.key,...c.val()}));
+      if(_usersData&&typeof _usersData==='object'&&!_usersData.error)
+        Object.entries(_usersData).forEach(([k,v])=>{if(v)fresh.push({uid:k,...v});});
       adminAllUsers=fresh;
       adminAlertStudents=[];
       if(al.exists())al.forEach(c=>adminAlertStudents.push({uid:c.key,...c.val()}));
