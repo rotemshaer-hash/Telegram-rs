@@ -1714,6 +1714,16 @@ function showRatingDialog(bookingId,booking){
   };
 }
 
+// ביקורת ישירה מדף המורה (ללא הזמנה)
+async function submitDirectReview(teacherId){
+  if(!currentUser){showFireToast('יש להתחבר כדי לכתוב ביקורת');return;}
+  if(!S.ratingStars){showFireToast('אנא בחר דירוג כוכבים');return;}
+  const reviewText=document.getElementById('_reviewTextarea')?.value.trim()||'';
+  await submitReview(null,null,teacherId,S.ratingStars,reviewText,true);
+  S.ratingDone=true;
+  render();
+}
+
 // שמירת דירוג
 async function submitReview(bookingId,booking,ratedId,stars,review,isStudent){
   try{
@@ -1730,7 +1740,7 @@ async function submitReview(bookingId,booking,ratedId,stars,review,isStudent){
       createdAt:Date.now()
     };
     await db.ref('reviews/'+ratedId).push(reviewData);
-    await db.ref('bookings/'+bookingId+'/'+(isStudent?'studentRating':'teacherRating')).set(stars);
+    if(bookingId)await db.ref('bookings/'+bookingId+'/'+(isStudent?'studentRating':'teacherRating')).set(stars);
     // עדכון ממוצע מורה אם תלמיד דירג — רק ביקורות מאושרות
     if(isStudent){
       const allReviewsSnap=await db.ref('reviews/'+ratedId).get();
@@ -5387,8 +5397,11 @@ function Teacher(){
       <div style="display:flex;gap:10px;justify-content:center;margin-bottom:28px">
         ${[1,2,3,4,5].map(i=>`<span class="rstar ${S.ratingStars>=i?"on":""}" onclick="S.ratingStars=${i};render()">${S.ratingStars>=i?"⭐":"☆"}</span>`).join("")}
       </div>
-      <textarea class="inp" placeholder="ספר לנו על השיעור (אופציונלי)..." style="min-height:90px;resize:none;margin-bottom:16px;border-radius:16px"></textarea>
-      <button class="btn bg" onclick="S.ratingDone=true;render()">✅ שלח דירוג</button>
+      <textarea id="_reviewTextarea" class="inp" placeholder="ספר לנו על השיעור (אופציונלי)..." style="min-height:90px;resize:none;margin-bottom:12px;border-radius:16px"></textarea>
+      <div style="background:rgba(20,184,166,0.08);border:1px solid rgba(20,184,166,0.25);border-radius:12px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:#0F766E;line-height:1.5">
+        ⏳ הביקורת תופיע בדף המורה רק לאחר אישור מנהל
+      </div>
+      <button class="btn bg" onclick="submitDirectReview('${t.id}')">✅ שלח דירוג</button>
       <button onclick="S.ratingT=null;render()" style="background:none;border:none;color:${C.muted};font-size:13px;margin-top:12px;cursor:pointer;display:block;width:100%">דלג</button>
     </div>
   </div>`;
