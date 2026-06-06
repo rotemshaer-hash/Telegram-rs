@@ -213,9 +213,6 @@ input,textarea,select{font-family:inherit;-webkit-appearance:none;appearance:non
 .you-dot{width:14px;height:14px;border-radius:50%;background:var(--s);border:2.5px solid #fff;box-shadow:var(--gs)}
 .you-ring{position:absolute;top:50%;left:50%;border-radius:50%;border:2px solid rgba(20,184,166,.3);animation:ring 2s infinite;transform:translate(-50%,-50%)}
 
-/* SOS */
-.sos{background:linear-gradient(135deg,#E74C3C,#C0392B);color:#fff;border:none;border-radius:50px;padding:12px 18px;font-size:13px;font-weight:900;cursor:pointer;display:flex;align-items:center;gap:7px;box-shadow:0 4px 18px rgba(231,76,60,.4)}
-
 /* RATE STARS */
 .rstar{font-size:38px;cursor:pointer;transition:transform .15s;opacity:.25}
 .rstar.on{opacity:1}
@@ -586,59 +583,6 @@ function shareTeacher(t){
   );
 }
 
-function sendSOS(teacherName){
-  const parentPhone=currentUserData?.parentPhone||'';
-  const userName=currentUserData?.name||currentUser?.email?.split('@')[0]||'ילד';
-  const msg=`🆘 התראת SOS מ-Kidemy!\n\n${userName} שלח/ה התראת מצוקה בזמן שיעור עם ${teacherName||'מורה'}.\n\nאנא צור/י קשר מיד!\n\nזמן: ${new Date().toLocaleString('he-IL')}`;
-  
-  // שמירה כ-global כדי למנוע בעיות עם תווים עבריים ב-onclick
-  window._sosMsg=msg;
-  window._sosPhone=parentPhone;
-  
-  if(currentUser){
-    db.ref('sos').push({
-      userId:currentUser.uid,
-      userName,
-      teacherName:teacherName||'',
-      timestamp:Date.now()
-    }).catch(()=>{});
-  }
-  
-  if(parentPhone){
-    openWhatsApp(parentPhone,msg);
-    showFireToast('🆘 SOS נשלח להורה!');
-  } else {
-    // פתח דיאלוג עם מספר לממלא
-    const ov=document.createElement('div');
-    ov.id='_sosOv';
-    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:24px;direction:rtl;backdrop-filter:blur(8px)';
-    ov.innerHTML=`
-      <div style="background:#fff;border-radius:24px;padding:24px;width:100%;max-width:360px;box-shadow:0 20px 60px rgba(0,0,0,0.4)">
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
-          <div style="width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,#E74C3C,#C0392B);display:flex;align-items:center;justify-content:center;font-size:26px">🆘</div>
-          <h3 style="font-weight:900;font-size:18px;margin:0;color:#0F1A1F">שליחת SOS</h3>
-        </div>
-        <div style="background:rgba(231,76,60,0.06);border:1px solid rgba(231,76,60,0.2);border-radius:14px;padding:14px;margin-bottom:14px;font-size:12px;color:#475569;line-height:1.6">
-          📋 ההודעה תישלח:<br>
-          <strong style="color:#E74C3C">🆘 SOS מ-Kidemy!</strong><br>
-          משתמש: <strong>${userName}</strong><br>
-          שיעור עם: <strong>${teacherName||'מורה'}</strong><br>
-          זמן: ${new Date().toLocaleString('he-IL')}
-        </div>
-        <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:6px">📱 מספר טלפון לשליחה</label>
-        <input id="_sosPhone" type="tel" value="${parentPhone}" placeholder="050-1234567" 
-          style="width:100%;border:1.5px solid rgba(231,76,60,0.3);border-radius:12px;padding:12px;font-size:15px;direction:ltr;text-align:left;outline:none;box-sizing:border-box;margin-bottom:14px;font-family:inherit">
-        <div style="display:flex;gap:10px">
-          <button onclick="document.getElementById('_sosOv').remove()" 
-            style="flex:1;background:rgba(100,116,139,0.1);border:none;border-radius:50px;padding:13px;font-size:13px;font-weight:700;color:#64748B;cursor:pointer">ביטול</button>
-          <button onclick="(function(){const ph=document.getElementById('_sosPhone').value;if(!ph||ph.replace(/\\D/g,'').length<9){showFireToast('❌ מספר לא תקין');return;}openWhatsApp(ph,window._sosMsg);document.getElementById('_sosOv').remove();showFireToast('🆘 SOS נשלח!');})();"
-            style="flex:2;background:linear-gradient(135deg,#E74C3C,#C0392B);border:none;color:#fff;border-radius:50px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">📱 שלח WhatsApp</button>
-        </div>
-      </div>`;
-    document.body.appendChild(ov);
-    ov.onclick=e=>{if(e.target===ov)ov.remove();};
-  }
-}
 function shareApp(){
   openShare(
     "Kidemy – ילדים מלמדים ילדים!",
@@ -4048,7 +3992,7 @@ async function resetSystem(){
 
     // מחק את כל הנתונים מלבד המשתמש הנוכחי
     const pathsToDelete=['teachers','schedules','videos','teacherBookings','bookings',
-      'communityPosts','notifications','sos','reports','userChats','messages',
+      'communityPosts','notifications','reports','userChats','messages',
       'pendingCategories','reviews'];
 
     for(const path of pathsToDelete){
@@ -5527,11 +5471,8 @@ function Teacher(){
         </div>`;
       })()}
 
-      <!-- SOS + Share row -->
-      <div style="display:flex;gap:10px;margin-bottom:16px">
-        <button class="sos" onclick="sendSOS('${(t.name||'').replace(/'/g,"\\'").replace(/"/g,'&quot;')}')">🆘 כפתור SOS</button>
-        <button onclick="shareTeacher(S.teacher)" style="background:linear-gradient(135deg,#833AB4,#FD1D1D,#F77737);color:#fff;border:none;border-radius:50px;padding:12px 20px;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:7px;white-space:nowrap;flex:1;justify-content:center">📤 שתף מורה</button>
-      </div>
+      <!-- Share -->
+      <button onclick="shareTeacher(S.teacher)" style="width:100%;background:linear-gradient(135deg,#833AB4,#FD1D1D,#F77737);color:#fff;border:none;border-radius:50px;padding:12px 20px;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;margin-bottom:16px">📤 שתף מורה</button>
 
       ${currentUser&&t.id!==currentUser?.uid?`<button onclick="S.chat={otherUid:'${t.id}',otherName:'${(t.name||'').replace(/'/g,"\\'")}'}; go('chat')" style="width:100%;background:rgba(6,182,212,0.1);border:1.5px solid rgba(6,182,212,0.3);color:#06B6D4;border-radius:50px;padding:13px;font-weight:800;font-size:14px;cursor:pointer;margin-bottom:14px;display:flex;align-items:center;justify-content:center;gap:8px">💬 שלח הודעה פרטית</button>`:''}
 
@@ -5762,7 +5703,6 @@ function Messages(){
       <div style="display:flex;justify-content:space-between;align-items:center;position:relative;z-index:1">
         <div style="display:flex;gap:8px;align-items:center">
           <button onclick="back()" style="background:rgba(255,255,255,.2);border:none;color:#fff;font-size:14px;cursor:pointer;border-radius:50px;padding:8px 14px;font-weight:700">← חזור</button>
-          <button class="sos" style="font-size:12px;padding:10px 14px" onclick="sendSOS('')">🆘 SOS</button>
         </div>
         <div style="text-align:right"><h2 style="font-size:22px;font-weight:900;margin:0">💬 השיעורים שלי</h2><p style="color:rgba(255,255,255,.85);font-size:12px;margin:4px 0 0">${approved.length} שיעורים פעילים</p></div>
       </div>
@@ -5868,7 +5808,6 @@ function Chat(){
       <div style="width:42px;height:42px;border-radius:14px;background:#14B8A6 20;display:flex;align-items:center;justify-content:center;font-size:22px;background:rgba(20,184,166,0.15)">👤</div>
       <div><div style="font-weight:800;font-size:15px">${c.otherName||c.name||'משתמש'}</div><span style="font-size:11px;padding:3px 9px;background:rgba(16,185,129,0.15);color:#10B981;border-radius:50px;font-weight:700">פעיל</span></div>
       <div style="margin-right:auto;display:flex;gap:8px">
-        <button class="sos" style="font-size:11px;padding:8px 12px" onclick="alert('🆘!')">🆘</button>
       </div>
     </div>
     <div style="background:#FFF8E1;padding:7px 14px;display:flex;gap:7px;align-items:center"><span>👁</span><span style="font-size:11px;color:#856404;font-weight:600">ההורים יכולים לצפות בשיחה זו</span></div>
@@ -6458,7 +6397,6 @@ function About(){
       {e:'📊',t:'דשבורד הורים',d:'בכל רגע ניתן לראות את כל הפעילות – שיעורים, הוצאות, דירוגים.'},
       {e:'💬',t:'צפייה בצ\'אטים',d:'כל ההתכתבויות בין ילדכם למורה גלויות לצפייה בדשבורד ההורים.'},
       {e:'💰',t:'אישור תשלומים',d:'הורה יכול להיות האחראי על כל תשלום ולקבל אישור על כל הזמנה.'},
-      {e:'🚨',t:'כפתור SOS',d:'בכל שיעור יש כפתור חירום שמוביל מיד להתראה אליכם ולמנהל Kidemy.'},
     ].map(s=>`
       <div class="card" style="display:flex;gap:12px;align-items:flex-start;margin-bottom:10px">
         <div style="font-size:28px;width:40px;text-align:center;flex-shrink:0">${s.e}</div>
@@ -6485,7 +6423,7 @@ function About(){
 
   if(tab==="values") content=`
     <p style="color:${C.muted};font-size:14px;margin:0 0 16px;line-height:1.7">5 עקרונות שמנחים כל החלטה שאנחנו מקבלים:</p>
-    ${[["🛡","בטיחות מעל הכל","אימות ת.ז., נוכחות הורים, ניטור שיחות ו-SOS בכל שלב."],["💸","נגישות כלכלית","ילד מכל שכבה יוכל ללמוד. מחירים שנקבעים על ידי הילדים."],["🌟","העצמת ילדים","מורה צעיר רוכש ביטחון, ניסיון ניהולי, והכנסה אמיתית."],["🤝","קהילה בטוחה","פורום מנוהל, מסונן, עם הורים שותפים בכל שלב."],["📈","איכות ושקיפות","דירוגים הדדיים, תגים, ביקורות אמיתיות לכל מורה."]].map(([e,t,d])=>`<div class="card" style="display:flex;gap:14px;align-items:flex-start"><div style="width:50px;height:50px;border-radius:14px;flex-shrink:0;background:rgba(20,184,166,.08);display:flex;align-items:center;justify-content:center;font-size:26px">${e}</div><div><h4 style="margin:0 0 5px;font-weight:900;font-size:15px">${t}</h4><p style="margin:0;font-size:13px;color:${C.muted};line-height:1.6">${d}</p></div></div>`).join("")}`;
+    ${[["🛡","בטיחות מעל הכל","אימות ת.ז., נוכחות הורים וניטור שיחות בכל שלב."],["💸","נגישות כלכלית","ילד מכל שכבה יוכל ללמוד. מחירים שנקבעים על ידי הילדים."],["🌟","העצמת ילדים","מורה צעיר רוכש ביטחון, ניסיון ניהולי, והכנסה אמיתית."],["🤝","קהילה בטוחה","פורום מנוהל, מסונן, עם הורים שותפים בכל שלב."],["📈","איכות ושקיפות","דירוגים הדדיים, תגים, ביקורות אמיתיות לכל מורה."]].map(([e,t,d])=>`<div class="card" style="display:flex;gap:14px;align-items:flex-start"><div style="width:50px;height:50px;border-radius:14px;flex-shrink:0;background:rgba(20,184,166,.08);display:flex;align-items:center;justify-content:center;font-size:26px">${e}</div><div><h4 style="margin:0 0 5px;font-weight:900;font-size:15px">${t}</h4><p style="margin:0;font-size:13px;color:${C.muted};line-height:1.6">${d}</p></div></div>`).join("")}`;
 
   if(tab==="roadmap"){
     const steps=[{e:"💡",t:"הרעיון נולד",d:"הבנו שחוגים יקרים ושכישרון ילדים יכול לשנות את זה.",yr:"2025",done:true},{e:"🛠",t:"בניית הפרוטוטייפ",d:"פיתוח הפלטפורמה: הרשמה בטוחה, מורים, קהילה, לידרבורד.",yr:"2025",done:true},{e:"🚀",t:"פיילוט ב-5 ערים",d:"השקה עם 50 מורים ו-200 תלמידים.",yr:"2026",done:false},{e:"🎯",t:"10,000 משתמשים",d:"קהילה צומחת של ילדים שמלמדים ולומדים ברחבי הארץ.",yr:"2026",done:false},{e:"🌍",t:"הרחבה לחו\"ל",d:"השקה לעולם הדובר עברית ואחר כך שפות נוספות.",yr:"2027",done:false}];
