@@ -481,8 +481,8 @@ let S={
 // ─── שמירת מצב הרשמה בין רענונים ────────────────────────────────────────────
 function _saveRegSession(){
   try{
+    // safetyConfirmed לא נשמר — חייב לקרוא בכל הרשמה מחדש
     sessionStorage.setItem('_kidReg',JSON.stringify({
-      safetyConfirmed:S.safetyConfirmed||false,
       parentRegData:S.parentRegData||null
     }));
   }catch(e){}
@@ -492,7 +492,6 @@ function _restoreRegSession(){
     const raw=sessionStorage.getItem('_kidReg');
     if(!raw)return;
     const d=JSON.parse(raw);
-    if(d.safetyConfirmed)S.safetyConfirmed=true;
     if(d.parentRegData)S.parentRegData=d.parentRegData;
   }catch(e){}
 }
