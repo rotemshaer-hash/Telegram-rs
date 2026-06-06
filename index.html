@@ -1021,9 +1021,16 @@ function Register(){
       </div>
 
       <!-- Role selection -->
-      <div style="display:flex;gap:10px;margin-bottom:18px">
-        <button id="roleStudent" onclick="selectRole('student')" style="flex:1;background:linear-gradient(135deg,#14B8A6 0%,#06B6D4 50%,#A855F7 100%);color:#fff;border:none;border-radius:16px;padding:14px;font-weight:800;font-size:14px;cursor:pointer">🎒 תלמיד</button>
-        <button id="roleTeacher" onclick="selectRole('teacher')" style="flex:1;background:rgba(20,184,166,0.08);color:#14B8A6;border:2px solid rgba(20,184,166,0.2);border-radius:16px;padding:14px;font-weight:800;font-size:14px;cursor:pointer">🎓 מורה</button>
+      <div style="margin-bottom:14px">
+        <p style="font-size:13px;font-weight:800;color:#0F1A1F;margin:0 0 10px;text-align:right">אני רוצה להירשם כ:</p>
+        <div style="display:flex;gap:10px;margin-bottom:10px">
+          <button id="roleStudent" onclick="selectRole('student')" style="flex:1;background:linear-gradient(135deg,#14B8A6 0%,#06B6D4 50%,#A855F7 100%);color:#fff;border:none;border-radius:16px;padding:14px;font-weight:800;font-size:14px;cursor:pointer">🎒 תלמיד</button>
+          <button id="roleTeacher" onclick="selectRole('teacher')" style="flex:1;background:rgba(20,184,166,0.08);color:#14B8A6;border:2px solid rgba(20,184,166,0.2);border-radius:16px;padding:14px;font-weight:800;font-size:14px;cursor:pointer">🎓 מורה</button>
+        </div>
+        <div style="background:rgba(245,158,11,0.08);border:1.5px solid rgba(245,158,11,0.25);border-radius:14px;padding:11px 14px;font-size:12px;color:#92400E;line-height:1.7;direction:rtl">
+          ⚠️ <strong>שים לב:</strong> כל חשבון הוא תלמיד <strong>או</strong> מורה — לא שניהם.<br>
+          אם אתה רוצה להיות גם תלמיד וגם מורה, תצטרך <strong>לפתוח חשבון נפרד</strong> עם שם משתמש שונה.
+        </div>
       </div>
 
       <!-- פרטי התלמיד/מורה -->
