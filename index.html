@@ -5581,17 +5581,32 @@ function Booking(){
     else avail=[];
   }
 
+  // ── סמן אילו ימים יש בהם שעות פנויות ──────────────────────────
+  const dayHasSlots=upcoming.map(d=>{
+    if(!hasSchedule)return true; // אין לוח — כל הימים "פנויים" (ברירת מחדל)
+    return ALL_H.some(h=>teacherSchedule[d.idx+'_'+h]);
+  });
+
   let body="";
   if(step===1) body=`
     <h3 style="font-weight:900;font-size:20px;margin-bottom:4px">📅 בחר תאריך</h3>
-    <p style="color:${C.muted};font-size:13px;margin-bottom:14px">14 הימים הקרובים</p>
+    <p style="color:${C.muted};font-size:13px;margin-bottom:10px">14 הימים הקרובים</p>
+    ${hasSchedule?`<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;font-size:12px;direction:rtl">
+      <span style="display:flex;align-items:center;gap:4px;color:#10B981;font-weight:700"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#10B981"></span>יש שעות פנויות</span>
+      <span style="display:flex;align-items:center;gap:4px;color:#94A3B8;font-weight:700"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#CBD5E1"></span>אין שעות</span>
+    </div>`:''}
     <div style="display:flex;gap:7px;margin-bottom:22px;overflow-x:auto;padding-bottom:6px">
-      ${upcoming.map((d,i)=>`
-        <button class="day-btn ${S.bookDayIdx===i?"on":""}" onclick="S.bookDayIdx=${i};S.bookTime=null;render()" style="flex-shrink:0;width:52px;padding:10px 4px">
+      ${upcoming.map((d,i)=>{
+        const sel=S.bookDayIdx===i;
+        const hasSl=dayHasSlots[i];
+        return `<button class="day-btn ${sel?"on":""}" onclick="S.bookDayIdx=${i};S.bookTime=null;render()"
+          style="flex-shrink:0;width:52px;padding:10px 4px;position:relative;${!hasSl&&!sel?'opacity:0.45;':''}${hasSl&&!sel?'border:2px solid rgba(16,185,129,0.5);background:rgba(16,185,129,0.07);':''}">
           <div style="font-size:11px;opacity:.7">${d.label}</div>
           <div style="font-weight:900;font-size:18px;margin:4px 0">${d.num}</div>
           <div style="font-size:10px;opacity:.6">${d.mon}</div>
-        </button>`).join("")}
+          ${hasSl&&!sel?`<div style="position:absolute;bottom:5px;left:50%;transform:translateX(-50%);width:6px;height:6px;border-radius:50%;background:#10B981"></div>`:''}
+        </button>`;
+      }).join("")}
     </div>
 
     ${selDay?`
