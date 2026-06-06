@@ -1736,10 +1736,12 @@ async function submitDirectReview(teacherId){
       approved:false,
       createdAt:Date.now()
     };
-    // use push().set() so we can read back the new key
+    // write to reviews/{teacherId} — main path
     const newRef=db.ref('reviews/'+teacherId).push();
     await newRef.set(reviewData);
-    // verify the write succeeded by reading it back
+    // ALSO write to pendingReviews/ — flat admin queue, guaranteed readable
+    await db.ref('pendingReviews').push({...reviewData, reviewId:newRef.key});
+    // verify main write succeeded
     const verify=await newRef.get();
     if(!verify.exists()){
       throw new Error('הביקורת לא נשמרה — בדוק הרשאות Firebase');
@@ -2556,14 +2558,32 @@ async function loadAdminData(){
       });
     }
     adminAllBookings.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
-    // טען ביקורות מכל המורים
+    // טען ביקורות מכל המורים (reviews/) + תור גיבוי (pendingReviews/)
     adminAllReviews=[];
+    const seenIds=new Set();
     const reviewsSnap=await db.ref('reviews').get();
     if(reviewsSnap.exists()){
       reviewsSnap.forEach(teacherEntry=>{
         const tid=teacherEntry.key;
         const tName=adminAllTeachers.find(t=>t.uid===tid)?.name||'מורה';
-        teacherEntry.forEach(r=>adminAllReviews.push({id:r.key,teacherId:tid,teacherName:tName,...r.val()}));
+        teacherEntry.forEach(r=>{
+          const entry={id:r.key,teacherId:tid,teacherName:tName,...r.val()};
+          adminAllReviews.push(entry);
+          seenIds.add(r.key);
+        });
+      });
+    }
+    // גיבוי: pendingReviews/ — ביקורות ישירות שאולי לא הגיעו ל-reviews/
+    const pendingSnap=await db.ref('pendingReviews').get();
+    if(pendingSnap.exists()){
+      pendingSnap.forEach(r=>{
+        const rv=r.val();
+        const originalId=rv.reviewId||r.key;
+        if(!seenIds.has(originalId)&&!seenIds.has(r.key)){
+          const tName=adminAllTeachers.find(t=>t.uid===rv.to)?.name||'מורה';
+          adminAllReviews.push({id:r.key,teacherId:rv.to,teacherName:tName,...rv});
+          seenIds.add(r.key);
+        }
       });
     }
     adminAllReviews.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
@@ -4188,6 +4208,9 @@ async function adminApproveReview(reviewId,teacherId){
   if(!isAdmin())return;
   try{
     await db.ref('reviews/'+teacherId+'/'+reviewId+'/approved').set(true);
+    // clean matching entry in pendingReviews backup queue
+    const pSnap=await db.ref('pendingReviews').get();
+    if(pSnap.exists()){const dels=[];pSnap.forEach(r=>{const v=r.val();if(v.reviewId===reviewId||r.key===reviewId)dels.push(db.ref('pendingReviews/'+r.key).remove());});await Promise.all(dels);}
     const allSnap=await db.ref('reviews/'+teacherId).get();
     let total=0,count=0;
     if(allSnap.exists())allSnap.forEach(r=>{const rv=r.val();if(rv.type==='studentToTeacher'&&rv.approved===true){total+=rv.stars;count++;}});
@@ -4204,6 +4227,9 @@ async function adminRejectReview(reviewId,teacherId){
   if(!confirm('למחוק את הביקורת?'))return;
   try{
     await db.ref('reviews/'+teacherId+'/'+reviewId).remove();
+    // clean matching entry in pendingReviews backup queue
+    const pSnap=await db.ref('pendingReviews').get();
+    if(pSnap.exists()){const dels=[];pSnap.forEach(r=>{const v=r.val();if(v.reviewId===reviewId||r.key===reviewId)dels.push(db.ref('pendingReviews/'+r.key).remove());});await Promise.all(dels);}
     showFireToast('✅ ביקורת נמחקה');
     await loadAdminData();
     renderAdminPanel();
