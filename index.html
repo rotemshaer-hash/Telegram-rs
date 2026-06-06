@@ -1721,13 +1721,41 @@ function showRatingDialog(bookingId,booking){
 async function submitDirectReview(teacherId){
   if(!currentUser){showFireToast('יש להתחבר כדי לכתוב ביקורת');return;}
   if(!S.ratingStars){showFireToast('אנא בחר דירוג כוכבים');return;}
+  if(!teacherId){showFireToast('שגיאה: מזהה מורה חסר');return;}
   const reviewText=document.getElementById('_reviewTextarea')?.value.trim()||'';
+  showFireToast('⏳ שומר ביקורת...');
   try{
-    await submitReview(null,null,teacherId,S.ratingStars,reviewText,true);
+    // build review — no null fields (Firebase rules may reject null bookingId)
+    const reviewData={
+      stars:S.ratingStars,
+      review:reviewText,
+      from:currentUser.uid,
+      fromName:currentUserData?.name||currentUser.email.split('@')[0],
+      to:teacherId,
+      type:'studentToTeacher',
+      approved:false,
+      createdAt:Date.now()
+    };
+    // use push().set() so we can read back the new key
+    const newRef=db.ref('reviews/'+teacherId).push();
+    await newRef.set(reviewData);
+    // verify the write succeeded by reading it back
+    const verify=await newRef.get();
+    if(!verify.exists()){
+      throw new Error('הביקורת לא נשמרה — בדוק הרשאות Firebase');
+    }
+    // update teacher rating (only approved count — this review is not approved yet)
+    const allSnap=await db.ref('reviews/'+teacherId).get();
+    let total=0,count=0;
+    if(allSnap.exists())allSnap.forEach(r=>{const rv=r.val();if(rv&&rv.type==='studentToTeacher'&&rv.approved===true){total+=rv.stars;count++;}});
+    await db.ref('teachers/'+teacherId+'/rating').set(count>0?parseFloat((total/count).toFixed(1)):0);
+    await db.ref('teachers/'+teacherId+'/reviews').set(count);
+    showFireToast('✅ הביקורת נשלחה לאישור מנהל — תופיע בקרוב!');
     S.ratingDone=true;
     render();
   }catch(e){
-    // error already shown by submitReview
+    console.error('[submitDirectReview] error:',e);
+    alert('❌ שגיאה בשמירת הביקורת:\n\n'+e.message+'\n\nנסה שוב או פנה לתמיכה.');
   }
 }
 
