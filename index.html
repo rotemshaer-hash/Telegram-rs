@@ -5622,11 +5622,6 @@ function Teacher(){
         const ago=ts=>{const m=Math.round((Date.now()-ts)/60000);return m<60?m+' דק\'':m<1440?Math.floor(m/60)+' שע\'':Math.floor(m/1440)+' ימים';};
         return `<div id="_reviewsSection" class="card" style="padding:16px;margin-bottom:16px">
           ${(()=>{
-            if(!currentUser||currentUser.uid===t.id)return '';
-            const myPending=window._myPendingReview;
-            const myApproved=publicTeacherReviews.some(r=>r.from===currentUser.uid);
-            // show pending notice only when the user has NO approved review yet
-            if(myPending&&!myApproved)return `<div style="background:rgba(245,158,11,0.08);border:1.5px solid rgba(245,158,11,0.3);border-radius:12px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#92400E;font-weight:700">⏳ הביקורת שלך ממתינה לאישור מנהל ותופיע בקרוב</div>`;
             return '';
           })()}
           ${!publicTeacherReviews.length?`<div style="text-align:center;padding:20px 0;color:#94A3B8;font-size:13px">אין ביקורות מאושרות עדיין</div>`:`
