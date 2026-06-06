@@ -512,7 +512,12 @@ function go(scr,extra={}){
   }
   if(scr==='teacher'&&(extra.teacher||S.teacher)){
     const tid=(extra.teacher||S.teacher)?.id;
-    if(tid){loadPublicTeacherVideos(tid);loadPublicTeacherReviews(tid);}
+    if(tid){
+      publicTeacherReviews=[];
+      window._myPendingReview=null;
+      loadPublicTeacherVideos(tid);
+      loadPublicTeacherReviews(tid).then(()=>render());
+    }
   }
   if(scr==='booking'&&(extra.teacher||S.teacher)){
     const tid=(extra.teacher||S.teacher)?.id;
@@ -5406,8 +5411,8 @@ function Teacher(){
   if(S.ratingDone) return `<div class="screen" style="display:flex;align-items:center;justify-content:center;min-height:100dvh;background:linear-gradient(165deg,#CCFBF1 0%,#A5F3FC 50%,#7DD3FC 100%)">
     <div style="text-align:center;padding:32px">
       <div style="font-size:72px;margin-bottom:18px">🙏</div>
-      <h3 style="font-weight:900;font-size:22px;margin-bottom:8px">תודה על הדירוג!</h3>
-      <p style="color:${C.muted};font-size:14px;line-height:1.7">הדירוג שלך יעזור לתלמידים אחרים לבחור מורה.</p>
+      <h3 style="font-weight:900;font-size:22px;margin-bottom:8px">תודה על הביקורת והדירוג!</h3>
+      <p style="color:${C.muted};font-size:14px;line-height:1.7">הביקורת והדירוג שלך יעזרו לתלמידים אחרים לבחור מורה.<br>היא תופיע לאחר אישור מנהל.</p>
       <button class="btn bp" style="margin-top:24px;max-width:240px" onclick="S.ratingT=null;S.ratingDone=false;S.ratingStars=0;go('home')">חזור לבית</button>
     </div>
   </div>`;
