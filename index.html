@@ -1722,9 +1722,13 @@ async function submitDirectReview(teacherId){
   if(!currentUser){showFireToast('יש להתחבר כדי לכתוב ביקורת');return;}
   if(!S.ratingStars){showFireToast('אנא בחר דירוג כוכבים');return;}
   const reviewText=document.getElementById('_reviewTextarea')?.value.trim()||'';
-  await submitReview(null,null,teacherId,S.ratingStars,reviewText,true);
-  S.ratingDone=true;
-  render();
+  try{
+    await submitReview(null,null,teacherId,S.ratingStars,reviewText,true);
+    S.ratingDone=true;
+    render();
+  }catch(e){
+    // error already shown by submitReview
+  }
 }
 
 // שמירת דירוג
@@ -1759,11 +1763,14 @@ async function submitReview(bookingId,booking,ratedId,stars,review,isStudent){
       await db.ref('teachers/'+ratedId+'/reviews').set(count);
     }
     showFireToast('✅ הביקורת נשלחה לאישור מנהל — תופיע בקרוב!');
-    await loadStudentBookings();
-    if(currentUserData?.role==='teacher')await loadTeacherBookings();
-    render();
+    if(bookingId){
+      await loadStudentBookings();
+      if(currentUserData?.role==='teacher')await loadTeacherBookings();
+      render();
+    }
   }catch(e){
     showFireToast('❌ שגיאה: '+e.message);
+    throw e;
   }
 }
 
@@ -4087,10 +4094,12 @@ function showAdminPanel(forceTab=null){
       const pendingPosts=adminAlertPosts.length||adminAllPosts.filter(p=>p.status==='pending'||!p.status).length;
       const hasPendingTeachers=(adminAllTeachers.filter(t=>!t.verified).length+adminIncompleteTeachers.length)>0;
       const hasPendingVideos=adminAllVideos.filter(v=>!v.approved&&v.approved!=='rejected').length>0;
+      const hasPendingReviews=adminAllReviews.filter(r=>!r.approved).length>0;
       if(pendingStudents>0) adminTab='students';
       else if(pendingPosts>0) adminTab='posts';
       else if(hasPendingTeachers) adminTab='teachers';
       else if(hasPendingVideos) adminTab='videos';
+      else if(hasPendingReviews) adminTab='reviews';
     }
     renderAdminPanel();
   });
