@@ -283,6 +283,19 @@ const TEACHERS=[]; // נטען מ-Firebase
 let teachersLoaded=false;
 let realStats={teachers:0,students:0,cities:0,categories:16};
 let publicTeacherVideos=[];
+let publicTeacherReviews=[];
+async function loadPublicTeacherReviews(teacherId){
+  if(!teacherId)return;
+  try{
+    const snap=await db.ref('reviews/'+teacherId).get();
+    publicTeacherReviews=[];
+    if(snap.exists())snap.forEach(c=>{
+      const r=c.val();
+      if(r&&r.type==='studentToTeacher')publicTeacherReviews.push({id:c.key,...r});
+    });
+    publicTeacherReviews.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+  }catch(e){publicTeacherReviews=[];}
+}
 let communityGroups=[];
 let myGroupStatuses={};
 async function loadCommunityGroups(){
@@ -436,7 +449,7 @@ const ACHIEVEMENTS=[
   {id:6,em:"👥",ttl:"שיעור קבוצתי",desc:"לימדת קבוצה של 4 תלמידים",col:"#27AE60"},
 ];
 
-const APP_VERSION='4.0.0';
+const APP_VERSION='4.1.0';
 const APP_BUILD='04-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -500,7 +513,7 @@ function go(scr,extra={}){
   }
   if(scr==='teacher'&&(extra.teacher||S.teacher)){
     const tid=(extra.teacher||S.teacher)?.id;
-    if(tid)loadPublicTeacherVideos(tid);
+    if(tid){loadPublicTeacherVideos(tid);loadPublicTeacherReviews(tid);}
   }
   if(scr==='booking'&&(extra.teacher||S.teacher)){
     const tid=(extra.teacher||S.teacher)?.id;
@@ -641,13 +654,12 @@ function sharePost(text){
     "https://kidemy-app.netlify.app"
   );
 }
-function doIG(){
+function doFB(){
   const txt=S.shareText+"\n"+S.shareUrl;
-  if(navigator.clipboard)navigator.clipboard.writeText(txt);
-  window.open("https://www.instagram.com","_blank");
-  showCopyToast("הטקסט הועתק! פתח Instagram ← סטורי/פוסט ← הדבק 📸");
+  if(navigator.clipboard)navigator.clipboard.writeText(txt).catch(()=>{});
+  window.open("https://www.facebook.com/","_blank");
+  showCopyToast("הטקסט הועתק! פתח פייסבוק ← \"מה בראשך?\" ← הדבק 📘");
 }
-function doFB(){window.open("https://www.facebook.com/sharer/sharer.php?u="+encodeURIComponent(S.shareUrl)+"&quote="+encodeURIComponent(S.shareText),"_blank");}
 function doWA(){window.open("https://wa.me/?text="+encodeURIComponent(S.shareText+"\n"+S.shareUrl),"_blank");}
 function doTW(){window.open("https://twitter.com/intent/tweet?text="+encodeURIComponent(S.shareText)+"&url="+encodeURIComponent(S.shareUrl),"_blank");}
 function doTG(){window.open("https://t.me/share/url?url="+encodeURIComponent(S.shareUrl)+"&text="+encodeURIComponent(S.shareText),"_blank");}
@@ -678,14 +690,14 @@ function SharePanel(){
 
       <!-- Row 1: Main social -->
       <div class="share-row">
-        <button class="sh-btn sh-ig" onclick="doIG()">
-          <span style="font-size:28px">📸</span><span>Instagram</span>
-        </button>
         <button class="sh-btn sh-fb" onclick="doFB()">
           <span style="font-size:28px">👍</span><span>Facebook</span>
         </button>
         <button class="sh-btn sh-wa" onclick="doWA()">
           <span style="font-size:28px">💬</span><span>WhatsApp</span>
+        </button>
+        <button class="sh-btn sh-tg" onclick="doTG()">
+          <span style="font-size:28px">✈️</span><span>Telegram</span>
         </button>
       </div>
 
@@ -694,11 +706,11 @@ function SharePanel(){
         <button class="sh-btn sh-tw" onclick="doTW()">
           <span style="font-size:28px">𝕏</span><span>Twitter/X</span>
         </button>
-        <button class="sh-btn sh-tg" onclick="doTG()">
-          <span style="font-size:28px">✈️</span><span>Telegram</span>
-        </button>
         <button class="sh-btn sh-native" onclick="doNative()">
           <span style="font-size:28px">↗️</span><span>עוד...</span>
+        </button>
+        <button onclick="doLink()" style="flex:1;background:rgba(20,184,166,.07);border:1.5px solid rgba(20,184,166,.18);border-radius:14px;padding:10px 4px;font-size:12px;font-weight:700;color:var(--s);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px">
+          <span style="font-size:28px">🔗</span><span>לינק</span>
         </button>
       </div>
 
@@ -919,6 +931,14 @@ function ParentReg(){
 
       </div>
 
+      <!-- Google sign-in shortcut -->
+      <div style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.12);border-radius:16px;padding:12px 14px">
+        <p style="font-size:12px;color:#94A3B8;margin:0 0 10px;text-align:center">מלא פרטים ידנית <strong style="color:#CBD5E1">או</strong> ייבא מהחשבון שלך:</p>
+        <button onclick="signInWithGoogleParent()" style="width:100%;background:#fff;border:none;border-radius:14px;padding:12px;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;color:#1A1A2E;box-shadow:0 2px 10px rgba(0,0,0,0.2)">
+          <img src="https://www.google.com/favicon.ico" style="width:18px;height:18px" alt="G"> ייבא פרטים מ-Google
+        </button>
+      </div>
+
       <!-- consent -->
       <div id="prConsent" class="kcb-row" data-checked="false" onclick="kcbToggle(this)">
         <div class="kcb-box">✓</div>
@@ -936,6 +956,25 @@ function ParentReg(){
 
     </div>
   </div>`;
+}
+
+async function signInWithGoogleParent(){
+  try{
+    showFireToast('⏳ מחבר עם Google...');
+    const provider=new firebase.auth.GoogleAuthProvider();
+    const result=await auth.signInWithPopup(provider);
+    const gUser=result.user;
+    // מלא את השדות עם הפרטים מ-Google
+    const nameEl=document.getElementById('prName');
+    const emailEl=document.getElementById('prEmail');
+    if(nameEl&&gUser.displayName)nameEl.value=gUser.displayName;
+    if(emailEl&&gUser.email)emailEl.value=gUser.email;
+    // סגור את ה-session שנפתח — ההרשמה תתבצע בשלב הבא
+    await auth.signOut().catch(()=>{});
+    showFireToast('✅ הפרטים הועתקו מ-Google! השלם את הטופס ולחץ המשך.');
+  }catch(e){
+    if(e.code!=='auth/popup-closed-by-user')showFireToast('❌ '+e.message);
+  }
 }
 
 function submitParentReg(){
@@ -1520,7 +1559,9 @@ async function processPayment(payMethod,totalAmount){
     // שלח מייל + הודעת דפדפן למורה
     try{
       const tSnap=await db.ref('teachers/'+t.id).get();
-      const teacherEmail=tSnap.val()?.email||ADMIN_EMAIL;
+      const tData=tSnap.val()||{};
+      const rawEmail=tData.notificationEmail||(tData.email&&!tData.email.includes('@kidemy.app')?tData.email:null);
+      const teacherEmail=rawEmail||ADMIN_EMAIL;
       await sendEmail(teacherEmail,'📚 הזמנת שיעור חדשה ב-Kidemy!',
         `שלום ${t.name}!\n\nתלמיד חדש הזמין שיעור:\n👤 תלמיד: ${bookingData.studentName}\n📅 יום: ${bookingData.day} בשעה ${bookingData.time}\n💰 מחיר: ₪${totalAmount}\n\nכנס לאפליקציה לאישור:\nhttps://kidemy-app.netlify.app`);
       // מייל מעקב להורה
@@ -1542,16 +1583,20 @@ async function processPayment(payMethod,totalAmount){
 
 // טוען הזמנות של מורה (לתצוגה ב-Home)
 let teacherPendingBookings=[];
+let teacherAllBookings=[];
 async function loadTeacherBookings(){
   if(!currentUser||currentUserData?.role!=='teacher')return;
   try{
     const snap=await db.ref('teacherBookings/'+currentUser.uid).get();
     teacherPendingBookings=[];
+    teacherAllBookings=[];
     if(snap.exists()){
       snap.forEach(c=>{
-        const b=c.val();
+        const b={id:c.key,...c.val()};
+        teacherAllBookings.push(b);
         if(b.status==='pending')teacherPendingBookings.push(b);
       });
+      teacherAllBookings.sort((a,b)=>b.createdAt-a.createdAt);
       teacherPendingBookings.sort((a,b)=>b.createdAt-a.createdAt);
     }
   }catch(e){}
@@ -5452,6 +5497,32 @@ function Teacher(){
       </div>`;
       })()}
 
+      <!-- Reviews section -->
+      ${(()=>{
+        if(!publicTeacherReviews.length)return '';
+        const starsHtml=n=>'⭐'.repeat(n)+'☆'.repeat(5-n);
+        const ago=ts=>{const m=Math.round((Date.now()-ts)/60000);return m<60?m+' דק\'':m<1440?Math.floor(m/60)+' שע\'':Math.floor(m/1440)+' ימים';};
+        return `<div class="card" style="padding:16px;margin-bottom:16px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+            <span style="background:rgba(251,191,36,0.15);color:#B45309;font-size:11px;font-weight:800;padding:4px 10px;border-radius:50px">${publicTeacherReviews.length} ביקורות</span>
+            <h4 style="margin:0;font-weight:900;font-size:16px;color:#0F1A1F">⭐ ביקורות תלמידים</h4>
+          </div>
+          ${publicTeacherReviews.slice(0,5).map(r=>`
+          <div style="border-bottom:1px solid rgba(0,0,0,0.06);padding-bottom:12px;margin-bottom:12px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+              <span style="font-size:11px;color:#94A3B8">${ago(r.createdAt||0)} לפני</span>
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="font-weight:800;font-size:13px;color:#0F1A1F">${r.fromName||'תלמיד'}</span>
+                <div style="width:30px;height:30px;border-radius:50%;background:rgba(20,184,166,0.15);display:flex;align-items:center;justify-content:center;font-size:14px">👤</div>
+              </div>
+            </div>
+            <div style="font-size:16px;margin-bottom:5px;text-align:right">${starsHtml(r.stars||0)}</div>
+            ${r.review?`<p style="margin:0;font-size:13px;color:#374151;line-height:1.6;text-align:right">${r.review}</p>`:''}
+          </div>`).join('')}
+          ${publicTeacherReviews.length>5?`<p style="text-align:center;color:#94A3B8;font-size:12px;margin:0">${publicTeacherReviews.length-5} ביקורות נוספות...</p>`:''}
+        </div>`;
+      })()}
+
       <!-- SOS + Share row -->
       <div style="display:flex;gap:10px;margin-bottom:16px">
         <button class="sos" onclick="sendSOS('${(t.name||'').replace(/'/g,"\\'").replace(/"/g,'&quot;')}')">🆘 כפתור SOS</button>
@@ -5894,8 +5965,45 @@ function Profile(){
     <div class="ref-card"><h4 style="margin:0 0 6px;font-weight:900;font-size:16px">🎁 הפנה חבר – קבל ₪15!</h4><p style="margin:0 0 14px;font-size:13px;opacity:.9;line-height:1.6">על כל חבר שנרשם דרכך תקבל ₪15 לחשבון שלך.</p><button onclick="shareApp()" style="background:rgba(255,255,255,.2);border:1.5px solid rgba(255,255,255,.3);color:#fff;border-radius:50px;padding:10px 20px;font-weight:700;cursor:pointer;font-size:13px">📤 שתף את Kidemy</button></div>
     ${[["✏️","ערוך פרופיל",isTeacher?"showEditTeacherProfileDialog()":`showEditProfileDialog()`],["💰","ניהול תשלומים","showPaymentManagement()"],["🏆","ראה לידרבורד","go('leaderboard')"],["🚪","התנתקות","confirmLogout()"]].map(([e,l,fn])=>`<div class="card-sm" style="display:flex;align-items:center;gap:13px;cursor:pointer" onclick="${fn}"><span style="font-size:22px">${e}</span><span style="font-weight:700;font-size:15px;color:${l==="התנתקות"?"#E74C3C":"#1A1A2E"}">${l}</span><span style="margin-right:auto;color:#8A94A6">←</span></div>`).join("")}`;
 
+  if(isTeacher&&tab==='bookings'){
+    const pendingB=teacherAllBookings.filter(b=>b.status==='pending');
+    const approvedB=teacherAllBookings.filter(b=>b.status==='approved'||b.status==='completed');
+    const rejectedB=teacherAllBookings.filter(b=>b.status==='rejected');
+    const ago=ts=>{const m=Math.round((Date.now()-ts)/60000);return m<60?m+' דק\'':m<1440?Math.floor(m/60)+' שע\'':Math.floor(m/1440)+' ימים';};
+    content=teacherAllBookings.length===0?`
+      <div style="background:rgba(255,255,255,0.7);backdrop-filter:blur(10px);border-radius:20px;padding:40px 24px;text-align:center;margin-top:10px">
+        <div style="font-size:54px;margin-bottom:12px">📅</div>
+        <h3 style="font-weight:900;font-size:16px;margin:0 0 8px;color:#0F1A1F">אין הזמנות עדיין</h3>
+        <p style="color:#64748B;font-size:13px;margin:0">כשתלמידים יזמינו שיעורים הם יופיעו כאן</p>
+      </div>
+    `:['pending','approved','completed','rejected'].map(status=>{
+      const list=teacherAllBookings.filter(b=>b.status===status);
+      if(!list.length)return '';
+      const statusColors={pending:['#F59E0B','rgba(245,158,11,0.15)','⏳ ממתין'],approved:['#10B981','rgba(16,185,129,0.15)','✅ מאושר'],completed:['#6366F1','rgba(99,102,241,0.15)','🎓 הושלם'],rejected:['#EF4444','rgba(239,68,68,0.12)','✗ נדחה']};
+      const [col,bg,label]=statusColors[status]||['#64748B','rgba(100,116,139,0.1)','?'];
+      return `<div style="margin-bottom:14px">
+        <h4 style="font-size:13px;font-weight:800;color:${col};margin:0 0 8px">${label} (${list.length})</h4>
+        ${list.map(b=>`
+          <div style="background:#fff;border-radius:18px;padding:14px 16px;margin-bottom:10px;box-shadow:0 3px 14px rgba(0,0,0,0.07);border-right:4px solid ${col}">
+            <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px">
+              <span style="font-size:11px;color:#94A3B8">${ago(b.createdAt||0)} לפני</span>
+              <div style="text-align:right">
+                <div style="font-weight:900;font-size:15px;color:#0F1A1F">${b.studentName||'תלמיד'}</div>
+                <div style="font-size:12px;color:#64748B;margin-top:2px">📅 ${b.day||''} • ⏰ ${b.time||''}</div>
+                <div style="font-size:12px;color:#64748B">💰 ₪${b.price||0}</div>
+              </div>
+            </div>
+            ${status==='pending'?`<div style="display:flex;gap:8px">
+              <button onclick="rejectBooking('${b.id||b.bookingId||''}')" style="flex:1;background:rgba(239,68,68,0.1);border:1.5px solid rgba(239,68,68,0.3);color:#EF4444;border-radius:12px;padding:9px;font-weight:800;font-size:12px;cursor:pointer">✗ דחה</button>
+              <button onclick="approveBooking('${b.id||b.bookingId||''}')" style="flex:1;background:linear-gradient(135deg,#10B981,#14B8A6);border:none;color:#fff;border-radius:12px;padding:9px;font-weight:800;font-size:12px;cursor:pointer">✓ אשר</button>
+            </div>`:(status==='approved'?`<button onclick="S.chat={otherUid:'${b.studentId||''}',otherName:'${(b.studentName||'תלמיד').replace(/'/g,'')}'};go('chat')" style="width:100%;background:rgba(6,182,212,0.1);border:1.5px solid rgba(6,182,212,0.3);color:#06B6D4;border-radius:12px;padding:9px;font-weight:800;font-size:12px;cursor:pointer">💬 שלח הודעה</button>`:'')}
+          </div>`).join('')}
+      </div>`;
+    }).join('');
+  }
+
   const tabItems=isTeacher&&myCats.length
-    ?[...myCats.map(cid=>{const c=CATS.find(x=>x.id===cid)||{em:'🎓',lbl:cid};return [cid,c.em+' '+c.lbl];}),...[['ach','🏆 הישגים'],['about','👤 אודות']]]
+    ?[...myCats.map(cid=>{const c=CATS.find(x=>x.id===cid)||{em:'🎓',lbl:cid};return [cid,c.em+' '+c.lbl];}),...[['bookings','📅 הזמנות'+(teacherPendingBookings.length>0?` (${teacherPendingBookings.length})`:'')],['ach','🏆 הישגים'],['about','👤 אודות']]]
     :[['videos','📹 סרטונים'],['ach','🏆 הישגים'],['about','👤 אודות']];
 
   return `<div class="screen" style="background:linear-gradient(165deg,#CCFBF1 0%,#A5F3FC 50%,#7DD3FC 100%);padding-bottom:100px">
@@ -6833,6 +6941,11 @@ function showEditTeacherProfileDialog(){
           <input id="_etFacebook" class="inp" value="${(t.facebook||'').replace(/"/g,'&quot;')}" placeholder="https://facebook.com/...">
         </div>
       </div>
+      <div style="background:rgba(239,68,68,0.04);border:1.5px solid rgba(239,68,68,0.18);border-radius:18px;padding:16px;margin-bottom:16px">
+        <h3 style="font-weight:900;font-size:15px;margin:0 0 6px;color:#EF4444">📧 מייל להתראות</h3>
+        <p style="font-size:12px;color:#64748B;margin:0 0 10px;line-height:1.6">כאן תקבל הודעות על הזמנות שיעור חדשות. <strong>חשוב:</strong> הכנס מייל אמיתי שלך (לא @kidemy.app).</p>
+        <input id="_etNotifEmail" class="inp" type="email" value="${(t.notificationEmail||'').replace(/"/g,'&quot;')}" placeholder="המייל האמיתי שלך למשל: name@gmail.com">
+      </div>
     </div>`;
   document.body.appendChild(ov);
   ov.onclick=e=>{if(e.target===ov)ov.remove();};
@@ -6944,6 +7057,7 @@ async function saveTeacherProfileEdits(){
   const instagram=document.getElementById('_etInsta')?.value.trim()||'';
   const tiktok=document.getElementById('_etTiktok')?.value.trim()||'';
   const facebook=document.getElementById('_etFacebook')?.value.trim()||'';
+  const notificationEmail=document.getElementById('_etNotifEmail')?.value.trim()||'';
   const cats=(window._etCats&&window._etCats.length)?window._etCats:(TEACHERS.find(x=>x.id===currentUser?.uid)?.cats||[]);
   const customCats=window._etCustomCats||[];
   const allCats=[...cats,...customCats.map(c=>'custom:'+c)];
@@ -6967,7 +7081,7 @@ async function saveTeacherProfileEdits(){
     if(city)userUpdates.city=city;
     await db.ref('users/'+currentUser.uid).update(userUpdates);
     if(currentUserData)Object.assign(currentUserData,userUpdates);
-    const teacherUpdates={desc:firstDesc,price,city,cats:allCats,cat:allCats[0],customCats,name,instagram,tiktok,facebook};
+    const teacherUpdates={desc:firstDesc,price,city,cats:allCats,cat:allCats[0],customCats,name,instagram,tiktok,facebook,notificationEmail};
     await db.ref('teachers/'+currentUser.uid).update(teacherUpdates);
     await db.ref('teachers/'+currentUser.uid+'/catProfiles').update(catProfileUpdates);
     for(const cc of customCats){
@@ -7336,6 +7450,7 @@ async function refreshCurrentScreen(){
     }
     if(scr==='teacher'&&(S.teacher?.id)){
       loads.push(loadPublicTeacherVideos(S.teacher.id));
+      loads.push(loadPublicTeacherReviews(S.teacher.id));
     }
     if(scr==='notifications')loads.push(loadNotifications());
     if(scr==='admin')loads.push(loadAdminData());
@@ -7671,7 +7786,7 @@ auth.onAuthStateChanged(async user=>{
     }catch(e){console.warn('Auth error:',e);}
     if(S.screen==='splash'||S.screen==='login'){go('home');}
     else render();
-  } else {currentUser=null;currentUserData=null;teacherPendingBookings=[];studentBookings=[];}
+  } else {currentUser=null;currentUserData=null;teacherPendingBookings=[];teacherAllBookings=[];studentBookings=[];}
 });
 
 async function firebaseRegister(email,password,userData){
