@@ -931,14 +931,6 @@ function ParentReg(){
 
       </div>
 
-      <!-- Google sign-in shortcut -->
-      <div style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.12);border-radius:16px;padding:12px 14px">
-        <p style="font-size:12px;color:#94A3B8;margin:0 0 10px;text-align:center">מלא פרטים ידנית <strong style="color:#CBD5E1">או</strong> ייבא מהחשבון שלך:</p>
-        <button onclick="signInWithGoogleParent()" style="width:100%;background:#fff;border:none;border-radius:14px;padding:12px;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;color:#1A1A2E;box-shadow:0 2px 10px rgba(0,0,0,0.2)">
-          <img src="https://www.google.com/favicon.ico" style="width:18px;height:18px" alt="G"> ייבא פרטים מ-Google
-        </button>
-      </div>
-
       <!-- consent -->
       <div id="prConsent" class="kcb-row" data-checked="false" onclick="kcbToggle(this)">
         <div class="kcb-box">✓</div>
@@ -956,25 +948,6 @@ function ParentReg(){
 
     </div>
   </div>`;
-}
-
-async function signInWithGoogleParent(){
-  try{
-    showFireToast('⏳ מחבר עם Google...');
-    const provider=new firebase.auth.GoogleAuthProvider();
-    const result=await auth.signInWithPopup(provider);
-    const gUser=result.user;
-    // מלא את השדות עם הפרטים מ-Google
-    const nameEl=document.getElementById('prName');
-    const emailEl=document.getElementById('prEmail');
-    if(nameEl&&gUser.displayName)nameEl.value=gUser.displayName;
-    if(emailEl&&gUser.email)emailEl.value=gUser.email;
-    // סגור את ה-session שנפתח — ההרשמה תתבצע בשלב הבא
-    await auth.signOut().catch(()=>{});
-    showFireToast('✅ הפרטים הועתקו מ-Google! השלם את הטופס ולחץ המשך.');
-  }catch(e){
-    if(e.code!=='auth/popup-closed-by-user')showFireToast('❌ '+e.message);
-  }
 }
 
 function submitParentReg(){
