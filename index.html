@@ -508,7 +508,7 @@ function go(scr,extra={}){
     db.ref('userChats/'+currentUser.uid+'/'+ou+'/unread').set(false).catch(()=>{});
   }
   if(scr==='profile'&&currentUser&&currentUserData?.role==='teacher'){
-    loadTeacherVideos().then(()=>render());
+    listenTeacherVideos();
   }
   if(scr==='teacher'&&(extra.teacher||S.teacher)){
     const tid=(extra.teacher||S.teacher)?.id;
@@ -3111,17 +3111,37 @@ async function adminDeleteReport(id){
 
 // ─── VIDEO UPLOAD SYSTEM 📹 ──────────────────────────────────────────────
 let teacherVideos=[];
+let _tvListener=null;
+function listenTeacherVideos(uid){
+  const targetId=uid||currentUser?.uid;
+  if(!targetId)return;
+  if(_tvListener)try{_tvListener.off();}catch(e){}
+  const now=Date.now(),DAY=864e5;
+  _tvListener=db.ref('videos/'+targetId);
+  _tvListener.on('value',snap=>{
+    teacherVideos=[];
+    if(snap.exists())snap.forEach(c=>{
+      const v={id:c.key,...c.val()};
+      if(v.approved==='rejected'&&(now-(v.rejectedAt||v.createdAt||0))>DAY){
+        db.ref('videos/'+targetId+'/'+c.key).remove();return;
+      }
+      teacherVideos.push(v);
+    });
+    teacherVideos.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+    if(S.screen==='profile')render();
+  });
+}
 async function loadTeacherVideos(uid){
   const targetId=uid||currentUser?.uid;
   if(!targetId)return;
   try{
     const snap=await db.ref('videos/'+targetId).get();
     teacherVideos=[];
-    const now=Date.now(), DAY=864e5;
+    const now=Date.now(),DAY=864e5;
     if(snap.exists())snap.forEach(c=>{
       const v={id:c.key,...c.val()};
       if(v.approved==='rejected'&&(now-(v.rejectedAt||v.createdAt||0))>DAY){
-        db.ref('videos/'+targetId+'/'+c.key).remove(); return;
+        db.ref('videos/'+targetId+'/'+c.key).remove();return;
       }
       teacherVideos.push(v);
     });
@@ -5512,7 +5532,7 @@ function Teacher(){
       <!-- Stats -->
       <div style="display:flex;gap:10px;margin-bottom:16px">
         <div class="card-sm" style="flex:1;text-align:center;padding:13px 8px;margin-bottom:0"><div style="font-size:20px">⭐</div><div style="font-weight:900;font-size:18px">${t.rating||0}</div><div style="font-size:11px;color:${C.muted};font-weight:600">דירוג</div></div>
-        <div class="card-sm" onclick="document.getElementById('_reviewsSection')?.scrollIntoView({behavior:'smooth'})" style="flex:1;text-align:center;padding:13px 8px;margin-bottom:0;cursor:pointer;border:1.5px solid rgba(20,184,166,0.2)"><div style="font-size:20px">💬</div><div style="font-weight:900;font-size:18px">${t.reviews||0}</div><div style="font-size:11px;color:#14B8A6;font-weight:700">ביקורות ↓</div></div>
+        <div class="card-sm" onclick="document.getElementById('_reviewsSection')?.scrollIntoView({behavior:'smooth'})" style="flex:1;text-align:center;padding:13px 8px;margin-bottom:0;cursor:pointer;border:1.5px solid rgba(20,184,166,0.2)"><div style="font-size:20px">💬</div><div style="font-weight:900;font-size:18px">${publicTeacherReviews.length||t.reviews||0}</div><div style="font-size:11px;color:#14B8A6;font-weight:700">ביקורות ↓</div></div>
         <div class="card-sm" style="flex:1;text-align:center;padding:13px 8px;margin-bottom:0"><div style="font-size:20px">📚</div><div style="font-weight:900;font-size:18px">${t.lessons||0}</div><div style="font-size:11px;color:${C.muted};font-weight:600">שיעורים</div></div>
       </div>
 
