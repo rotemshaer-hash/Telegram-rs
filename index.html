@@ -2257,8 +2257,10 @@ function getChatId(uid1,uid2){
 }
 
 let _chatQuery=null;
+let _convListeners={}; // otherUid → firebase query, background listeners for all conversations
+
 function listenToChat(otherUid){
-  if(_chatQuery){try{_chatQuery.off('child_added');}catch(e){}}
+  if(_chatQuery){try{_chatQuery.off();}catch(e){}}
   if(chatListener){try{chatListener.off();}catch(e){}}
   _chatQuery=null;chatListener=null;
   if(!currentUser||!otherUid)return;
@@ -2266,20 +2268,52 @@ function listenToChat(otherUid){
   chatMessages=[];
   chatListener=db.ref('messages/'+chatId);
   _chatQuery=chatListener.limitToLast(100);
-  _chatQuery.on('child_added',snap=>{
-    const m={id:snap.key,...snap.val()};
-    if(!chatMessages.find(x=>x.id===m.id)){
-      chatMessages.push(m);
-      if(S.screen==='chat'){
-        render();
-        setTimeout(()=>{const el=document.getElementById('chatMsgs');if(el)el.scrollTop=el.scrollHeight;},30);
-      }
+  // Use 'value' (not 'child_added') — fires on attach AND on every change, most reliable
+  _chatQuery.on('value',snap=>{
+    chatMessages=[];
+    if(snap.exists())snap.forEach(c=>chatMessages.push({id:c.key,...c.val()}));
+    chatMessages.sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
+    if(S.screen==='chat'){
+      render();
+      setTimeout(()=>{const el=document.getElementById('chatMsgs');if(el)el.scrollTop=el.scrollHeight;},30);
     }
   });
 }
 
+// Background listeners: 1 per known conversation, listen for incoming messages
+function setupConvListeners(){
+  if(!currentUser)return;
+  userChats.forEach(uc=>{
+    if(!uc.otherUid||_convListeners[uc.otherUid])return;
+    const chatId=getChatId(currentUser.uid,uc.otherUid);
+    const q=db.ref('messages/'+chatId).limitToLast(1);
+    _convListeners[uc.otherUid]=q;
+    q.on('child_added',snap=>{
+      const m={id:snap.key,...snap.val()};
+      if(!m||!m.from||m.from===currentUser.uid)return; // ignore my own messages
+      const existing=userChats.find(c=>c.otherUid===uc.otherUid);
+      if(existing&&(m.createdAt||0)<=(existing.lastTime||0))return; // not newer, skip
+      const inChat=S.screen==='chat'&&S.chat?.otherUid===uc.otherUid;
+      // Self-write to our own userChats (always allowed) so the badge + list update
+      db.ref('userChats/'+currentUser.uid+'/'+uc.otherUid).set({
+        otherUid:uc.otherUid,
+        otherName:m.fromName||existing?.otherName||uc.otherName||'משתמש',
+        lastMessage:m.text||'',
+        lastTime:m.createdAt||Date.now(),
+        unread:!inChat
+      }).catch(()=>{});
+    });
+  });
+}
+
+function teardownConvListeners(){
+  Object.values(_convListeners).forEach(q=>{try{q.off();}catch(e){}});
+  _convListeners={};
+}
+}
+
 function stopChatListener(){
-  if(_chatQuery){try{_chatQuery.off('child_added');}catch(e){}_chatQuery=null;}
+  if(_chatQuery){try{_chatQuery.off();}catch(e){}_chatQuery=null;}
   if(chatListener){try{chatListener.off();}catch(e){};chatListener=null;}
   chatMessages=[];
 }
@@ -7860,21 +7894,19 @@ auth.onAuthStateChanged(async user=>{
         if(n&&!n.read)_sendBrowserNotif(
           n.type==='newBooking'?'📚 הזמנת שיעור חדשה!':'🔔 התראה חדשה',
           n.type==='newBooking'?`${n.from||''} · יום ${n.day||''} ${n.time||''}`:(n.from||''));
-        // When a newMessage notification arrives, self-update userChats on the recipient's side.
-        // This is the fallback for when the sender cannot write to the recipient's userChats path.
+        // Self-update userChats so the conversation appears in the inbox
+        // even when the sender cannot write to our userChats path (Firebase rules).
         if(n&&n.type==='newMessage'&&n.fromUid){
-          db.ref('userChats/'+user.uid+'/'+n.fromUid).once('value').then(existing=>{
-            const ev=existing.val();
-            if(!ev||(n.createdAt||0)>(ev.lastTime||0)){
-              return db.ref('userChats/'+user.uid+'/'+n.fromUid).set({
-                otherUid:n.fromUid,
-                otherName:n.from||'משתמש',
-                lastMessage:n.preview||'',
-                lastTime:n.createdAt||Date.now(),
-                unread:true
-              });
-            }
-          }).catch(()=>{});
+          const existingChat=userChats.find(c=>c.otherUid===n.fromUid);
+          if(!existingChat||(n.createdAt||0)>(existingChat.lastTime||0)){
+            db.ref('userChats/'+user.uid+'/'+n.fromUid).set({
+              otherUid:n.fromUid,
+              otherName:n.from||existingChat?.otherName||'משתמש',
+              lastMessage:n.preview||existingChat?.lastMessage||'',
+              lastTime:n.createdAt||Date.now(),
+              unread:true
+            }).catch(()=>{});
+          }
         }
         loadNotifications().then(()=>{if(S.screen)render();});
       });
@@ -7883,6 +7915,7 @@ auth.onAuthStateChanged(async user=>{
         userChats=[];
         if(snap.exists())snap.forEach(c=>userChats.push(c.val()));
         userChats.sort((a,b)=>(b.lastTime||0)-(a.lastTime||0));
+        setupConvListeners(); // spin up background listeners for any new conversations
         render();
       });
       // האזנה ל-adminNotifs (מורים חדשים, סרטונים, משתמשים) – ללא חיפוש UID
@@ -7932,7 +7965,12 @@ auth.onAuthStateChanged(async user=>{
     }catch(e){console.warn('Auth error:',e);}
     if(S.screen==='splash'||S.screen==='login'){go('home');}
     else render();
-  } else {currentUser=null;currentUserData=null;teacherPendingBookings=[];teacherAllBookings=[];studentBookings=[];}
+  } else {
+    stopChatListener();
+    teardownConvListeners();
+    currentUser=null;currentUserData=null;userChats=[];
+    teacherPendingBookings=[];teacherAllBookings=[];studentBookings=[];
+  }
 });
 
 async function firebaseRegister(email,password,userData){
