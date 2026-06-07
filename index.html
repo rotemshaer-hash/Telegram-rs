@@ -2256,16 +2256,17 @@ function getChatId(uid1,uid2){
   return [uid1,uid2].sort().join('_');
 }
 
+let _chatQuery=null;
 function listenToChat(otherUid){
-  if(chatListener){
-    try{chatListener.off();}catch(e){}
-    chatListener=null;
-  }
+  if(_chatQuery){try{_chatQuery.off('child_added');}catch(e){}}
+  if(chatListener){try{chatListener.off();}catch(e){}}
+  _chatQuery=null;chatListener=null;
   if(!currentUser||!otherUid)return;
   const chatId=getChatId(currentUser.uid,otherUid);
   chatMessages=[];
   chatListener=db.ref('messages/'+chatId);
-  chatListener.limitToLast(100).on('child_added',snap=>{
+  _chatQuery=chatListener.limitToLast(100);
+  _chatQuery.on('child_added',snap=>{
     const m={id:snap.key,...snap.val()};
     if(!chatMessages.find(x=>x.id===m.id)){
       chatMessages.push(m);
@@ -2278,10 +2279,8 @@ function listenToChat(otherUid){
 }
 
 function stopChatListener(){
-  if(chatListener){
-    try{chatListener.off();}catch(e){}
-    chatListener=null;
-  }
+  if(_chatQuery){try{_chatQuery.off('child_added');}catch(e){}_chatQuery=null;}
+  if(chatListener){try{chatListener.off();}catch(e){};chatListener=null;}
   chatMessages=[];
 }
 
@@ -2317,7 +2316,6 @@ async function sendChatMessage(otherUid,otherName){
     try{
       await db.ref('notifications/'+otherUid).push({
         type:'newMessage',
-        bookingId:null,
         from:currentUserData?.name||currentUser.email.split('@')[0],
         fromUid:currentUser.uid,
         preview:text.substring(0,40),
@@ -7862,6 +7860,22 @@ auth.onAuthStateChanged(async user=>{
         if(n&&!n.read)_sendBrowserNotif(
           n.type==='newBooking'?'📚 הזמנת שיעור חדשה!':'🔔 התראה חדשה',
           n.type==='newBooking'?`${n.from||''} · יום ${n.day||''} ${n.time||''}`:(n.from||''));
+        // When a newMessage notification arrives, self-update userChats on the recipient's side.
+        // This is the fallback for when the sender cannot write to the recipient's userChats path.
+        if(n&&n.type==='newMessage'&&n.fromUid){
+          db.ref('userChats/'+user.uid+'/'+n.fromUid).once('value').then(existing=>{
+            const ev=existing.val();
+            if(!ev||(n.createdAt||0)>(ev.lastTime||0)){
+              return db.ref('userChats/'+user.uid+'/'+n.fromUid).set({
+                otherUid:n.fromUid,
+                otherName:n.from||'משתמש',
+                lastMessage:n.preview||'',
+                lastTime:n.createdAt||Date.now(),
+                unread:true
+              });
+            }
+          }).catch(()=>{});
+        }
         loadNotifications().then(()=>{if(S.screen)render();});
       });
       // האזנה בזמן אמת לשיחות (לעדכון תג הודעות שלא נקראו)
