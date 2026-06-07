@@ -2310,7 +2310,6 @@ function teardownConvListeners(){
   Object.values(_convListeners).forEach(q=>{try{q.off();}catch(e){}});
   _convListeners={};
 }
-}
 
 function stopChatListener(){
   if(_chatQuery){try{_chatQuery.off();}catch(e){}_chatQuery=null;}
