@@ -1174,6 +1174,24 @@ function TeacherSetup(){
         </div>
       </div>
 
+      <!-- אימות גיל וזהות -->
+      <div class="card" style="margin-bottom:18px;background:linear-gradient(135deg,rgba(99,102,241,0.08),rgba(168,85,247,0.05));border:1.5px solid rgba(99,102,241,0.25)">
+        <h3 style="font-weight:900;font-size:16px;margin:0 0 8px;color:#6366F1">🪪 אימות גיל וזהות</h3>
+        <p style="font-size:12px;color:#64748B;margin:0 0 14px;line-height:1.6">נדרש לאישור הפרופיל. המידע נגיש רק לצוות Kidemy ומשמש לאימות בטיחות.</p>
+        <div class="ing" style="margin-bottom:12px"><label>גיל (10–18)</label>
+          <input type="number" id="tAge" class="inp" placeholder="לדוגמה: 14" min="10" max="18">
+        </div>
+        <div class="ing"><label>סוג מסמך מזהה</label>
+          <select id="tIdType" class="inp">
+            <option value="">בחר מסמך</option>
+            <option value="id">תעודת זהות ישראלית</option>
+            <option value="passport">דרכון</option>
+            <option value="parent_confirm">אישור הורה בלבד</option>
+          </select>
+        </div>
+        <p style="font-size:11px;color:#94A3B8;margin:10px 0 0;line-height:1.5">💡 לאחר ההרשמה ניתן לשלוח צילום מסמך בוואטסאפ לצוות Kidemy.</p>
+      </div>
+
       <!-- תיאור -->
       <div class="card" style="margin-bottom:18px">
         <h3 style="font-weight:900;font-size:16px;margin:0 0 14px;color:#14B8A6">✍️ ספר על עצמך</h3>
@@ -1404,7 +1422,13 @@ async function saveTeacherProfile(){
       online:_modeOnline,
       group:false,
       verified:false,active:false,
-      createdAt:Date.now()
+      createdAt:Date.now(),
+      ageVerification:{
+        age:parseInt(document.getElementById('tAge')?.value||0)||null,
+        idType:document.getElementById('tIdType')?.value||null,
+        status:'pending',
+        submittedAt:Date.now()
+      }
     };
 
     if(_gpsSetup){
@@ -2384,6 +2408,115 @@ async function sendAdminNotification(toUid, toName, text){
   }catch(e){console.error('sendAdminNotification error:',e);}
 }
 
+// ─── סיכומי שיעורים ומעקב התקדמות 📊 ────────────────────────────────────────
+let lessonSummaries=[];
+async function loadLessonSummaries(){
+  if(!currentUser)return;
+  try{
+    lessonSummaries=[];
+    const path=currentUserData?.role==='teacher'?'teacherId':'studentId';
+    // store in studentProgress/{uid}/{bookingId} for fast per-user reads
+    const snap=await db.ref('studentProgress/'+currentUser.uid).limitToLast(30).get();
+    if(snap.exists())snap.forEach(c=>lessonSummaries.push({id:c.key,...c.val()}));
+    if(currentUserData?.role==='teacher'){
+      const tSnap=await db.ref('teacherSummaries/'+currentUser.uid).limitToLast(30).get();
+      if(tSnap.exists())tSnap.forEach(c=>{if(!lessonSummaries.find(x=>x.id===c.key))lessonSummaries.push({id:c.key,...c.val()});});
+    }
+    lessonSummaries.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+  }catch(e){}
+}
+
+function completeLesson(bookingId){
+  const b=teacherAllBookings.find(x=>x.id===bookingId)||studentBookings.find(x=>x.id===bookingId);
+  if(!b){showFireToast('❌ הזמנה לא נמצאה');return;}
+  const enc=encodeURIComponent(JSON.stringify({id:b.id,studentId:b.studentId,teacherId:b.teacherId||currentUser?.uid,studentName:b.studentName||'',teacherName:b.teacherName||currentUserData?.name||'',cat:b.teacherCat||b.cat||'',day:b.day||''}));
+  _showLessonSummaryDialog(enc);
+}
+
+function viewLessonSummary(bookingId){
+  const s=lessonSummaries.find(x=>x.id===bookingId);
+  if(!s){showFireToast('אין סיכום עדיין');return;}
+  const d=document.createElement('div');
+  d.id='_lsViewDialog';
+  d.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:flex-end;padding-bottom:env(safe-area-inset-bottom)';
+  d.innerHTML=`<div style="background:#fff;border-radius:28px 28px 0 0;padding:24px 20px 32px;width:100%;max-height:80vh;overflow-y:auto">
+    <div style="width:40px;height:4px;background:rgba(0,0,0,.1);border-radius:4px;margin:0 auto 16px"></div>
+    <h3 style="font-weight:900;font-size:18px;margin:0 0 4px">📊 סיכום שיעור</h3>
+    <p style="color:#64748B;font-size:13px;margin:0 0 18px">${escapeHtml(s.teacherName||'')} • ${escapeHtml(s.day||'')}</p>
+    <div style="background:rgba(20,184,166,0.07);border-radius:16px;padding:14px;margin-bottom:12px"><div style="font-size:11px;font-weight:800;color:#14B8A6;margin-bottom:4px">📚 נושא</div><div style="font-size:14px;font-weight:700">${escapeHtml(s.topic||'')}</div></div>
+    ${s.notes?`<div style="background:rgba(168,85,247,0.06);border-radius:16px;padding:14px;margin-bottom:12px"><div style="font-size:11px;font-weight:800;color:#A855F7;margin-bottom:4px">📝 הערות</div><div style="font-size:14px">${escapeHtml(s.notes)}</div></div>`:''}
+    ${s.homework?`<div style="background:rgba(245,158,11,0.07);border-radius:16px;padding:14px;margin-bottom:12px"><div style="font-size:11px;font-weight:800;color:#D97706;margin-bottom:4px">📎 שיעורי בית</div><div style="font-size:14px">${escapeHtml(s.homework)}</div></div>`:''}
+    ${s.rating?`<div style="text-align:center;font-size:28px;margin-bottom:16px">${'⭐'.repeat(s.rating)}</div>`:''}
+    <button onclick="document.getElementById('_lsViewDialog').remove()" style="width:100%;background:none;border:none;color:#64748B;padding:10px;font-size:14px;cursor:pointer;font-weight:700">סגור</button>
+  </div>`;
+  document.body.appendChild(d);
+}
+
+function _showLessonSummaryDialog(enc){
+  const b=JSON.parse(decodeURIComponent(enc));
+  document.getElementById('_lsDialog')?.remove();
+  const d=document.createElement('div');
+  d.id='_lsDialog';
+  d.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:flex-end;padding-bottom:env(safe-area-inset-bottom)';
+  d.innerHTML=`<div style="background:#fff;border-radius:28px 28px 0 0;padding:24px 20px 32px;width:100%;max-height:88vh;overflow-y:auto">
+    <div style="width:40px;height:4px;background:rgba(0,0,0,.1);border-radius:4px;margin:0 auto 18px"></div>
+    <h3 style="font-weight:900;font-size:19px;margin:0 0 4px;color:#0F1A1F">📝 סיכום שיעור</h3>
+    <p style="color:#64748B;font-size:13px;margin:0 0 18px">${escapeHtml(b.studentName||'תלמיד')} • ${escapeHtml(b.day||'')}</p>
+    <label style="display:block;font-size:13px;font-weight:800;color:#0F1A1F;margin-bottom:6px">📚 מה למדנו היום? *</label>
+    <input id="_lsTopic" class="inp" placeholder="נושא השיעור..." style="margin-bottom:14px">
+    <label style="display:block;font-size:13px;font-weight:800;color:#0F1A1F;margin-bottom:6px">📝 התקדמות והערות</label>
+    <textarea id="_lsNotes" class="inp" rows="3" placeholder="איך היה השיעור? מה הילד הצליח?" style="resize:none;margin-bottom:14px"></textarea>
+    <label style="display:block;font-size:13px;font-weight:800;color:#0F1A1F;margin-bottom:6px">📎 שיעורי בית לתרגול</label>
+    <input id="_lsHW" class="inp" placeholder="מה לתרגל עד השיעור הבא?" style="margin-bottom:14px">
+    <label style="display:block;font-size:13px;font-weight:800;color:#0F1A1F;margin-bottom:8px">⭐ הערכת ביצוע</label>
+    <div style="display:flex;gap:8px;margin-bottom:20px">
+      ${[1,2,3,4,5].map(r=>`<button type="button" onclick="document.querySelectorAll('._lsStar').forEach(s=>{s.style.background='rgba(20,184,166,0.08)';s.style.color='#64748B'});this.style.background='#14B8A6';this.style.color='#fff';window._lsRating=${r}" class="_lsStar" style="flex:1;background:rgba(20,184,166,0.08);border:none;border-radius:12px;padding:10px 4px;font-size:15px;cursor:pointer;color:#64748B;font-weight:900;transition:all .15s">${r}★</button>`).join('')}
+    </div>
+    <button onclick="_saveLessonSummary('${b.id}','${enc}')" style="width:100%;background:linear-gradient(135deg,#14B8A6,#A855F7);border:none;color:#fff;border-radius:50px;padding:15px;font-size:16px;font-weight:900;cursor:pointer;margin-bottom:10px">💾 שמור סיכום</button>
+    <button onclick="document.getElementById('_lsDialog').remove()" style="width:100%;background:none;border:none;color:#64748B;padding:10px;font-size:14px;cursor:pointer;font-weight:700">ביטול</button>
+  </div>`;
+  document.body.appendChild(d);
+  window._lsRating=0;
+}
+
+async function _saveLessonSummary(bookingId,enc){
+  const topic=document.getElementById('_lsTopic')?.value.trim();
+  if(!topic){showFireToast('❌ הכנס נושא שיעור');return;}
+  const b=JSON.parse(decodeURIComponent(enc));
+  try{
+    showFireToast('⏳ שומר...');
+    const summary={
+      bookingId,
+      studentId:b.studentId,
+      teacherId:b.teacherId||currentUser?.uid,
+      studentName:b.studentName||'',
+      teacherName:b.teacherName||currentUserData?.name||'',
+      cat:b.cat||'',
+      day:b.day||'',
+      topic,
+      notes:document.getElementById('_lsNotes')?.value.trim()||'',
+      homework:document.getElementById('_lsHW')?.value.trim()||'',
+      rating:window._lsRating||0,
+      createdAt:Date.now()
+    };
+    await db.ref('lessonSummaries/'+bookingId).set(summary);
+    // שמירה לנתיב נגיש לתלמיד ולמורה בנפרד
+    await db.ref('studentProgress/'+b.studentId+'/'+bookingId).set(summary).catch(()=>{});
+    await db.ref('teacherSummaries/'+(b.teacherId||currentUser.uid)+'/'+bookingId).set(summary).catch(()=>{});
+    // עדכון סטטוס הזמנה ל-completed
+    await db.ref('bookings/'+bookingId+'/status').set('completed').catch(()=>{});
+    await db.ref('userBookings/'+b.studentId+'/'+bookingId+'/status').set('completed').catch(()=>{});
+    await db.ref('teacherBookings/'+(b.teacherId||currentUser.uid)+'/'+bookingId+'/status').set('completed').catch(()=>{});
+    // התראה לתלמיד
+    await db.ref('notifications/'+b.studentId).push({type:'lessonSummary',from:summary.teacherName,preview:'סיכום שיעור: '+topic,read:false,createdAt:Date.now()}).catch(()=>{});
+    document.getElementById('_lsDialog')?.remove();
+    showFireToast('✅ הסיכום נשמר!');
+    await loadTeacherBookings();
+    await loadLessonSummaries();
+    render();
+  }catch(e){showFireToast('❌ '+e.message);}
+}
+
 let userChats=[];
 async function loadUserChats(){
   if(!currentUser)return;
@@ -2783,6 +2916,16 @@ async function adminApproveTeacher(uid){
     const td=tSnap.val()||{};
     sendAdminEmail('✅ מורה אושר',`אישרת את ${td.name||uid} (${td.email||''}) כמורה ב-Kidemy`);
     showFireToast('✅ המורה אושר!');
+    await loadAdminData();renderAdminPanel();
+  }catch(e){showFireToast('❌ '+e.message);}
+}
+
+async function adminVerifyAge(uid){
+  try{
+    await db.ref('teachers/'+uid+'/ageVerification/status').set('verified');
+    await db.ref('teachers/'+uid+'/ageVerification/verifiedAt').set(Date.now());
+    await db.ref('teachers/'+uid+'/ageVerification/verifiedBy').set(currentUser?.uid||'admin');
+    showFireToast('✅ גיל וזהות אומתו!');
     await loadAdminData();renderAdminPanel();
   }catch(e){showFireToast('❌ '+e.message);}
 }
@@ -4540,8 +4683,10 @@ function renderAdminTab(){
             <div style="font-weight:900;font-size:15px;color:#0F1A1F">${t.name||'ללא שם'}</div>
             <div style="font-size:12px;color:#64748B;margin-top:2px">📧 ${t.email||''}</div>
             <div style="font-size:12px;color:#14B8A6;font-weight:700;margin-top:4px">📚 ${CATS.find(c=>c.id===t.cat)?.lbl||t.cat||'?'} • 📍 ${t.city||'?'} • 💰 ₪${t.price||'?'}/שיעור</div>
+            ${t.ageVerification?.age?`<div style="font-size:11px;color:#6366F1;font-weight:700;margin-top:4px">🪪 גיל ${t.ageVerification.age} • ${t.ageVerification.idType==='id'?'ת.ז.':t.ageVerification.idType==='passport'?'דרכון':'אישור הורה'} • ${t.ageVerification.status==='verified'?'✅ מאומת':'⏳ ממתין לאימות גיל'}</div>`:'<div style="font-size:11px;color:#EF4444;font-weight:700;margin-top:4px">⚠️ לא הוגשו פרטי גיל/זהות</div>'}
             ${t.desc?`<div style="font-size:12px;color:#475569;margin-top:6px;background:rgba(20,184,166,0.05);border-radius:10px;padding:8px;line-height:1.5">${t.desc}</div>`:''}
           </div>
+          ${t.ageVerification?.age&&t.ageVerification?.status!=='verified'?`<button onclick="adminVerifyAge('${t.uid}')" style="width:100%;background:linear-gradient(135deg,#6366F1,#A855F7);border:none;color:#fff;border-radius:12px;padding:8px;font-weight:800;font-size:12px;cursor:pointer;margin-bottom:8px">🪪 אמת גיל וזהות</button>`:''}
           <div style="display:flex;gap:8px">
             <button onclick="adminApproveTeacher('${t.uid}')" style="flex:2;background:#10B981;border:none;color:#fff;border-radius:50px;padding:10px;font-weight:800;font-size:12px;cursor:pointer">✅ אשר</button>
             <button onclick="adminRejectTeacher('${t.uid}')" style="flex:1;background:rgba(245,158,11,0.9);border:none;color:#fff;border-radius:50px;padding:10px;font-weight:800;font-size:12px;cursor:pointer">↩ דחה</button>
@@ -5902,15 +6047,11 @@ function Booking(){
 
 // ─── MESSAGES ─────────────────────────────────────────────────────────────────
 function Messages(){
-  // הזמנות מאושרות - שיעורים פעילים
-  const approved=studentBookings.filter(b=>b.status==='approved'||b.status==='completed');
-  const pending=studentBookings.filter(b=>b.status==='pending');
-  const rejected=studentBookings.filter(b=>b.status==='rejected');
-  // למורה - גם ההזמנות המאושרות שלו
-  let teacherApproved=[];
-  if(currentUserData?.role==='teacher'){
-    // נטען בנפרד ב-loadTeacherBookings אבל לעת עתה נציג מ-teacherPendingBookings
-  }
+  const isTeacherRole=currentUserData?.role==='teacher';
+  const bookingsSource=isTeacherRole?teacherAllBookings:studentBookings;
+  const approved=bookingsSource.filter(b=>b.status==='approved'||b.status==='completed');
+  const pending=bookingsSource.filter(b=>b.status==='pending');
+  const rejected=bookingsSource.filter(b=>b.status==='rejected');
 
   return `<div class="screen">
     <div style="background:linear-gradient(135deg,#14B8A6 0%,#06B6D4 50%,#A855F7 100%);padding:24px 20px 32px;border-radius:0 0 32px 32px;color:#fff;position:relative;overflow:hidden">
@@ -5919,7 +6060,7 @@ function Messages(){
         <div style="display:flex;gap:8px;align-items:center">
           <button onclick="back()" style="background:rgba(255,255,255,.2);border:none;color:#fff;font-size:14px;cursor:pointer;border-radius:50px;padding:8px 14px;font-weight:700">← חזור</button>
         </div>
-        <div style="text-align:right"><h2 style="font-size:22px;font-weight:900;margin:0">💬 השיעורים שלי</h2><p style="color:rgba(255,255,255,.85);font-size:12px;margin:4px 0 0">${approved.length} שיעורים פעילים</p></div>
+        <div style="text-align:right"><h2 style="font-size:22px;font-weight:900;margin:0">${isTeacherRole?'📅 הזמנות שלי':'💬 השיעורים שלי'}</h2><p style="color:rgba(255,255,255,.85);font-size:12px;margin:4px 0 0">${approved.length} שיעורים פעילים</p></div>
       </div>
     </div>
     <div style="padding:16px 20px 100px">
@@ -5969,7 +6110,7 @@ function Messages(){
             <div style="display:flex;gap:8px;margin-bottom:0">
               <button onclick="S.chat={otherUid:'${currentUserData?.role==='teacher'?b.studentId:b.teacherId}',otherName:'${(currentUserData?.role==='teacher'?b.studentName:b.teacherName).replace(/'/g,'')}'};go('chat')" style="flex:1;background:rgba(6,182,212,0.1);border:1.5px solid rgba(6,182,212,0.3);color:#06B6D4;border-radius:14px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">💬 צ'אט</button>
               <button onclick='showWhatsAppDialog("",WA_TEMPLATES.bookingReminder(${JSON.stringify(b).replace(/"/g,"&quot;")}),"שלח תזכורת")' style="background:linear-gradient(135deg,#25D366,#128C7E);border:none;color:#fff;border-radius:14px;padding:10px 12px;font-weight:800;font-size:13px;cursor:pointer">📱</button>
-              <button onclick="completeLesson('${b.id}')" style="flex:1;background:rgba(168,85,247,0.1);border:1.5px solid rgba(168,85,247,0.3);color:#A855F7;border-radius:14px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">✅ סיים ודרג</button>
+              ${isTeacherRole?`<button onclick="completeLesson('${b.id}')" style="flex:1;background:rgba(168,85,247,0.1);border:1.5px solid rgba(168,85,247,0.3);color:#A855F7;border-radius:14px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">✅ סיים ודרג</button>`:''}
             </div>
           </div>
         `).join('')}
@@ -5995,7 +6136,25 @@ function Messages(){
         <h3 style="font-size:14px;font-weight:800;margin:18px 0 12px;color:#EF4444">❌ נדחו (${rejected.length})</h3>
         ${rejected.slice(0,3).map(b=>`
           <div style="background:rgba(255,255,255,0.5);border-radius:16px;padding:13px;margin-bottom:8px;opacity:0.7">
-            <div style="font-weight:700;font-size:13px;color:#64748B">${b.teacherName} • יום ${b.day} ${b.time}</div>
+            <div style="font-weight:700;font-size:13px;color:#64748B">${isTeacherRole?b.studentName:b.teacherName} • יום ${b.day} ${b.time}</div>
+          </div>
+        `).join('')}
+      `:''}
+
+      ${!isTeacherRole&&lessonSummaries.length>0?`
+        <h3 style="font-size:14px;font-weight:800;margin:18px 0 12px;color:#6366F1">📊 סיכומי שיעורים (${lessonSummaries.length})</h3>
+        ${lessonSummaries.slice(0,5).map(s=>`
+          <div style="background:#fff;border-radius:18px;padding:14px;margin-bottom:10px;box-shadow:0 4px 14px rgba(99,102,241,0.1);border:1.5px solid rgba(99,102,241,0.15)">
+            <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px">
+              <div style="font-size:11px;color:#94A3B8">${s.createdAt?new Date(s.createdAt).toLocaleDateString('he-IL'):''}</div>
+              <div style="text-align:right">
+                <div style="font-weight:800;font-size:14px;color:#0F1A1F">${s.teacherName||'מורה'}</div>
+                ${s.topic?`<div style="font-size:12px;color:#6366F1;font-weight:700">${s.topic}</div>`:''}
+              </div>
+            </div>
+            ${s.rating?`<div style="font-size:14px;margin-bottom:6px">${'⭐'.repeat(Math.min(5,s.rating))}</div>`:''}
+            ${s.notes?`<div style="font-size:12px;color:#475569;background:rgba(99,102,241,0.06);border-radius:10px;padding:8px;line-height:1.5;margin-bottom:6px">${s.notes}</div>`:''}
+            ${s.homework?`<div style="font-size:12px;color:#A855F7;font-weight:700">📝 שיעורי בית: ${s.homework}</div>`:''}
           </div>
         `).join('')}
       `:''}
@@ -7611,7 +7770,7 @@ async function refreshCurrentScreen(){
     loads.push(loadRealTeachers());
     if(['home','nearby','search'].includes(scr)){}// כבר טוען מורים
     if(scr==='community')loads.push(loadCommunityPosts());
-    if(scr==='messages')loads.push(loadUserChats());
+    if(scr==='messages'){loads.push(loadUserChats());loads.push(loadLessonSummaries());if(currentUserData?.role==='teacher')loads.push(loadTeacherBookings());}
     if(scr==='profile'){
       if(currentUserData?.role==='teacher')loads.push(loadTeacherVideos());
       loads.push(loadNotifications());
@@ -7889,6 +8048,7 @@ auth.onAuthStateChanged(async user=>{
       await loadUserChats();
       if(currentUserData?.role==='teacher')await loadTeacherAnalytics();
       if(currentUserData?.role==='teacher')await loadTeacherVideos();
+      await loadLessonSummaries();
 
       // האזנה בזמן אמת להתראות + לאישור מנהל
       if(isAdmin()){_requestBrowserNotifPermission();_startAdminAlertsListener();}
