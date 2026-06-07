@@ -2261,14 +2261,16 @@ let _currentChatOtherUid=null; // tracks which conversation is active — reliab
 let _convListeners={}; // otherUid → firebase query, background listeners for all conversations
 
 function listenToChat(otherUid){
-  _currentChatOtherUid=null;
+  // Claim the UID immediately — BEFORE any teardown — so that any render()
+  // triggered by Firebase events during teardown sees the correct value and
+  // does NOT re-enter listenToChat (which would wipe chatMessages again).
+  _currentChatOtherUid=otherUid;
   if(_chatQuery){try{_chatQuery.off();}catch(e){}}
   if(chatListener){try{chatListener.off();}catch(e){}}
   _chatQuery=null;chatListener=null;
-  if(!currentUser||!otherUid)return;
+  if(!currentUser||!otherUid){_currentChatOtherUid=null;return;}
   const chatId=getChatId(currentUser.uid,otherUid);
   chatMessages=[];
-  _currentChatOtherUid=otherUid;
   chatListener=db.ref('messages/'+chatId);
   _chatQuery=chatListener.limitToLast(100);
   _chatQuery.on('child_added',snap=>{
