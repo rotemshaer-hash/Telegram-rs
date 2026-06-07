@@ -2268,10 +2268,11 @@ function listenToChat(otherUid){
   chatMessages=[];
   chatListener=db.ref('messages/'+chatId);
   _chatQuery=chatListener.limitToLast(100);
-  // Use 'value' (not 'child_added') — fires on attach AND on every change, most reliable
-  _chatQuery.on('value',snap=>{
-    chatMessages=[];
-    if(snap.exists())snap.forEach(c=>chatMessages.push({id:c.key,...c.val()}));
+  // child_added: fires per-message (optimistic local + server), no full-clear on each event
+  _chatQuery.on('child_added',snap=>{
+    const m={id:snap.key,...snap.val()};
+    if(chatMessages.find(x=>x.id===m.id))return; // deduplicate
+    chatMessages.push(m);
     chatMessages.sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
     if(S.screen==='chat'){
       render();
