@@ -2257,21 +2257,23 @@ function getChatId(uid1,uid2){
 }
 
 let _chatQuery=null;
+let _currentChatOtherUid=null; // tracks which conversation is active — reliable alternative to chatListener._otherUid
 let _convListeners={}; // otherUid → firebase query, background listeners for all conversations
 
 function listenToChat(otherUid){
+  _currentChatOtherUid=null;
   if(_chatQuery){try{_chatQuery.off();}catch(e){}}
   if(chatListener){try{chatListener.off();}catch(e){}}
   _chatQuery=null;chatListener=null;
   if(!currentUser||!otherUid)return;
   const chatId=getChatId(currentUser.uid,otherUid);
   chatMessages=[];
+  _currentChatOtherUid=otherUid;
   chatListener=db.ref('messages/'+chatId);
   _chatQuery=chatListener.limitToLast(100);
-  // child_added: fires per-message (optimistic local + server), no full-clear on each event
   _chatQuery.on('child_added',snap=>{
     const m={id:snap.key,...snap.val()};
-    if(chatMessages.find(x=>x.id===m.id))return; // deduplicate
+    if(chatMessages.find(x=>x.id===m.id))return;
     chatMessages.push(m);
     chatMessages.sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
     if(S.screen==='chat'){
@@ -2281,7 +2283,7 @@ function listenToChat(otherUid){
   });
 }
 
-// Background listeners: 1 per known conversation, listen for incoming messages
+/// Background listeners: 1 per known conversation, listen for incoming messages
 function setupConvListeners(){
   if(!currentUser)return;
   userChats.forEach(uc=>{
@@ -2313,6 +2315,7 @@ function teardownConvListeners(){
 }
 
 function stopChatListener(){
+  _currentChatOtherUid=null;
   if(_chatQuery){try{_chatQuery.off();}catch(e){}_chatQuery=null;}
   if(chatListener){try{chatListener.off();}catch(e){};chatListener=null;}
   chatMessages=[];
@@ -6007,9 +6010,8 @@ function Chat(){
     return `<div class="screen"><div style="padding:40px;text-align:center"><p>מעביר להודעות...</p></div></div>`;
   }
   // התחל להאזין לשיחה אם עדיין לא
-  if(!chatListener||(chatListener._otherUid!==c.otherUid)){
+  if(_currentChatOtherUid!==c.otherUid){
     listenToChat(c.otherUid);
-    if(chatListener)chatListener._otherUid=c.otherUid;
   }
 
   return `<div class="chat-wrap">
@@ -7619,8 +7621,7 @@ async function refreshCurrentScreen(){
     if(scr==='notifications')loads.push(loadNotifications());
     if(scr==='admin')loads.push(loadAdminData());
     if(scr==='chat'&&S.chat?.otherUid){
-      chatMessages=[];
-      if(chatListener)try{chatListener.off();}catch(e){}
+      stopChatListener();
       listenToChat(S.chat.otherUid);
     }
     await Promise.all(loads);
