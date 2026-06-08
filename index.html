@@ -8455,10 +8455,10 @@ function installApp(){
 // ── AUTO-UPDATE SERVICE WORKER ────────────────────────────────────────────────
 if('serviceWorker' in navigator){
   navigator.serviceWorker.register('/sw.js').then(reg=>{
-    // Force browser to check for SW update on every page load
     reg.update();
+    // Check for updates every 30 seconds so PWA users get new versions without reopening
+    setInterval(()=>reg.update(),30000);
   });
-  // When a new SW takes over → reload the page so user gets fresh content
   let _swReloading=false;
   navigator.serviceWorker.addEventListener('controllerchange',()=>{
     if(!_swReloading){_swReloading=true;location.reload();}
