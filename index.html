@@ -910,6 +910,7 @@ function ParentReg(){
 async function signInWithGoogleParent(){
   try{
     showFireToast('⏳ מחבר עם Google...');
+    S._googleImporting=true; // prevent onAuthStateChanged from kicking user to login
     const provider=new firebase.auth.GoogleAuthProvider();
     const result=await auth.signInWithPopup(provider);
     const gUser=result.user;
@@ -921,6 +922,8 @@ async function signInWithGoogleParent(){
     showFireToast('✅ פרטים הועתקו! השלם את שאר השדות ולחץ המשך.');
   }catch(e){
     if(e.code!=='auth/popup-closed-by-user')showFireToast('❌ '+e.message);
+  }finally{
+    S._googleImporting=false;
   }
 }
 
@@ -935,7 +938,13 @@ function submitParentReg(){
   if(!age||age<18){showFireToast('❌ ההורה חייב להיות מעל גיל 18');return;}
   if(!email.includes('@')){showFireToast('❌ הכנס כתובת מייל תקינה של ההורה');return;}
   if(phone.replace(/\D/g,'').length<9){showFireToast('❌ הכנס מספר טלפון תקין של ההורה');return;}
-  if(!kcbChecked('prConsent')){showFireToast('❌ ההורה חייב לאשר את ההסכמה');return;}
+  if(!kcbChecked('prConsent')){
+    showFireToast('❌ יש לסמן את תיבת ההסכמה למטה');
+    document.getElementById('prConsent')?.scrollIntoView({behavior:'smooth',block:'center'});
+    document.getElementById('prConsent').style.border='2px solid #EF4444';
+    setTimeout(()=>{if(document.getElementById('prConsent'))document.getElementById('prConsent').style.border='';},3000);
+    return;
+  }
 
   S.parentRegData={name,id,email,age,phone,confirmedAt:Date.now()};
   _saveRegSession();
@@ -7951,7 +7960,7 @@ auth.onAuthStateChanged(async user=>{
   loadRealTeachers();
   if(user){
     // אם המשתמש נכנס אוטומטית (session ישן לפני שהגדרנו NONE) — נתק מיד
-    if(!S._registering&&!S._loggingIn){
+    if(!S._registering&&!S._loggingIn&&!S._googleImporting){
       await auth.signOut().catch(()=>{});
       go('login');
       return;
