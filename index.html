@@ -452,7 +452,7 @@ const ACHIEVEMENTS=[
   {id:6,em:"👥",ttl:"שיעור קבוצתי",desc:"לימדת קבוצה של 4 תלמידים",col:"#27AE60"},
 ];
 
-const APP_VERSION='4.4.3';
+const APP_VERSION='4.4.4';
 const APP_BUILD='08-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -1191,11 +1191,11 @@ function TeacherSetup(){
       <!-- אימות גיל וזהות -->
       <div class="card" style="margin-bottom:18px;background:linear-gradient(135deg,rgba(99,102,241,0.08),rgba(168,85,247,0.05));border:1.5px solid rgba(99,102,241,0.25)">
         <h3 style="font-weight:900;font-size:16px;margin:0 0 8px;color:#6366F1">🪪 אימות גיל וזהות</h3>
-        <p style="font-size:12px;color:#64748B;margin:0 0 14px;line-height:1.6">נדרש לאישור הפרופיל. המידע נגיש רק לצוות Kidemy ומשמש לאימות בטיחות.</p>
+        <p style="font-size:12px;color:#64748B;margin:0 0 14px;line-height:1.6">נדרש לאישור הפרופיל. המידע גלוי לצוות Kidemy בלבד.</p>
         <div class="ing" style="margin-bottom:12px"><label>גיל (10–18)</label>
           <input type="number" id="tAge" class="inp" placeholder="לדוגמה: 14" min="10" max="18">
         </div>
-        <div class="ing"><label>סוג מסמך מזהה</label>
+        <div class="ing" style="margin-bottom:12px"><label>סוג מסמך מזהה</label>
           <select id="tIdType" class="inp">
             <option value="">בחר מסמך</option>
             <option value="id">תעודת זהות ישראלית</option>
@@ -1203,7 +1203,20 @@ function TeacherSetup(){
             <option value="parent_confirm">אישור הורה בלבד</option>
           </select>
         </div>
-        <p style="font-size:11px;color:#94A3B8;margin:10px 0 0;line-height:1.5">💡 לאחר ההרשמה ניתן לשלוח צילום מסמך בוואטסאפ לצוות Kidemy.</p>
+        <!-- העלאת תמונת מסמך -->
+        <div style="margin-top:4px">
+          <label style="font-size:13px;font-weight:700;color:#6366F1;display:block;margin-bottom:8px">📸 צילום המסמך</label>
+          <input type="file" id="tIdPhoto" accept="image/*" capture="environment" style="display:none" onchange="previewIdPhoto()">
+          <div id="tIdPhotoPreview" style="display:none;margin-bottom:10px;border-radius:14px;overflow:hidden;border:2px solid rgba(99,102,241,0.3)">
+            <img id="tIdPhotoImg" src="" style="width:100%;max-height:180px;object-fit:cover" alt="תמונת מסמך">
+            <div style="padding:8px;background:rgba(99,102,241,0.08);font-size:11px;color:#6366F1;font-weight:700;text-align:center">✅ תמונה נבחרה</div>
+          </div>
+          <button type="button" onclick="document.getElementById('tIdPhoto').click()"
+            style="width:100%;background:rgba(99,102,241,0.1);border:2px dashed rgba(99,102,241,0.4);color:#6366F1;border-radius:14px;padding:14px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
+            📷 צלם / העלה תמונה של המסמך
+          </button>
+          <p style="font-size:11px;color:#94A3B8;margin:8px 0 0;line-height:1.5">🔒 הצילום נשמר מוצפן ומוצג למנהל בלבד לאימות.</p>
+        </div>
       </div>
 
       <!-- תיאור -->
@@ -1440,6 +1453,7 @@ async function saveTeacherProfile(){
       ageVerification:{
         age:parseInt(document.getElementById('tAge')?.value||0)||null,
         idType:document.getElementById('tIdType')?.value||null,
+        idPhoto:_idPhotoBase64||null,
         status:'pending',
         submittedAt:Date.now()
       }
@@ -1473,6 +1487,7 @@ async function saveTeacherProfile(){
 
     const isAutoVerified=isAdmin()||TEACHER_AUTO_VERIFY.includes(currentUser.email?.toLowerCase());
     if(isAutoVerified){
+      _idPhotoBase64=null;
       showFireToast('✅ פרופיל מורה נשמר ואושר!');
       await loadRealTeachers();
       setTimeout(()=>go('home'),1200);
@@ -2254,6 +2269,23 @@ function showCropDialog(dataUrl,callback,aw=1,ah=1){
     cv.getContext('2d').drawImage(img,cx,cy,cw,ch,0,0,outW,outH);
     ov.remove();callback(cv.toDataURL('image/jpeg',0.88));
   };
+}
+
+let _idPhotoBase64=null;
+function previewIdPhoto(){
+  const input=document.getElementById('tIdPhoto');
+  if(!input?.files?.[0])return;
+  const file=input.files[0];
+  if(file.size>5*1024*1024){showFireToast('❌ הקובץ גדול מדי (מקסימום 5MB)');return;}
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    _idPhotoBase64=ev.target.result;
+    const preview=document.getElementById('tIdPhotoPreview');
+    const img=document.getElementById('tIdPhotoImg');
+    if(preview&&img){img.src=_idPhotoBase64;preview.style.display='block';}
+    showFireToast('✅ תמונה נטענה!');
+  };
+  reader.readAsDataURL(file);
 }
 
 async function uploadProfilePhoto(){
@@ -4698,6 +4730,7 @@ function renderAdminTab(){
             <div style="font-size:12px;color:#64748B;margin-top:2px">📧 ${t.email||''}</div>
             <div style="font-size:12px;color:#14B8A6;font-weight:700;margin-top:4px">📚 ${CATS.find(c=>c.id===t.cat)?.lbl||t.cat||'?'} • 📍 ${t.city||'?'} • 💰 ₪${t.price||'?'}/שיעור</div>
             ${t.ageVerification?.age?`<div style="font-size:11px;color:#6366F1;font-weight:700;margin-top:4px">🪪 גיל ${t.ageVerification.age} • ${t.ageVerification.idType==='id'?'ת.ז.':t.ageVerification.idType==='passport'?'דרכון':'אישור הורה'} • ${t.ageVerification.status==='verified'?'✅ מאומת':'⏳ ממתין לאימות גיל'}</div>`:'<div style="font-size:11px;color:#EF4444;font-weight:700;margin-top:4px">⚠️ לא הוגשו פרטי גיל/זהות</div>'}
+            ${t.ageVerification?.idPhoto?`<div style="margin-top:8px"><div style="font-size:11px;color:#6366F1;font-weight:700;margin-bottom:4px">📸 צילום מסמך:</div><img src="${t.ageVerification.idPhoto}" style="width:100%;max-height:160px;object-fit:cover;border-radius:10px;border:1.5px solid rgba(99,102,241,0.3)" alt="מסמך זהות" onclick="this.style.maxHeight=this.style.maxHeight==='none'?'160px':'none'"></div>`:'<div style="font-size:11px;color:#F59E0B;font-weight:700;margin-top:4px">⚠️ לא הועלה צילום מסמך</div>'}
             ${t.desc?`<div style="font-size:12px;color:#475569;margin-top:6px;background:rgba(20,184,166,0.05);border-radius:10px;padding:8px;line-height:1.5">${t.desc}</div>`:''}
           </div>
           ${t.ageVerification?.age&&t.ageVerification?.status!=='verified'?`<button onclick="adminVerifyAge('${t.uid}')" style="width:100%;background:linear-gradient(135deg,#6366F1,#A855F7);border:none;color:#fff;border-radius:12px;padding:8px;font-weight:800;font-size:12px;cursor:pointer;margin-bottom:8px">🪪 אמת גיל וזהות</button>`:''}
@@ -8471,10 +8504,10 @@ function installApp(){
 if('serviceWorker' in navigator){
   // Unregister any old SW not matching current version, then register fresh
   navigator.serviceWorker.getRegistrations().then(regs=>{
-    const currentSwUrl='/sw.js?v=4.4.3';
+    const currentSwUrl='/sw.js?v=4.4.4';
     regs.forEach(r=>{if(r.active&&r.active.scriptURL&&!r.active.scriptURL.includes('4.4.2'))r.unregister();});
   });
-  navigator.serviceWorker.register('/sw.js?v=4.4.3').then(reg=>{
+  navigator.serviceWorker.register('/sw.js?v=4.4.4').then(reg=>{
     reg.update();
     setInterval(()=>reg.update(),30000);
   });
