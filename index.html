@@ -377,6 +377,7 @@ async function loadRealTeachers(){
             photo:t.photo||null,
             col:catObj.col,
             badge:t.verified?'מורה מוסמך':'',
+            ageVerified:t.ageVerification?.status==='verified',
             online:t.online!==false,
             group:t.group||false,
             desc:t.desc||'',
@@ -452,7 +453,7 @@ const ACHIEVEMENTS=[
   {id:6,em:"👥",ttl:"שיעור קבוצתי",desc:"לימדת קבוצה של 4 תלמידים",col:"#27AE60"},
 ];
 
-const APP_VERSION='4.5.2';
+const APP_VERSION='4.5.3';
 const APP_BUILD='09-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -502,8 +503,7 @@ function _restoreRegSession(){
 _restoreRegSession();
 // ─── ROUTER ───────────────────────────────────────────────────────────────────
 function go(scr,extra={}){
-  if(scr==='register'&&!S.safetyConfirmed){scr='safety';}
-  else if(scr==='register'&&!S.parentRegData){scr='parentReg';}
+  if(scr==='register'){S.safetyConfirmed=true;_saveRegSession();if(!S.parentRegData)scr='parentReg';}
   if(scr!=="splash")S.prev=S.screen;
   Object.assign(S,extra,{screen:scr});
   if(scr==='community')loadCommunityPosts();
@@ -799,7 +799,7 @@ function Safety(){
           <div><div style="font-weight:900;font-size:15px">שיעורים אונליין מאובטחים</div><div style="font-size:11px;color:#94A3B8;margin-top:2px">טכנולוגיה מוכחת ובטוחה</div></div>
         </div>
         ${[
-          'שיעורי וידאו מתקיימים דרך אפליקציית Zoom – הפלטפורמה המובילה לשיעורים אונליין.',
+          'שיעורי וידאו מתקיימים דרך Jitsi Meet – פלטפורמה אירופאית מוצפנת, ללא צורך בהורדת תוכנה.',
           'לכל שיעור נוצר חדר ייחודי עם מזהה אקראי שאי-אפשר לנחש. אורחים לא מוזמנים לא יכולים להיכנס.',
           'שיעורים פרונטליים (פנים-אל-פנים) מחייבים אישור הורה מפורש לפני האישור הסופי.',
           'שיעורי אונליין פתוחים לכל המשתתפים המוזמנים – ללא הגבלת מספר.',
@@ -878,6 +878,14 @@ function ParentReg(){
 
     <div style="width:100%;max-width:400px;padding:20px 16px;display:flex;flex-direction:column;gap:14px">
 
+      <!-- safety summary -->
+      <div style="background:rgba(20,184,166,.08);border:1.5px solid rgba(20,184,166,.25);border-radius:16px;padding:12px 15px">
+        <div style="font-size:12px;font-weight:800;color:#5EEAD4;margin-bottom:8px">🛡️ בטיחות Kidemy – בקצרה:</div>
+        <div style="display:flex;flex-direction:column;gap:5px">
+          ${[['👨‍👩‍👧','פיקוח הורים מלא – ההורה מאשר כל שיעור'],['🎓','כל מורה עובר בדיקה לפני שמופיע בחיפוש'],['📹','שיעורים אונליין דרך Jitsi Meet מאובטח'],['🚨','מערכת דיווח – אפס סבלנות לתוכן פוגעני']].map(([e,t])=>`<div style="display:flex;gap:8px;align-items:center"><span style="font-size:13px">${e}</span><span style="font-size:11px;color:#CBD5E1">${t}</span></div>`).join('')}
+        </div>
+      </div>
+
       <!-- warning banner -->
       <div style="background:rgba(168,85,247,.12);border:1.5px solid rgba(168,85,247,.35);border-radius:16px;padding:13px 15px;display:flex;gap:10px;align-items:center">
         <span style="font-size:22px">🔐</span>
@@ -939,7 +947,7 @@ function ParentReg(){
         המשך לרישום הילד ←
       </button>
 
-      <button onclick="go('safety')" style="width:100%;background:none;border:none;padding:10px;font-size:13px;color:#475569;cursor:pointer">
+      <button onclick="go('splash')" style="width:100%;background:none;border:none;padding:10px;font-size:13px;color:#475569;cursor:pointer">
         ← חזור
       </button>
 
@@ -1306,7 +1314,7 @@ function TeacherSetup(){
           </div>
           <div style="display:flex;gap:10px;align-items:flex-start">
             <div style="width:26px;height:26px;border-radius:50%;background:#A855F7;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;flex-shrink:0">3</div>
-            <div style="font-size:13px;line-height:1.6"><strong>השיעור מתקיים</strong> – וידאו דרך Zoom</div>
+            <div style="font-size:13px;line-height:1.6"><strong>השיעור מתקיים</strong> – וידאו דרך Jitsi Meet</div>
           </div>
           <div style="display:flex;gap:10px;align-items:flex-start">
             <div style="width:26px;height:26px;border-radius:50%;background:#10B981;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;flex-shrink:0">4</div>
@@ -1536,7 +1544,7 @@ async function processPayment(payMethod,totalAmount){
     const days=["א'","ב'","ג'","ד'","ה'","ו'"];
     const bookingRef=db.ref('bookings').push();
     const bookingId=bookingRef.key;
-    const zoomRoom='Kidemy-'+bookingId.replace(/[^a-zA-Z0-9]/g,'');
+    const jitsiRoom='Kidemy-'+bookingId.replace(/[^a-zA-Z0-9]/g,'');
     const bookingData={
       id:bookingId,
       studentId:currentUser.uid,
@@ -1557,8 +1565,8 @@ async function processPayment(payMethod,totalAmount){
       payMethod:payMethod,
       price:totalAmount,
       status:'pending',
-      zoomRoom:zoomRoom,
-      zoomUrl:'https://zoom.us/j/'+zoomRoom,
+      jitsiRoom:jitsiRoom,
+      jitsiUrl:'https://meet.jit.si/'+jitsiRoom,
       createdAt:Date.now()
     };
     await bookingRef.set(bookingData);
@@ -1650,7 +1658,7 @@ async function approveBooking(bookingId){
       from:b.teacherName,
       day:b.day,
       time:b.time,
-      zoomUrl:b.zoomUrl,
+      jitsiUrl:b.jitsiUrl,
       read:false,
       createdAt:Date.now()
     });
@@ -1691,18 +1699,18 @@ async function rejectBooking(bookingId){
   }
 }
 
-// פותח חדר Zoom
-function joinZoomSession(zoomUrl,room,bookingData){
+// פותח חדר Jitsi Meet
+function joinJitsi(jitsiUrl,room,bookingData){
   showFireToast('🎥 פותח שיעור...');
   setTimeout(()=>{
-    window.open(zoomUrl||('https://zoom.us/j/'+room),'_blank');
+    window.open(jitsiUrl||('https://meet.jit.si/'+room),'_blank');
   },300);
   // מייל מעקב להורה על תחילת שיעור
   if(currentUserData?.parentEmail&&bookingData){
     const b=typeof bookingData==='string'?JSON.parse(bookingData):bookingData;
     sendEmail(currentUserData.parentEmail,
       `📹 ${currentUserData.name||''} התחיל/ה שיעור עכשיו`,
-      `שלום ${currentUserData.parentName||'הורה יקר'},\n\nילדך ${currentUserData.name||''} החל/ה שיעור כרגע:\n👨‍🏫 מורה: ${b.teacherName||''}\n📅 ${b.day||''} בשעה ${b.time||''}\n\nקישור לשיעור:\n${zoomUrl||('https://zoom.us/j/'+room)}\n\n– צוות Kidemy`
+      `שלום ${currentUserData.parentName||'הורה יקר'},\n\nילדך ${currentUserData.name||''} החל/ה שיעור כרגע:\n👨‍🏫 מורה: ${b.teacherName||''}\n📅 ${b.day||''} בשעה ${b.time||''}\n\nקישור לשיעור:\n${jitsiUrl||('https://meet.jit.si/'+room)}\n\n– צוות Kidemy`
     ).catch(()=>{});
   }
 }
@@ -5433,7 +5441,7 @@ function Home(){
       <h2 style="color:#fff;font-size:20px;font-weight:900;margin:0 0 16px;position:relative;z-index:1">מה תרצה ללמוד היום?</h2>
       <div style="background:rgba(255,255,255,.18);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.22);border-radius:50px;padding:12px 18px;display:flex;align-items:center;gap:10px;position:relative;z-index:1">
         <span style="font-size:18px">🔍</span>
-        <input id="homeSearch" value="${S.search||''}" oninput="S.search=this.value" onkeyup="if(event.key==='Enter')render()" placeholder="חפש מורה, נושא, עיר..." style="border:none;outline:none;flex:1;font-size:15px;direction:rtl;background:transparent;color:#fff;font-family:inherit">
+        <input id="homeSearch" value="${S.search||''}" oninput="S.search=this.value;clearTimeout(S._st);S._st=setTimeout(render,280)" placeholder="חפש מורה, נושא, עיר..." style="border:none;outline:none;flex:1;font-size:15px;direction:rtl;background:transparent;color:#fff;font-family:inherit">
         ${S.search?`<button onclick="S.search='';render()" style="background:rgba(255,255,255,0.25);border:none;color:#fff;cursor:pointer;border-radius:50%;width:24px;height:24px;font-size:12px">✕</button>`:`<span style="color:rgba(255,255,255,.6);font-size:14px">⌨</span>`}
       </div>
     </div>
@@ -5539,6 +5547,7 @@ function Home(){
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
                   <span style="font-weight:900;font-size:14px;color:var(--p)">₪${t.price}/שיעור</span>
                   ${t.freeTrial?`<span style="background:linear-gradient(135deg,#FBBF24,#F59E0B);color:#fff;font-weight:800;font-size:10px;padding:2px 8px;border-radius:50px">🎁 ניסיון חינם</span>`:''}
+                  ${t.ageVerified?`<span style="background:rgba(99,102,241,0.15);color:#6366F1;font-size:10px;font-weight:700;padding:2px 7px;border-radius:50px">✓ גיל מאומת</span>`:''}
                 </div>
               </div>
             </button>`).join("")}
@@ -5558,7 +5567,10 @@ function Home(){
               <div style="font-size:12px;color:${C.muted};margin-top:2px">${catById(t.cat).lbl||""} • ${t.city}</div>
               <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
                 <span style="font-weight:900;font-size:14px;color:var(--p)">₪${t.price}/שיעור</span>
-                ${gTag(t.badge)}
+                <span style="display:flex;gap:4px;align-items:center">
+                  ${t.ageVerified?`<span style="background:rgba(99,102,241,0.15);color:#6366F1;font-size:10px;font-weight:700;padding:2px 7px;border-radius:50px">✓ גיל מאומת</span>`:''}
+                  ${gTag(t.badge)}
+                </span>
               </div>
             </div>
           </button>`).join("");})()}
@@ -6062,16 +6074,19 @@ function Booking(){
       ${S.bookPay==='paybox'?`<div style="margin-right:auto;width:24px;height:24px;border-radius:50%;background:#0066CC;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px">✓</div>`:""}
     </div>
 
-    <!-- הוראות אחרי בחירה -->
+    <!-- הוראות + לינק ישיר -->
     ${S.bookPay?`
     <div style="background:linear-gradient(135deg,rgba(20,184,166,0.1),rgba(168,85,247,0.08));border:1.5px solid rgba(20,184,166,0.3);border-radius:16px;padding:16px;margin-bottom:14px">
       <h4 style="font-weight:900;font-size:14px;margin:0 0 10px;color:#14B8A6">📲 כיצד לשלם:</h4>
       <div style="display:flex;flex-direction:column;gap:8px">
-        <div style="display:flex;gap:8px;align-items:center"><div style="width:24px;height:24px;border-radius:50%;background:#14B8A6;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;flex-shrink:0">1</div><span style="font-size:13px">פתח את ${S.bookPay==='bit'?'Bit':S.bookPay==='paypal'?'PayPal':'PayBox'} בטלפון</span></div>
-        <div style="display:flex;gap:8px;align-items:center"><div style="width:24px;height:24px;border-radius:50%;background:#06B6D4;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;flex-shrink:0">2</div><span style="font-size:13px">שלח <strong style="color:#14B8A6">₪${price}</strong> ל-<strong>${S.bookPay==='paypal'?ADMIN_PAYMENT.paypal:ADMIN_PAYMENT.bit}</strong></span></div>
+        <div style="display:flex;gap:8px;align-items:center"><div style="width:24px;height:24px;border-radius:50%;background:#14B8A6;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;flex-shrink:0">1</div><span style="font-size:13px">לחץ "פתח לתשלום" למטה → יעביר לאפליקציית התשלום</span></div>
+        <div style="display:flex;gap:8px;align-items:center"><div style="width:24px;height:24px;border-radius:50%;background:#06B6D4;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;flex-shrink:0">2</div><span style="font-size:13px">שלח <strong style="color:#14B8A6">₪${price}</strong> ל-<strong>${S.bookPay==='paypal'?ADMIN_PAYMENT.paypal:S.bookPay==='paybox'?ADMIN_PAYMENT.paybox:ADMIN_PAYMENT.bit}</strong></span></div>
         <div style="display:flex;gap:8px;align-items:center"><div style="width:24px;height:24px;border-radius:50%;background:#A855F7;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;flex-shrink:0">3</div><span style="font-size:13px">בהערה כתוב: <strong>"Kidemy – ${t.name}"</strong></span></div>
         <div style="display:flex;gap:8px;align-items:center"><div style="width:24px;height:24px;border-radius:50%;background:#10B981;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;flex-shrink:0">4</div><span style="font-size:13px">חזור ולחץ "אישור – שילמתי!" ←</span></div>
       </div>
+      ${S.bookPay==='bit'?`<a href="https://bit-payment.co.il/?amount=${price}&recipient=${ADMIN_PAYMENT.bit}&note=${encodeURIComponent('Kidemy – '+t.name)}" target="_blank" style="display:block;width:100%;margin-top:10px;background:linear-gradient(135deg,#A855F7,#C026D3);border:none;color:#fff;border-radius:12px;padding:11px;font-weight:800;font-size:13px;cursor:pointer;text-align:center;text-decoration:none">💜 פתח Bit לתשלום →</a>`:
+      S.bookPay==='paypal'?`<a href="https://paypal.me/${ADMIN_PAYMENT.paypal.split('@')[0]}/${price}" target="_blank" style="display:block;width:100%;margin-top:10px;background:linear-gradient(135deg,#003087,#009CDE);border:none;color:#fff;border-radius:12px;padding:11px;font-weight:800;font-size:13px;cursor:pointer;text-align:center;text-decoration:none">🅿️ פתח PayPal לתשלום →</a>`:
+      `<a href="https://payboxapp.page.link/pay?to=${ADMIN_PAYMENT.paybox}&amount=${price}&note=${encodeURIComponent('Kidemy '+t.name)}" target="_blank" style="display:block;width:100%;margin-top:10px;background:linear-gradient(135deg,#0066CC,#0052A3);border:none;color:#fff;border-radius:12px;padding:11px;font-weight:800;font-size:13px;cursor:pointer;text-align:center;text-decoration:none">🔵 פתח PayBox לתשלום →</a>`}
     </div>`:''}
 
     <button class="btn bg" ${!S.bookPay?"disabled":`onclick="processPayment('${S.bookPay||''}',${price})"`}>${!S.bookPay?"בחר אמצעי תשלום":"✅ אישור – שילמתי!"}</button>
@@ -6122,6 +6137,19 @@ function Messages(){
       </div>
     </div>
     <div style="padding:16px 20px 100px">
+
+      ${approved.length>0?(()=>{const next=approved[0];return `
+        <div style="background:linear-gradient(135deg,rgba(20,184,166,0.15),rgba(99,102,241,0.10));border:1.5px solid rgba(20,184,166,0.35);border-radius:20px;padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px">
+          <div style="font-size:36px">⏰</div>
+          <div style="flex:1">
+            <div style="font-weight:800;font-size:13px;color:#0F766E">השיעור הבא שלך:</div>
+            <div style="font-weight:900;font-size:15px;color:#0F1A1F;margin:2px 0">${isTeacherRole?next.studentName:next.teacherName}</div>
+            <div style="font-size:12px;color:#64748B">📅 יום ${next.day} • ⏰ ${next.time}</div>
+          </div>
+          <button onclick="joinJitsi('${next.jitsiUrl||''}','${next.jitsiRoom||''}',${JSON.stringify({teacherName:next.teacherName||'',day:next.day||'',time:next.time||''}).replace(/'/g,'&apos;')})" style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:12px;padding:10px 14px;font-weight:800;font-size:12px;cursor:pointer;white-space:nowrap">📹 כנס</button>
+        </div>
+      `})():''}
+
       <div class="warn" style="margin-bottom:18px"><span>🔒</span><span>השיחות גלויות להורים. אין לשתף מידע אישי.</span></div>
 
       ${userChats.length>0?`
@@ -6144,9 +6172,23 @@ function Messages(){
 
       ${approved.length===0&&pending.length===0?`
         <div style="background:rgba(255,255,255,0.85);backdrop-filter:blur(12px);border-radius:24px;padding:40px 24px;text-align:center;margin-top:30px">
-          <div style="font-size:64px;margin-bottom:14px">📚</div>
-          <h3 style="font-weight:900;font-size:18px;margin:0 0 8px;color:#0F1A1F">אין שיעורים עדיין</h3>
-          <p style="color:#64748B;font-size:13px;line-height:1.7;margin:0">חפש מורה בדף הבית והזמן את השיעור הראשון שלך!</p>
+          ${isTeacherRole?`
+            <div style="font-size:64px;margin-bottom:14px">🎓</div>
+            <h3 style="font-weight:900;font-size:18px;margin:0 0 8px;color:#0F1A1F">עדיין אין הזמנות</h3>
+            <p style="color:#64748B;font-size:13px;line-height:1.7;margin:0 0 20px">ודא שהפרופיל שלך מפורסם ועדכני – תלמידים מחפשים!</p>
+            <div style="display:flex;flex-direction:column;gap:10px;max-width:240px;margin:0 auto">
+              <button onclick="go('profile')" style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:13px 22px;font-weight:800;font-size:14px;cursor:pointer">👤 עדכן פרופיל →</button>
+              <button onclick="go('home')" style="background:rgba(168,85,247,0.12);border:1.5px solid rgba(168,85,247,0.3);color:#7C3AED;border-radius:50px;padding:12px 22px;font-weight:800;font-size:13px;cursor:pointer">🏠 עמוד הבית</button>
+            </div>
+          `:`
+            <div style="font-size:64px;margin-bottom:14px">📚</div>
+            <h3 style="font-weight:900;font-size:18px;margin:0 0 8px;color:#0F1A1F">אין שיעורים עדיין</h3>
+            <p style="color:#64748B;font-size:13px;line-height:1.7;margin:0 0 20px">מצא מורה ב-Kidemy והזמן את השיעור הראשון שלך!</p>
+            <div style="display:flex;flex-direction:column;gap:10px;max-width:240px;margin:0 auto">
+              <button onclick="go('home')" style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:13px 22px;font-weight:800;font-size:14px;cursor:pointer">🔍 חפש מורה →</button>
+              <button onclick="go('nearby')" style="background:rgba(20,184,166,0.08);border:1.5px solid rgba(20,184,166,0.25);color:#0F766E;border-radius:50px;padding:12px 22px;font-weight:800;font-size:13px;cursor:pointer">📍 מורים קרובים אליי</button>
+            </div>
+          `}
         </div>
       `:''}
 
@@ -6162,8 +6204,8 @@ function Messages(){
               </div>
               <span style="background:rgba(16,185,129,0.15);color:#059669;font-size:10px;font-weight:800;padding:4px 10px;border-radius:50px">✓ מאושר</span>
             </div>
-            <button onclick="joinZoomSession('${b.zoomUrl||''}','${b.zoomRoom||''}',${JSON.stringify({teacherName:b.teacherName||'',day:b.day||'',time:b.time||''}).replace(/'/g,'&apos;')})" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:14px;padding:12px;font-weight:800;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:8px">
-              📹 הצטרף לשיעור (Zoom)
+            <button onclick="joinJitsi('${b.jitsiUrl||''}','${b.jitsiRoom||''}',${JSON.stringify({teacherName:b.teacherName||'',day:b.day||'',time:b.time||''}).replace(/'/g,'&apos;')})" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:14px;padding:12px;font-weight:800;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:8px">
+              📹 הצטרף לשיעור (Jitsi)
             </button>
             <div style="display:flex;gap:8px;margin-bottom:0">
               <button onclick="S.chat={otherUid:'${currentUserData?.role==='teacher'?b.studentId:b.teacherId}',otherName:'${(currentUserData?.role==='teacher'?b.studentName:b.teacherName).replace(/'/g,'')}'};go('chat')" style="flex:1;background:rgba(6,182,212,0.1);border:1.5px solid rgba(6,182,212,0.3);color:#06B6D4;border-radius:14px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">💬 צ'אט</button>
@@ -6518,7 +6560,7 @@ function Parent(){
 
       <div style="background:linear-gradient(135deg,#14B8A6 0%,#06B6D4 50%,#A855F7 100%);border-radius:24px;padding:20px;color:#fff;margin-top:14px">
         <h4 style="margin:0 0 8px;font-weight:900;font-size:16px">🛡 אבטחת ילדים</h4>
-        <p style="margin:0;font-size:13px;line-height:1.7;opacity:.95">כל שיעור פרונטלי מחייב אישור הורה. שיעורי אונליין מתבצעים ב-Zoom מאובטח. הורים מקבלים דוח אחרי כל שיעור.</p>
+        <p style="margin:0;font-size:13px;line-height:1.7;opacity:.95">כל שיעור פרונטלי מחייב אישור הורה. שיעורי אונליין מתבצעים ב-Jitsi Meet מאובטח. הורים מקבלים דוח אחרי כל שיעור.</p>
       </div>
     </div>
     ${BNav("parent")}
@@ -6756,7 +6798,10 @@ function Leaderboard(){
     <div style="background:linear-gradient(145deg,#0F1A1F,#1A2530);padding:20px 20px 28px;border-radius:0 0 32px 32px;color:#fff">
       <button onclick="back()" style="background:rgba(255,255,255,.1);border:none;color:#fff;font-size:14px;cursor:pointer;border-radius:50px;padding:8px 16px;font-weight:700">← חזור</button>
       <h2 style="font-size:20px;font-weight:900;margin:10px 0 4px">🏆 לידרבורד</h2>
-      <p style="color:rgba(255,255,255,.4);font-size:12px;margin:0">המורים המובילים השבוע</p>
+      <p style="color:rgba(255,255,255,.5);font-size:12px;margin:0 0 10px">המורים המובילים בכל הזמנים</p>
+      <div style="background:rgba(255,255,255,0.07);border:1px solid rgba(94,234,212,0.2);border-radius:12px;padding:9px 13px;font-size:11px;color:rgba(255,255,255,0.7);line-height:1.6">
+        📊 <strong style="color:#5EEAD4">איך מחשבים ניקוד?</strong> מספר שיעורים שהושלמו × ממוצע הביקורות.<br>ככל שמורה מלמד יותר ומקבל ביקורות טובות – הוא עולה בדירוג.
+      </div>
     </div>
     <div style="padding:18px 20px 50px">
       ${LEADERBOARD.length===0?`
@@ -6856,7 +6901,7 @@ function About(){
     ${[
       {e:'🔍',t:'חיפוש ובחירת מורה',d:'רואים פרופיל מלא – תמונה, וידאו, דירוג, ביקורות ומחיר.'},
       {e:'📅',t:'קביעת שיעור',d:'בוחרים תאריך ושעה מלוח הזמנים של המורה. ההורה מקבל הודעה.'},
-      {e:'📹',t:'שיעור אונליין',d:'השיעור מתקיים דרך אפליקציית Zoom – הפלטפורמה המובילה לשיעורים אונליין.'},
+      {e:'📹',t:'שיעור אונליין',d:'השיעור מתקיים דרך Jitsi Meet – הפלטפורמה המובילה לשיעורים אונליין.'},
       {e:'⭐',t:'דירוג וביקורת',d:'אחרי השיעור שניהם מדרגים אחד את השני. זה בונה אמון בקהילה.'},
     ].map(s=>`
       <div class="card" style="display:flex;gap:12px;align-items:flex-start;margin-bottom:10px">
@@ -7887,8 +7932,8 @@ function openWhatsApp(phone,message){
 // תבניות הודעות מוכנות
 const WA_TEMPLATES={
   newBookingTeacher:(b)=>`שלום ${b.teacherName} 👋\n\nתלמיד חדש הזמין שיעור ב-Kidemy:\n👤 ${b.studentName}\n📅 יום ${b.day} בשעה ${b.time}\n💰 ₪${b.price} (${b.payMethod})\n\nכנס לאפליקציה כדי לאשר:\n${window.location.origin}`,
-  bookingApproved:(b)=>`היי ${b.studentName} 🎉\n\nהשיעור שלך אושר!\n👨‍🏫 ${b.teacherName}\n📅 יום ${b.day} בשעה ${b.time}\n📹 שיעור אונליין דרך Zoom\n\nכנס לאפליקציה:\n${window.location.origin}`,
-  bookingReminder:(b)=>`היי ${b.studentName} ⏰\n\nתזכורת: השיעור שלך עוד מעט!\n👨‍🏫 ${b.teacherName}\n📅 יום ${b.day} בשעה ${b.time}\n\nהצטרף לשיעור:\n${b.zoomUrl||window.location.origin}`,
+  bookingApproved:(b)=>`היי ${b.studentName} 🎉\n\nהשיעור שלך אושר!\n👨‍🏫 ${b.teacherName}\n📅 יום ${b.day} בשעה ${b.time}\n📹 שיעור אונליין דרך Jitsi Meet\n\nכנס לאפליקציה:\n${window.location.origin}`,
+  bookingReminder:(b)=>`היי ${b.studentName} ⏰\n\nתזכורת: השיעור שלך עוד מעט!\n👨‍🏫 ${b.teacherName}\n📅 יום ${b.day} בשעה ${b.time}\n\nהצטרף לשיעור:\n${b.jitsiUrl||window.location.origin}`,
   parentNotify:(b,childName)=>`שלום! 👋\n\nהילד/ה ${childName} הזמין שיעור ב-Kidemy:\n📚 ${b.teacherCat}\n👨‍🏫 ${b.teacherName}\n📅 יום ${b.day} בשעה ${b.time}\n💰 ₪${b.price}\n\nלצפייה ואישור:\n${window.location.origin}`,
   inviteFriend:()=>`היי! 👋\n\nגיליתי אפליקציה מגניבה - Kidemy 🎓\nילדים מלמדים ילדים בקטגוריות שונות:\nגיטרה, מתמטיקה, אמנות, ספורט ועוד!\n\nתבדוק:\nhttps://kidemy-app.netlify.app`,
   contactTeacher:(t)=>`היי ${t.name}! 👋\n\nראיתי את הפרופיל שלך ב-Kidemy ואני מעוניין/ת ב${CATS.find(c=>c.id===t.cat)?.lbl||'שיעור'}.\nאפשר לקבוע שיעור?\n\nמ-Kidemy 🎓`
@@ -8530,10 +8575,10 @@ function installApp(){
 if('serviceWorker' in navigator){
   // Unregister any old SW not matching current version, then register fresh
   navigator.serviceWorker.getRegistrations().then(regs=>{
-    const currentSwUrl='/sw.js?v=4.5.2';
+    const currentSwUrl='/sw.js?v=4.5.3';
     regs.forEach(r=>{if(r.active&&r.active.scriptURL&&!r.active.scriptURL.includes('4.4.2'))r.unregister();});
   });
-  navigator.serviceWorker.register('/sw.js?v=4.5.2').then(reg=>{
+  navigator.serviceWorker.register('/sw.js?v=4.5.3').then(reg=>{
     reg.update();
     setInterval(()=>reg.update(),30000);
   });
