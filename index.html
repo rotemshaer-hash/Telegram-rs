@@ -378,6 +378,7 @@ async function loadRealTeachers(){
             col:catObj.col,
             badge:t.verified?'מורה מוסמך':'',
             ageVerified:t.ageVerification?.status==='verified',
+            meetingLink:t.meetingLink||'',
             online:t.online!==false,
             group:t.group||false,
             desc:t.desc||'',
@@ -453,7 +454,7 @@ const ACHIEVEMENTS=[
   {id:6,em:"👥",ttl:"שיעור קבוצתי",desc:"לימדת קבוצה של 4 תלמידים",col:"#27AE60"},
 ];
 
-const APP_VERSION='4.5.3';
+const APP_VERSION='4.5.4';
 const APP_BUILD='09-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -1298,6 +1299,14 @@ function TeacherSetup(){
         <p style="font-size:10px;color:#94A3B8;margin:8px 0 0;line-height:1.5">⚠️ המיקום שלך פרטי – רק המרחק מוצג לתלמיד.</p>
       </div>
 
+      <!-- קישור שיעור אישי -->
+      <div class="card" style="margin-bottom:18px;background:linear-gradient(135deg,rgba(6,182,212,0.06),rgba(20,184,166,0.04));border:1.5px solid rgba(6,182,212,0.3)">
+        <h3 style="font-weight:900;font-size:16px;margin:0 0 6px;color:#0891B2">🎥 קישור שיעור אישי (Zoom / Google Meet)</h3>
+        <p style="color:#64748B;font-size:12px;margin:0 0 12px;line-height:1.6">הדבק כאן את קישור חדר ה-Zoom / Google Meet האישי שלך. תלמידים ישתמשו בקישור הזה לכניסה לשיעור.</p>
+        <input id="tMeetingLink" class="inp" type="url" placeholder="https://zoom.us/j/... או https://meet.google.com/...">
+        <p style="font-size:11px;color:#94A3B8;margin:6px 0 0">⚡ אם לא תמלא – יווצר חדר Jitsi אוטומטי בחינם</p>
+      </div>
+
       <div class="warn" style="margin-bottom:14px"><span>🛡</span><span>הפרופיל יעבור אישור צוות הבטיחות תוך 24 שעות.</span></div>
 
       <!-- הסבר מודל תשלום -->
@@ -1479,6 +1488,7 @@ async function saveTeacherProfile(){
       city:city.value.trim(),
       price:parseInt(price.value),
       desc:desc.value.trim(),
+      meetingLink:(document.getElementById('tMeetingLink')?.value.trim()||''),
       mode:modes,
       freeTrial:_freeTrialSetup,
       rating:0,reviews:0,lessons:0,
@@ -1566,7 +1576,8 @@ async function processPayment(payMethod,totalAmount){
       price:totalAmount,
       status:'pending',
       jitsiRoom:jitsiRoom,
-      jitsiUrl:'https://meet.jit.si/'+jitsiRoom,
+      jitsiUrl:t.meetingLink||('https://meet.jit.si/'+jitsiRoom),
+      meetingPlatform:getMeetingLabel(t.meetingLink||''),
       createdAt:Date.now()
     };
     await bookingRef.set(bookingData);
@@ -1700,17 +1711,23 @@ async function rejectBooking(bookingId){
 }
 
 // פותח חדר Jitsi Meet
+function getMeetingLabel(url){
+  if(!url)return 'Jitsi';
+  if(url.includes('zoom.us'))return 'Zoom';
+  if(url.includes('meet.google.com'))return 'Google Meet';
+  if(url.includes('teams.microsoft.com'))return 'Teams';
+  if(url.includes('whereby.com'))return 'Whereby';
+  return 'Jitsi';
+}
 function joinJitsi(jitsiUrl,room,bookingData){
+  const url=jitsiUrl||('https://meet.jit.si/'+room);
   showFireToast('🎥 פותח שיעור...');
-  setTimeout(()=>{
-    window.open(jitsiUrl||('https://meet.jit.si/'+room),'_blank');
-  },300);
-  // מייל מעקב להורה על תחילת שיעור
+  window.open(url,'_blank');
   if(currentUserData?.parentEmail&&bookingData){
     const b=typeof bookingData==='string'?JSON.parse(bookingData):bookingData;
     sendEmail(currentUserData.parentEmail,
       `📹 ${currentUserData.name||''} התחיל/ה שיעור עכשיו`,
-      `שלום ${currentUserData.parentName||'הורה יקר'},\n\nילדך ${currentUserData.name||''} החל/ה שיעור כרגע:\n👨‍🏫 מורה: ${b.teacherName||''}\n📅 ${b.day||''} בשעה ${b.time||''}\n\nקישור לשיעור:\n${jitsiUrl||('https://meet.jit.si/'+room)}\n\n– צוות Kidemy`
+      `שלום ${currentUserData.parentName||'הורה יקר'},\n\nילדך ${currentUserData.name||''} החל/ה שיעור כרגע:\n👨‍🏫 מורה: ${b.teacherName||''}\n📅 ${b.day||''} בשעה ${b.time||''}\n\nקישור לשיעור:\n${url}\n\n– צוות Kidemy`
     ).catch(()=>{});
   }
 }
@@ -6146,7 +6163,7 @@ function Messages(){
             <div style="font-weight:900;font-size:15px;color:#0F1A1F;margin:2px 0">${isTeacherRole?next.studentName:next.teacherName}</div>
             <div style="font-size:12px;color:#64748B">📅 יום ${next.day} • ⏰ ${next.time}</div>
           </div>
-          <button onclick="joinJitsi('${next.jitsiUrl||''}','${next.jitsiRoom||''}',${JSON.stringify({teacherName:next.teacherName||'',day:next.day||'',time:next.time||''}).replace(/'/g,'&apos;')})" style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:12px;padding:10px 14px;font-weight:800;font-size:12px;cursor:pointer;white-space:nowrap">📹 כנס</button>
+          <button onclick="joinJitsi('${next.jitsiUrl||''}','${next.jitsiRoom||''}',${JSON.stringify({teacherName:next.teacherName||'',day:next.day||'',time:next.time||''}).replace(/'/g,'&apos;')})" style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:12px;padding:10px 14px;font-weight:800;font-size:12px;cursor:pointer;white-space:nowrap">📹 כנס ${next.meetingPlatform||getMeetingLabel(next.jitsiUrl||'')}</button>
         </div>
       `})():''}
 
@@ -6205,7 +6222,7 @@ function Messages(){
               <span style="background:rgba(16,185,129,0.15);color:#059669;font-size:10px;font-weight:800;padding:4px 10px;border-radius:50px">✓ מאושר</span>
             </div>
             <button onclick="joinJitsi('${b.jitsiUrl||''}','${b.jitsiRoom||''}',${JSON.stringify({teacherName:b.teacherName||'',day:b.day||'',time:b.time||''}).replace(/'/g,'&apos;')})" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:14px;padding:12px;font-weight:800;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:8px">
-              📹 הצטרף לשיעור (Jitsi)
+              📹 הצטרף לשיעור (${b.meetingPlatform||getMeetingLabel(b.jitsiUrl||'')})
             </button>
             <div style="display:flex;gap:8px;margin-bottom:0">
               <button onclick="S.chat={otherUid:'${currentUserData?.role==='teacher'?b.studentId:b.teacherId}',otherName:'${(currentUserData?.role==='teacher'?b.studentName:b.teacherName).replace(/'/g,'')}'};go('chat')" style="flex:1;background:rgba(6,182,212,0.1);border:1.5px solid rgba(6,182,212,0.3);color:#06B6D4;border-radius:14px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">💬 צ'אט</button>
@@ -7389,6 +7406,11 @@ function showEditTeacherProfileDialog(){
           <input id="_etFacebook" class="inp" value="${(t.facebook||'').replace(/"/g,'&quot;')}" placeholder="https://facebook.com/...">
         </div>
       </div>
+      <div style="background:rgba(6,182,212,0.04);border:1.5px solid rgba(6,182,212,0.25);border-radius:18px;padding:16px;margin-bottom:16px">
+        <h3 style="font-weight:900;font-size:15px;margin:0 0 6px;color:#0891B2">🎥 קישור שיעור אישי (Zoom / Google Meet)</h3>
+        <p style="font-size:12px;color:#64748B;margin:0 0 10px;line-height:1.6">תלמידים ישתמשו בקישור זה לכניסה לשיעור. אם ריק – יווצר חדר Jitsi אוטומטי.</p>
+        <input id="_etMeetingLink" class="inp" type="url" value="${(t.meetingLink||'').replace(/"/g,'&quot;')}" placeholder="https://zoom.us/j/... או https://meet.google.com/...">
+      </div>
       <div style="background:rgba(239,68,68,0.04);border:1.5px solid rgba(239,68,68,0.18);border-radius:18px;padding:16px;margin-bottom:16px">
         <h3 style="font-weight:900;font-size:15px;margin:0 0 6px;color:#EF4444">📧 מייל להתראות</h3>
         <p style="font-size:12px;color:#64748B;margin:0 0 10px;line-height:1.6">כאן תקבל הודעות על הזמנות שיעור חדשות. <strong>חשוב:</strong> הכנס מייל אמיתי שלך (לא @kidemy.app).</p>
@@ -7506,6 +7528,7 @@ async function saveTeacherProfileEdits(){
   const tiktok=document.getElementById('_etTiktok')?.value.trim()||'';
   const facebook=document.getElementById('_etFacebook')?.value.trim()||'';
   const notificationEmail=document.getElementById('_etNotifEmail')?.value.trim()||'';
+  const meetingLink=document.getElementById('_etMeetingLink')?.value.trim()||'';
   const cats=(window._etCats&&window._etCats.length)?window._etCats:(TEACHERS.find(x=>x.id===currentUser?.uid)?.cats||[]);
   const customCats=window._etCustomCats||[];
   const allCats=[...cats,...customCats.map(c=>'custom:'+c)];
@@ -7529,7 +7552,7 @@ async function saveTeacherProfileEdits(){
     if(city)userUpdates.city=city;
     await db.ref('users/'+currentUser.uid).update(userUpdates);
     if(currentUserData)Object.assign(currentUserData,userUpdates);
-    const teacherUpdates={desc:firstDesc,price,city,cats:allCats,cat:allCats[0],customCats,name,instagram,tiktok,facebook,notificationEmail};
+    const teacherUpdates={desc:firstDesc,price,city,cats:allCats,cat:allCats[0],customCats,name,instagram,tiktok,facebook,notificationEmail,meetingLink};
     await db.ref('teachers/'+currentUser.uid).update(teacherUpdates);
     await db.ref('teachers/'+currentUser.uid+'/catProfiles').update(catProfileUpdates);
     for(const cc of customCats){
@@ -8575,10 +8598,10 @@ function installApp(){
 if('serviceWorker' in navigator){
   // Unregister any old SW not matching current version, then register fresh
   navigator.serviceWorker.getRegistrations().then(regs=>{
-    const currentSwUrl='/sw.js?v=4.5.3';
+    const currentSwUrl='/sw.js?v=4.5.4';
     regs.forEach(r=>{if(r.active&&r.active.scriptURL&&!r.active.scriptURL.includes('4.4.2'))r.unregister();});
   });
-  navigator.serviceWorker.register('/sw.js?v=4.5.3').then(reg=>{
+  navigator.serviceWorker.register('/sw.js?v=4.5.4').then(reg=>{
     reg.update();
     setInterval(()=>reg.update(),30000);
   });
