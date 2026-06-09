@@ -452,7 +452,7 @@ const ACHIEVEMENTS=[
   {id:6,em:"👥",ttl:"שיעור קבוצתי",desc:"לימדת קבוצה של 4 תלמידים",col:"#27AE60"},
 ];
 
-const APP_VERSION='4.5.0';
+const APP_VERSION='4.5.1';
 const APP_BUILD='09-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -595,6 +595,16 @@ function shareTeacher(t){
   );
 }
 
+function contactAdmin(){
+  if(!currentUser){showFireToast('❌ יש להתחבר תחילה כדי לשלוח הודעה');go('login');return;}
+  // find admin uid from DB then open chat
+  db.ref('users').orderByChild('email').equalTo(ADMIN_EMAIL).get().then(snap=>{
+    let adminUid=null;
+    if(snap.exists())snap.forEach(c=>{adminUid=c.key;});
+    if(adminUid){go('chat',{chat:{otherUid:adminUid,otherName:'Kidemy – מנהל',otherPhoto:''}});}
+    else{window.location.href='mailto:'+ADMIN_EMAIL;}
+  }).catch(()=>{window.location.href='mailto:'+ADMIN_EMAIL;});
+}
 function shareApp(){
   openShare(
     "Kidemy – ילדים מלמדים ילדים!",
@@ -6750,21 +6760,39 @@ function About(){
   const tab=S.aTab;
   let content="";
   if(tab==="story") content=`
-    <div class="card"><h3 style="margin:0 0 12px;font-weight:900;font-size:17px">💡 איך הכל התחיל</h3>
-      <p style="margin:0 0 13px;font-size:14px;line-height:1.9;color:#444">הכל התחיל מתסכול פשוט: <strong>חוגים עולים אלפי שקלים בשנה</strong>, ורוב המשפחות לא יכולות להרשות לעצמן לשלוח את הילדים לכל מה שמעניין אותם.</p>
-      <p style="margin:0 0 13px;font-size:14px;line-height:1.9;color:#444">במקביל, בכל שכונה יש <strong>ילדים מוכשרים</strong> – ספרים, מנגנים, מצטיינים, מעצבי ציפורניים – שיכולים ללמד אחרים.</p>
-      <p style="margin:0;font-size:14px;line-height:1.9;color:#444">הרעיון פשוט: <strong>לחבר בין השניים</strong>. ילד מלמד ילד. בבטיחות, בשקיפות, במחיר שפוי.</p>
+    <div class="card"><h3 style="margin:0 0 14px;font-weight:900;font-size:17px">💡 הסיפור שלנו</h3>
+      <p style="margin:0 0 14px;font-size:14px;line-height:1.9;color:#444">בכל כיתה, בכל שכונה, יש <strong>ילדים מוכשרים</strong> שיודעים לגיטרה, שחמט, ציור, קוד, ספורט ועוד — מוכשרים מספיק כדי <strong>ללמד ולחנך ילדים אחרים</strong>.</p>
+      <p style="margin:0 0 14px;font-size:14px;line-height:1.9;color:#444">Kidemy נולדה מתוך הרעיון הפשוט הזה: <strong>לייצר קהילה שמלמדת ותומכת אחד בשני</strong>. ילד מלמד ילד — בבטיחות, בשקיפות, בשמחה.</p>
+      <p style="margin:0 0 14px;font-size:14px;line-height:1.9;color:#444">לכל הורה זה אומר <strong>חיסכון כלכלי אדיר</strong> על חוגים ושיעורים פרטיים שעולים אלפי שקלים בשנה.</p>
+      <p style="margin:0;font-size:14px;line-height:1.9;color:#444">לכל ילד מורה זה אומר <strong>הכנסה אמיתית</strong> — ולמידת עצמאות כלכלית מגיל צעיר.</p>
     </div>
+
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px">
-      ${[["🧠","#14B8A6","מייסד ראשי","חזון ואסטרטגיה"],["💻","#14B8A6","מנהל טכנולוגי","פיתוח ואבטחה"],["🛡","#14B8A6","מנהלת בטיחות","הגנת ילדים"],["🌟","#0F766E","מנהלת קהילה","חינוך ומעורבות"]].map(([e,c,t,d])=>`<div class="card" style="text-align:center;padding:18px"><div style="width:50px;height:50px;border-radius:14px;margin:0 auto 10px;background:${c}18;display:flex;align-items:center;justify-content:center;font-size:26px">${e}</div><div style="font-weight:800;font-size:13px">${t}</div><div style="font-size:11px;color:${C.muted};margin-top:4px;line-height:1.4">${d}</div></div>`).join("")}
+      ${[["💸","חיסכון להורים","חוגים ושיעורים במחיר שפוי"],["🎓","ילדים מלמדים","כישרון ילדים מגיע לכל ילד"],["🤝","קהילה תומכת","לומדים ומלמדים יחד"],["💰","עצמאות כלכלית","הילד המורה מרוויח ולומד לנהל"]].map(([e,t,d])=>`<div class="card" style="text-align:center;padding:16px"><div style="font-size:30px;margin-bottom:8px">${e}</div><div style="font-weight:800;font-size:13px">${t}</div><div style="font-size:11px;color:${C.muted};margin-top:4px;line-height:1.4">${d}</div></div>`).join("")}
     </div>
-    <div style="background:linear-gradient(135deg,#14B8A6 0%,#06B6D4 50%,#A855F7 100%);border-radius:var(--radius);padding:22px;text-align:center;box-shadow:var(--gp)">
+
+    <div style="background:linear-gradient(135deg,#14B8A6 0%,#06B6D4 50%,#A855F7 100%);border-radius:var(--radius);padding:22px;text-align:center;box-shadow:var(--gp);margin-bottom:18px">
       <div style="font-size:34px;margin-bottom:10px">🚀</div>
-      <h3 style="color:#fff;margin:0 0 8px;font-weight:900;font-size:17px">רוצה להצטרף לחזון?</h3>
-      <p style="color:rgba(255,255,255,.88);font-size:13px;margin:0 0 14px;line-height:1.6">אנחנו מחפשים מורים מוכשרים, משקיעים ושותפים.</p>
+      <h3 style="color:#fff;margin:0 0 8px;font-weight:900;font-size:17px">רוצה להצטרף לקהילה?</h3>
+      <p style="color:rgba(255,255,255,.88);font-size:13px;margin:0 0 14px;line-height:1.6">הצטרף כמורה וגלה שאתה יכול ללמד — ולהרוויח.</p>
       <div style="display:flex;gap:10px;justify-content:center">
         <button onclick="go('register')" class="btn bw" style="width:auto;padding:11px 22px;font-size:14px">הצטרף עכשיו →</button>
         <button onclick="shareApp()" style="background:rgba(255,255,255,.2);border:1.5px solid rgba(255,255,255,.3);color:#fff;border-radius:50px;padding:11px 18px;font-weight:700;cursor:pointer;font-size:14px">📤 שתף</button>
+      </div>
+    </div>
+
+    <div style="background:rgba(20,184,166,0.06);border:1.5px solid rgba(20,184,166,0.2);border-radius:18px;padding:18px">
+      <h4 style="margin:0 0 12px;font-weight:900;font-size:15px;color:#14B8A6;text-align:right">📬 יצירת קשר</h4>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <button onclick="window.location.href='mailto:${ADMIN_EMAIL}'" style="width:100%;background:#fff;border:1.5px solid rgba(20,184,166,0.3);border-radius:14px;padding:13px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;color:#0F172A">
+          📧 שלח מייל למנהל
+        </button>
+        <button onclick='openWhatsApp("972542020812","שלום Kidemy, יש לי שאלה...")' style="width:100%;background:linear-gradient(135deg,#25D366,#128C7E);border:none;color:#fff;border-radius:14px;padding:13px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
+          📱 WhatsApp
+        </button>
+        <button onclick="contactAdmin()" style="width:100%;background:linear-gradient(135deg,#6366F1,#A855F7);border:none;color:#fff;border-radius:14px;padding:13px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
+          💬 הודעה ישירה באפליקציה
+        </button>
       </div>
     </div>`;
 
@@ -8476,10 +8504,10 @@ function installApp(){
 if('serviceWorker' in navigator){
   // Unregister any old SW not matching current version, then register fresh
   navigator.serviceWorker.getRegistrations().then(regs=>{
-    const currentSwUrl='/sw.js?v=4.5.0';
+    const currentSwUrl='/sw.js?v=4.5.1';
     regs.forEach(r=>{if(r.active&&r.active.scriptURL&&!r.active.scriptURL.includes('4.4.2'))r.unregister();});
   });
-  navigator.serviceWorker.register('/sw.js?v=4.5.0').then(reg=>{
+  navigator.serviceWorker.register('/sw.js?v=4.5.1').then(reg=>{
     reg.update();
     setInterval(()=>reg.update(),30000);
   });
