@@ -452,7 +452,7 @@ const ACHIEVEMENTS=[
   {id:6,em:"👥",ttl:"שיעור קבוצתי",desc:"לימדת קבוצה של 4 תלמידים",col:"#27AE60"},
 ];
 
-const APP_VERSION='4.4.5';
+const APP_VERSION='4.4.6';
 const APP_BUILD='09-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -884,9 +884,9 @@ function ParentReg(){
 
       </div>
 
-      <!-- consent -->
-      <div id="prConsent" class="kcb-row" data-checked="false" onclick="kcbToggle(this)">
-        <div class="kcb-box">✓</div>
+      <!-- consent — pre-checked; user can uncheck to disagree -->
+      <div id="prConsent" class="kcb-row" data-checked="true" onclick="kcbToggle(this)" style="background:rgba(20,184,166,.08);border:1.5px solid rgba(20,184,166,.3);border-radius:14px;padding:12px 14px">
+        <div class="kcb-box" style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border-color:#14B8A6;color:#fff">✓</div>
         <span style="font-size:12px;line-height:1.7;color:#CBD5E1">אני <strong style="color:#fff">ההורה</strong>, מעל גיל 18, ומאשר/ת את הצטרפות ילדי לאפליקציה Kidemy. ידוע לי שפעילות הילד תהיה גלויה לי בכל עת.</span>
       </div>
 
@@ -945,10 +945,13 @@ function submitParentReg(){
   if(!email.includes('@')){showFireToast('❌ הכנס כתובת מייל תקינה של ההורה');return;}
   if(phone.replace(/\D/g,'').length<9){showFireToast('❌ הכנס מספר טלפון תקין של ההורה');return;}
   if(!kcbChecked('prConsent')){
-    showFireToast('❌ יש לסמן את תיבת ההסכמה למטה');
-    document.getElementById('prConsent')?.scrollIntoView({behavior:'smooth',block:'center'});
+    showFireToast('❌ יש לסמן את תיבת ההסכמה');
     document.getElementById('prConsent').style.border='2px solid #EF4444';
-    setTimeout(()=>{if(document.getElementById('prConsent'))document.getElementById('prConsent').style.border='';},3000);
+    document.getElementById('prConsent').style.background='rgba(239,68,68,.1)';
+    setTimeout(()=>{
+      const el=document.getElementById('prConsent');
+      if(el){el.style.border='';el.style.background='';}
+    },3000);
     return;
   }
 
@@ -8505,10 +8508,10 @@ function installApp(){
 if('serviceWorker' in navigator){
   // Unregister any old SW not matching current version, then register fresh
   navigator.serviceWorker.getRegistrations().then(regs=>{
-    const currentSwUrl='/sw.js?v=4.4.5';
+    const currentSwUrl='/sw.js?v=4.4.6';
     regs.forEach(r=>{if(r.active&&r.active.scriptURL&&!r.active.scriptURL.includes('4.4.2'))r.unregister();});
   });
-  navigator.serviceWorker.register('/sw.js?v=4.4.5').then(reg=>{
+  navigator.serviceWorker.register('/sw.js?v=4.4.6').then(reg=>{
     reg.update();
     setInterval(()=>reg.update(),30000);
   });
