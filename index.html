@@ -452,7 +452,7 @@ const ACHIEVEMENTS=[
   {id:6,em:"👥",ttl:"שיעור קבוצתי",desc:"לימדת קבוצה של 4 תלמידים",col:"#27AE60"},
 ];
 
-const APP_VERSION='4.5.1';
+const APP_VERSION='4.5.2';
 const APP_BUILD='09-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -597,13 +597,39 @@ function shareTeacher(t){
 
 function contactAdmin(){
   if(!currentUser){showFireToast('❌ יש להתחבר תחילה כדי לשלוח הודעה');go('login');return;}
-  // find admin uid from DB then open chat
-  db.ref('users').orderByChild('email').equalTo(ADMIN_EMAIL).get().then(snap=>{
-    let adminUid=null;
-    if(snap.exists())snap.forEach(c=>{adminUid=c.key;});
-    if(adminUid){go('chat',{chat:{otherUid:adminUid,otherName:'Kidemy – מנהל',otherPhoto:''}});}
-    else{window.location.href='mailto:'+ADMIN_EMAIL;}
-  }).catch(()=>{window.location.href='mailto:'+ADMIN_EMAIL;});
+  // show inline overlay
+  const overlay=document.createElement('div');
+  overlay.id='_contactOverlay';
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:flex-end;justify-content:center';
+  overlay.innerHTML=`<div style="background:#fff;border-radius:24px 24px 0 0;padding:24px 20px 40px;width:100%;max-width:480px">
+    <h3 style="margin:0 0 6px;font-weight:900;font-size:17px;text-align:right">💬 הודעה למנהל</h3>
+    <p style="font-size:12px;color:#64748B;margin:0 0 14px;text-align:right">המנהל יקבל את ההודעה ויחזור אליך בהקדם.</p>
+    <textarea id="_contactMsg" placeholder="כתוב את ההודעה שלך כאן..." style="width:100%;min-height:110px;border:1.5px solid #E2E8F0;border-radius:14px;padding:12px;font-size:14px;resize:none;box-sizing:border-box;direction:rtl;font-family:inherit"></textarea>
+    <div style="display:flex;gap:10px;margin-top:12px">
+      <button onclick="document.getElementById('_contactOverlay').remove()" style="flex:1;background:#F1F5F9;border:none;border-radius:14px;padding:13px;font-weight:700;font-size:14px;cursor:pointer">ביטול</button>
+      <button onclick="_sendContactMsg()" style="flex:2;background:linear-gradient(135deg,#14B8A6,#A855F7);border:none;color:#fff;border-radius:14px;padding:13px;font-weight:900;font-size:14px;cursor:pointer">📨 שלח</button>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+  setTimeout(()=>document.getElementById('_contactMsg')?.focus(),100);
+}
+async function _sendContactMsg(){
+  const msg=(document.getElementById('_contactMsg')?.value||'').trim();
+  if(!msg){showFireToast('❌ כתוב הודעה תחילה');return;}
+  document.getElementById('_contactOverlay')?.remove();
+  try{
+    await db.ref('contactMessages').push({
+      from:currentUserData?.name||'משתמש',
+      email:currentUser.email,
+      uid:currentUser.uid,
+      message:msg,
+      createdAt:Date.now(),
+      read:false
+    });
+    sendAdminEmail('💬 הודעה ישירה מ-'+(currentUserData?.name||currentUser.email),
+      `מאת: ${currentUserData?.name||'—'} (${currentUser.email})\n\n${msg}`);
+    showFireToast('✅ ההודעה נשלחה! המנהל יחזור אליך.');
+  }catch(e){showFireToast('❌ שגיאה בשליחה');}
 }
 function shareApp(){
   openShare(
@@ -8504,10 +8530,10 @@ function installApp(){
 if('serviceWorker' in navigator){
   // Unregister any old SW not matching current version, then register fresh
   navigator.serviceWorker.getRegistrations().then(regs=>{
-    const currentSwUrl='/sw.js?v=4.5.1';
+    const currentSwUrl='/sw.js?v=4.5.2';
     regs.forEach(r=>{if(r.active&&r.active.scriptURL&&!r.active.scriptURL.includes('4.4.2'))r.unregister();});
   });
-  navigator.serviceWorker.register('/sw.js?v=4.5.1').then(reg=>{
+  navigator.serviceWorker.register('/sw.js?v=4.5.2').then(reg=>{
     reg.update();
     setInterval(()=>reg.update(),30000);
   });
