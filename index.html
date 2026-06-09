@@ -452,7 +452,7 @@ const ACHIEVEMENTS=[
   {id:6,em:"👥",ttl:"שיעור קבוצתי",desc:"לימדת קבוצה של 4 תלמידים",col:"#27AE60"},
 ];
 
-const APP_VERSION='4.4.7';
+const APP_VERSION='4.4.8';
 const APP_BUILD='09-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -8010,7 +8010,6 @@ auth.onAuthStateChanged(async user=>{
     }
     // Google import only — don't load DB data or re-render (would wipe the filled form)
     if(S._googleImporting){return;}
-    }
     // בדוק אם המשתמש נחסם על ידי מנהל
     if(!S._registering){
       try{
@@ -8511,10 +8510,10 @@ function installApp(){
 if('serviceWorker' in navigator){
   // Unregister any old SW not matching current version, then register fresh
   navigator.serviceWorker.getRegistrations().then(regs=>{
-    const currentSwUrl='/sw.js?v=4.4.7';
+    const currentSwUrl='/sw.js?v=4.4.8';
     regs.forEach(r=>{if(r.active&&r.active.scriptURL&&!r.active.scriptURL.includes('4.4.2'))r.unregister();});
   });
-  navigator.serviceWorker.register('/sw.js?v=4.4.7').then(reg=>{
+  navigator.serviceWorker.register('/sw.js?v=4.4.8').then(reg=>{
     reg.update();
     setInterval(()=>reg.update(),30000);
   });
