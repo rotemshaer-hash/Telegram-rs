@@ -387,6 +387,7 @@ async function loadRealTeachers(){
             schedule:t.schedule||null,
             tags:t.tags||[],
             catProfiles:t.catProfiles||{},
+            meetingLink:t.meetingLink||'',
           });
           if(t.city)cities.add(t.city);
         }
@@ -454,8 +455,8 @@ const ACHIEVEMENTS=[
   {id:6,em:"👥",ttl:"שיעור קבוצתי",desc:"לימדת קבוצה של 4 תלמידים",col:"#27AE60"},
 ];
 
-const APP_VERSION='4.5.4';
-const APP_BUILD='09-06-2026';
+const APP_VERSION='4.6.0';
+const APP_BUILD='10-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
 let S={
@@ -1171,6 +1172,17 @@ function TeacherSetup(){
 
     <div style="padding:24px 20px 100px">
 
+      <!-- תמונת פרופיל -->
+      <div class="card" style="margin-bottom:18px;text-align:center">
+        <h3 style="font-weight:900;font-size:16px;margin:0 0 10px;color:#14B8A6">📸 תמונת פרופיל</h3>
+        <div id="tSetupPhotoCircle" onclick="document.getElementById('tSetupPhoto').click()" style="width:88px;height:88px;border-radius:50%;margin:0 auto 10px;background:rgba(20,184,166,0.1);border:2.5px dashed rgba(20,184,166,0.4);display:flex;align-items:center;justify-content:center;font-size:38px;cursor:pointer;position:relative;overflow:hidden">
+          ${currentUserData?.photo?`<img src="${currentUserData.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%" alt="">`:'👤'}
+          <div style="position:absolute;bottom:0;right:0;background:#14B8A6;border:2px solid #fff;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:13px">📷</div>
+        </div>
+        <input type="file" id="tSetupPhoto" accept="image/*" style="display:none" onchange="uploadSetupPhoto(this)">
+        <p style="font-size:11px;color:#94A3B8;margin:0">לחץ להעלאת תמונה מהגלריה או מהמצלמה</p>
+      </div>
+
       <!-- מקצועות הוראה - מרובים + מקצוע חדש -->
       <div class="card" style="margin-bottom:18px">
         <h3 style="font-weight:900;font-size:16px;margin:0 0 6px;color:#14B8A6">📚 במה אתה מלמד?</h3>
@@ -1302,7 +1314,7 @@ function TeacherSetup(){
       <!-- קישור שיעור אישי -->
       <div class="card" style="margin-bottom:18px;background:linear-gradient(135deg,rgba(6,182,212,0.06),rgba(20,184,166,0.04));border:1.5px solid rgba(6,182,212,0.3)">
         <h3 style="font-weight:900;font-size:16px;margin:0 0 6px;color:#0891B2">🎥 קישור שיעור אישי (Zoom / Google Meet)</h3>
-        <p style="color:#64748B;font-size:12px;margin:0 0 12px;line-height:1.6">הדבק כאן את קישור חדר ה-Zoom / Google Meet האישי שלך. תלמידים ישתמשו בקישור הזה לכניסה לשיעור.</p>
+        <p style="color:#64748B;font-size:12px;margin:0 0 12px;line-height:1.6">הכנס את הקישור האישי שלך ל-Zoom, Google Meet, או Teams. אם לא תמלא, יווצר חדר Jitsi בחינם אוטומטית.</p>
         <input id="tMeetingLink" class="inp" type="url" placeholder="https://zoom.us/j/... או https://meet.google.com/...">
         <p style="font-size:11px;color:#94A3B8;margin:6px 0 0">⚡ אם לא תמלא – יווצר חדר Jitsi אוטומטי בחינם</p>
       </div>
@@ -1455,6 +1467,24 @@ function toggleGPSSetup(){
   }
 }
 
+async function uploadSetupPhoto(input){
+  if(!currentUser||!input?.files?.[0])return;
+  const file=input.files[0];
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    showCropDialog(ev.target.result,async(dataUrl)=>{
+      try{
+        await db.ref('users/'+currentUser.uid+'/photo').set(dataUrl);
+        if(currentUserData)currentUserData.photo=dataUrl;
+        const circle=document.getElementById('tSetupPhotoCircle');
+        if(circle)circle.innerHTML=`<img src="${dataUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%" alt=""><div style="position:absolute;bottom:0;right:0;background:#14B8A6;border:2px solid #fff;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:13px">📷</div>`;
+        showFireToast('✅ תמונה הועלתה!');
+      }catch(e){showFireToast('❌ '+e.message);}
+    },1,1);
+  };
+  reader.readAsDataURL(file);
+}
+
 async function saveTeacherProfile(){
   if(!currentUser){showFireToast('❌ צריך להיות מחובר');return;}
   const area=document.getElementById('tArea');
@@ -1494,7 +1524,8 @@ async function saveTeacherProfile(){
       rating:0,reviews:0,lessons:0,
       online:_modeOnline,
       group:false,
-      verified:true,active:true,
+      meetingLink:document.getElementById('tMeetingLink')?.value.trim()||'',
+      verified:false,active:false,
       createdAt:Date.now(),
       ageVerification:{
         age:parseInt(document.getElementById('tAge')?.value||0)||null,
@@ -1710,7 +1741,6 @@ async function rejectBooking(bookingId){
   }
 }
 
-// פותח חדר Jitsi Meet
 function getMeetingLabel(url){
   if(!url)return 'Jitsi';
   if(url.includes('zoom.us'))return 'Zoom';
@@ -7391,6 +7421,11 @@ function showEditTeacherProfileDialog(){
         <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:6px">🏙 עיר</label>
         <input id="_etCity" class="inp" value="${t.city||''}" placeholder="עיר בה אתה מלמד">
       </div>
+      <div style="margin-bottom:14px">
+        <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:6px">🎥 קישור שיעור (Zoom / Google Meet)</label>
+        <input id="_etMeetingLink" class="inp" type="url" value="${(t.meetingLink||'').replace(/"/g,'&quot;')}" placeholder="https://zoom.us/j/... או https://meet.google.com/...">
+        <p style="font-size:10px;color:#94A3B8;margin:4px 0 0">ריק = Jitsi אוטומטי בחינם</p>
+      </div>
       <div style="background:rgba(168,85,247,0.04);border:1.5px solid rgba(168,85,247,0.15);border-radius:18px;padding:16px;margin-bottom:16px">
         <h3 style="font-weight:900;font-size:15px;margin:0 0 12px;color:#A855F7">📱 רשתות חברתיות</h3>
         <div style="margin-bottom:11px">
@@ -8169,9 +8204,7 @@ auth.onAuthStateChanged(async user=>{
       if(currentUserData?.role==='teacher'){
         const tSnap=await db.ref('teachers/'+user.uid).get();
         if(!tSnap.exists()){
-          // מנהל חייב להשלים פרופיל מורה — לא ניתן לדלג
-          if(!S.skippedSetup||isAdmin()){go('teacherSetup');return;}
-          // שאר המורים שדילגו — המשך ללא פרופיל
+          if(!isAdmin()){go('teacherSetup');return;}
         } else {
           const tData=tSnap.val();
           if(!tData.verified&&!isAdmin()){
