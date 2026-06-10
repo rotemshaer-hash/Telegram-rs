@@ -455,7 +455,7 @@ const ACHIEVEMENTS=[
   {id:6,em:"👥",ttl:"שיעור קבוצתי",desc:"לימדת קבוצה של 4 תלמידים",col:"#27AE60"},
 ];
 
-const APP_VERSION='4.6.1';
+const APP_VERSION='4.6.2';
 const APP_BUILD='10-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -737,9 +737,8 @@ function Splash(){
       ${[[realStats.teachers,"מורים"],[realStats.categories,"נושאים"],[realStats.cities,"ערים"]].map(([v,l])=>`<div style="background:rgba(20,184,166,0.12);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(94,234,212,0.25);border-radius:18px;padding:12px 20px;text-align:center"><div style="font-weight:900;font-size:22px;color:#5EEAD4">${v}</div><div style="font-size:11px;color:rgba(255,255,255,0.6);font-weight:600">${l}</div></div>`).join("")}
     </div>
     <div style="margin-top:42px;display:flex;flex-direction:column;gap:12px;width:100%;max-width:300px;position:relative;z-index:1">
-      <button class="btn bp" onclick="go('register')">✨ הצטרף עכשיו – חינם!</button>
+      <button class="btn bp" onclick="go('safety')">✨ הצטרף עכשיו – חינם!</button>
       <button class="btn bd" onclick="go('login')">🔑 כבר רשום? התחבר</button>
-      <button onclick="go('about')" style="background:none;border:none;color:rgba(94,234,212,0.6);font-size:13px;cursor:pointer;font-weight:600;margin-top:4px">📖 הסיפור שלנו</button>
     </div>
     <p style="color:rgba(255,255,255,.3);font-size:11px;margin-top:24px;position:relative;z-index:1">מיועד לילדים 8–18 בליווי הורים</p>
     <p style="color:rgba(94,234,212,0.35);font-size:10px;margin-top:6px;position:relative;z-index:1">v${APP_VERSION} · ${APP_BUILD}</p>
