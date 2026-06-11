@@ -454,7 +454,7 @@ const ACHIEVEMENTS=[
   {id:6,em:"👥",ttl:"שיעור קבוצתי",desc:"לימדת קבוצה של 4 תלמידים",col:"#27AE60"},
 ];
 
-const APP_VERSION='4.6.4';
+const APP_VERSION='4.6.5';
 const APP_BUILD='11-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -1704,6 +1704,12 @@ async function approveBooking(bookingId){
       read:false,
       createdAt:Date.now()
     });
+    // מייל להורה
+    db.ref('users/'+b.studentId).get().then(stuSnap=>{
+      const stu=stuSnap.val()||{};
+      if(stu.parentEmail)sendEmail(stu.parentEmail,`✅ שיעור אושר – ${stu.name||b.studentName||''}`,
+        `שלום ${stu.parentName||'הורה יקר'} 👋\n\nהשיעור של ${stu.name||b.studentName||''} אושר!\n\n👨‍🏫 מורה: ${b.teacherName||''}\n📅 יום: ${b.day||''}\n🕐 שעה: ${b.time||''}\n${b.jitsiUrl?'🔗 קישור לשיעור: '+b.jitsiUrl:''}\n\nניתן לעקוב באפליקציה:\nhttps://kidemy-app.netlify.app\n\n– צוות Kidemy 💙`).catch(()=>{});
+    }).catch(()=>{});
     showFireToast('✅ אישרת את ההזמנה!');
     await loadTeacherBookings();
     render();
@@ -1735,6 +1741,12 @@ async function rejectBooking(bookingId){
       read:false,
       createdAt:Date.now()
     });
+    // מייל להורה
+    db.ref('users/'+b.studentId).get().then(stuSnap=>{
+      const stu=stuSnap.val()||{};
+      if(stu.parentEmail)sendEmail(stu.parentEmail,`❌ שיעור נדחה – ${stu.name||b.studentName||''}`,
+        `שלום ${stu.parentName||'הורה יקר'} 👋\n\nלצערנו, השיעור של ${stu.name||b.studentName||''} נדחה ע"י המורה.\n\n👨‍🏫 מורה: ${b.teacherName||''}\n📅 יום: ${b.day||''}\n🕐 שעה: ${b.time||''}\n\nניתן להזמין שיעור אחר באפליקציה:\nhttps://kidemy-app.netlify.app\n\n– צוות Kidemy 💙`).catch(()=>{});
+    }).catch(()=>{});
     showFireToast('🚫 ההזמנה נדחתה');
     await loadTeacherBookings();
     render();
@@ -1883,6 +1895,11 @@ async function submitReview(bookingId,booking,ratedId,stars,review,isStudent){
       const avg=count>0?(total/count):0;
       await db.ref('teachers/'+ratedId+'/rating').set(parseFloat(avg.toFixed(1)));
       await db.ref('teachers/'+ratedId+'/reviews').set(count);
+    }
+    // מייל להורה כשהתלמיד שלח ביקורת
+    if(isStudent&&currentUserData?.parentEmail){
+      sendEmail(currentUserData.parentEmail,`⭐ ${currentUserData?.name||'ילדך'} דירג/ה מורה ב-Kidemy`,
+        `שלום ${currentUserData?.parentName||'הורה יקר'} 👋\n\n${currentUserData?.name||'ילדך'} שלח/ה ביקורת על שיעור שהתקיים.\n\n${'★'.repeat(stars)}${'☆'.repeat(5-stars)} (${stars}/5)\n${review?'💬 תוכן הביקורת: '+review:''}\n\nהביקורת תאושר ע"י הצוות ותפורסם בקרוב.\n\n– צוות Kidemy 💙`).catch(()=>{});
     }
     showFireToast('✅ הביקורת נשלחה לאישור מנהל — תופיע בקרוב!');
     if(bookingId){
@@ -2893,7 +2910,10 @@ async function adminApproveBooking(teacherId,bookingId){
     await db.ref('bookings/'+bookingId+'/status').set('approved');
     // הודע לתלמיד
     const b=adminAllBookings.find(x=>x.id===bookingId);
-    if(b?.studentId)await db.ref('notifications/'+b.studentId).push({type:'bookingApproved',from:b.teacherName||'המורה',read:false,createdAt:Date.now()});
+    if(b?.studentId){
+      await db.ref('notifications/'+b.studentId).push({type:'bookingApproved',from:b.teacherName||'המורה',read:false,createdAt:Date.now()});
+      db.ref('users/'+b.studentId).get().then(s=>{const u=s.val()||{};if(u.parentEmail)sendEmail(u.parentEmail,`✅ שיעור אושר – ${u.name||b.studentName||''}`,`שלום ${u.parentName||'הורה יקר'} 👋\n\nהשיעור של ${u.name||b.studentName||''} אושר!\n\n👨‍🏫 מורה: ${b.teacherName||''}\n📅 יום: ${b.day||''}\n🕐 שעה: ${b.time||''}\n\nhttps://kidemy-app.netlify.app\n\n– צוות Kidemy 💙`).catch(()=>{});}).catch(()=>{});
+    }
     await loadAdminData();renderAdminPanel();
     showFireToast('✅ ההזמנה אושרה!');
   }catch(e){showFireToast('❌ '+e.message);}
@@ -2903,7 +2923,10 @@ async function adminRejectBooking(teacherId,bookingId){
     await db.ref('teacherBookings/'+teacherId+'/'+bookingId+'/status').set('rejected');
     await db.ref('bookings/'+bookingId+'/status').set('rejected');
     const b=adminAllBookings.find(x=>x.id===bookingId);
-    if(b?.studentId)await db.ref('notifications/'+b.studentId).push({type:'bookingRejected',from:b.teacherName||'המורה',read:false,createdAt:Date.now()});
+    if(b?.studentId){
+      await db.ref('notifications/'+b.studentId).push({type:'bookingRejected',from:b.teacherName||'המורה',read:false,createdAt:Date.now()});
+      db.ref('users/'+b.studentId).get().then(s=>{const u=s.val()||{};if(u.parentEmail)sendEmail(u.parentEmail,`❌ שיעור נדחה – ${u.name||b.studentName||''}`,`שלום ${u.parentName||'הורה יקר'} 👋\n\nהשיעור של ${u.name||b.studentName||''} נדחה.\n\n👨‍🏫 מורה: ${b.teacherName||''}\n📅 יום: ${b.day||''}\n\nניתן להזמין שיעור אחר:\nhttps://kidemy-app.netlify.app\n\n– צוות Kidemy 💙`).catch(()=>{});}).catch(()=>{});
+    }
     await loadAdminData();renderAdminPanel();
     showFireToast('✅ ההזמנה נדחתה.');
   }catch(e){showFireToast('❌ '+e.message);}
@@ -6849,6 +6872,11 @@ async function postNew(){
     const ref=await db.ref('communityPosts').push(post);
     if(!isAdmin()){
       db.ref('adminAlerts/posts/'+ref.key).set({author:post.author,text:(post.text||'').substring(0,60),createdAt:Date.now()}).catch(()=>{});
+    }
+    // מייל להורה על פרסום בקהילה
+    if(currentUserData?.parentEmail){
+      sendEmail(currentUserData.parentEmail,`📝 ${currentUserData?.name||'ילדך'} פרסם/ה פוסט בקהילת Kidemy`,
+        `שלום ${currentUserData?.parentName||'הורה יקר'} 👋\n\n${currentUserData?.name||'ילדך'} פרסם/ה פוסט חדש בקהילת Kidemy.\n\n📝 תוכן הפוסט:\n"${(post.text||'').substring(0,200)}${(post.text||'').length>200?'...':''}"\n\n${!isAdmin()?'הפוסט ממתין לאישור הצוות לפני פרסום.':''}\n\nלצפייה בפעילות הקהילה:\nhttps://kidemy-app.netlify.app\n\n– צוות Kidemy 💙`).catch(()=>{});
     }
     t.value='';
     S.showCompose=false;
