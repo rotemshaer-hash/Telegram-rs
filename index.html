@@ -454,7 +454,7 @@ const ACHIEVEMENTS=[
   {id:6,em:"👥",ttl:"שיעור קבוצתי",desc:"לימדת קבוצה של 4 תלמידים",col:"#27AE60"},
 ];
 
-const APP_VERSION='4.6.6';
+const APP_VERSION='4.6.7';
 const APP_BUILD='11-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -8490,7 +8490,7 @@ async function refreshStudentCount(){
 }
 
 auth.onAuthStateChanged(async user=>{
-  loadRealTeachers();
+  if(user){loadRealTeachers();}
   if(user){
     // אם המשתמש נכנס אוטומטית (session ישן לפני שהגדרנו NONE) — נתק מיד
     const _inRegFlow=['safety','parentReg','register','teacherPending','studentPending'].includes(S.screen);
@@ -8536,7 +8536,12 @@ auth.onAuthStateChanged(async user=>{
           currentUserData={...currentUserData,name:user.displayName};
           db.ref('users/'+user.uid+'/name').set(user.displayName).catch(()=>{});
         }
-      } else if(!S._registering&&!S._reRegistering&&!isAdmin()){
+      } else if(isAdmin()){
+        // Admin has no DB record yet — create one so the app renders correctly
+        const adminData={uid:user.uid,email:user.email,name:'מנהל',role:'admin',verified:true,createdAt:Date.now()};
+        await db.ref('users/'+user.uid).set(adminData).catch(()=>{});
+        currentUserData=adminData;
+      } else if(!S._registering&&!S._reRegistering){
         // Auth account exists but no DB record — check for duplicate email before creating
         const recoveredName=(user.displayName||user.email.split('@')[0]);
         let hasDuplicate=false;
@@ -8669,6 +8674,8 @@ auth.onAuthStateChanged(async user=>{
       }
 
     }catch(e){console.warn('Auth error:',e);}
+    S._loggingIn=false;
+    S._registering=false;
     if(S.screen==='splash'||S.screen==='login'){go('home');}
     else render();
   } else {
@@ -8936,6 +8943,7 @@ async function firebaseLogin(usernameOrEmail,password){
     await auth.signInWithEmailAndPassword(email,password);
     showFireToast('✅ ברוך הבא!');go('home');
   }catch(e){
+    S._loggingIn=false;
     const m={
       'auth/user-not-found':'❌ שם משתמש לא קיים',
       'auth/wrong-password':'❌ סיסמה שגויה',
@@ -8960,6 +8968,7 @@ async function firebaseLogout(){
     }
   }catch(e){}
   await auth.signOut();
+  S._loggingIn=false;S._registering=false;
   currentUser=null;currentUserData=null;
   teacherAllBookings=[];studentBookings=[];userChats=[];
   go('splash');
