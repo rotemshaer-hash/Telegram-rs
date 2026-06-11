@@ -454,8 +454,8 @@ const ACHIEVEMENTS=[
   {id:6,em:"👥",ttl:"שיעור קבוצתי",desc:"לימדת קבוצה של 4 תלמידים",col:"#27AE60"},
 ];
 
-const APP_VERSION='4.6.3';
-const APP_BUILD='10-06-2026';
+const APP_VERSION='4.6.4';
+const APP_BUILD='11-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
 let S={
@@ -2603,7 +2603,12 @@ async function _saveLessonSummary(bookingId,enc){
     try{
       const stuSnap=await db.ref('users/'+b.studentId).get();
       const stu=stuSnap.val()||{};
-      if(stu.parentEmail){sendEmail(stu.parentEmail,`✅ שיעור הושלם – ${stu.name||b.studentName||''}`,`שלום ${stu.parentName||'הורה יקר'},\n\nהשיעור של ${stu.name||b.studentName||''} הסתיים:\n👨‍🏫 מורה: ${b.teacherName||''}\n📅 ${b.day||''}\n\nסיכום השיעור:\n📚 נושא: ${topic}\n${summary.homework?'📎 שיעורי בית: '+summary.homework:''}\n\nלצפייה בסיכום המלא:\nhttps://kidemy-app.netlify.app\n\n– צוות Kidemy`).catch(()=>{});}
+      if(stu.parentEmail){
+        const _pvToken=await generateParentViewToken(b.studentId,stu.parentEmail).catch(()=>null);
+        const _pvLink=_pvToken?'https://kidemy-app.netlify.app/?parentView='+_pvToken:'https://kidemy-app.netlify.app';
+        const _emailBody=`שלום ${stu.parentName||'הורה יקר'} 👋\n\nהשיעור של ${stu.name||b.studentName||''} הסתיים בהצלחה! 🎓\n\n👨‍🏫 מורה: ${b.teacherName||''}\n📅 תאריך: ${b.day||''}\n📚 נושא: ${topic}${summary.notes?'\n💬 הערות: '+summary.notes:''}${summary.homework?'\n\n📎 שיעורי בית:\n'+summary.homework:''}\n\n━━━━━━━━━━━━━━━━━\n🔗 לצפייה בכל ההיסטוריה של ${stu.name||''}:\n${_pvLink}\n(הקישור תקף ל-30 יום, לא נדרשת סיסמה)\n━━━━━━━━━━━━━━━━━\n\n– צוות Kidemy 💙`;
+        sendEmail(stu.parentEmail,`✅ שיעור הושלם – ${stu.name||b.studentName||''} | Kidemy`,_emailBody).catch(()=>{});
+      }
     }catch(e2){}
     document.getElementById('_lsDialog')?.remove();
     showFireToast('✅ הסיכום נשמר!');
@@ -3086,6 +3091,71 @@ function adminSendSetupReminder(uid,teacherName,parentEmail,parentName){
     `תזכורת: ${teacherName} טרם השלים/ה הגדרת פרופיל מורה ב-Kidemy`,
     `שלום ${parentName||'הורה יקר'},\n\nילדך ${teacherName} נרשם/ה ל-Kidemy כמורה אך טרם השלים/ה את הגדרת הפרופיל.\n\nבבקשה הכנס/י לאפליקציה והשלם/י את ההגדרה:\nhttps://kidemy-app.netlify.app\n\nבכל שאלה פנה/י אל: ${ADMIN_EMAIL}\n\n– צוות Kidemy`
   ).then(()=>showFireToast('✅ תזכורת נשלחה לדוא"ל ההורה')).catch(()=>showFireToast('❌ שגיאה בשליחת המייל'));
+}
+
+// ─── דוח שבועי להורים 📊 ─────────────────────────────────────────────────────
+async function generateParentViewToken(uid,parentEmail){
+  const token=btoa(uid+':'+Date.now()).replace(/[+/=]/g,'').substring(0,32);
+  await db.ref('parentTokens/'+token).set({
+    uid,parentEmail,createdAt:Date.now(),
+    expiresAt:Date.now()+30*24*60*60*1000
+  });
+  return token;
+}
+
+function buildParentEmailBody(studentName,parentName,weekLessons,allLessonsCount,token){
+  const portalUrl='https://kidemy-app.netlify.app/?parentView='+token;
+  const sep='━━━━━━━━━━━━━━━━━━━━━━';
+  const lessonLines=weekLessons.map((l,i)=>{
+    let line=`${i+1}. 📚 ${l.topic||'—'} | 👨‍🏫 ${l.teacherName||''} | 📅 ${l.day||''}`;
+    if(l.homework)line+='\n   📎 שיעורי בית: '+l.homework;
+    if(l.notes)line+='\n   💬 הערות: '+l.notes;
+    if(l.rating)line+='\n   ⭐ דירוג: '+l.rating+'/5';
+    return line;
+  }).join('\n\n');
+  return `שלום ${parentName||'הורה יקר'} 👋
+
+הנה הדוח השבועי של ${studentName} ב-Kidemy 🎓
+
+${sep}
+📅 שיעורים השבוע (${weekLessons.length} שיעורים)
+${sep}
+${weekLessons.length>0?lessonLines:'לא היו שיעורים השבוע.'}
+
+${sep}
+📊 סה"כ שיעורים עד כה: ${allLessonsCount}
+${sep}
+
+🔗 לצפייה בכל ההיסטוריה של ${studentName}:
+${portalUrl}
+
+הקישור תקף ל-30 יום. לא נדרשת סיסמה!
+
+– צוות Kidemy 💙`;
+}
+
+async function adminSendWeeklyReports(){
+  if(!isAdmin()){showFireToast('❌ אין הרשאה');return;}
+  const studentsWithParents=adminAllUsers.filter(u=>u.parentEmail&&u.role!=='teacher');
+  if(studentsWithParents.length===0){showFireToast('⚠️ אין תלמידים עם מייל הורה רשום');return;}
+  showFireToast('⏳ שולח דוחות שבועיים...');
+  const weekAgo=Date.now()-7*24*60*60*1000;
+  let sent=0,errors=0;
+  for(const stu of studentsWithParents){
+    try{
+      const progressSnap=await db.ref('studentProgress/'+stu.uid).get();
+      const allLessons=[];
+      if(progressSnap.exists())progressSnap.forEach(c=>allLessons.push({id:c.key,...c.val()}));
+      const weekLessons=allLessons.filter(l=>(l.createdAt||0)>=weekAgo);
+      if(weekLessons.length===0&&allLessons.length===0)continue;
+      const token=await generateParentViewToken(stu.uid,stu.parentEmail);
+      const body=buildParentEmailBody(stu.name||'',stu.parentName||'',weekLessons,allLessons.length,token);
+      await sendEmail(stu.parentEmail,`📊 דוח שבועי – ${stu.name||''} | Kidemy`,body);
+      sent++;
+      await new Promise(r=>setTimeout(r,300));
+    }catch(e){console.warn('weekly report error for',stu.uid,e);errors++;}
+  }
+  showFireToast(`✅ נשלחו ${sent} דוחות${errors>0?' ('+errors+' שגיאות)':''}`);
 }
 
 async function adminDeleteUser(uid,name,role){
@@ -5002,7 +5072,8 @@ function renderAdminTab(){
       ${EMAILJS_SERVICE_ID&&EMAILJS_TEMPLATE_ID&&EMAILJS_PUBLIC_KEY
         ?`<div style="background:rgba(168,85,247,0.07);border:1.5px solid rgba(168,85,247,0.3);border-radius:16px;padding:14px;margin-bottom:14px">
             <h4 style="margin:0 0 6px;font-weight:900;font-size:14px;color:#A855F7">📧 מיילים ✅ מוגדר</h4>
-            <button onclick="adminSendTestEmail()" style="width:100%;background:linear-gradient(135deg,#A855F7,#7E22CE);border:none;color:#fff;border-radius:50px;padding:11px;font-weight:800;font-size:13px;cursor:pointer">📤 שלח מייל בדיקה</button>
+            <button onclick="adminSendTestEmail()" style="width:100%;background:linear-gradient(135deg,#A855F7,#7E22CE);border:none;color:#fff;border-radius:50px;padding:11px;font-weight:800;font-size:13px;cursor:pointer;margin-bottom:8px">📤 שלח מייל בדיקה</button>
+            <button onclick="adminSendWeeklyReports()" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:11px;font-weight:800;font-size:13px;cursor:pointer">📊 שלח דוחות שבועיים להורים</button>
           </div>`
         :`<div style="background:rgba(239,68,68,0.05);border:2px solid rgba(239,68,68,0.3);border-radius:16px;padding:14px;margin-bottom:14px">
             <h4 style="margin:0 0 8px;font-weight:900;font-size:14px;color:#EF4444">📧 מיילים — טרם הוגדר</h4>
@@ -7917,11 +7988,90 @@ async function _closeGroup(groupId){
   }catch(e){showFireToast('❌ '+e.message);}
 }
 
-const SCREENS={splash:Splash,safety:Safety,parentReg:ParentReg,register:Register,login:Login,regSuccess:RegSuccess,teacherSetup:TeacherSetup,teacherPending:TeacherPending,studentPending:StudentPending,home:Home,nearby:Nearby,teacher:Teacher,booking:Booking,messages:Messages,chat:Chat,profile:Profile,community:Community,leaderboard:Leaderboard,about:About};
+function ParentPortal(){
+  return `
+    <div style="min-height:100vh;background:#0F1A1F;direction:rtl;padding:24px 20px 48px">
+      <div style="text-align:center;margin-bottom:28px">
+        <div style="font-size:60px;margin-bottom:12px">👨‍👩‍👧</div>
+        <h1 style="font-size:24px;font-weight:900;color:#fff;margin:0 0 6px">פורטל הורים</h1>
+        <p style="font-size:14px;color:#94A3B8;margin:0">מעקב אחרי ההתקדמות של ילדך</p>
+      </div>
+      <div id="_ppContent" style="text-align:center;padding:40px 0">
+        <div style="font-size:40px;margin-bottom:12px">⏳</div>
+        <p style="color:#64748B;font-size:14px">טוען נתונים...</p>
+      </div>
+    </div>`;
+}
+
+async function _loadParentPortalData(token){
+  const el=document.getElementById('_ppContent');
+  if(!el)return;
+  try{
+    const snap=await db.ref('parentTokens/'+token).get();
+    if(!snap.exists()){
+      el.innerHTML=`<div style="font-size:48px;margin-bottom:12px">❌</div><p style="color:#EF4444;font-weight:800;font-size:16px">קישור לא תקף</p><p style="color:#64748B;font-size:13px;margin-top:6px">בקש קישור חדש מצוות Kidemy</p>`;
+      return;
+    }
+    const {uid,expiresAt}=snap.val();
+    if(Date.now()>expiresAt){
+      el.innerHTML=`<div style="font-size:48px;margin-bottom:12px">⏰</div><p style="color:#F59E0B;font-weight:800;font-size:16px">קישור פג תוקף</p><p style="color:#64748B;font-size:13px;margin-top:6px">הקישור תקף ל-30 יום בלבד</p>`;
+      return;
+    }
+    const [stuSnap,progressSnap]=await Promise.all([
+      db.ref('users/'+uid).get(),
+      db.ref('studentProgress/'+uid).get()
+    ]);
+    const stu=stuSnap.val()||{};
+    const lessons=[];
+    if(progressSnap.exists())progressSnap.forEach(c=>lessons.push({id:c.key,...c.val()}));
+    lessons.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+    const weekAgo=Date.now()-7*24*60*60*1000;
+    const weekLessons=lessons.filter(l=>(l.createdAt||0)>=weekAgo);
+    el.innerHTML=`
+      <div style="background:linear-gradient(135deg,#14B8A6,#A855F7);border-radius:22px;padding:20px;margin-bottom:20px;text-align:right">
+        <div style="font-size:40px;margin-bottom:8px">🎒</div>
+        <h2 style="font-size:22px;font-weight:900;color:#fff;margin:0 0 4px">${escapeHtml(stu.name||'תלמיד/ה')}</h2>
+        <p style="font-size:13px;color:rgba(255,255,255,0.85);margin:0">${weekLessons.length} שיעורים השבוע · ${lessons.length} שיעורים סה"כ</p>
+      </div>
+      ${weekLessons.length>0?`
+        <h3 style="font-size:15px;font-weight:800;color:#14B8A6;margin:0 0 12px;text-align:right">📅 שיעורים השבוע</h3>
+        ${weekLessons.map(l=>`
+          <div style="background:#1E2D35;border-radius:16px;padding:16px;margin-bottom:10px;text-align:right">
+            <div style="font-size:15px;font-weight:800;color:#fff;margin-bottom:6px">📚 ${escapeHtml(l.topic||'—')}</div>
+            <div style="font-size:12px;color:#94A3B8;margin-bottom:4px">👨‍🏫 ${escapeHtml(l.teacherName||'')} · 📅 ${escapeHtml(l.day||'')}</div>
+            ${l.homework?`<div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:10px;padding:8px;margin-top:8px;font-size:12px;color:#FCD34D">📎 שיעורי בית: ${escapeHtml(l.homework)}</div>`:''}
+            ${l.notes?`<div style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.3);border-radius:10px;padding:8px;margin-top:6px;font-size:12px;color:#A5B4FC">💬 ${escapeHtml(l.notes)}</div>`:''}
+            ${l.rating?`<div style="font-size:13px;color:#FBBF24;margin-top:8px;font-weight:700">${'★'.repeat(Math.floor(l.rating))}${'☆'.repeat(5-Math.floor(l.rating))} ${l.rating}/5</div>`:''}
+          </div>`).join('')}
+      `:`<div style="background:#1E2D35;border-radius:16px;padding:24px;text-align:center;margin-bottom:16px">
+          <div style="font-size:32px;margin-bottom:8px">📭</div>
+          <p style="color:#64748B;font-size:14px;margin:0">לא היו שיעורים השבוע</p>
+        </div>`}
+      ${lessons.length>weekLessons.length?`
+        <h3 style="font-size:15px;font-weight:800;color:#6366F1;margin:20px 0 12px;text-align:right">📖 היסטוריה (${lessons.length} שיעורים)</h3>
+        ${lessons.map(l=>`
+          <div style="background:#1A2530;border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">
+            <div style="text-align:right">
+              <div style="font-size:13px;font-weight:700;color:#E2E8F0">${escapeHtml(l.topic||'—')}</div>
+              <div style="font-size:11px;color:#64748B;margin-top:2px">👨‍🏫 ${escapeHtml(l.teacherName||'')} · ${escapeHtml(l.day||'')}</div>
+            </div>
+            ${l.rating?`<div style="font-size:13px;color:#FBBF24;font-weight:700;flex-shrink:0;margin-right:8px">${'★'.repeat(Math.floor(l.rating))}</div>`:''}
+          </div>`).join('')}
+      `:''}
+      <div style="margin-top:28px;padding:16px;background:#111B22;border-radius:14px;text-align:center">
+        <div style="font-size:24px;margin-bottom:6px">🎓</div>
+        <p style="color:#475569;font-size:12px;margin:0;line-height:1.6">פורטל הורים של Kidemy<br>קישור זה תקף ל-30 יום מקבלת המייל</p>
+      </div>`;
+  }catch(e){
+    if(el)el.innerHTML=`<div style="font-size:48px;margin-bottom:12px">⚠️</div><p style="color:#F59E0B;font-weight:800">שגיאה בטעינה</p>`;
+  }
+}
+
+const SCREENS={splash:Splash,safety:Safety,parentReg:ParentReg,register:Register,login:Login,regSuccess:RegSuccess,teacherSetup:TeacherSetup,teacherPending:TeacherPending,studentPending:StudentPending,home:Home,nearby:Nearby,teacher:Teacher,booking:Booking,messages:Messages,chat:Chat,profile:Profile,community:Community,leaderboard:Leaderboard,about:About,parentPortal:ParentPortal};
 
 function render(){
   const fn=SCREENS[S.screen]||Home;
-  const noRefreshScreens=['splash','login','register','safety','parentReg','teacherReg','teacherPending','studentPending','regSuccess'];
+  const noRefreshScreens=['splash','login','register','safety','parentReg','teacherReg','teacherPending','studentPending','regSuccess','parentPortal'];
   const showRefresh=!noRefreshScreens.includes(S.screen);
   document.getElementById("app").innerHTML=fn()+SharePanel()+(showRefresh?`<button id="_rfshBtn" class="rfsh-btn" onclick="refreshCurrentScreen()" title="רענן">↻</button>`:'')
   document.querySelectorAll("[data-tid]").forEach(el=>{
@@ -7932,6 +8082,16 @@ function render(){
 }
 
 render();
+
+// בדיקת parentView token ב-URL (לפורטל הורים ללא התחברות)
+(function(){
+  const pvToken=new URLSearchParams(window.location.search).get('parentView');
+  if(pvToken){
+    S.parentViewToken=pvToken;
+    go('parentPortal');
+    setTimeout(()=>_loadParentPortalData(pvToken),200);
+  }
+})();
 
 async function refreshCurrentScreen(){
   const btn=document.getElementById('_rfshBtn');
