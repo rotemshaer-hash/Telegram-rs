@@ -454,7 +454,7 @@ const ACHIEVEMENTS=[
   {id:6,em:"👥",ttl:"שיעור קבוצתי",desc:"לימדת קבוצה של 4 תלמידים",col:"#27AE60"},
 ];
 
-const APP_VERSION='4.6.7';
+const APP_VERSION='4.6.8';
 const APP_BUILD='11-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -8536,9 +8536,15 @@ auth.onAuthStateChanged(async user=>{
           currentUserData={...currentUserData,name:user.displayName};
           db.ref('users/'+user.uid+'/name').set(user.displayName).catch(()=>{});
         }
+        // וודא שלמנהל תמיד יש role=teacher ו-verified=true (מתקן רשומות ישנות עם role='admin')
+        if(isAdmin()&&(currentUserData.role!=='teacher'||currentUserData.verified!==true)){
+          currentUserData={...currentUserData,role:'teacher',verified:true};
+          db.ref('users/'+user.uid).update({role:'teacher',verified:true}).catch(()=>{});
+        }
       } else if(isAdmin()){
-        // Admin has no DB record yet — create one so the app renders correctly
-        const adminData={uid:user.uid,email:user.email,name:'מנהל',role:'admin',verified:true,createdAt:Date.now()};
+        // Admin has no DB record — create one using their display name and teacher role
+        const adminName=user.displayName||user.email.split('@')[0];
+        const adminData={uid:user.uid,email:user.email,name:adminName,role:'teacher',verified:true,createdAt:Date.now()};
         await db.ref('users/'+user.uid).set(adminData).catch(()=>{});
         currentUserData=adminData;
       } else if(!S._registering&&!S._reRegistering){
