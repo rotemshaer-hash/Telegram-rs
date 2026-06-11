@@ -387,7 +387,6 @@ async function loadRealTeachers(){
             schedule:t.schedule||null,
             tags:t.tags||[],
             catProfiles:t.catProfiles||{},
-            meetingLink:t.meetingLink||'',
           });
           if(t.city)cities.add(t.city);
         }
@@ -455,7 +454,7 @@ const ACHIEVEMENTS=[
   {id:6,em:"👥",ttl:"שיעור קבוצתי",desc:"לימדת קבוצה של 4 תלמידים",col:"#27AE60"},
 ];
 
-const APP_VERSION='4.6.2';
+const APP_VERSION='4.6.3';
 const APP_BUILD='10-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -1689,9 +1688,11 @@ async function approveBooking(bookingId){
     if(!snap.exists()){showFireToast('❌ הזמנה לא נמצאה');return;}
     const b=snap.val();
     if(b.teacherId!==currentUser?.uid){showFireToast('❌ אין הרשאה לאשר הזמנה זו');return;}
-    await db.ref('bookings/'+bookingId+'/status').set('approved');
-    await db.ref('userBookings/'+b.studentId+'/'+bookingId+'/status').set('approved');
-    await db.ref('teacherBookings/'+b.teacherId+'/'+bookingId+'/status').set('approved');
+    await db.ref().update({
+      ['bookings/'+bookingId+'/status']:'approved',
+      ['userBookings/'+b.studentId+'/'+bookingId+'/status']:'approved',
+      ['teacherBookings/'+b.teacherId+'/'+bookingId+'/status']:'approved',
+    });
     // התראה לתלמיד
     await db.ref('notifications/'+b.studentId).push({
       type:'bookingApproved',
@@ -1720,9 +1721,11 @@ async function rejectBooking(bookingId){
     if(!snap.exists())return;
     const b=snap.val();
     if(b.teacherId!==currentUser?.uid){showFireToast('❌ אין הרשאה לדחות הזמנה זו');return;}
-    await db.ref('bookings/'+bookingId+'/status').set('rejected');
-    await db.ref('userBookings/'+b.studentId+'/'+bookingId+'/status').set('rejected');
-    await db.ref('teacherBookings/'+b.teacherId+'/'+bookingId+'/status').set('rejected');
+    await db.ref().update({
+      ['bookings/'+bookingId+'/status']:'rejected',
+      ['userBookings/'+b.studentId+'/'+bookingId+'/status']:'rejected',
+      ['teacherBookings/'+b.teacherId+'/'+bookingId+'/status']:'rejected',
+    });
     await db.ref('notifications/'+b.studentId).push({
       type:'bookingRejected',
       bookingId:bookingId,
@@ -1762,35 +1765,6 @@ function joinJitsi(jitsiUrl,room,bookingData){
 }
 
 // סיום שיעור והעלאת דירוג
-async function completeLesson(bookingId){
-  try{
-    const snap=await db.ref('bookings/'+bookingId).get();
-    if(!snap.exists()){showFireToast('❌ הזמנה לא נמצאה');return;}
-    const b=snap.val();
-    await db.ref('bookings/'+bookingId+'/status').set('completed');
-    await db.ref('userBookings/'+b.studentId+'/'+bookingId+'/status').set('completed');
-    await db.ref('teacherBookings/'+b.teacherId+'/'+bookingId+'/status').set('completed');
-    // הגדל ספירת שיעורים אצל המורה
-    const tSnap=await db.ref('teachers/'+b.teacherId+'/lessons').get();
-    const cur=(tSnap.val()||0)+1;
-    await db.ref('teachers/'+b.teacherId+'/lessons').set(cur);
-    // מייל מעקב להורה על סיום שיעור
-    try{
-      const stuSnap=await db.ref('users/'+b.studentId).get();
-      const stu=stuSnap.val()||{};
-      if(stu.parentEmail){
-        sendEmail(stu.parentEmail,
-          `✅ שיעור הושלם – ${stu.name||b.studentName}`,
-          `שלום ${stu.parentName||'הורה יקר'},\n\nהשיעור של ${stu.name||b.studentName} הסתיים:\n👨‍🏫 מורה: ${b.teacherName||''}\n📅 ${b.day||''} בשעה ${b.time||''}\n💰 מחיר: ₪${b.price||0}\n\nתוכלו לצפות בסיכום ובדירוגים באפליקציה:\nhttps://kidemy-app.netlify.app\n\n– צוות Kidemy`
-        ).catch(()=>{});
-      }
-    }catch(e2){}
-    // פתיחת חלון דירוג
-    showRatingDialog(bookingId,b);
-  }catch(e){
-    showFireToast('❌ שגיאה: '+e.message);
-  }
-}
 
 // חלון דירוג כוכבים
 function showRatingDialog(bookingId,booking){
@@ -2610,16 +2584,27 @@ async function _saveLessonSummary(bookingId,enc){
       rating:window._lsRating||0,
       createdAt:Date.now()
     };
-    await db.ref('lessonSummaries/'+bookingId).set(summary);
-    // שמירה לנתיב נגיש לתלמיד ולמורה בנפרד
-    await db.ref('studentProgress/'+b.studentId+'/'+bookingId).set(summary).catch(()=>{});
-    await db.ref('teacherSummaries/'+(b.teacherId||currentUser.uid)+'/'+bookingId).set(summary).catch(()=>{});
-    // עדכון סטטוס הזמנה ל-completed
-    await db.ref('bookings/'+bookingId+'/status').set('completed').catch(()=>{});
-    await db.ref('userBookings/'+b.studentId+'/'+bookingId+'/status').set('completed').catch(()=>{});
-    await db.ref('teacherBookings/'+(b.teacherId||currentUser.uid)+'/'+bookingId+'/status').set('completed').catch(()=>{});
+    const tid=b.teacherId||currentUser.uid;
+    // כתיבה אטומית לכל הנתיבים בבת אחת
+    await db.ref().update({
+      ['lessonSummaries/'+bookingId]: summary,
+      ['studentProgress/'+b.studentId+'/'+bookingId]: summary,
+      ['teacherSummaries/'+tid+'/'+bookingId]: summary,
+      ['bookings/'+bookingId+'/status']: 'completed',
+      ['userBookings/'+b.studentId+'/'+bookingId+'/status']: 'completed',
+      ['teacherBookings/'+tid+'/'+bookingId+'/status']: 'completed',
+    });
+    // הגדל ספירת שיעורים אצל המורה
+    const tSnap=await db.ref('teachers/'+tid+'/lessons').get();
+    await db.ref('teachers/'+tid+'/lessons').set((tSnap.val()||0)+1).catch(()=>{});
     // התראה לתלמיד
     await db.ref('notifications/'+b.studentId).push({type:'lessonSummary',from:summary.teacherName,preview:'סיכום שיעור: '+topic,read:false,createdAt:Date.now()}).catch(()=>{});
+    // מייל להורה על סיום שיעור
+    try{
+      const stuSnap=await db.ref('users/'+b.studentId).get();
+      const stu=stuSnap.val()||{};
+      if(stu.parentEmail){sendEmail(stu.parentEmail,`✅ שיעור הושלם – ${stu.name||b.studentName||''}`,`שלום ${stu.parentName||'הורה יקר'},\n\nהשיעור של ${stu.name||b.studentName||''} הסתיים:\n👨‍🏫 מורה: ${b.teacherName||''}\n📅 ${b.day||''}\n\nסיכום השיעור:\n📚 נושא: ${topic}\n${summary.homework?'📎 שיעורי בית: '+summary.homework:''}\n\nלצפייה בסיכום המלא:\nhttps://kidemy-app.netlify.app\n\n– צוות Kidemy`).catch(()=>{});}
+    }catch(e2){}
     document.getElementById('_lsDialog')?.remove();
     showFireToast('✅ הסיכום נשמר!');
     await loadTeacherBookings();
@@ -8592,8 +8577,22 @@ async function firebaseLogin(usernameOrEmail,password){
 }
 
 async function firebaseLogout(){
+  // נתק כל listeners של Firebase לפני הניתוק
+  try{
+    if(currentUser){
+      db.ref('notifications/'+currentUser.uid).off();
+      db.ref('userChats/'+currentUser.uid).off();
+      db.ref('forceSignout/'+currentUser.uid).off();
+      db.ref('teachers/'+currentUser.uid+'/verified').off();
+      db.ref('users/'+currentUser.uid+'/rejected').off();
+      db.ref('users/'+currentUser.uid).off();
+      db.ref('adminNotifs').off();
+      db.ref('adminAlerts').off();
+    }
+  }catch(e){}
   await auth.signOut();
   currentUser=null;currentUserData=null;
+  teacherAllBookings=[];studentBookings=[];userChats=[];
   go('splash');
 }
 
