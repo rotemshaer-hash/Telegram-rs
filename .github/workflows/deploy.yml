@@ -16,7 +16,9 @@ jobs:
         run: npm install -g netlify-cli firebase-tools
 
       - name: Deploy Firebase Rules
+        if: ${{ secrets.FIREBASE_TOKEN != '' }}
         run: firebase deploy --only database --token "$FIREBASE_TOKEN" --non-interactive
+        continue-on-error: true
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
 
