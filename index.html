@@ -454,7 +454,7 @@ const ACHIEVEMENTS=[
   {id:6,em:"👥",ttl:"שיעור קבוצתי",desc:"לימדת קבוצה של 4 תלמידים",col:"#27AE60"},
 ];
 
-const APP_VERSION='4.6.5';
+const APP_VERSION='4.6.6';
 const APP_BUILD='11-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -2054,16 +2054,16 @@ function showNotificationsPanel(){
   const items=notifications.length===0?
     `<div style="text-align:center;padding:40px 20px"><div style="font-size:54px;margin-bottom:12px">🔔</div><h3 style="font-weight:900;font-size:17px;margin:0 0 6px;color:#0F1A1F">אין התראות חדשות</h3><p style="color:#64748B;font-size:13px;margin:0">כשתקבל הזמנות או הודעות הן יופיעו כאן</p></div>`:
     notifications.map(n=>{
-      const icons={newBooking:'📚',bookingApproved:'✅',bookingRejected:'❌',newMessage:'💬',newReview:'⭐',newVideo:'📹',newTeacher:'🎓',newReport:'🚨',newUser:'👋',groupJoin:'🙋',groupApproved:'🎉',groupRejected:'😔'};
-      const titles={newBooking:'הזמנת שיעור חדשה',bookingApproved:'ההזמנה אושרה!',bookingRejected:'ההזמנה נדחתה',newMessage:'הודעה חדשה',newReview:'דירוג חדש',newVideo:'סרטון חדש לאישור',newTeacher:'מורה חדש נרשם',newReport:'דיווח חדש!',newUser:'משתמש חדש',groupJoin:'בקשת הצטרפות לקבוצה',groupApproved:'התקבלת לקבוצה! 🎉',groupRejected:'הבקשה לא אושרה'};
-      const cols={newBooking:'#A855F7',bookingApproved:'#10B981',bookingRejected:'#EF4444',newMessage:'#06B6D4',newReview:'#FBBF24',newVideo:'#EC4899',newTeacher:'#7E22CE',newReport:'#E74C3C',newUser:'#0EA5E9',groupJoin:'#14B8A6',groupApproved:'#10B981',groupRejected:'#EF4444'};
+      const icons={newBooking:'📚',bookingApproved:'✅',bookingRejected:'❌',newMessage:'💬',newReview:'⭐',newVideo:'📹',newTeacher:'🎓',newReport:'🚨',newUser:'👋',groupJoin:'🙋',groupApproved:'🎉',groupRejected:'😔',rateLesson:'⭐',lessonSummary:'📖'};
+      const titles={newBooking:'הזמנת שיעור חדשה',bookingApproved:'ההזמנה אושרה!',bookingRejected:'ההזמנה נדחתה',newMessage:'הודעה חדשה',newReview:'דירוג חדש',newVideo:'סרטון חדש לאישור',newTeacher:'מורה חדש נרשם',newReport:'דיווח חדש!',newUser:'משתמש חדש',groupJoin:'בקשת הצטרפות לקבוצה',groupApproved:'התקבלת לקבוצה! 🎉',groupRejected:'הבקשה לא אושרה',rateLesson:'⭐ דרג את השיעור',lessonSummary:'📖 סיכום שיעור חדש'};
+      const cols={newBooking:'#A855F7',bookingApproved:'#10B981',bookingRejected:'#EF4444',newMessage:'#06B6D4',newReview:'#FBBF24',newVideo:'#EC4899',newTeacher:'#7E22CE',newReport:'#E74C3C',newUser:'#0EA5E9',groupJoin:'#14B8A6',groupApproved:'#10B981',groupRejected:'#EF4444',rateLesson:'#FBBF24',lessonSummary:'#6366F1'};
       const ico=icons[n.type]||'🔔';
       const ttl=titles[n.type]||'התראה';
       const col=cols[n.type]||'#14B8A6';
       const ago=Math.round((Date.now()-(n.createdAt||0))/60000);
       const agoTxt=ago<1?'עכשיו':ago<60?ago+' דק\'':ago<1440?Math.floor(ago/60)+' שע\'':Math.floor(ago/1440)+' ימים';
       return `
-        <div onclick="markNotificationRead('${n.id}');document.querySelector('._notifPanel')?.remove();${n.type==='bookingApproved'?"go('messages')":n.type==='newBooking'?"adminTab='bookings';showAdminPanel()":n.type==='newTeacher'||n.type==='newReport'?"adminTab='teachers';showAdminPanel()":n.type==='newVideo'?"adminTab='videos';showAdminPanel()":n.type==='groupJoin'?"showTeacherGroupsPanel()":n.type==='groupApproved'||n.type==='groupRejected'?"S.comTab='groups';go('community')":""}" style="background:${n.read?'rgba(255,255,255,0.7)':'#fff'};border-right:4px solid ${col};border-radius:14px;padding:14px;margin-bottom:8px;cursor:pointer;display:flex;align-items:start;gap:12px;${!n.read?'box-shadow:0 4px 14px rgba(20,184,166,0.15)':''}">
+        <div onclick="markNotificationRead('${n.id}');document.querySelector('._notifPanel')?.remove();${n.type==='bookingApproved'?"go('messages')":n.type==='newBooking'?"adminTab='bookings';showAdminPanel()":n.type==='newTeacher'||n.type==='newReport'?"adminTab='teachers';showAdminPanel()":n.type==='newVideo'?"adminTab='videos';showAdminPanel()":n.type==='groupJoin'?"showTeacherGroupsPanel()":n.type==='groupApproved'||n.type==='groupRejected'?"S.comTab='groups';go('community')":n.type==='rateLesson'&&n.bookingId?"showRatingDialog('"+n.bookingId+"','"+n.teacherId+"','"+n.teacherName+"')":n.type==='lessonSummary'?"go('messages')":""}" style="background:${n.read?'rgba(255,255,255,0.7)':'#fff'};border-right:4px solid ${col};border-radius:14px;padding:14px;margin-bottom:8px;cursor:pointer;display:flex;align-items:start;gap:12px;${!n.read?'box-shadow:0 4px 14px rgba(20,184,166,0.15)':''}">
           <div style="width:40px;height:40px;border-radius:12px;background:${col}20;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">${ico}</div>
           <div style="flex:1;min-width:0">
             <div style="font-weight:900;font-size:14px;color:#0F1A1F">${ttl}</div>
@@ -2449,6 +2449,77 @@ function stopChatListener(){
   chatMessages=[];
 }
 
+// ─── הקלטה קולית בצ'אט 🎤 ────────────────────────────────────────────────────
+let _voiceRecorder=null,_voiceChunks=[],_isRecording=false,_voiceTimer=null,_voiceSecs=0;
+
+async function startVoiceRecording(otherUid,otherName){
+  if(_isRecording){stopVoiceRecording(otherUid,otherName);return;}
+  if(!navigator.mediaDevices||!window.MediaRecorder){showFireToast('⚠️ הדפדפן שלך לא תומך בהקלטה');return;}
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({audio:true,video:false});
+    _voiceChunks=[];_voiceSecs=0;_isRecording=true;
+    const micBtn=document.getElementById('_micBtn');
+    if(micBtn){micBtn.innerHTML='⏹';micBtn.style.background='#EF4444';micBtn.style.border='none';}
+    _voiceTimer=setInterval(()=>{
+      _voiceSecs++;
+      const el=document.getElementById('_voiceTimer');
+      if(el)el.textContent='🔴 '+_voiceSecs+'s';
+      if(_voiceSecs>=60)stopVoiceRecording(otherUid,otherName);
+    },1000);
+    const mimeType=['audio/webm;codecs=opus','audio/webm','audio/ogg;codecs=opus','audio/mp4'].find(t=>{try{return MediaRecorder.isTypeSupported(t);}catch(e){return false;}})||'';
+    _voiceRecorder=new MediaRecorder(stream,mimeType?{mimeType}:{});
+    _voiceRecorder.ondataavailable=e=>{if(e.data&&e.data.size>0)_voiceChunks.push(e.data);};
+    _voiceRecorder.onstop=async()=>{
+      clearInterval(_voiceTimer);
+      stream.getTracks().forEach(t=>t.stop());
+      _isRecording=false;
+      const mt=_voiceRecorder.mimeType||'audio/webm';
+      const blob=new Blob(_voiceChunks,{type:mt});
+      _voiceChunks=[];_voiceRecorder=null;
+      if(blob.size>700000){showFireToast('⚠️ ההקלטה ארוכה מדי — מקס 60 שניות');render();return;}
+      await _sendVoiceMessage(blob,otherUid,otherName);
+      render();
+    };
+    _voiceRecorder.start(200);
+    showFireToast('🔴 מקליט... לחץ ⏹ לסיום');
+  }catch(e){
+    _isRecording=false;clearInterval(_voiceTimer);
+    if(e.name==='NotAllowedError')showFireToast('❌ יש לאשר גישה למיקרופון בהגדרות הדפדפן');
+    else showFireToast('❌ שגיאה: '+e.message);
+    render();
+  }
+}
+
+function stopVoiceRecording(otherUid,otherName){
+  if(_voiceRecorder&&_isRecording){try{_voiceRecorder.stop();}catch(e){_isRecording=false;clearInterval(_voiceTimer);render();}}
+}
+
+async function _sendVoiceMessage(blob,otherUid,otherName){
+  if(!currentUser)return;
+  showFireToast('⏳ שולח הקלטה...');
+  return new Promise(resolve=>{
+    const reader=new FileReader();
+    reader.readAsDataURL(blob);
+    reader.onload=async()=>{
+      const chatId=getChatId(currentUser.uid,otherUid);
+      try{
+        await db.ref('messages/'+chatId).push({
+          from:currentUser.uid,fromName:currentUserData?.name||currentUser.email.split('@')[0],
+          to:otherUid,toName:otherName||'',type:'audio',audioData:reader.result,
+          duration:_voiceSecs,text:'🎤 הודעה קולית',createdAt:Date.now()
+        });
+        const last={lastMessage:'🎤 הודעה קולית',lastTime:Date.now(),otherUid,otherName};
+        await db.ref('userChats/'+currentUser.uid+'/'+otherUid).set({...last,otherUid});
+        db.ref('userChats/'+otherUid+'/'+currentUser.uid).set({...last,otherUid:currentUser.uid,otherName:currentUserData?.name||'',unread:true}).catch(()=>{});
+        db.ref('notifications/'+otherUid).push({type:'newMessage',from:currentUserData?.name||'',fromUid:currentUser.uid,preview:'🎤 הודעה קולית',read:false,createdAt:Date.now()}).catch(()=>{});
+        showFireToast('✅ ההקלטה נשלחה!');
+      }catch(e){showFireToast('❌ '+e.message);}
+      resolve();
+    };
+    reader.onerror=()=>{showFireToast('❌ שגיאה בקריאת ההקלטה');resolve();};
+  });
+}
+
 async function sendChatMessage(otherUid,otherName){
   if(!currentUser){showFireToast('❌ לא מחובר');return;}
   const inp=document.getElementById('chatInputBox');
@@ -2614,8 +2685,9 @@ async function _saveLessonSummary(bookingId,enc){
     // הגדל ספירת שיעורים אצל המורה
     const tSnap=await db.ref('teachers/'+tid+'/lessons').get();
     await db.ref('teachers/'+tid+'/lessons').set((tSnap.val()||0)+1).catch(()=>{});
-    // התראה לתלמיד
+    // התראה לתלמיד — סיכום + בקשת דירוג
     await db.ref('notifications/'+b.studentId).push({type:'lessonSummary',from:summary.teacherName,preview:'סיכום שיעור: '+topic,read:false,createdAt:Date.now()}).catch(()=>{});
+    await db.ref('notifications/'+b.studentId).push({type:'rateLesson',bookingId,teacherId:tid,teacherName:summary.teacherName,from:summary.teacherName,preview:'איך היה השיעור עם '+summary.teacherName+'?',read:false,createdAt:Date.now()+1}).catch(()=>{});
     // מייל להורה על סיום שיעור
     try{
       const stuSnap=await db.ref('users/'+b.studentId).get();
@@ -3114,6 +3186,40 @@ function adminSendSetupReminder(uid,teacherName,parentEmail,parentName){
     `תזכורת: ${teacherName} טרם השלים/ה הגדרת פרופיל מורה ב-Kidemy`,
     `שלום ${parentName||'הורה יקר'},\n\nילדך ${teacherName} נרשם/ה ל-Kidemy כמורה אך טרם השלים/ה את הגדרת הפרופיל.\n\nבבקשה הכנס/י לאפליקציה והשלם/י את ההגדרה:\nhttps://kidemy-app.netlify.app\n\nבכל שאלה פנה/י אל: ${ADMIN_EMAIL}\n\n– צוות Kidemy`
   ).then(()=>showFireToast('✅ תזכורת נשלחה לדוא"ל ההורה')).catch(()=>showFireToast('❌ שגיאה בשליחת המייל'));
+}
+
+// ─── דירוג שיעור ⭐ ────────────────────────────────────────────────────────────
+function showRatingDialog(bookingId,teacherId,teacherName){
+  const ov=document.createElement('div');
+  ov.id='_ratingOv';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:9999;display:flex;align-items:center;justify-content:center;padding:24px;backdrop-filter:blur(8px)';
+  let _stars=0;
+  ov.innerHTML=`
+    <div style="background:#fff;border-radius:28px;padding:28px 24px;width:100%;max-width:360px;direction:rtl;text-align:center">
+      <div style="font-size:48px;margin-bottom:10px">⭐</div>
+      <h3 style="font-weight:900;font-size:20px;margin:0 0 6px;color:#0F1A1F">איך היה השיעור?</h3>
+      <p style="font-size:13px;color:#64748B;margin:0 0 20px">עם ${escapeHtml(teacherName||'המורה')}</p>
+      <div id="_starRow" style="display:flex;justify-content:center;gap:10px;margin-bottom:18px;font-size:36px">
+        ${[1,2,3,4,5].map(i=>`<span onclick="window._tmpStars=${i};document.querySelectorAll('#_starRow span').forEach((s,j)=>s.style.opacity=j<${i}?'1':'0.25')" style="cursor:pointer;opacity:0.25;transition:opacity .15s">★</span>`).join('')}
+      </div>
+      <textarea id="_ratingTxt" placeholder="ספר על השיעור (אופציונלי)..." style="width:100%;border:1.5px solid rgba(20,184,166,0.25);border-radius:14px;padding:12px;font-size:13px;font-family:inherit;direction:rtl;resize:none;height:80px;outline:none;box-sizing:border-box;margin-bottom:14px"></textarea>
+      <div style="display:flex;gap:10px">
+        <button onclick="document.getElementById('_ratingOv').remove()" style="flex:1;background:rgba(100,116,139,0.1);border:none;border-radius:50px;padding:13px;font-size:13px;font-weight:700;color:#64748B;cursor:pointer">דלג</button>
+        <button onclick="_submitRatingFromNotif('${bookingId}','${teacherId}','${escapeHtml(teacherName||'')}');document.getElementById('_ratingOv').remove()" style="flex:2;background:linear-gradient(135deg,#FBBF24,#F59E0B);border:none;color:#fff;border-radius:50px;padding:13px;font-size:14px;font-weight:900;cursor:pointer">⭐ שלח דירוג</button>
+      </div>
+    </div>`;
+  document.body.appendChild(ov);
+  ov.onclick=e=>{if(e.target===ov)ov.remove();};
+  window._tmpStars=0;
+}
+
+async function _submitRatingFromNotif(bookingId,teacherId,teacherName){
+  const stars=window._tmpStars||0;
+  if(!stars){showFireToast('⭐ בחר דירוג (1-5)');showRatingDialog(bookingId,teacherId,teacherName);return;}
+  const review=document.getElementById('_ratingTxt')?.value?.trim()||'';
+  try{
+    await submitReview(bookingId,{teacherId,teacherName,studentId:currentUser?.uid},teacherId,stars,review,true);
+  }catch(e){showFireToast('❌ שגיאה: '+e.message);}
 }
 
 // ─── דוח שבועי להורים 📊 ─────────────────────────────────────────────────────
@@ -6267,6 +6373,7 @@ function Messages(){
       <div style="display:flex;justify-content:space-between;align-items:center;position:relative;z-index:1">
         <div style="display:flex;gap:8px;align-items:center">
           <button onclick="back()" style="background:rgba(255,255,255,.2);border:none;color:#fff;font-size:14px;cursor:pointer;border-radius:50px;padding:8px 14px;font-weight:700">← חזור</button>
+          <button onclick="go('weeklySchedule')" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;font-size:12px;cursor:pointer;border-radius:50px;padding:8px 12px;font-weight:800">📅 לוח</button>
         </div>
         <div style="text-align:right"><h2 style="font-size:22px;font-weight:900;margin:0">${isTeacherRole?'📅 הזמנות שלי':'💬 השיעורים שלי'}</h2><p style="color:rgba(255,255,255,.85);font-size:12px;margin:4px 0 0">${approved.length} שיעורים פעילים</p></div>
       </div>
@@ -6345,7 +6452,8 @@ function Messages(){
             <div style="display:flex;gap:8px;margin-bottom:0">
               <button onclick="S.chat={otherUid:'${currentUserData?.role==='teacher'?b.studentId:b.teacherId}',otherName:'${(currentUserData?.role==='teacher'?b.studentName:b.teacherName).replace(/'/g,'')}'};go('chat')" style="flex:1;background:rgba(6,182,212,0.1);border:1.5px solid rgba(6,182,212,0.3);color:#06B6D4;border-radius:14px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">💬 צ'אט</button>
               <button onclick='showWhatsAppDialog("",WA_TEMPLATES.bookingReminder(${JSON.stringify(b).replace(/"/g,"&quot;")}),"שלח תזכורת")' style="background:linear-gradient(135deg,#25D366,#128C7E);border:none;color:#fff;border-radius:14px;padding:10px 12px;font-weight:800;font-size:13px;cursor:pointer">📱</button>
-              ${isTeacherRole?`<button onclick="completeLesson('${b.id}')" style="flex:1;background:rgba(168,85,247,0.1);border:1.5px solid rgba(168,85,247,0.3);color:#A855F7;border-radius:14px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">✅ סיים ודרג</button>`:''}
+              ${isTeacherRole?`<button onclick="completeLesson('${b.id}')" style="flex:1;background:rgba(168,85,247,0.1);border:1.5px solid rgba(168,85,247,0.3);color:#A855F7;border-radius:14px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">✅ סיים ודרג</button>`:
+              b.status==='completed'&&!b.studentRating?`<button onclick="showRatingDialog('${b.id||b.bookingId||''}','${b.teacherId||''}','${(b.teacherName||'').replace(/'/g,'')}')" style="flex:1;background:rgba(251,191,36,0.1);border:1.5px solid rgba(251,191,36,0.4);color:#D97706;border-radius:14px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">⭐ דרג שיעור</button>`:''}
             </div>
           </div>
         `).join('')}
@@ -6424,6 +6532,15 @@ function Chat(){
         const mine=m.from===currentUser.uid;
         const t=new Date(m.createdAt||0);
         const tStr=t.getHours().toString().padStart(2,'0')+':'+t.getMinutes().toString().padStart(2,'0');
+        if(m.type==='audio'&&m.audioData){
+          return `<div style="display:flex;justify-content:${mine?'flex-start':'flex-end'};margin-bottom:11px">
+            <div class="bbl ${mine?'bbl-me':'bbl-other'}" style="${!mine?'background:#14B8A6':''}">
+              <div style="font-size:11px;color:${mine?'#64748B':'rgba(255,255,255,0.75)'};margin-bottom:5px;font-weight:700">🎤 הודעה קולית${m.duration?' ('+m.duration+'s)':''}</div>
+              <audio controls preload="none" style="max-width:210px;height:36px;border-radius:8px" src="${m.audioData}"></audio>
+              <div style="font-size:10px;color:${mine?'#94A3B8':'rgba(255,255,255,.6)'};text-align:left;margin-top:4px">${tStr}</div>
+            </div>
+          </div>`;
+        }
         return `<div style="display:flex;justify-content:${mine?'flex-start':'flex-end'};margin-bottom:11px">
           <div class="bbl ${mine?'bbl-me':'bbl-other'}" style="${!mine?'background:#14B8A6':''}">
             ${escapeHtml(m.text)}<div style="font-size:10px;color:${mine?'#94A3B8':'rgba(255,255,255,.7)'};text-align:left;margin-top:4px">${tStr}</div>
@@ -6432,7 +6549,9 @@ function Chat(){
       }).join("")}
     </div>
     <div class="chat-bar">
-      <input id="chatInputBox" placeholder="כתוב הודעה..." onkeydown="if(event.key==='Enter')sendChatMessage('${c.otherUid}','${(c.otherName||'').replace(/'/g,'')}')">
+      ${_isRecording?`<span id="_voiceTimer" style="font-size:12px;color:#EF4444;font-weight:800;flex-shrink:0">🔴 0s</span>`:''}
+      <input id="chatInputBox" placeholder="כתוב הודעה..." ${_isRecording?'disabled':''} onkeydown="if(event.key==='Enter')sendChatMessage('${c.otherUid}','${(c.otherName||'').replace(/'/g,'')}')">
+      <button id="_micBtn" onclick="startVoiceRecording('${c.otherUid}','${(c.otherName||'').replace(/'/g,"\\'")}');render()" style="background:${_isRecording?'#EF4444':'rgba(20,184,166,0.1)'};border:${_isRecording?'none':'1.5px solid rgba(20,184,166,0.3)'};border-radius:50%;width:44px;height:44px;font-size:20px;color:${_isRecording?'#fff':'#14B8A6'};cursor:pointer;flex-shrink:0">${_isRecording?'⏹':'🎤'}</button>
       <button onclick="sendChatMessage('${c.otherUid}','${(c.otherName||'').replace(/'/g,'')}')" style="background:linear-gradient(135deg,#14B8A6 0%,#06B6D4 50%,#A855F7 100%);border:none;border-radius:50%;width:44px;height:44px;font-size:20px;color:#fff;cursor:pointer;flex-shrink:0;box-shadow:var(--gp)">↑</button>
     </div>
   </div>`;
@@ -8016,6 +8135,68 @@ async function _closeGroup(groupId){
   }catch(e){showFireToast('❌ '+e.message);}
 }
 
+// ─── לוח שיעורים שבועי 📅 ────────────────────────────────────────────────────
+function WeeklySchedule(){
+  const isTeacher=currentUserData?.role==='teacher';
+  const all=(isTeacher?teacherAllBookings:studentBookings);
+  const upcoming=all
+    .filter(b=>b.status==='approved'||b.status==='pending')
+    .map(b=>({...b,_ts:(b.createdAt||0)+((b.dayIndex||0)+1)*86400000}))
+    .filter(b=>b._ts>=Date.now()-86400000)
+    .sort((a,b)=>a._ts-b._ts);
+  const groups={};
+  upcoming.forEach(b=>{const k=b.day||'—';if(!groups[k])groups[k]=[];groups[k].push(b);});
+  const entries=Object.entries(groups);
+  return `<div class="screen" style="background:#0F1A1F;min-height:100vh">
+    <div style="background:linear-gradient(135deg,#4F46E5,#7C3AED,#A855F7);padding:24px 20px 28px;color:#fff">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:4px">
+        <button onclick="back()" style="background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:50%;width:36px;height:36px;font-size:18px;cursor:pointer">←</button>
+        <div>
+          <h2 style="font-size:20px;font-weight:900;margin:0">📅 לוח שיעורים</h2>
+          <p style="font-size:12px;color:rgba(255,255,255,.8);margin:2px 0 0">${upcoming.length} שיעורים קרובים</p>
+        </div>
+      </div>
+    </div>
+    <div style="padding:16px 16px 100px">
+      ${entries.length===0?`
+        <div style="text-align:center;padding:60px 20px">
+          <div style="font-size:64px;margin-bottom:16px">📭</div>
+          <h3 style="color:#94A3B8;font-size:16px;font-weight:700;margin:0 0 10px">אין שיעורים קרובים</h3>
+          <p style="color:#475569;font-size:13px;margin:0 0 20px">${isTeacher?'הזמנות שתאשר יופיעו כאן':'הזמן שיעור ראשון!'}</p>
+          <button onclick="go('${isTeacher?'profile':'home'}')" style="background:linear-gradient(135deg,#6366F1,#A855F7);border:none;color:#fff;border-radius:50px;padding:12px 24px;font-weight:800;font-size:14px;cursor:pointer">${isTeacher?'👤 עמוד הפרופיל':'🔍 מצא מורה'}</button>
+        </div>
+      `:entries.map(([day,bkgs])=>`
+        <div style="margin-bottom:16px;border-radius:18px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.25)">
+          <div style="background:linear-gradient(135deg,#4F46E5,#7C3AED);padding:12px 16px;display:flex;align-items:center;justify-content:space-between">
+            <span style="background:rgba(255,255,255,0.2);color:#fff;border-radius:50px;padding:3px 10px;font-size:11px;font-weight:800">${bkgs.length} שיעורים</span>
+            <span style="font-size:15px;font-weight:900;color:#fff">📅 יום ${escapeHtml(day)}</span>
+          </div>
+          ${bkgs.map((b,i)=>`
+            <div style="background:#1E2D35;${i<bkgs.length-1?'border-bottom:1px solid rgba(255,255,255,0.06)':'border-radius:0 0 18px 18px'};padding:14px 16px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:${b.status==='approved'?'10':'0'}px">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span style="background:${b.status==='approved'?'rgba(16,185,129,0.2)':'rgba(245,158,11,0.2)'};color:${b.status==='approved'?'#10B981':'#F59E0B'};padding:3px 9px;border-radius:50px;font-size:11px;font-weight:800">${b.status==='approved'?'✅ מאושר':'⏳ ממתין'}</span>
+                  <span style="font-size:12px;color:#94A3B8;font-weight:700">🕐 ${escapeHtml(b.time||'')}</span>
+                </div>
+                <div style="text-align:right">
+                  <div style="font-size:15px;font-weight:900;color:#fff">${escapeHtml(isTeacher?(b.studentName||''):(b.teacherName||''))}</div>
+                  <div style="font-size:11px;color:#64748B;margin-top:1px">₪${b.price||0} · ${escapeHtml(b.teacherCat||'')}</div>
+                </div>
+              </div>
+              ${b.status==='approved'?`
+              <div style="display:flex;gap:8px">
+                <button onclick="joinJitsi('${b.jitsiUrl||''}','${b.jitsiRoom||''}',{})" style="flex:2;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:12px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">🎥 הצטרף לשיעור</button>
+                <button onclick="S.chat={otherUid:'${isTeacher?(b.studentId||''):(b.teacherId||'')}',otherName:'${(isTeacher?(b.studentName||''):(b.teacherName||'')).replace(/'/g,"\\'")}'}; go('chat')" style="flex:1;background:rgba(6,182,212,0.15);border:1.5px solid rgba(6,182,212,0.3);color:#06B6D4;border-radius:12px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">💬</button>
+                ${isTeacher?`<button onclick="completeLesson('${b.id||''}')" style="flex:1;background:rgba(168,85,247,0.15);border:1.5px solid rgba(168,85,247,0.3);color:#A855F7;border-radius:12px;padding:10px;font-weight:800;font-size:12px;cursor:pointer">✅ סיים</button>`:''}
+              </div>`:''}
+            </div>
+          `).join('')}
+        </div>
+      `).join('')}
+    </div>
+  </div>`;
+}
+
 function ParentPortal(){
   return `
     <div style="min-height:100vh;background:#0F1A1F;direction:rtl;padding:24px 20px 48px">
@@ -8095,11 +8276,11 @@ async function _loadParentPortalData(token){
   }
 }
 
-const SCREENS={splash:Splash,safety:Safety,parentReg:ParentReg,register:Register,login:Login,regSuccess:RegSuccess,teacherSetup:TeacherSetup,teacherPending:TeacherPending,studentPending:StudentPending,home:Home,nearby:Nearby,teacher:Teacher,booking:Booking,messages:Messages,chat:Chat,profile:Profile,community:Community,leaderboard:Leaderboard,about:About,parentPortal:ParentPortal};
+const SCREENS={splash:Splash,safety:Safety,parentReg:ParentReg,register:Register,login:Login,regSuccess:RegSuccess,teacherSetup:TeacherSetup,teacherPending:TeacherPending,studentPending:StudentPending,home:Home,nearby:Nearby,teacher:Teacher,booking:Booking,messages:Messages,chat:Chat,profile:Profile,community:Community,leaderboard:Leaderboard,about:About,parentPortal:ParentPortal,weeklySchedule:WeeklySchedule};
 
 function render(){
   const fn=SCREENS[S.screen]||Home;
-  const noRefreshScreens=['splash','login','register','safety','parentReg','teacherReg','teacherPending','studentPending','regSuccess','parentPortal'];
+  const noRefreshScreens=['splash','login','register','safety','parentReg','teacherReg','teacherPending','studentPending','regSuccess','parentPortal','weeklySchedule'];
   const showRefresh=!noRefreshScreens.includes(S.screen);
   document.getElementById("app").innerHTML=fn()+SharePanel()+(showRefresh?`<button id="_rfshBtn" class="rfsh-btn" onclick="refreshCurrentScreen()" title="רענן">↻</button>`:'')
   document.querySelectorAll("[data-tid]").forEach(el=>{
