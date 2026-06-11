@@ -454,7 +454,7 @@ const ACHIEVEMENTS=[
   {id:6,em:"👥",ttl:"שיעור קבוצתי",desc:"לימדת קבוצה של 4 תלמידים",col:"#27AE60"},
 ];
 
-const APP_VERSION='4.6.8';
+const APP_VERSION='4.6.9';
 const APP_BUILD='11-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -3486,6 +3486,51 @@ async function adminDeleteAllStudents(){
   }catch(e){showFireToast('❌ '+e.message);}
 }
 
+async function adminRestoreStudents(){
+  if(!isAdmin()){showFireToast('❌ אין הרשאה');return;}
+  showFireToast('⏳ סורק נתוני הזמנות לשחזור...');
+  try{
+    // Collect all unique students from booking records (never deleted)
+    const [tbSnap,bkSnap]=await Promise.all([
+      db.ref('teacherBookings').get(),
+      db.ref('bookings').get()
+    ]);
+    const found={}; // uid -> {name,email}
+    const addStudent=(id,name,email)=>{
+      if(id&&name&&!found[id])found[id]={uid:id,name,email:email||''};
+    };
+    if(tbSnap.exists())tbSnap.forEach(t=>t.forEach(b=>{
+      const v=b.val();addStudent(v.studentId,v.studentName,v.studentEmail);
+    }));
+    if(bkSnap.exists())bkSnap.forEach(b=>{
+      const v=b.val();addStudent(v.studentId,v.studentName,v.studentEmail);
+    });
+
+    // For each found student, restore users/ record if missing
+    let restored=0;const uids=Object.keys(found);
+    for(const uid of uids){
+      const snap=await db.ref('users/'+uid).get();
+      if(!snap.exists()){
+        const s=found[uid];
+        await db.ref('users/'+uid).set({
+          uid,name:s.name,email:s.email,
+          role:'student',verified:true,
+          createdAt:Date.now(),_restored:true
+        }).catch(()=>{});
+        // Remove from bannedUsers so they can log in again
+        await db.ref('bannedUsers/'+uid).remove().catch(()=>{});
+        // Re-add to adminAlerts so admin sees them
+        await db.ref('adminAlerts/students/'+uid).set({
+          name:s.name,email:s.email,createdAt:Date.now(),_restored:true
+        }).catch(()=>{});
+        restored++;
+      }
+    }
+    showFireToast(restored>0?'✅ שוחזרו '+restored+' תלמידים!':'ℹ️ לא נמצאו תלמידים לשחזור ('+uids.length+' נסרקו)');
+    await loadAdminData();renderAdminPanel();
+  }catch(e){showFireToast('❌ שגיאה: '+e.message);}
+}
+
 async function adminApproveVideo(teacherId,videoId){
   try{
     await db.ref('videos/'+teacherId+'/'+videoId+'/approved').set(true);
@@ -4855,6 +4900,7 @@ function renderAdminTab(){
       <span style="font-size:12px;color:#64748B">סה"כ ${allStudents.length} תלמידים (${pendingStudents.length} ממתינים)</span>
       <div style="display:flex;gap:6px">
         <button onclick="adminSwitchTab('students')" style="background:rgba(20,184,166,0.1);border:1px solid rgba(20,184,166,0.3);color:#14B8A6;border-radius:50px;padding:6px 10px;font-size:11px;font-weight:800;cursor:pointer">🔄 רענן</button>
+        <button onclick="adminRestoreStudents()" style="background:rgba(20,184,166,0.1);border:1px solid rgba(20,184,166,0.3);color:#14B8A6;border-radius:50px;padding:6px 10px;font-size:11px;font-weight:800;cursor:pointer">♻️ שחזר</button>
         <button onclick="adminDeleteAllStudents()" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#EF4444;border-radius:50px;padding:6px 10px;font-size:11px;font-weight:800;cursor:pointer">🗑 מחק הכל</button>
       </div>
     </div>
@@ -4865,7 +4911,7 @@ function renderAdminTab(){
     const approvedStudents=allStudents.filter(u=>u.verified===true&&!u.blocked);
     const displayPending=searchVal?pendingStudents.filter(u=>(u.name||'').toLowerCase().includes(searchVal)||(u.email||'').toLowerCase().includes(searchVal)):pendingStudents;
     const displayApproved=searchVal?approvedStudents.filter(u=>(u.name||'').toLowerCase().includes(searchVal)||(u.email||'').toLowerCase().includes(searchVal)):approvedStudents;
-    if(pendingStudents.length===0&&allStudents.length===0)return html+'<div id="_studentListDiv"><div style="text-align:center;padding:40px;color:#64748B"><div style="font-size:48px;margin-bottom:10px">🎒</div>אין עדיין תלמידים</div></div>';
+    if(pendingStudents.length===0&&allStudents.length===0)return html+`<div id="_studentListDiv"><div style="text-align:center;padding:40px;color:#64748B"><div style="font-size:48px;margin-bottom:10px">🎒</div><div style="margin-bottom:14px">אין עדיין תלמידים</div><button onclick="adminRestoreStudents()" style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:12px 24px;font-weight:800;font-size:13px;cursor:pointer">♻️ שחזר תלמידים מהזמנות</button></div></div>`;
     if(searchVal&&displayPending.length===0&&displayApproved.length===0){return html+'<div id="_studentListDiv"><div style="text-align:center;padding:30px;color:#64748B">לא נמצאו תלמידים עבור: "'+searchVal+'"</div></div>';}
     const _renderStudentCard=u=>`
       <div style="background:${u.blocked?'rgba(239,68,68,0.05)':u.verified===false?'rgba(245,158,11,0.05)':'#fff'};border:1.5px solid ${u.blocked?'rgba(239,68,68,0.3)':u.verified===false?'rgba(245,158,11,0.4)':'rgba(6,182,212,0.15)'};border-radius:18px;padding:14px;margin-bottom:10px">
@@ -5251,7 +5297,8 @@ function renderAdminTab(){
           <div>📊 <b>realStats.students:</b> ${realStats.students}</div>
           <div>🎓 <b>TEACHERS רשומים:</b> ${TEACHERS.length}</div>
         </div>
-        <button onclick="adminDeleteAllStudents()" style="margin-top:10px;width:100%;background:linear-gradient(135deg,#EF4444,#B91C1C);border:none;color:#fff;border-radius:50px;padding:10px;font-weight:800;font-size:12px;cursor:pointer">🗑 מחק כל התלמידים מ-Firebase</button>
+        <button onclick="adminRestoreStudents()" style="margin-top:10px;width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:10px;font-weight:800;font-size:12px;cursor:pointer">♻️ שחזר תלמידים מהזמנות</button>
+        <button onclick="adminDeleteAllStudents()" style="margin-top:8px;width:100%;background:linear-gradient(135deg,#EF4444,#B91C1C);border:none;color:#fff;border-radius:50px;padding:10px;font-weight:800;font-size:12px;cursor:pointer">🗑 מחק כל התלמידים מ-Firebase</button>
       </div>`;
   }
   return '';
