@@ -1,0 +1,70 @@
+{
+  "rules": {
+    ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'",
+    ".write": "auth != null && auth.token.email == 'rotemshaer@gmail.com'",
+
+    "teachers": { ".read": "auth != null" },
+
+    "users": {
+      "$uid": {
+        ".read": "auth != null && auth.uid == $uid",
+        ".write": "auth != null && auth.uid == $uid"
+      }
+    },
+    "bookings": {
+      "$id": { ".read": "auth != null", ".write": "auth != null" }
+    },
+    "teacherBookings": {
+      "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth != null" }
+    },
+    "userBookings": {
+      "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth != null && auth.uid == $uid" }
+    },
+    "notifications": {
+      "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth != null" }
+    },
+    "messages": { "$id": { ".read": "auth != null", ".write": "auth != null" } },
+    "chats":    { "$id": { ".read": "auth != null", ".write": "auth != null" } },
+    "userChats": {
+      "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth != null" }
+    },
+    "adminAlerts":  { ".read": "auth != null", ".write": "auth != null" },
+    "adminNotifs":  { ".read": "auth != null", ".write": "auth != null" },
+    "parentTokens": { ".read": true, ".write": "auth != null" },
+    "parentLinks": {
+      "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth != null && auth.uid == $uid" }
+    },
+    "bannedUsers":  { ".read": "auth != null", ".write": "auth != null" },
+    "forceSignout": {
+      "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth != null" }
+    },
+    "reviews":        { ".read": "auth != null", ".write": "auth != null" },
+    "pendingReviews": { ".read": "auth != null", ".write": "auth != null" },
+    "videos":         { ".read": "auth != null", ".write": "auth != null" },
+    "communityPosts": { ".read": "auth != null", ".write": "auth != null" },
+    "posts":          { ".read": "auth != null", ".write": "auth != null" },
+    "groups":         { ".read": "auth != null", ".write": "auth != null" },
+    "groupMembers":   { ".read": "auth != null", ".write": "auth != null" },
+    "userGroups": {
+      "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth != null" }
+    },
+    "reports":          { ".read": "auth != null", ".write": "auth != null" },
+    "favorites": {
+      "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth != null && auth.uid == $uid" }
+    },
+    "lessonSummaries": {
+      "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth != null" }
+    },
+    "studentProgress": {
+      "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth != null" }
+    },
+    "teacherSummaries": {
+      "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth != null" }
+    },
+    "schedules": {
+      "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth != null" }
+    },
+    "contactMessages":  { ".read": "auth != null", ".write": "auth != null" },
+    "pendingCategories":{ ".read": "auth != null", ".write": "auth != null" }
+  }
+}
