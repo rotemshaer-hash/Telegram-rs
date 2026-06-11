@@ -454,7 +454,7 @@ const ACHIEVEMENTS=[
   {id:6,em:"👥",ttl:"שיעור קבוצתי",desc:"לימדת קבוצה של 4 תלמידים",col:"#27AE60"},
 ];
 
-const APP_VERSION='4.6.9';
+const APP_VERSION='4.7.0';
 const APP_BUILD='11-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -3506,27 +3506,22 @@ async function adminRestoreStudents(){
       const v=b.val();addStudent(v.studentId,v.studentName,v.studentEmail);
     });
 
-    // For each found student, restore users/ record if missing
-    let restored=0;const uids=Object.keys(found);
-    for(const uid of uids){
-      const snap=await db.ref('users/'+uid).get();
-      if(!snap.exists()){
-        const s=found[uid];
-        await db.ref('users/'+uid).set({
-          uid,name:s.name,email:s.email,
-          role:'student',verified:true,
-          createdAt:Date.now(),_restored:true
-        }).catch(()=>{});
-        // Remove from bannedUsers so they can log in again
-        await db.ref('bannedUsers/'+uid).remove().catch(()=>{});
-        // Re-add to adminAlerts so admin sees them
-        await db.ref('adminAlerts/students/'+uid).set({
-          name:s.name,email:s.email,createdAt:Date.now(),_restored:true
-        }).catch(()=>{});
-        restored++;
-      }
-    }
-    showFireToast(restored>0?'✅ שוחזרו '+restored+' תלמידים!':'ℹ️ לא נמצאו תלמידים לשחזור ('+uids.length+' נסרקו)');
+    // Fetch all existing users/ records in one parallel batch
+    const uids=Object.keys(found);
+    const existingSnaps=await Promise.all(uids.map(uid=>db.ref('users/'+uid).get().catch(()=>null)));
+    const toRestore=uids.filter((_,i)=>existingSnaps[i]&&!existingSnaps[i].exists());
+
+    // Restore all missing students in parallel
+    await Promise.all(toRestore.map(uid=>{
+      const s=found[uid];
+      return Promise.all([
+        db.ref('users/'+uid).set({uid,name:s.name,email:s.email,role:'student',verified:false,createdAt:Date.now(),_restored:true}).catch(()=>{}),
+        db.ref('bannedUsers/'+uid).remove().catch(()=>{}),
+        db.ref('adminAlerts/students/'+uid).set({name:s.name,email:s.email,createdAt:Date.now(),_restored:true}).catch(()=>{})
+      ]);
+    }));
+    const restored=toRestore.length;
+    showFireToast(restored>0?'✅ שוחזרו '+restored+' תלמידים — ממתינים לאישורך':'ℹ️ לא נמצאו תלמידים לשחזור ('+uids.length+' נסרקו)');
     await loadAdminData();renderAdminPanel();
   }catch(e){showFireToast('❌ שגיאה: '+e.message);}
 }
@@ -9020,8 +9015,8 @@ async function firebaseLogout(){
       db.ref('adminAlerts').off();
     }
   }catch(e){}
-  await auth.signOut();
   S._loggingIn=false;S._registering=false;
+  await auth.signOut();
   currentUser=null;currentUserData=null;
   teacherAllBookings=[];studentBookings=[];userChats=[];
   go('splash');
