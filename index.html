@@ -454,7 +454,7 @@ const ACHIEVEMENTS=[
   {id:6,em:"👥",ttl:"שיעור קבוצתי",desc:"לימדת קבוצה של 4 תלמידים",col:"#27AE60"},
 ];
 
-const APP_VERSION='4.7.3';
+const APP_VERSION='4.7.4';
 const APP_BUILD='13-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -2811,7 +2811,7 @@ async function _requestBrowserNotifPermission(){
 }
 
 let adminAllUsers=[],adminAllTeachers=[],adminAllVideos=[],adminAllReports=[],adminAllBookings=[],adminIncompleteTeachers=[],adminAllPosts=[],adminAllReviews=[];
-let adminAlertStudents=[],adminAlertPosts=[],adminAlertPayments=[]; // מקור ראשי לממתינים
+let adminAlertStudents=[],adminAlertPosts=[],adminAlertPayments=[],adminContactMessages=[]; // מקור ראשי לממתינים
 let adminTab='users';
 let _adminPendingCount=0;
 
@@ -2827,6 +2827,11 @@ let _adminActionInProgress=false; // מנגנון נגד race-condition בזמן
 let _adminDataLoading=false; // מנע listener מלאפס נתונים בזמן טעינה
 function _startAdminAlertsListener(){
   if(!isAdmin())return;
+  const _rebadge=()=>{
+    const n=adminAlertStudents.length+adminAlertPosts.length+adminAlertPayments.length+adminContactMessages.filter(m=>!m.read).length;
+    _updateAdminBadge(n);
+    if(document.getElementById('_adminPanel')&&!_adminActionInProgress)renderAdminPanel();
+  };
   db.ref('adminAlerts').on('value',snap=>{
     if(_adminDataLoading)return; // loadAdminData רץ — אל תאפס
     // בנה מערכים חדשים בנפרד לפני השמה (atomic update — מונע מצב ביניים)
@@ -2844,25 +2849,29 @@ function _startAdminAlertsListener(){
     adminAlertStudents=newStudents;
     adminAlertPosts=newPosts;
     adminAlertPayments=newPayments.filter(p=>p.status==='awaitingPayment');
-    const n=adminAlertStudents.length+adminAlertPosts.length+adminAlertPayments.length;
-    _updateAdminBadge(n);
-    // אם הפאנל פתוח ואין פעולת אישור בביצוע — רנדר מחדש
-    if(document.getElementById('_adminPanel')&&!_adminActionInProgress)renderAdminPanel();
+    _rebadge();
+  });
+  db.ref('contactMessages').on('value',snap=>{
+    if(_adminDataLoading)return;
+    const msgs=[];
+    if(snap.exists())snap.forEach(c=>msgs.push({id:c.key,...c.val()}));
+    adminContactMessages=msgs.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+    _rebadge();
   });
 }
 
 async function _checkAdminBadge(){
   if(!isAdmin())return;
   try{
-    const snap=await db.ref('adminAlerts').get();
+    const [alertsSnap,msgsSnap]=await Promise.all([db.ref('adminAlerts').get(),db.ref('contactMessages').get()]);
     let n=0;
-    if(snap.exists()){
-      const st=snap.child('students');if(st.exists())st.forEach(()=>n++);
-      const po=snap.child('posts');if(po.exists())po.forEach(()=>n++);
-      // תשלומים: ספור רק awaitingPayment
-      const py=snap.child('payments');
+    if(alertsSnap.exists()){
+      const st=alertsSnap.child('students');if(st.exists())st.forEach(()=>n++);
+      const po=alertsSnap.child('posts');if(po.exists())po.forEach(()=>n++);
+      const py=alertsSnap.child('payments');
       if(py.exists())py.forEach(c=>{if(c.val()?.status==='awaitingPayment')n++;});
     }
+    if(msgsSnap.exists())msgsSnap.forEach(c=>{if(!c.val()?.read)n++;});
     _updateAdminBadge(n);
   }catch(e){}
 }
@@ -2875,10 +2884,11 @@ async function loadAdminData(){
   try{
     // קרא users דרך REST API (עוקף קאש SDK) + adminAlerts במקביל
     const token=await firebase.auth().currentUser.getIdToken(false);
-    const [usersRes,alertsSnap,payAlertsSnap]=await Promise.all([
+    const [usersRes,alertsSnap,payAlertsSnap,msgsSnap]=await Promise.all([
       fetch('https://kidemy-83a17-default-rtdb.firebaseio.com/users.json?auth='+token,{cache:'no-store'}),
       db.ref('adminAlerts/students').get(),
-      db.ref('adminAlerts/payments').get()
+      db.ref('adminAlerts/payments').get(),
+      db.ref('contactMessages').get()
     ]);
     const usersData=await usersRes.json();
     const freshUsers=[];
@@ -2892,6 +2902,10 @@ async function loadAdminData(){
     adminAlertPayments=[];
     if(payAlertsSnap.exists())payAlertsSnap.forEach(c=>{const v={id:c.key,...c.val()};if(v.status==='awaitingPayment')adminAlertPayments.push(v);});
     adminAlertPayments.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+    // סנכרן הודעות ישירות
+    adminContactMessages=[];
+    if(msgsSnap.exists())msgsSnap.forEach(c=>adminContactMessages.push({id:c.key,...c.val()}));
+    adminContactMessages.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
     // נקה רשומות-רוח ב-adminAlerts/students: כניסות ללא רשומה מתאימה ב-users/
     // (קורה כאשר מנהל מוחק תלמיד ישירות מ-Firebase Console ולא דרך הפאנל)
     {const knownUserUids=new Set(adminAllUsers.map(u=>u.uid));
@@ -4905,6 +4919,7 @@ function renderAdminPanel(){
       ${totalPending>0?`<div onclick="adminTab='teachers';renderAdminPanel()" style="margin-top:10px;background:rgba(239,68,68,0.85);border-radius:12px;padding:10px 14px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:8px">🔔 <span>${totalPending} מורים ממתינים לטיפול – לחץ</span></div>`:''}
       ${_adminCommunityOrphans.length>0?`<div onclick="adminTab='students';renderAdminPanel()" style="margin-top:8px;background:rgba(239,68,68,0.75);border-radius:12px;padding:10px 14px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:8px">⚠️ <span>${_adminCommunityOrphans.length} משתמשים פרסמו בקהילה ללא אישור — לחץ לטיפול</span></div>`:''}
       ${adminAlertPayments.length>0?`<div onclick="adminSwitchTab('payments')" style="margin-top:8px;background:rgba(245,158,11,0.9);border-radius:12px;padding:10px 14px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:8px">💰 <span>${adminAlertPayments.length} תשלומים ממתינים לאימות — לחץ לאישור</span></div>`:''}
+      ${adminContactMessages.filter(m=>!m.read).length>0?`<div onclick="adminSwitchTab('messages')" style="margin-top:8px;background:rgba(168,85,247,0.9);border-radius:12px;padding:10px 14px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:8px">💬 <span>${adminContactMessages.filter(m=>!m.read).length} הודעות חדשות מהאפליקציה — לחץ לצפייה</span></div>`:''}
     </div>
     ${!adminAllTeachers.find(t=>t.uid===currentUser?.uid)?`
     <div style="margin:12px 16px 0;background:linear-gradient(135deg,rgba(245,158,11,0.12),rgba(239,68,68,0.1));border:2px solid rgba(245,158,11,0.5);border-radius:16px;padding:14px">
@@ -4920,10 +4935,11 @@ function renderAdminPanel(){
       <div onclick="adminSwitchTab('posts')" style="background:linear-gradient(135deg,#8B5CF6,#EC4899);border-radius:18px;padding:14px;color:#fff;cursor:pointer"><div style="font-size:28px;font-weight:900">${Math.max(adminAlertPosts.length,adminAllPosts.filter(p=>p.status==='pending').length)}</div><div style="font-size:11px;opacity:0.95">פוסטים ממתינים</div></div>
       <div onclick="adminSwitchTab('payments')" style="background:linear-gradient(135deg,#F59E0B,#D97706);border-radius:18px;padding:14px;color:#fff;cursor:pointer"><div style="font-size:28px;font-weight:900">${adminAlertPayments.length}</div><div style="font-size:11px;opacity:0.95">💰 תשלומים ממתינים</div></div>
       <div style="background:linear-gradient(135deg,#10B981,#14B8A6);border-radius:18px;padding:14px;color:#fff"><div style="font-size:28px;font-weight:900">${adminAllBookings.filter(b=>b.status==='pending').length}</div><div style="font-size:11px;opacity:0.95">הזמנות ממתינות</div></div>
+      <div onclick="adminSwitchTab('messages')" style="background:linear-gradient(135deg,#7E22CE,#A855F7);border-radius:18px;padding:14px;color:#fff;cursor:pointer"><div style="font-size:28px;font-weight:900">${adminContactMessages.filter(m=>!m.read).length}</div><div style="font-size:11px;opacity:0.95">💬 הודעות חדשות</div></div>
     </div>
     <div style="background:#fff;padding:0 16px;border-bottom:1px solid rgba(20,184,166,0.15)">
       <div style="display:flex;gap:4px;overflow-x:auto;padding:8px 0">
-        ${[['payments','💰 תשלומים',adminAlertPayments.length],['users','👥 כל המשתמשים',adminAllUsers.length],['students','🎒 תלמידים',Math.max(adminAlertStudents.length,adminAllUsers.filter(u=>u.role!=='teacher'&&u.verified===false).length)],['teachers','🎓 מורים',totalPending],['posts','📝 פוסטים',Math.max(adminAlertPosts.length,adminAllPosts.filter(p=>p.status==='pending').length)],['bookings','📅 הזמנות',adminAllBookings.filter(b=>b.status==='pending').length],['videos','📹 סרטונים',pendingVideos.length],['reviews','⭐ ביקורות',adminAllReviews.filter(r=>!r.approved).length],['reports','🚨 דיווחים',adminAllReports.filter(r=>r.status==='open').length],['stats','📊 סטטיסטיקות',null]].map(([id,lbl,badge])=>`
+        ${[['payments','💰 תשלומים',adminAlertPayments.length],['messages','💬 הודעות',adminContactMessages.filter(m=>!m.read).length],['users','👥 כל המשתמשים',adminAllUsers.length],['students','🎒 תלמידים',Math.max(adminAlertStudents.length,adminAllUsers.filter(u=>u.role!=='teacher'&&u.verified===false).length)],['teachers','🎓 מורים',totalPending],['posts','📝 פוסטים',Math.max(adminAlertPosts.length,adminAllPosts.filter(p=>p.status==='pending').length)],['bookings','📅 הזמנות',adminAllBookings.filter(b=>b.status==='pending').length],['videos','📹 סרטונים',pendingVideos.length],['reviews','⭐ ביקורות',adminAllReviews.filter(r=>!r.approved).length],['reports','🚨 דיווחים',adminAllReports.filter(r=>r.status==='open').length],['stats','📊 סטטיסטיקות',null]].map(([id,lbl,badge])=>`
           <button onclick="adminSwitchTab('${id}')" style="background:${adminTab===id?'linear-gradient(135deg,#14B8A6,#06B6D4)':'rgba(20,184,166,0.06)'};color:${adminTab===id?'#fff':'#14B8A6'};border:none;border-radius:50px;padding:10px 14px;font-size:12px;font-weight:800;cursor:pointer;flex-shrink:0;display:flex;align-items:center;gap:6px;white-space:nowrap">
             ${lbl}${badge>0?`<span style="background:${adminTab===id?'rgba(255,255,255,0.3)':'#EF4444'};color:#fff;border-radius:50px;padding:1px 7px;font-size:10px">${badge}</span>`:''}
           </button>`).join('')}
@@ -4931,6 +4947,15 @@ function renderAdminPanel(){
     </div>
     <div style="padding:16px;background:#fff;min-height:calc(100vh - 280px)">${renderAdminTab()}</div>`;
   document.body.appendChild(ov);
+}
+
+async function adminMarkMessageRead(id){
+  try{
+    await db.ref('contactMessages/'+id+'/read').set(true);
+    const idx=adminContactMessages.findIndex(m=>m.id===id);
+    if(idx>=0)adminContactMessages[idx].read=true;
+    renderAdminPanel();
+  }catch(e){showFireToast('❌ '+e.message);}
 }
 
 function renderAdminTab(){
@@ -5394,6 +5419,37 @@ function renderAdminTab(){
         :pending.map(r=>renderReview(r,true)).join('')}
       ${approved.length>0?`<h3 style="font-weight:900;font-size:17px;margin:20px 0 14px">✅ מאושרות (${approved.length})</h3>
       ${approved.slice(0,10).map(r=>renderReview(r,false)).join('')}`:''}`;
+  }
+  if(adminTab==='messages'){
+    const unread=adminContactMessages.filter(m=>!m.read);
+    const read=adminContactMessages.filter(m=>m.read);
+    const fmtDate=ts=>ts?new Date(ts).toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
+    const renderMsg=(m,isUnread)=>`
+      <div style="background:#fff;border:${isUnread?'2px solid rgba(168,85,247,0.4)':'1.5px solid rgba(20,184,166,0.15)'};border-radius:18px;padding:16px;margin-bottom:12px;box-shadow:${isUnread?'0 4px 16px rgba(168,85,247,0.1)':'none'}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+          <div>
+            ${isUnread?`<span style="background:rgba(168,85,247,0.15);color:#A855F7;font-size:10px;font-weight:800;padding:2px 8px;border-radius:50px;display:inline-block;margin-bottom:4px">● חדש</span><br>`:''}
+            <div style="font-weight:800;font-size:14px;color:#0F172A">${m.from||'משתמש'}</div>
+            <div style="font-size:11px;color:#64748B">${m.email||''}</div>
+          </div>
+          <div style="text-align:left">
+            <div style="font-size:11px;color:#94A3B8">${fmtDate(m.createdAt)}</div>
+            ${isUnread?`<button onclick="adminMarkMessageRead('${m.id}')" style="margin-top:4px;background:rgba(20,184,166,0.1);border:1px solid rgba(20,184,166,0.3);color:#14B8A6;border-radius:50px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer">✓ סמן כנקרא</button>`:''}
+          </div>
+        </div>
+        <div style="background:rgba(248,250,252,1);border-radius:12px;padding:12px;font-size:13px;color:#374151;line-height:1.7;white-space:pre-wrap;direction:rtl">${(m.message||'').replace(/</g,'&lt;')}</div>
+        <div style="margin-top:10px">
+          <a href="mailto:${m.email||''}?subject=תגובה מ-Kidemy&body=שלום ${m.from||''},%0A%0A" style="display:block;background:linear-gradient(135deg,#A855F7,#7E22CE);color:#fff;border-radius:50px;padding:9px;font-size:12px;font-weight:800;text-decoration:none;text-align:center">📧 השב במייל</a>
+        </div>
+      </div>`;
+    return `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <button onclick="loadAdminData().then(()=>renderAdminPanel())" style="background:rgba(168,85,247,0.1);border:1px solid rgba(168,85,247,0.3);color:#A855F7;border-radius:50px;padding:7px 14px;font-size:12px;font-weight:800;cursor:pointer">🔄 רענן</button>
+        <h4 style="font-weight:900;font-size:16px;margin:0;color:#0F1A1F">💬 הודעות ישירות</h4>
+      </div>
+      ${unread.length===0&&read.length===0?`<div style="text-align:center;padding:48px;color:#64748B"><div style="font-size:48px;margin-bottom:10px">💬</div><div style="font-size:15px;font-weight:700">אין הודעות עדיין</div></div>`:''}
+      ${unread.length>0?`<h4 style="font-weight:900;font-size:14px;margin:0 0 10px;color:#A855F7">📬 חדשות (${unread.length})</h4>${unread.map(m=>renderMsg(m,true)).join('')}`:''}
+      ${read.length>0?`<h4 style="font-weight:900;font-size:14px;margin:${unread.length>0?'16px':'0'} 0 10px;color:#64748B">📂 נקראו (${read.length})</h4>${read.map(m=>renderMsg(m,false)).join('')}`:''}`;
   }
   if(adminTab==='stats'){
     const studentCount=adminAllUsers.filter(u=>u.role==='student').length;
