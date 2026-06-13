@@ -12,10 +12,13 @@
       }
     },
     "bookings": {
-      "$id": { ".read": "auth != null", ".write": "auth != null" }
+      "$id": {
+        ".read": "auth != null && (auth.uid == data.child('studentUid').val() || auth.uid == data.child('teacherUid').val() || auth.token.email == 'rotemshaer@gmail.com')",
+        ".write": "auth != null && (auth.uid == data.child('studentUid').val() || auth.uid == newData.child('studentUid').val() || auth.token.email == 'rotemshaer@gmail.com')"
+      }
     },
     "teacherBookings": {
-      "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth != null" }
+      "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth != null && (auth.uid == $uid || auth.token.email == 'rotemshaer@gmail.com')" }
     },
     "userBookings": {
       "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth != null && auth.uid == $uid" }
@@ -28,18 +31,20 @@
     "userChats": {
       "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth != null" }
     },
-    "adminAlerts":  { ".read": "auth != null", ".write": "auth != null" },
-    "adminNotifs":  { ".read": "auth != null", ".write": "auth != null" },
-    "parentTokens": { ".read": true, ".write": "auth != null" },
+    "adminAlerts":  { ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'", ".write": "auth != null" },
+    "adminNotifs":  { ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'", ".write": "auth != null" },
+    "parentTokens": {
+      "$token": { ".read": "auth != null", ".write": "auth != null" }
+    },
     "parentLinks": {
       "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth != null && auth.uid == $uid" }
     },
-    "bannedUsers":  { ".read": "auth != null", ".write": "auth != null" },
+    "bannedUsers":  { ".read": "auth != null", ".write": "auth != null && auth.token.email == 'rotemshaer@gmail.com'" },
     "forceSignout": {
       "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth != null" }
     },
     "reviews":        { ".read": "auth != null", ".write": "auth != null" },
-    "pendingReviews": { ".read": "auth != null", ".write": "auth != null" },
+    "pendingReviews": { ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'", ".write": "auth != null" },
     "videos":         { ".read": "auth != null", ".write": "auth != null" },
     "communityPosts": { ".read": "auth != null", ".write": "auth != null" },
     "posts":          { ".read": "auth != null", ".write": "auth != null" },
@@ -48,7 +53,7 @@
     "userGroups": {
       "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth != null" }
     },
-    "reports":          { ".read": "auth != null", ".write": "auth != null" },
+    "reports":          { ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'", ".write": "auth != null" },
     "favorites": {
       "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth != null && auth.uid == $uid" }
     },
@@ -64,7 +69,7 @@
     "schedules": {
       "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth != null" }
     },
-    "contactMessages":  { ".read": "auth != null", ".write": "auth != null" },
-    "pendingCategories":{ ".read": "auth != null", ".write": "auth != null" }
+    "contactMessages":  { ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'", ".write": "auth != null" },
+    "pendingCategories":{ ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'", ".write": "auth != null" }
   }
 }
