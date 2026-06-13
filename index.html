@@ -454,7 +454,7 @@ const ACHIEVEMENTS=[
   {id:6,em:"👥",ttl:"שיעור קבוצתי",desc:"לימדת קבוצה של 4 תלמידים",col:"#27AE60"},
 ];
 
-const APP_VERSION='4.7.4';
+const APP_VERSION='4.7.5';
 const APP_BUILD='13-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -908,6 +908,20 @@ function ParentReg(){
         </div>
 
         <div class="ing" style="margin-bottom:0">
+          <label style="color:#A78BFA;font-size:12px;font-weight:700;display:block;margin-bottom:8px">📸 צילום תעודת זהות הורה</label>
+          <input type="file" id="prIdPhoto" accept="image/*" capture="environment" style="display:none" onchange="previewParentIdPhoto()">
+          <div id="prIdPhotoPreview" style="display:none;margin-bottom:10px;border-radius:14px;overflow:hidden;border:2px solid rgba(168,85,247,0.4)">
+            <img id="prIdPhotoImg" src="" style="width:100%;max-height:160px;object-fit:cover" alt="צילום תז">
+            <div style="padding:7px;background:rgba(168,85,247,0.1);font-size:11px;color:#A78BFA;font-weight:800;text-align:center">✅ צילום נבחר</div>
+          </div>
+          <button type="button" onclick="document.getElementById('prIdPhoto').click()"
+            style="width:100%;background:rgba(168,85,247,0.1);border:2px dashed rgba(168,85,247,0.4);color:#A78BFA;border-radius:14px;padding:13px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
+            📷 צלם / העלה צילום תז
+          </button>
+          <p style="font-size:11px;color:#6B7280;margin:6px 0 0;line-height:1.5">🔒 הצילום נשמר מוצפן ומוצג למנהל בלבד לאימות גיל.</p>
+        </div>
+
+        <div class="ing" style="margin-bottom:0">
           <label style="color:#94A3B8;font-size:12px;font-weight:700;display:block;margin-bottom:6px">גיל ההורה (מינימום 18)</label>
           <input id="prAge" class="inp" type="number" min="18" max="120" placeholder="גיל"
             style="background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.12);color:#fff;border-radius:14px;padding:13px 15px;font-size:14px">
@@ -998,7 +1012,8 @@ function submitParentReg(){
     return;
   }
 
-  S.parentRegData={name,id,email,age,phone,confirmedAt:Date.now()};
+  S.parentRegData={name,id,email,age,phone,idPhoto:_parentIdPhotoBase64||null,confirmedAt:Date.now()};
+  _parentIdPhotoBase64=null;
   _saveRegSession();
   showFireToast('✅ פרטי ההורה אומתו!');
   setTimeout(()=>go('register'),600);
@@ -1153,6 +1168,7 @@ async function quickRegister(){
     parentPhone:pr.phone,
     parentId:pr.id,
     parentAge:pr.age,
+    parentIdPhoto:pr.idPhoto||null,
     mixedOk:kcbChecked('regMixedOk')
   });
 }
@@ -2339,6 +2355,23 @@ function previewIdPhoto(){
     const img=document.getElementById('tIdPhotoImg');
     if(preview&&img){img.src=_idPhotoBase64;preview.style.display='block';}
     showFireToast('✅ תמונה נטענה!');
+  };
+  reader.readAsDataURL(file);
+}
+
+let _parentIdPhotoBase64=null;
+function previewParentIdPhoto(){
+  const input=document.getElementById('prIdPhoto');
+  if(!input?.files?.[0])return;
+  const file=input.files[0];
+  if(file.size>5*1024*1024){showFireToast('❌ הקובץ גדול מדי (מקסימום 5MB)');return;}
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    _parentIdPhotoBase64=ev.target.result;
+    const preview=document.getElementById('prIdPhotoPreview');
+    const img=document.getElementById('prIdPhotoImg');
+    if(preview&&img){img.src=_parentIdPhotoBase64;preview.style.display='block';}
+    showFireToast('✅ צילום תז נטען!');
   };
   reader.readAsDataURL(file);
 }
@@ -5123,8 +5156,10 @@ function renderAdminTab(){
               <div style="background:rgba(168,85,247,0.06);border-radius:10px;padding:8px;margin-top:8px">
                 <div style="font-size:11px;color:#A855F7;font-weight:800;margin-bottom:3px">👨‍👩‍👧 הורה אחראי</div>
                 <div style="font-size:12px;color:#0F1A1F;font-weight:700">${u.parentName}</div>
+                ${u.parentId?`<div style="font-size:11px;color:#64748B;margin-top:2px">🪪 ת"ז: ${u.parentId}</div>`:''}
                 <div style="font-size:11px;color:#64748B;direction:ltr;text-align:right;margin-top:2px">📧 ${u.parentEmail||''}</div>
                 ${u.parentPhone?`<div style="font-size:11px;color:#64748B;direction:ltr;text-align:right">📱 ${u.parentPhone}</div>`:''}
+                ${u.parentIdPhoto?`<div style="margin-top:8px"><div style="font-size:10px;color:#A855F7;font-weight:700;margin-bottom:4px">📸 צילום תז</div><img src="${u.parentIdPhoto}" onclick="this.style.maxHeight=this.style.maxHeight==='none'?'120px':'none'" style="width:100%;max-height:120px;object-fit:cover;border-radius:8px;border:1.5px solid rgba(168,85,247,0.3);cursor:zoom-in" alt="תז הורה"></div>`:'<div style="font-size:10px;color:#F59E0B;margin-top:4px">📸 ללא צילום תז</div>'}
               </div>
             `:'<div style="font-size:11px;color:#EF4444;margin-top:4px;font-weight:700">⚠️ אין פרטי הורה</div>'}
             <div style="font-size:10px;color:#94A3B8;margin-top:6px">נרשם: ${u.createdAt?new Date(u.createdAt).toLocaleDateString('he-IL'):''}</div>
