@@ -1077,7 +1077,7 @@ function Register(){
       <!-- אישורים -->
       <div id="regTerms" class="kcb-row light" data-checked="false" onclick="kcbToggle(this)" style="margin-bottom:14px">
         <div class="kcb-box">✓</div>
-        <span style="font-size:13px;line-height:1.6;color:#0F1A1F">📜 קראתי ומסכים ל<strong>תנאי השימוש</strong> ו<strong>מדיניות הפרטיות</strong></span>
+        <span style="font-size:13px;line-height:1.6;color:#0F1A1F">📜 קראתי ומסכים ל<a href="/terms.html" target="_blank" style="color:#A855F7;font-weight:700;text-decoration:underline">תנאי השימוש</a> ו<a href="/privacy.html" target="_blank" style="color:#14B8A6;font-weight:700;text-decoration:underline">מדיניות הפרטיות</a></span>
       </div>
 
       <div id="regMixedOk" class="kcb-row light" data-checked="false" onclick="kcbToggle(this)" style="margin-bottom:14px;background:rgba(20,184,166,0.06);border:1.5px solid rgba(20,184,166,0.2);border-radius:14px;padding:12px 14px">
@@ -7478,6 +7478,11 @@ function About(){
       </div>
       ${content}
       <div style="text-align:center;padding:12px 0 4px;font-size:11px;color:#94A3B8">גרסה ${APP_VERSION} · ${APP_BUILD}</div>
+      <div style="text-align:center;padding:0 0 16px;display:flex;justify-content:center;gap:16px">
+        <a href="/terms.html" target="_blank" style="font-size:11px;color:#A855F7;text-decoration:none;font-weight:700">תנאי שימוש</a>
+        <span style="color:#CBD5E1;font-size:11px">·</span>
+        <a href="/privacy.html" target="_blank" style="font-size:11px;color:#14B8A6;text-decoration:none;font-weight:700">מדיניות פרטיות</a>
+      </div>
     </div>
     ${BNav("about")}
   </div>`;
