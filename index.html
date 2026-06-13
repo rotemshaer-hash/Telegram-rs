@@ -454,7 +454,7 @@ const ACHIEVEMENTS=[
   {id:6,em:"👥",ttl:"שיעור קבוצתי",desc:"לימדת קבוצה של 4 תלמידים",col:"#27AE60"},
 ];
 
-const APP_VERSION='4.7.5';
+const APP_VERSION='4.7.6';
 const APP_BUILD='13-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -7070,6 +7070,35 @@ function Profile(){
       <div style="display:flex;gap:10px;margin-bottom:18px">
         ${(()=>{const a=teacherAnalytics;const stats=[["⭐",a?.avgRating||"0","דירוג",null],["📚",a?.completed||"0","שיעורים",null],["👥",a?.uniqueStudentsCount||"0","תלמידים","showMyStudents()"],["📅",a?.lessonsThisMonth||"0","החודש",null]];return stats.map(([e,v,l,action])=>`<div class="card-sm" ${action?`onclick="${action}" style="flex:1;text-align:center;padding:11px 5px;margin-bottom:0;cursor:pointer;background:linear-gradient(135deg,#EFF6FF,#F0FDFA)"`:'style="flex:1;text-align:center;padding:11px 5px;margin-bottom:0"'}><div style="font-size:17px">${e}</div><div style="font-weight:900;font-size:15px">${v}</div><div style="font-size:9px;color:${C.muted}">${l}</div></div>`).join("");})()}
       </div>
+      ${(()=>{
+        if(currentUserData?.role!=='teacher')return '';
+        const unread=userChats.filter(c=>c.unread);
+        const all=userChats.slice(0,3);
+        if(all.length===0)return '';
+        const ago=ts=>{const m=Math.round((Date.now()-(ts||0))/60000);return m<1?'עכשיו':m<60?m+' דק\'':m<1440?Math.floor(m/60)+' שע\'':Math.floor(m/1440)+' ימים';};
+        return `
+        <div style="background:${unread.length>0?'rgba(6,182,212,0.06)':'rgba(255,255,255,0.7)'};border:1.5px solid ${unread.length>0?'rgba(6,182,212,0.35)':'rgba(20,184,166,0.2)'};border-radius:18px;padding:12px 14px;margin-bottom:14px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+            <button onclick="go('messages')" style="background:rgba(6,182,212,0.1);border:1px solid rgba(6,182,212,0.3);color:#06B6D4;border-radius:50px;padding:5px 12px;font-size:11px;font-weight:800;cursor:pointer">הכל →</button>
+            <div style="font-weight:900;font-size:13px;color:#0F1A1F;display:flex;align-items:center;gap:6px">
+              📬 הודעות מתלמידים
+              ${unread.length>0?`<span style="background:#EF4444;color:#fff;border-radius:50px;min-width:18px;height:18px;font-size:10px;font-weight:900;display:inline-flex;align-items:center;justify-content:center;padding:0 5px">${unread.length}</span>`:''}
+            </div>
+          </div>
+          ${all.map(uc=>`
+          <button onclick="S.chat={otherUid:'${uc.otherUid}',otherName:'${(uc.otherName||'').replace(/'/g,'')}'};go('chat')" style="width:100%;background:${uc.unread?'rgba(6,182,212,0.08)':'#fff'};border:${uc.unread?'1.5px solid rgba(6,182,212,0.3)':'1.5px solid rgba(20,184,166,0.12)'};border-radius:14px;padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;gap:10px;cursor:pointer;text-align:right">
+            <div style="width:36px;height:36px;border-radius:11px;background:${uc.unread?'rgba(6,182,212,0.2)':'rgba(20,184,166,0.1)'};display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${uc.unread?'💬':'💭'}</div>
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;justify-content:space-between;margin-bottom:2px">
+                <span style="font-size:10px;color:#94A3B8">${ago(uc.lastTime)}</span>
+                <span style="font-weight:800;font-size:13px;color:#0F1A1F">${uc.otherName||'תלמיד'}</span>
+              </div>
+              <div style="font-size:11px;color:#64748B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right">${uc.lastMessage||''}</div>
+            </div>
+            ${uc.unread?`<div style="width:8px;height:8px;border-radius:50%;background:#06B6D4;flex-shrink:0"></div>`:''}
+          </button>`).join('')}
+        </div>`;
+      })()}
       <div class="tabs">
         ${tabItems.map(([id,lbl])=>`<button class="${tab===id?"on":""}" onclick="S.pTab='${id}';render()">${lbl}</button>`).join("")}
       </div>
