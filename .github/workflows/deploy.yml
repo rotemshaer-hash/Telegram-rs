@@ -25,4 +25,4 @@ jobs:
       - name: Deploy to Netlify
         run: netlify deploy --prod --dir=. --site=d7a8591e-3052-4f35-9b69-d2c4633f70c1
         env:
-          NETLIFY_AUTH_TOKEN: nfp_tcPKNRrbrJ5ULV63qhYLVxyD3tTqQ4cv18d7
+          NETLIFY_AUTH_TOKEN: nfp_qPByJ3iA61QqC6Akonizo3mM3HZfo1na6de8
