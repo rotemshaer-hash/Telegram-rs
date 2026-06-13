@@ -1,4 +1,4 @@
-name: Deploy to Netlify + Firebase Rules
+name: Deploy to Netlify
 
 on:
   push:
@@ -12,17 +12,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install CLI tools
-        run: npm install -g netlify-cli firebase-tools
-
-      - name: Deploy Firebase Rules
-        if: ${{ secrets.FIREBASE_TOKEN != '' }}
-        run: firebase deploy --only database --token "$FIREBASE_TOKEN" --non-interactive
-        continue-on-error: true
-        env:
-          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+      - name: Install Netlify CLI
+        run: npm install -g netlify-cli
 
       - name: Deploy to Netlify
         run: netlify deploy --prod --dir=. --site=d7a8591e-3052-4f35-9b69-d2c4633f70c1
         env:
-          NETLIFY_AUTH_TOKEN: nfp_qPByJ3iA61QqC6Akonizo3mM3HZfo1na6de8
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
