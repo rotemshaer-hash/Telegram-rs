@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
-<meta name="description" content="Kidemy – ילדים מלמדים ילדים. פלטפורמה בטוחה לחינוך עמיתים."/>
+<meta name="description" content="Kidemy – פלטפורמה בטוחה לשיעורים פרטיים איכותיים."/>
 <link rel="manifest" href="data:application/json;charset=utf-8,%7B%22name%22%3A%22Kidemy%22%2C%22short_name%22%3A%22Kidemy%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230F0F1A%22%2C%22theme_color%22%3A%22%23FF6B35%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%2520viewBox%3D'0%200%20100%20100'%253E%253Ctext%2520y%3D'.9em'%2520font-size%3D'90'%253E%25F0%259F%258E%2593%253C%2Ftext%253E%253C%2Fsvg%253E%22%2C%22sizes%22%3A%22any%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%7D%5D%7D"/>
 <!-- Firebase SDKs -->
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
@@ -36,15 +36,15 @@ auth.setPersistence(firebase.auth.Auth.Persistence.NONE);
 <meta name="mobile-web-app-capable" content="yes"/>
 <meta name="application-name" content="Kidemy"/>
 <meta name="theme-color" content="#14B8A6"/>
-<meta name="description" content="Kidemy - ילדים מלמדים ילדים. פלטפורמה בטוחה לחינוך עמיתים בעברית"/>
+<meta name="description" content="Kidemy – פלטפורמה בטוחה לשיעורים פרטיים איכותיים בעברית"/>
 
 <!-- PWA Manifest (inline) -->
-<link rel="manifest" href='data:application/manifest+json;charset=utf-8,{"name":"Kidemy - ילדים מלמדים ילדים","short_name":"Kidemy","description":"פלטפורמה בטוחה לחינוך עמיתים","start_url":"/","display":"standalone","orientation":"portrait","background_color":"%23CCFBF1","theme_color":"%2314B8A6","lang":"he","dir":"rtl","icons":[{"src":"data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 512 512%22><defs><linearGradient id=%22g%22 x1=%220%22 y1=%220%22 x2=%221%22 y2=%221%22><stop offset=%220%22 stop-color=%22%2314B8A6%22/><stop offset=%2250%22 stop-color=%22%2306B6D4%22/><stop offset=%221%22 stop-color=%22%23A855F7%22/></linearGradient></defs><rect width=%22512%22 height=%22512%22 rx=%22112%22 fill=%22url(%23g)%22/><text x=%22256%22 y=%22340%22 font-size=%22260%22 text-anchor=%22middle%22>🎓</text></svg>","sizes":"512x512","type":"image/svg+xml","purpose":"any"},{"src":"data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 192 192%22><defs><linearGradient id=%22g%22 x1=%220%22 y1=%220%22 x2=%221%22 y2=%221%22><stop offset=%220%22 stop-color=%22%2314B8A6%22/><stop offset=%2250%22 stop-color=%22%2306B6D4%22/><stop offset=%221%22 stop-color=%22%23A855F7%22/></linearGradient></defs><rect width=%22192%22 height=%22192%22 rx=%2240%22 fill=%22url(%23g)%22/><text x=%2296%22 y=%22130%22 font-size=%22100%22 text-anchor=%22middle%22>🎓</text></svg>","sizes":"192x192","type":"image/svg+xml","purpose":"any maskable"}]}'>
+<link rel="manifest" href='data:application/manifest+json;charset=utf-8,{"name":"Kidemy","short_name":"Kidemy","description":"פלטפורמה בטוחה לשיעורים פרטיים","start_url":"/","display":"standalone","orientation":"portrait","background_color":"%23CCFBF1","theme_color":"%2314B8A6","lang":"he","dir":"rtl","icons":[{"src":"data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 512 512%22><defs><linearGradient id=%22g%22 x1=%220%22 y1=%220%22 x2=%221%22 y2=%221%22><stop offset=%220%22 stop-color=%22%2314B8A6%22/><stop offset=%2250%22 stop-color=%22%2306B6D4%22/><stop offset=%221%22 stop-color=%22%23A855F7%22/></linearGradient></defs><rect width=%22512%22 height=%22512%22 rx=%22112%22 fill=%22url(%23g)%22/><text x=%22256%22 y=%22340%22 font-size=%22260%22 text-anchor=%22middle%22>🎓</text></svg>","sizes":"512x512","type":"image/svg+xml","purpose":"any"},{"src":"data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 192 192%22><defs><linearGradient id=%22g%22 x1=%220%22 y1=%220%22 x2=%221%22 y2=%221%22><stop offset=%220%22 stop-color=%22%2314B8A6%22/><stop offset=%2250%22 stop-color=%22%2306B6D4%22/><stop offset=%221%22 stop-color=%22%23A855F7%22/></linearGradient></defs><rect width=%22192%22 height=%22192%22 rx=%2240%22 fill=%22url(%23g)%22/><text x=%2296%22 y=%22130%22 font-size=%22100%22 text-anchor=%22middle%22>🎓</text></svg>","sizes":"192x192","type":"image/svg+xml","purpose":"any maskable"}]}'>
 
 <!-- iOS Apple Touch Icon -->
 <link rel="apple-touch-icon" href='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="%2314B8A6"/><stop offset="50" stop-color="%2306B6D4"/><stop offset="1" stop-color="%23A855F7"/></linearGradient></defs><rect width="180" height="180" rx="40" fill="url(%23g)"/><text x="90" y="125" font-size="100" text-anchor="middle">🎓</text></svg>'>
 <link rel="icon" type="image/svg+xml" href='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="%2314B8A6"/><stop offset="50" stop-color="%2306B6D4"/><stop offset="1" stop-color="%23A855F7"/></linearGradient></defs><rect width="64" height="64" rx="14" fill="url(%23g)"/><text x="32" y="46" font-size="38" text-anchor="middle">🎓</text></svg>'>
-<title>Kidemy v2.7 – ילדים מלמדים ילדים</title>
+<title>Kidemy – שיעורים פרטיים</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&family=Rubik:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -477,7 +477,7 @@ let S={
   search:'',
   // SHARE
   showShare:false,
-  shareTitle:"Kidemy – ילדים מלמדים ילדים!",
+  shareTitle:"Kidemy – שיעורים פרטיים בטוחים",
   shareText:"",
   shareUrl:"https://kidemy-app.netlify.app",
   shareCopied:false,
@@ -581,7 +581,7 @@ function BNav(active){
 // ─── SHARE SYSTEM ─────────────────────────────────────────────────────────────
 function openShare(title,text,url){
   S.shareTitle=title;
-  S.shareText=text||`🎓 ${title}\nKidemy – ילדים מלמדים ילדים!\nהפלטפורמה הבטוחה לחינוך עמיתים.`;
+  S.shareText=text||`🎓 ${title}\nKidemy – שיעורים פרטיים בטוחים ואיכותיים.`;
   S.shareUrl=url||"https://kidemy-app.netlify.app";
   S.showShare=true;
   S.shareCopied=false;
@@ -591,7 +591,7 @@ function shareTeacher(t){
   if(!t){showFireToast('❌ מורה לא נמצא');return;}
   openShare(
     `${t.name} מלמד/ת ${catById(t.cat).lbl||""} ב-Kidemy`,
-    `🎓 מצאתי מורה מדהים/ה ב-Kidemy!\n${t.name} מ${t.city||''}\n⭐${t.rating||0} | ₪${t.price||0} לשיעור\nKidemy – ילדים מלמדים ילדים!`,
+    `🎓 מצאתי מורה מדהים/ה ב-Kidemy!\n${t.name} מ${t.city||''}\n⭐${t.rating||0} | ₪${t.price||0} לשיעור\nKidemy – שיעורים פרטיים בטוחים`,
     "https://kidemy-app.netlify.app"
   );
 }
@@ -634,7 +634,7 @@ async function _sendContactMsg(){
 }
 function shareApp(){
   openShare(
-    "Kidemy – ילדים מלמדים ילדים!",
+    "Kidemy – שיעורים פרטיים בטוחים",
     "🎓 Kidemy – הפלטפורמה הבטוחה שמחברת בין ילדים מוכשרים לתלמידים!\nמוזיקה, ספורט, יופי, לימודים ועוד.\nהצטרפו בחינם!",
     "https://kidemy-app.netlify.app"
   );
@@ -642,7 +642,7 @@ function shareApp(){
 function sharePost(text){
   openShare(
     "פוסט מ-Kidemy",
-    `💬 ב-Kidemy כותבים:\n"${text.substring(0,120)}"\nKidemy – ילדים מלמדים ילדים!`,
+    `💬 ב-Kidemy כותבים:\n"${text.substring(0,120)}"\nKidemy – שיעורים פרטיים בטוחים`,
     "https://kidemy-app.netlify.app"
   );
 }
@@ -730,8 +730,7 @@ function Splash(){
     <div style="position:absolute;top:30%;left:10%;width:160px;height:160px;border-radius:50%;background:radial-gradient(circle,rgba(6,182,212,0.20),transparent);filter:blur(30px)"></div>
     <div style="font-size:84px;margin-bottom:14px;filter:drop-shadow(0 0 40px rgba(20,184,166,0.7));position:relative;z-index:1">🎓</div>
     <h1 style="font-size:62px;font-weight:900;background:linear-gradient(135deg,#5EEAD4 0%,#22D3EE 35%,#A855F7 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin:0;line-height:1;letter-spacing:-0.05em;position:relative;z-index:1">Kidemy</h1>
-    <p style="font-size:19px;color:rgba(255,255,255,0.92);margin-top:14px;font-weight:600;position:relative;z-index:1">ילדים מלמדים ילדים</p>
-    <p style="font-size:14px;color:rgba(94,234,212,0.7);margin-top:8px;max-width:300px;line-height:1.7;position:relative;z-index:1">פלטפורמה בטוחה לחינוך עמיתים – מוזיקה, ספורט, יופי, לימודים ועוד</p>
+    <p style="font-size:14px;color:rgba(94,234,212,0.7);margin-top:14px;max-width:300px;line-height:1.7;position:relative;z-index:1">מוזיקה, ספורט, לימודים, יצירה ועוד</p>
     <div style="display:flex;gap:12px;margin-top:26px;justify-content:center;position:relative;z-index:1">
       ${[[realStats.teachers,"מורים"],[realStats.categories,"נושאים"],[realStats.cities,"ערים"]].map(([v,l])=>`<div style="background:rgba(20,184,166,0.12);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(94,234,212,0.25);border-radius:18px;padding:12px 20px;text-align:center"><div style="font-weight:900;font-size:22px;color:#5EEAD4">${v}</div><div style="font-size:11px;color:rgba(255,255,255,0.6);font-weight:600">${l}</div></div>`).join("")}
     </div>
@@ -1017,7 +1016,7 @@ function Register(){
       <div style="background:linear-gradient(135deg,#14B8A6,#A855F7);border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:#fff">2</div>
     </div>
     <h2 style="font-weight:900;font-size:24px;margin-bottom:4px;text-align:center">שלב 2 – רישום הילד</h2>
-    <p style="color:#8A94A6;font-size:13px;margin-bottom:18px;text-align:center">ילדים מלמדים ילדים – חינם!</p>
+    <p style="color:#8A94A6;font-size:13px;margin-bottom:18px;text-align:center">צעד ראשון בדרך להצלחה 🎓</p>
 
     <div style="width:100%;max-width:380px">
 
@@ -5888,7 +5887,7 @@ function Home(){
             <span style="font-size:22px">🎓</span>
             <span style="color:#fff;font-size:26px;font-weight:900;letter-spacing:-.5px">Kidemy</span>
           </div>
-          <p style="color:rgba(255,255,255,.82);font-size:11px;margin:0;font-weight:600">ילדים מלמדים ילדים</p>
+          <p style="color:rgba(255,255,255,.82);font-size:11px;margin:0;font-weight:600">פלטפורמת שיעורים פרטיים</p>
         </div>
         <div style="display:flex;gap:6px">
           <button onclick="shareApp()" style="background:rgba(255,255,255,.2);border:none;color:#fff;font-size:16px;cursor:pointer;border-radius:50%;width:38px;height:38px;display:flex;align-items:center;justify-content:center" title="שתף את Kidemy">📤</button>
@@ -7464,8 +7463,8 @@ function About(){
       <button onclick="back()" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);color:#fff;font-size:13px;cursor:pointer;border-radius:50px;padding:8px 16px;font-weight:700;margin-bottom:22px;display:block">← חזור</button>
       <div style="text-align:center;position:relative;z-index:1">
         <div style="font-size:52px;margin-bottom:12px">🎓</div>
-        <h1 style="font-size:28px;font-weight:900;margin:0 0 8px;background:linear-gradient(135deg,#14B8A6,#14B8A6,#14B8A6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">ילדים מלמדים ילדים</h1>
-        <p style="color:rgba(255,255,255,.5);font-size:14px;margin:0 0 22px;line-height:1.8;max-width:300px;margin-left:auto;margin-right:auto">פלטפורמה בטוחה שמחברת בין ילדים מוכשרים לבין ילדים שרוצים ללמוד.</p>
+        <h1 style="font-size:28px;font-weight:900;margin:0 0 8px;background:linear-gradient(135deg,#14B8A6,#06B6D4,#A855F7);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">Kidemy</h1>
+        <p style="color:rgba(255,255,255,.5);font-size:14px;margin:0 0 22px;line-height:1.8;max-width:300px;margin-left:auto;margin-right:auto">פלטפורמה בטוחה לשיעורים פרטיים.</p>
         <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
           ${[[realStats.teachers,"מורים"],[realStats.students,"תלמידים"],[realStats.categories,"תחומים"],[realStats.cities,"ערים"]].map(([v,l])=>`<div style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:10px 14px;text-align:center"><div style="color:#FFD23F;font-weight:900;font-size:19px">${v}</div><div style="color:rgba(255,255,255,.45);font-size:11px">${l}</div></div>`).join("")}
         </div>
@@ -7539,7 +7538,7 @@ function TeacherPending(){
         <span style="font-size:28px">🎓</span>
         <span style="color:#fff;font-size:24px;font-weight:900;letter-spacing:-0.02em">Kidemy</span>
       </div>
-      <p style="color:rgba(255,255,255,0.5);font-size:12px;margin:0">ילדים מלמדים ילדים</p>
+      <p style="color:rgba(255,255,255,0.5);font-size:12px;margin:0">פלטפורמת שיעורים פרטיים</p>
     </div>
 
     <!-- Tabs -->
@@ -7650,7 +7649,7 @@ function StudentPending(){
         <span style="font-size:28px">🎒</span>
         <span style="color:#fff;font-size:24px;font-weight:900;letter-spacing:-0.02em">Kidemy</span>
       </div>
-      <p style="color:rgba(255,255,255,0.5);font-size:12px;margin:0">ילדים מלמדים ילדים</p>
+      <p style="color:rgba(255,255,255,0.5);font-size:12px;margin:0">פלטפורמת שיעורים פרטיים</p>
     </div>
     <div style="padding:20px 16px">
       <div style="background:rgba(255,255,255,0.06);backdrop-filter:blur(12px);border:1px solid ${rejected?'rgba(239,68,68,0.4)':'rgba(255,255,255,0.1)'};border-radius:20px;overflow:hidden">
@@ -8624,7 +8623,7 @@ const WA_TEMPLATES={
   bookingApproved:(b)=>`היי ${b.studentName} 🎉\n\nהשיעור שלך אושר!\n👨‍🏫 ${b.teacherName}\n📅 יום ${b.day} בשעה ${b.time}\n📹 שיעור אונליין דרך Jitsi Meet\n\nכנס לאפליקציה:\n${window.location.origin}`,
   bookingReminder:(b)=>`היי ${b.studentName} ⏰\n\nתזכורת: השיעור שלך עוד מעט!\n👨‍🏫 ${b.teacherName}\n📅 יום ${b.day} בשעה ${b.time}\n\nהצטרף לשיעור:\n${b.jitsiUrl||window.location.origin}`,
   parentNotify:(b,childName)=>`שלום! 👋\n\nהילד/ה ${childName} הזמין שיעור ב-Kidemy:\n📚 ${b.teacherCat}\n👨‍🏫 ${b.teacherName}\n📅 יום ${b.day} בשעה ${b.time}\n💰 ₪${b.price}\n\nלצפייה ואישור:\n${window.location.origin}`,
-  inviteFriend:()=>`היי! 👋\n\nגיליתי אפליקציה מגניבה - Kidemy 🎓\nילדים מלמדים ילדים בקטגוריות שונות:\nגיטרה, מתמטיקה, אמנות, ספורט ועוד!\n\nתבדוק:\nhttps://kidemy-app.netlify.app`,
+  inviteFriend:()=>`היי! 👋\n\nגיליתי אפליקציה מגניבה - Kidemy 🎓\nשיעורים פרטיים בטוחים ואיכותיים:\nגיטרה, מתמטיקה, אמנות, ספורט ועוד!\n\nתבדוק:\nhttps://kidemy-app.netlify.app`,
   contactTeacher:(t)=>`היי ${t.name}! 👋\n\nראיתי את הפרופיל שלך ב-Kidemy ואני מעוניין/ת ב${CATS.find(c=>c.id===t.cat)?.lbl||'שיעור'}.\nאפשר לקבוע שיעור?\n\nמ-Kidemy 🎓`
 };
 
@@ -9147,7 +9146,7 @@ function RegSuccess(){
 
     <p style="text-align:center;font-size:12px;color:rgba(15,118,110,0.7);margin:0;line-height:1.6">
       <strong>צוות Kidemy</strong> 💙<br>
-      ילדים מלמדים ילדים – זה הקסם של למידה!
+      Kidemy – שיעורים פרטיים בטוחים ואיכותיים 🎓
     </p>
   </div>`;
 }
