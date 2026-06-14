@@ -9936,7 +9936,7 @@ function installApp(){
 // ── AUTO-UPDATE SERVICE WORKER ────────────────────────────────────────────────
 if('serviceWorker' in navigator){
   // Unregister any old SW not matching current version, then register fresh
-  const currentSwUrl='/sw.js?v=4.9.0';
+  const currentSwUrl='/sw.js?v=4.9.2';
   navigator.serviceWorker.getRegistrations().then(regs=>{
     regs.forEach(r=>{if(r.active&&r.active.scriptURL&&!r.active.scriptURL.includes('4.9.0'))r.unregister();});
   });
