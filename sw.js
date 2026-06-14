@@ -1,5 +1,5 @@
 // Kidemy Service Worker — auto-update on every deploy
-const VERSION = '4.8.5';
+const VERSION = '4.8.6';
 
 // Activate immediately without waiting for old tabs to close
 self.addEventListener('install', () => self.skipWaiting());

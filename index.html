@@ -418,6 +418,9 @@ async function loadRealTeachers(){
             schedule:t.schedule||null,
             tags:t.tags||[],
             catProfiles:t.catProfiles||{},
+            whyTeach:t.whyTeach||null,
+            proudOf:t.proudOf||null,
+            typicalLesson:t.typicalLesson||null,
           });
           if(t.city)cities.add(t.city);
         }
@@ -485,7 +488,7 @@ const ACHIEVEMENTS=[
   {id:6,em:"👥",ttl:"שיעור קבוצתי",desc:"לימדת קבוצה של 4 תלמידים",col:"#27AE60"},
 ];
 
-const APP_VERSION='4.8.5';
+const APP_VERSION='4.8.6';
 const APP_BUILD='14-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -598,6 +601,56 @@ function avatarHtml(photo,name,size=52,radius='16px'){
   const pal=['#14B8A6','#06B6D4','#A855F7','#F59E0B','#EF4444','#10B981','#EC4899','#6366F1'];
   const col=pal[((name||'').charCodeAt(0)||0)%pal.length];
   return `<div style="width:${size}px;height:${size}px;border-radius:${radius};background:${col};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:${Math.round(size*.35)}px;flex-shrink:0">${initials}</div>`;
+}
+
+// ─── MATCH SCORE ──────────────────────────────────────────────────────────────
+function matchScore(t){
+  if(!currentUser||!currentUserData)return null;
+  let s=60;
+  if(currentUserData.city&&t.city){
+    if(currentUserData.city===t.city)s+=20;
+    else if((t.mode||[]).includes('online'))s+=8;
+  }else if((t.mode||[]).includes('online'))s+=8;
+  s+=Math.min(10,Math.round((t.rating||0)*2));
+  if(t.verified)s+=7;
+  if(t.freeTrial)s+=3;
+  return Math.min(99,s);
+}
+
+// ─── MOOD CHECK ───────────────────────────────────────────────────────────────
+function showMoodDialog(bookingId,teacherName){
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:99999;display:flex;align-items:center;justify-content:center;direction:rtl;backdrop-filter:blur(12px)';
+  const moods=[{em:'😢',lbl:'קשה',v:1},{em:'😕',lbl:'סביר',v:2},{em:'😐',lbl:'בסדר',v:3},{em:'😊',lbl:'טוב',v:4},{em:'🤩',lbl:'מעולה!',v:5}];
+  ov.innerHTML=`
+    <div style="background:#fff;border-radius:28px;padding:28px 24px;width:90%;max-width:340px;text-align:center">
+      <div style="font-size:42px;margin-bottom:10px">💭</div>
+      <h3 style="font-weight:900;font-size:19px;margin:0 0 6px;color:#0F1A1F">איך הרגשת בשיעור?</h3>
+      <p style="color:#64748B;font-size:13px;margin:0 0 20px">עם ${escapeHtml(teacherName||'המורה')}</p>
+      <div style="display:flex;justify-content:space-around;margin-bottom:22px" id="_moodRow">
+        ${moods.map(m=>`<button onclick="document.querySelectorAll('#_moodRow button').forEach(b=>b.style.transform='scale(1)');this.style.transform='scale(1.3)';window._tmpMood=${m.v}" style="background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;transition:transform .2s">
+          <span style="font-size:36px">${m.em}</span>
+          <span style="font-size:10px;font-weight:700;color:#94A3B8">${m.lbl}</span>
+        </button>`).join('')}
+      </div>
+      <div style="display:flex;gap:10px">
+        <button onclick="document.getElementById('_moodOv').remove()" style="flex:1;background:rgba(100,116,139,0.1);border:none;border-radius:50px;padding:12px;font-size:13px;font-weight:700;color:#64748B;cursor:pointer">דלג</button>
+        <button onclick="_saveMood('${bookingId}')" style="flex:2;background:linear-gradient(135deg,#14B8A6,#A855F7);border:none;color:#fff;border-radius:50px;padding:12px;font-size:14px;font-weight:900;cursor:pointer">שלח 💌</button>
+      </div>
+    </div>`;
+  ov.id='_moodOv';
+  document.body.appendChild(ov);
+  window._tmpMood=0;
+  ov.onclick=e=>{if(e.target===ov)ov.remove();};
+}
+async function _saveMood(bookingId){
+  const mood=window._tmpMood||0;
+  if(!mood){showFireToast('💭 בחר איך הרגשת');return;}
+  try{
+    await db.ref('bookings/'+bookingId+'/studentMood').set(mood).catch(()=>{});
+    document.getElementById('_moodOv')?.remove();
+    showFireToast('💙 תודה ששיתפת! זה עוזר לנו לשפר');
+  }catch(e){document.getElementById('_moodOv')?.remove();}
 }
 
 // ─── DARK MODE ────────────────────────────────────────────────────────────────
@@ -1425,6 +1478,13 @@ function TeacherSetup(){
       <div class="card" style="margin-bottom:18px">
         <h3 style="font-weight:900;font-size:16px;margin:0 0 14px;color:#14B8A6">✍️ ספר על עצמך</h3>
         <textarea id="tDesc" class="inp" placeholder="לדוגמה: מנגן גיטרה 6 שנים, זכיתי בתחרות בית הספר. מלמד מתחילים עד מתקדמים..." style="min-height:100px;resize:none"></textarea>
+        <div style="margin-top:16px;border-top:1px solid rgba(20,184,166,0.15);padding-top:14px">
+          <div style="font-size:13px;font-weight:800;color:#14B8A6;margin-bottom:4px">💬 כרטיס היכרות <span style="font-weight:500;color:#94A3B8;font-size:11px">(אופציונלי — בונה אמון עם תלמידים)</span></div>
+          <p style="color:#64748B;font-size:11px;margin:0 0 12px">3 שאלות שיראו בפרופיל שלך ויעזרו לתלמידים להכיר אותך</p>
+          <input id="tWhyTeach" class="inp" placeholder="❓ למה אתה מלמד?" style="margin-bottom:10px">
+          <input id="tProudOf" class="inp" placeholder="🏆 מה הצלחה שגאית בה?" style="margin-bottom:10px">
+          <input id="tTypicalLesson" class="inp" placeholder="🎯 איך שיעור טיפוסי שלך נראה?">
+        </div>
       </div>
 
       <!-- אופן הוראה - כפתורים ברורים -->
@@ -1677,6 +1737,9 @@ async function saveTeacherProfile(){
       meetingLink:(document.getElementById('tMeetingLink')?.value.trim()||''),
       mode:modes,
       freeTrial:_freeTrialSetup,
+      whyTeach:document.getElementById('tWhyTeach')?.value.trim()||null,
+      proudOf:document.getElementById('tProudOf')?.value.trim()||null,
+      typicalLesson:document.getElementById('tTypicalLesson')?.value.trim()||null,
       rating:0,reviews:0,lessons:0,
       online:_modeOnline,
       group:false,
@@ -1724,7 +1787,7 @@ async function saveTeacherProfile(){
     notifyAdmin({type:'newTeacher',from:teacherData.name,teacherId:currentUser.uid,teacherCat:mainCat,teacherEmail:currentUser.email,customCats:_customCats}).catch(()=>{});
     sendAdminEmail('🎓 מורה חדש נרשם – עובר בדיקה',`שם: ${teacherData.name}\nמייל: ${teacherData.email}\nקטגוריה: ${mainCat}\nעיר: ${teacherData.city}\n\nכנס לפאנל מנהל:\nhttps://kidemy-app.netlify.app`);
     _idPhotoBase64=null;
-    showFireToast('✅ פרופיל מורה נשמר! עובר בדיקה אוטומטית.');
+    showFireToast('🌟 ברוך הבא! הפרופיל שלך נשמר — תלמידים יוכלו לראות אותך בקרוב');
     await loadRealTeachers();
     setTimeout(()=>go('home'),1200);
   }catch(e){showFireToast('❌ '+e.message);}
@@ -1806,7 +1869,7 @@ async function processPayment(payMethod,totalAmount){
     S.lastBookingId=bookingId;
     S.lastPayRef=bookingData.payRef;
     S.bookStep=3;
-    showFireToast('✅ ההזמנה נשמרה — ממתינה לאימות תשלום');
+    showFireToast('🎉 מעולה! עשית צעד גדול — ההזמנה נשמרה ומחכה לאישור תשלום');
     render();
   }catch(e){
     showFireToast('❌ שגיאה: '+e.message);
@@ -2962,7 +3025,7 @@ async function _saveLessonSummary(bookingId,enc){
       }
     }catch(e2){}
     document.getElementById('_lsDialog')?.remove();
-    showFireToast('✅ הסיכום נשמר!');
+    showFireToast('🎓 כל הכבוד! עוד שיעור הושלם בהצלחה — הסיכום נשלח לתלמיד ולהורה');
     await loadTeacherBookings();
     await loadLessonSummaries();
     render();
@@ -3603,6 +3666,7 @@ async function _submitRatingFromNotif(bookingId,teacherId,teacherName){
   const review=document.getElementById('_ratingTxt')?.value?.trim()||'';
   try{
     await submitReview(bookingId,{teacherId,teacherName,studentId:currentUser?.uid},teacherId,stars,review,true);
+    setTimeout(()=>showMoodDialog(bookingId,teacherName),600);
   }catch(e){showFireToast('❌ שגיאה: '+e.message);}
 }
 
@@ -6679,7 +6743,15 @@ function Teacher(){
         </div>`:''}
         <div class="card"><h4 style="margin:0 0 10px;font-weight:800">👋 קצת עליי${cat?' ב'+cat.lbl:''}</h4><p style="margin:0;font-size:14px;line-height:1.7">${escapeHtml(desc)}</p></div>
         ${tags.length?`<div class="card"><h4 style="margin:0 0 12px;font-weight:800">🏷 מה אני מלמד/ת${cat?' ב'+cat.lbl:''}</h4>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">${tags.map(tg=>`<span style="background:${t.col}18;color:${t.col};padding:7px 16px;border-radius:50px;font-size:13px;font-weight:700">${escapeHtml(tg)}</span>`).join("")}</div></div>`:''}`;
+          <div style="display:flex;gap:8px;flex-wrap:wrap">${tags.map(tg=>`<span style="background:${t.col}18;color:${t.col};padding:7px 16px;border-radius:50px;font-size:13px;font-weight:700">${escapeHtml(tg)}</span>`).join("")}</div></div>`:''}
+        ${(t.whyTeach||t.proudOf||t.typicalLesson)?`
+        <div class="card" style="background:linear-gradient(135deg,rgba(20,184,166,0.05),rgba(168,85,247,0.04));border:1.5px solid rgba(20,184,166,0.15)">
+          <h4 style="margin:0 0 14px;font-weight:900;font-size:15px">💬 כרטיס היכרות</h4>
+          ${t.whyTeach?`<div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid rgba(20,184,166,0.1)"><div style="font-size:11px;font-weight:800;color:#14B8A6;margin-bottom:4px">❓ למה אני מלמד?</div><div style="font-size:14px;line-height:1.6;color:var(--text)">${escapeHtml(t.whyTeach)}</div></div>`:''}
+          ${t.proudOf?`<div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid rgba(168,85,247,0.1)"><div style="font-size:11px;font-weight:800;color:#A855F7;margin-bottom:4px">🏆 הצלחה שגאה בי</div><div style="font-size:14px;line-height:1.6;color:var(--text)">${escapeHtml(t.proudOf)}</div></div>`:''}
+          ${t.typicalLesson?`<div><div style="font-size:11px;font-weight:800;color:#F59E0B;margin-bottom:4px">🎯 שיעור טיפוסי</div><div style="font-size:14px;line-height:1.6;color:var(--text)">${escapeHtml(t.typicalLesson)}</div></div>`:''}
+        </div>`:''}
+        ${(()=>{const ms=matchScore(t);return ms&&currentUser&&t.id!==currentUser.uid?`<div style="background:rgba(16,185,129,0.08);border:1.5px solid rgba(16,185,129,0.2);border-radius:14px;padding:10px 16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between"><span style="font-size:13px;font-weight:700;color:#059669">התאמה לפרופיל שלך</span><span style="font-size:20px;font-weight:900;color:#10B981">${ms}%</span></div>`:'';})()}`;
       })()}
 
       <!-- Mode -->
@@ -9754,7 +9826,7 @@ if('serviceWorker' in navigator){
     const currentSwUrl='/sw.js?v=4.5.4';
     regs.forEach(r=>{if(r.active&&r.active.scriptURL&&!r.active.scriptURL.includes('4.4.2'))r.unregister();});
   });
-  navigator.serviceWorker.register('/sw.js?v=4.8.5').then(reg=>{
+  navigator.serviceWorker.register('/sw.js?v=4.8.6').then(reg=>{
     reg.update();
     setInterval(()=>reg.update(),30000);
   });
