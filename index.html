@@ -488,7 +488,7 @@ const ACHIEVEMENTS=[
   {id:6,em:"👥",ttl:"שיעור קבוצתי",desc:"לימדת קבוצה של 4 תלמידים",col:"#27AE60"},
 ];
 
-const APP_VERSION='4.8.7';
+const APP_VERSION='4.8.8';
 const APP_BUILD='14-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -9289,7 +9289,11 @@ async function refreshStudentCount(){
   }catch(e){console.error('[RSC] fetch error:',e.message);}
 }
 
-auth.onAuthStateChanged(async user=>{
+if(typeof auth==='undefined'||!auth){
+  console.error('Firebase Auth not loaded — check CDN');
+  setTimeout(()=>showFireToast('❌ Firebase לא נטען — רענן את הדף (F5)'),500);
+}
+auth&&auth.onAuthStateChanged(async user=>{
   if(user){loadRealTeachers();}
   if(user){
     // אם המשתמש נכנס אוטומטית (session ישן לפני שהגדרנו NONE) — נתק מיד
@@ -9481,9 +9485,14 @@ auth.onAuthStateChanged(async user=>{
     }catch(e){
       console.warn('Auth error:',e);
       S._loggingIn=false;S._registering=false;
-      showFireToast('❌ שגיאת כניסה — נסה שוב');
-      await auth.signOut().catch(()=>{});
-      go('login');return;
+      // Sign out only on real auth errors — not data loading failures
+      if(e?.code&&(e.code.startsWith('auth/')||e.code==='PERMISSION_DENIED')){
+        showFireToast('❌ שגיאת כניסה — נסה שוב');
+        await auth.signOut().catch(()=>{});
+        go('login');return;
+      }
+      // Data loading error — continue to home with a warning
+      showFireToast('⚠️ בעיית רשת — חלק מהנתונים לא נטענו');
     }
     S._loggingIn=false;
     S._registering=false;
@@ -9500,6 +9509,7 @@ auth.onAuthStateChanged(async user=>{
 });
 
 async function firebaseRegister(email,password,userData){
+  if(typeof auth==='undefined'||!auth){showFireToast('❌ Firebase לא נטען — רענן את הדף (F5)');return;}
   try{
     showFireToast('⏳ יוצר חשבון...');
     S._registering=true;
@@ -9755,6 +9765,7 @@ async function sendResetEmail(){
 }
 
 async function firebaseLogin(usernameOrEmail,password){
+  if(typeof auth==='undefined'||!auth){showFireToast('❌ Firebase לא נטען — רענן את הדף (F5)');return;}
   try{
     showFireToast('⏳ מתחבר...');
     S._loggingIn=true; // מסמן שזו כניסה ידנית — לא לנתק ב-onAuthStateChanged
@@ -9837,9 +9848,9 @@ function installApp(){
 // ── AUTO-UPDATE SERVICE WORKER ────────────────────────────────────────────────
 if('serviceWorker' in navigator){
   // Unregister any old SW not matching current version, then register fresh
-  const currentSwUrl='/sw.js?v=4.8.6';
+  const currentSwUrl='/sw.js?v=4.8.8';
   navigator.serviceWorker.getRegistrations().then(regs=>{
-    regs.forEach(r=>{if(r.active&&r.active.scriptURL&&!r.active.scriptURL.includes('4.8.6'))r.unregister();});
+    regs.forEach(r=>{if(r.active&&r.active.scriptURL&&!r.active.scriptURL.includes('4.8.8'))r.unregister();});
   });
   navigator.serviceWorker.register(currentSwUrl).then(reg=>{
     reg.update();
