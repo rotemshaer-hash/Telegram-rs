@@ -454,7 +454,7 @@ const ACHIEVEMENTS=[
   {id:6,em:"👥",ttl:"שיעור קבוצתי",desc:"לימדת קבוצה של 4 תלמידים",col:"#27AE60"},
 ];
 
-const APP_VERSION='4.8.0';
+const APP_VERSION='4.8.1';
 const APP_BUILD='13-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -511,6 +511,9 @@ function go(scr,extra={}){
   if(scr==='chat'&&currentUser&&(extra.chat||S.chat)?.otherUid){
     const ou=(extra.chat||S.chat).otherUid;
     db.ref('userChats/'+currentUser.uid+'/'+ou+'/unread').set(false).catch(()=>{});
+    // Update local array immediately so badge clears before Firebase listener fires
+    const _ucIdx=userChats.findIndex(c=>c.otherUid===ou);
+    if(_ucIdx>=0)userChats[_ucIdx]={...userChats[_ucIdx],unread:false};
   }
   if(scr==='profile'&&currentUser&&currentUserData?.role==='teacher'){
     listenTeacherVideos();
@@ -2461,14 +2464,20 @@ function setupConvListeners(){
       const existing=userChats.find(c=>c.otherUid===uc.otherUid);
       if(existing&&(m.createdAt||0)<=(existing.lastTime||0))return; // not newer, skip
       const inChat=S.screen==='chat'&&S.chat?.otherUid===uc.otherUid;
-      // Self-write to our own userChats (always allowed) so the badge + list update
-      db.ref('userChats/'+currentUser.uid+'/'+uc.otherUid).set({
+      const updated={
         otherUid:uc.otherUid,
         otherName:m.fromName||existing?.otherName||uc.otherName||'משתמש',
         lastMessage:m.text||'',
         lastTime:m.createdAt||Date.now(),
         unread:!inChat
-      }).catch(()=>{});
+      };
+      // Update local array immediately for instant badge/list refresh
+      const _i=userChats.findIndex(c=>c.otherUid===uc.otherUid);
+      if(_i>=0)userChats[_i]=updated;else userChats.unshift(updated);
+      userChats.sort((a,b)=>(b.lastTime||0)-(a.lastTime||0));
+      if(S.screen==='messages'||S.screen==='profile')render();
+      // Persist to Firebase so the value listener stays in sync
+      db.ref('userChats/'+currentUser.uid+'/'+uc.otherUid).set(updated).catch(()=>{});
     });
   });
 }
@@ -2579,6 +2588,11 @@ async function sendChatMessage(otherUid,otherName){
       otherUid:otherUid,
       otherName:otherName
     };
+    // Update local array immediately so sender's list refreshes before Firebase fires
+    {const _i=userChats.findIndex(c=>c.otherUid===otherUid);
+     const _e={...last,otherUid,unread:false};
+     if(_i>=0)userChats[_i]=_e;else userChats.unshift(_e);
+     userChats.sort((a,b)=>(b.lastTime||0)-(a.lastTime||0));}
     await db.ref('userChats/'+currentUser.uid+'/'+otherUid).set({...last,otherUid});
     // עדכון userChats של הצד המקבל — שגיאה כאן לא תמחק את ההודעה
     try{
@@ -6733,16 +6747,20 @@ function Messages(){
       ${userChats.length>0?`
         <h3 style="font-size:14px;font-weight:800;margin:0 0 12px;color:#06B6D4">💬 שיחות פעילות</h3>
         ${userChats.slice(0,5).map(uc=>{
-          const t=new Date(uc.lastTime||0);
           const ago=Math.round((Date.now()-(uc.lastTime||0))/60000);
           const agoTxt=ago<1?'עכשיו':ago<60?ago+' דק\'':ago<1440?Math.floor(ago/60)+' שע\'':Math.floor(ago/1440)+' ימים';
+          const isUnread=!!uc.unread;
           return `
-          <button onclick="S.chat={otherUid:'${uc.otherUid}',otherName:'${(uc.otherName||'').replace(/'/g,'')}'};go('chat')" style="width:100%;background:#fff;border:none;border-radius:18px;padding:13px;margin-bottom:10px;display:flex;align-items:center;gap:12px;cursor:pointer;box-shadow:0 4px 14px rgba(20,184,166,0.10);text-align:right">
-            <div style="width:46px;height:46px;border-radius:14px;background:rgba(6,182,212,0.15);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">💬</div>
-            <div style="flex:1;min-width:0">
-              <div style="display:flex;justify-content:space-between"><span style="font-size:11px;color:#94A3B8">${agoTxt}</span><span style="font-weight:800;font-size:14px">${uc.otherName||'משתמש'}</span></div>
-              <div style="font-size:13px;color:#64748B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px">${uc.lastMessage||''}</div>
+          <button onclick="S.chat={otherUid:'${uc.otherUid}',otherName:'${(uc.otherName||'').replace(/'/g,'')}'};go('chat')" style="width:100%;background:${isUnread?'rgba(6,182,212,0.07)':'#fff'};border:${isUnread?'1.5px solid rgba(6,182,212,0.35)':'none'};border-radius:18px;padding:13px;margin-bottom:10px;display:flex;align-items:center;gap:12px;cursor:pointer;box-shadow:0 4px 14px rgba(20,184,166,0.10);text-align:right">
+            <div style="position:relative;width:46px;height:46px;flex-shrink:0">
+              <div style="width:46px;height:46px;border-radius:14px;background:rgba(6,182,212,0.15);display:flex;align-items:center;justify-content:center;font-size:22px">💬</div>
+              ${isUnread?`<div style="position:absolute;top:-4px;right:-4px;width:14px;height:14px;border-radius:50%;background:#06B6D4;border:2px solid #fff"></div>`:''}
             </div>
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;justify-content:space-between"><span style="font-size:11px;color:#94A3B8">${agoTxt}</span><span style="font-weight:${isUnread?900:800};font-size:14px;color:${isUnread?'#06B6D4':'#0F1A1F'}">${escapeHtml(uc.otherName||'משתמש')}</span></div>
+              <div style="font-size:13px;color:${isUnread?'#0F1A1F':'#64748B'};font-weight:${isUnread?700:400};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px">${escapeHtml(uc.lastMessage||'')}</div>
+            </div>
+            ${isUnread?`<span style="background:#06B6D4;color:#fff;font-size:10px;font-weight:800;padding:2px 7px;border-radius:50px;flex-shrink:0">חדש</span>`:''}
           </button>`;
         }).join('')}
         <div style="height:14px"></div>
@@ -7099,9 +7117,9 @@ function Profile(){
             <div style="flex:1;min-width:0">
               <div style="display:flex;justify-content:space-between;margin-bottom:2px">
                 <span style="font-size:10px;color:#94A3B8">${ago(uc.lastTime)}</span>
-                <span style="font-weight:800;font-size:13px;color:#0F1A1F">${uc.otherName||'תלמיד'}</span>
+                <span style="font-weight:800;font-size:13px;color:#0F1A1F">${escapeHtml(uc.otherName||'תלמיד')}</span>
               </div>
-              <div style="font-size:11px;color:#64748B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right">${uc.lastMessage||''}</div>
+              <div style="font-size:11px;color:${uc.unread?'#0F1A1F':'#64748B'};font-weight:${uc.unread?700:400};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right">${escapeHtml(uc.lastMessage||'')}</div>
             </div>
             ${uc.unread?`<div style="width:8px;height:8px;border-radius:50%;background:#06B6D4;flex-shrink:0"></div>`:''}
           </button>`).join('')}
@@ -9001,20 +9019,23 @@ auth.onAuthStateChanged(async user=>{
 
       // האזנה בזמן אמת להתראות + לאישור מנהל
       if(isAdmin()){_requestBrowserNotifPermission();_startAdminAlertsListener();}
+      // Timestamp of when we attached the listener — used to skip old notifications
+      // that fire on initial listener attachment (Firebase fires child_added for all existing children)
+      const _notifListenStart=Date.now();
       db.ref('notifications/'+user.uid).on('child_added',snap=>{
         const n=snap.val();
-        if(n&&!n.read)_sendBrowserNotif(
+        const isNew=(n?.createdAt||0)>=_notifListenStart-5000; // 5s buffer for clock skew
+        if(isNew&&n&&!n.read)_sendBrowserNotif(
           n.type==='newBooking'?'📚 הזמנת שיעור חדשה!':'🔔 התראה חדשה',
           n.type==='newBooking'?`${n.from||''} · יום ${n.day||''} ${n.time||''}`:(n.from||''));
-        // Self-update userChats immediately (don't wait for Firebase listener)
-        if(n&&n.type==='newMessage'&&n.fromUid){
-          const newEntry={otherUid:n.fromUid,otherName:n.from||'משתמש',lastMessage:n.preview||'הודעה חדשה',lastTime:n.createdAt||Date.now(),unread:true};
+        // Only update userChats for genuinely NEW notifications — old ones use the userChats Firebase listener
+        if(isNew&&n&&n.type==='newMessage'&&n.fromUid){
+          const inChat=S.screen==='chat'&&S.chat?.otherUid===n.fromUid;
+          const newEntry={otherUid:n.fromUid,otherName:n.from||'משתמש',lastMessage:n.preview||'הודעה חדשה',lastTime:n.createdAt||Date.now(),unread:!inChat};
           const idx=userChats.findIndex(c=>c.otherUid===n.fromUid);
           if(idx>=0){if((n.createdAt||0)>=(userChats[idx].lastTime||0))userChats[idx]=newEntry;}
           else{userChats.unshift(newEntry);}
           userChats.sort((a,b)=>(b.lastTime||0)-(a.lastTime||0));
-          // Also persist to Firebase so the listener stays in sync
-          db.ref('userChats/'+user.uid+'/'+n.fromUid).set(newEntry).catch(()=>{});
         }
         loadNotifications().then(()=>{if(S.screen)render();});
       });
