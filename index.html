@@ -454,7 +454,7 @@ const ACHIEVEMENTS=[
   {id:6,em:"👥",ttl:"שיעור קבוצתי",desc:"לימדת קבוצה של 4 תלמידים",col:"#27AE60"},
 ];
 
-const APP_VERSION='4.8.1';
+const APP_VERSION='4.8.2';
 const APP_BUILD='13-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -4381,12 +4381,31 @@ const DAYS_HE=["ראשון","שני","שלישי","רביעי","חמישי","ש�
 const HOURS=["08:00","09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00","17:00","18:00","19:00","20:00","21:00"];
 
 let teacherSchedule={};
+// dateKey helper: 'YYYY-MM-DD'
+function _dk(d){return d.toISOString().split('T')[0];}
+// detect old-format keys like '4_09:00' (dayOfWeek_hour) vs new '2026-06-17_09:00'
+function _isOldSchedule(s){return Object.keys(s).some(k=>/^\d_/.test(k));}
+
 async function loadTeacherSchedule(uid){
   const targetId=uid||currentUser?.uid;
   if(!targetId)return;
   try{
     const snap=await db.ref('schedules/'+targetId).get();
-    teacherSchedule=snap.exists()?snap.val():{};
+    if(!snap.exists()){teacherSchedule={};return;}
+    const raw=snap.val();
+    if(_isOldSchedule(raw)){
+      // Old weekly-recurring format detected — migrate to per-date for next 60 days
+      const migrated={};
+      const now=new Date();
+      for(let i=0;i<60;i++){
+        const d=new Date(now);d.setDate(now.getDate()+i);
+        const dk=_dk(d);
+        HOURS.forEach(h=>{if(raw[d.getDay()+'_'+h])migrated[dk+'_'+h]=true;});
+      }
+      teacherSchedule=migrated;
+    } else {
+      teacherSchedule=raw;
+    }
   }catch(e){teacherSchedule={};}
 }
 
@@ -4396,97 +4415,105 @@ function showScheduleEditor(){
   loadTeacherSchedule().then(()=>renderScheduleEditor());
 }
 
-let _schDay=null; // יום שנבחר לעריכת שעות
 function renderScheduleEditor(){
   document.querySelector('._schEd')?.parentElement?.remove();
   const ov=document.createElement('div');
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:9999;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(10px);direction:rtl';
   const totalSlots=Object.values(teacherSchedule).filter(v=>v).length;
-  // בניית לוח שנה חודשי
   const now=new Date();
-  if(!window._schMonth)window._schMonth=now.getMonth();
-  if(!window._schYear)window._schYear=now.getFullYear();
+  if(window._schMonth==null)window._schMonth=now.getMonth();
+  if(window._schYear==null)window._schYear=now.getFullYear();
   const month=window._schMonth;
   const year=window._schYear;
   const monthNames=['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+  const dayLabels=['א׳','ב׳','ג׳','ד׳','ה׳','ו׳','ש׳'];
   const firstDay=new Date(year,month,1).getDay();
   const daysInMonth=new Date(year,month+1,0).getDate();
-  // בניית תאי לוח השנה
-  let calCells='';
-  // כותרות ימים (ר׳ שני שלישי...)
-  const dayLabels=['א׳','ב׳','ג׳','ד׳','ה׳','ו׳','ש׳'];
-  calCells+=`<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:6px">`;
+
+  let calCells=`<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:6px">`;
   dayLabels.forEach(d=>{calCells+=`<div style="text-align:center;font-size:11px;font-weight:800;color:#64748B;padding:4px 0">${d}</div>`;});
   calCells+=`</div><div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px">`;
-  // ימים ריקים בתחילה
   for(let i=0;i<firstDay;i++)calCells+=`<div></div>`;
   for(let d=1;d<=daysInMonth;d++){
     const date=new Date(year,month,d);
-    const dayOfWeek=date.getDay();
-    // בדוק אם יש זמינות ביום זה בשבוע
-    const hasSlots=HOURS.some(h=>teacherSchedule[dayOfWeek+'_'+h]);
+    const dk=_dk(date);
+    const hasSlots=HOURS.some(h=>teacherSchedule[dk+'_'+h]);
     const isToday=d===now.getDate()&&month===now.getMonth()&&year===now.getFullYear();
     const isPast=date<new Date(now.getFullYear(),now.getMonth(),now.getDate());
-    calCells+=`<button onclick="window._schSelDay=${dayOfWeek};renderScheduleEditor()" style="aspect-ratio:1;border-radius:10px;border:${isToday?'2px solid #14B8A6':'1px solid rgba(20,184,166,0.15)'};background:${hasSlots?'linear-gradient(135deg,#14B8A6,#06B6D4)':isPast?'rgba(0,0,0,0.04)':'rgba(20,184,166,0.06)'};color:${hasSlots?'#fff':isPast?'#CBD5E1':'#0F1A1F'};font-weight:${isToday?'900':'700'};font-size:13px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:4px 2px">${d}${hasSlots?`<span style="font-size:7px;opacity:0.85">●</span>`:''}</button>`;
+    const isSel=window._schSelDate===dk;
+    calCells+=`<button onclick="window._schSelDate='${dk}';renderScheduleEditor()" style="aspect-ratio:1;border-radius:10px;border:${isSel?'2.5px solid #7C3AED':isToday?'2px solid #14B8A6':'1px solid rgba(20,184,166,0.15)'};background:${isSel?'#7C3AED':hasSlots?'linear-gradient(135deg,#14B8A6,#06B6D4)':isPast?'rgba(0,0,0,0.04)':'rgba(20,184,166,0.06)'};color:${isSel||hasSlots?'#fff':isPast?'#CBD5E1':'#0F1A1F'};font-weight:${isToday||isSel?'900':'700'};font-size:13px;cursor:${isPast?'default':'pointer'};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:4px 2px;${isPast?'opacity:0.4;pointer-events:none':''}">${d}${hasSlots&&!isSel?`<span style="font-size:7px;opacity:0.85">●</span>`:''}</button>`;
   }
   calCells+=`</div>`;
-  // בניית בחירת שעות לפי יום נבחר
-  const selDay=window._schSelDay;
-  const dayHoursHtml=selDay!==undefined?`
-    <div style="margin-top:16px;padding:14px;background:rgba(20,184,166,0.06);border-radius:16px;border:1.5px solid rgba(20,184,166,0.2)">
-      <div style="font-weight:800;font-size:13px;margin-bottom:10px;color:#0F766E">📌 שעות ל${['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'][selDay]}</div>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
-        ${HOURS.map(h=>{const on=teacherSchedule[selDay+'_'+h];return `<button onclick="toggleSlot(${selDay},'${h}')" style="padding:8px 4px;border-radius:10px;border:none;background:${on?'linear-gradient(135deg,#14B8A6,#06B6D4)':'rgba(20,184,166,0.08)'};color:${on?'#fff':'#0F766E'};font-weight:800;font-size:12px;cursor:pointer">${h}${on?' ✓':''}</button>`;}).join('')}
+
+  const selDate=window._schSelDate;
+  const selDateObj=selDate?new Date(selDate+'T12:00:00'):null;
+  const dayNamesHe=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+  const selDayName=selDateObj?dayNamesHe[selDateObj.getDay()]:'';
+  const selLabel=selDate?`יום ${selDayName} ${selDateObj.getDate()}/${selDateObj.getMonth()+1}/${selDateObj.getFullYear()}`:'';
+
+  const dayHoursHtml=selDate?`
+    <div style="margin-top:16px;padding:14px;background:rgba(124,58,237,0.06);border-radius:16px;border:1.5px solid rgba(124,58,237,0.25)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <button onclick="clearDaySchedule('${selDate}')" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#EF4444;border-radius:50px;padding:5px 10px;font-size:11px;font-weight:800;cursor:pointer">🗑 נקה יום</button>
+        <div style="font-weight:800;font-size:13px;color:#7C3AED">📌 ${selLabel}</div>
       </div>
-    </div>`:'<p style="text-align:center;color:#94A3B8;font-size:13px;margin-top:16px">לחץ על יום בלוח לעריכת שעות זמינות</p>';
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
+        ${HOURS.map(h=>{const on=teacherSchedule[selDate+'_'+h];return `<button onclick="toggleSlot('${selDate}','${h}')" style="padding:8px 4px;border-radius:10px;border:none;background:${on?'linear-gradient(135deg,#14B8A6,#06B6D4)':'rgba(20,184,166,0.08)'};color:${on?'#fff':'#0F766E'};font-weight:800;font-size:12px;cursor:pointer">${h}${on?' ✓':''}</button>`;}).join('')}
+      </div>
+      <div style="display:flex;gap:6px;margin-top:10px">
+        <button onclick="quickFillDay('${selDate}','morning')" style="flex:1;background:linear-gradient(135deg,#FBBF24,#F59E0B);border:none;color:#fff;border-radius:50px;padding:7px;font-size:11px;font-weight:800;cursor:pointer">☀️ בוקר</button>
+        <button onclick="quickFillDay('${selDate}','afternoon')" style="flex:1;background:linear-gradient(135deg,#06B6D4,#0EA5E9);border:none;color:#fff;border-radius:50px;padding:7px;font-size:11px;font-weight:800;cursor:pointer">🌤 צהריים</button>
+        <button onclick="quickFillDay('${selDate}','evening')" style="flex:1;background:linear-gradient(135deg,#A855F7,#7E22CE);border:none;color:#fff;border-radius:50px;padding:7px;font-size:11px;font-weight:800;cursor:pointer">🌙 ערב</button>
+      </div>
+    </div>`
+  :`<p style="text-align:center;color:#94A3B8;font-size:13px;margin-top:16px">👆 לחץ על תאריך בלוח כדי לסמן שעות זמינות</p>`;
+
   ov.innerHTML=`
     <div class="_schEd" style="background:#fff;border-radius:28px 28px 0 0;padding:22px 18px 40px;width:100%;max-width:480px;max-height:92vh;overflow-y:auto;box-shadow:0 -8px 40px rgba(0,0,0,0.2)">
-      <!-- כותרת -->
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
         <button onclick="this.closest('._schEd').parentElement.remove()" style="background:rgba(20,184,166,0.1);border:none;color:#14B8A6;font-size:20px;cursor:pointer;border-radius:50%;width:36px;height:36px">✕</button>
-        <h3 style="font-weight:900;font-size:18px;margin:0;color:#0F1A1F">📅 זמינות שבועית</h3>
+        <h3 style="font-weight:900;font-size:18px;margin:0;color:#0F1A1F">📅 זמינות לפי תאריך</h3>
         <button onclick="saveSchedule()" style="background:linear-gradient(135deg,#14B8A6,#A855F7);border:none;color:#fff;border-radius:50px;padding:9px 18px;font-weight:800;font-size:13px;cursor:pointer">💾 שמור</button>
       </div>
-      <p style="font-size:12px;color:#64748B;margin:0 0 14px;text-align:center">${totalSlots} שעות מסומנות כזמינות</p>
-      <!-- ניווט חודש -->
+      <p style="font-size:12px;color:#64748B;margin:0 0 14px;text-align:center">${totalSlots} שעות מסומנות • לחץ על תאריך ספציפי</p>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;background:linear-gradient(135deg,#0F766E,#0891B2);border-radius:16px;padding:12px 16px;color:#fff">
         <button onclick="window._schMonth--;if(window._schMonth<0){window._schMonth=11;window._schYear--;}renderScheduleEditor()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;border-radius:50%;width:32px;height:32px;font-size:16px;cursor:pointer;font-weight:900">‹</button>
         <span style="font-weight:900;font-size:16px">${monthNames[month]} ${year}</span>
         <button onclick="window._schMonth++;if(window._schMonth>11){window._schMonth=0;window._schYear++;}renderScheduleEditor()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;border-radius:50%;width:32px;height:32px;font-size:16px;cursor:pointer;font-weight:900">›</button>
       </div>
-      <!-- לוח שנה -->
       ${calCells}
-      <!-- מילוי מהיר -->
       <div style="display:flex;gap:6px;margin-top:14px;flex-wrap:wrap">
-        <button onclick="quickFillSchedule('morning')" style="flex:1;background:linear-gradient(135deg,#FBBF24,#F59E0B);border:none;color:#fff;border-radius:50px;padding:9px;font-size:12px;font-weight:800;cursor:pointer">☀️ בוקר</button>
-        <button onclick="quickFillSchedule('afternoon')" style="flex:1;background:linear-gradient(135deg,#06B6D4,#0EA5E9);border:none;color:#fff;border-radius:50px;padding:9px;font-size:12px;font-weight:800;cursor:pointer">🌤 צהריים</button>
-        <button onclick="quickFillSchedule('evening')" style="flex:1;background:linear-gradient(135deg,#A855F7,#7E22CE);border:none;color:#fff;border-radius:50px;padding:9px;font-size:12px;font-weight:800;cursor:pointer">🌙 ערב</button>
-        <button onclick="clearSchedule()" style="background:rgba(231,76,60,0.1);border:1px solid rgba(231,76,60,0.3);color:#E74C3C;border-radius:50px;padding:9px 14px;font-size:12px;font-weight:800;cursor:pointer">🗑 נקה</button>
+        <button onclick="clearSchedule()" style="flex:1;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);color:#EF4444;border-radius:50px;padding:9px 14px;font-size:12px;font-weight:800;cursor:pointer">🗑 נקה הכל</button>
       </div>
-      <!-- שעות לפי יום נבחר -->
       ${dayHoursHtml}
     </div>`;
   document.body.appendChild(ov);
   ov.onclick=e=>{if(e.target===ov)ov.remove();};
 }
 
-function toggleSlot(day,hour){
-  const key=day+'_'+hour;
-  teacherSchedule[key]=!teacherSchedule[key];
-  window._schSelDay=day;
+function toggleSlot(dateKey,hour){
+  const key=dateKey+'_'+hour;
+  if(teacherSchedule[key])delete teacherSchedule[key];
+  else teacherSchedule[key]=true;
+  window._schSelDate=dateKey;
   renderScheduleEditor();
 }
 
-function quickFillSchedule(type){
+function quickFillDay(dateKey,type){
   const ranges={morning:["08:00","09:00","10:00","11:00"],afternoon:["12:00","13:00","14:00","15:00","16:00"],evening:["17:00","18:00","19:00","20:00","21:00"]};
-  ranges[type].forEach(h=>{
-    [0,1,2,3,4].forEach(d=>{teacherSchedule[d+'_'+h]=true;});
-  });
+  ranges[type].forEach(h=>{teacherSchedule[dateKey+'_'+h]=true;});
+  window._schSelDate=dateKey;
+  renderScheduleEditor();
+}
+
+function clearDaySchedule(dateKey){
+  HOURS.forEach(h=>{delete teacherSchedule[dateKey+'_'+h];});
   renderScheduleEditor();
 }
 
 function clearSchedule(){
   teacherSchedule={};
+  window._schSelDate=null;
   renderScheduleEditor();
 }
 
@@ -6515,7 +6542,7 @@ function Booking(){
   let avail=DEFAULT_HOURS; // ברירת מחדל
   const hasSchedule=teacherSchedule&&Object.keys(teacherSchedule).length>0;
   if(selDay&&hasSchedule){
-    const filtered=ALL_H.filter(h=>teacherSchedule[selDay.idx+'_'+h]);
+    const filtered=ALL_H.filter(h=>teacherSchedule[selDay.key+'_'+h]);
     if(filtered.length>0)avail=filtered;
     else avail=[];
   }
@@ -6523,7 +6550,7 @@ function Booking(){
   // ── סמן אילו ימים יש בהם שעות פנויות ──────────────────────────
   const dayHasSlots=upcoming.map(d=>{
     if(!hasSchedule)return true; // אין לוח — כל הימים "פנויים" (ברירת מחדל)
-    return ALL_H.some(h=>teacherSchedule[d.idx+'_'+h]);
+    return ALL_H.some(h=>teacherSchedule[d.key+'_'+h]);
   });
 
   let body="";
