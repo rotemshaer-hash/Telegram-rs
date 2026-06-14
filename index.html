@@ -494,7 +494,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.10';
+const APP_VERSION='4.9.11';
 const APP_BUILD='14-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -3118,7 +3118,7 @@ async function sendEmail(to,subject,body){
 }
 
 function sendAdminEmail(subject,body){
-  sendEmail(ADMIN_EMAIL,subject,body);
+  return sendEmail(ADMIN_EMAIL,subject,body);
 }
 
 async function notifyAdmin(notif){
@@ -10047,7 +10047,7 @@ function installApp(){
 
 // ── AUTO-UPDATE SERVICE WORKER ────────────────────────────────────────────────
 if('serviceWorker' in navigator){
-  const currentSwUrl='/sw.js?v=4.9.10';
+  const currentSwUrl='/sw.js?v=4.9.11';
   // Unregister SWs that are NOT the current version
   navigator.serviceWorker.getRegistrations().then(regs=>{
     regs.forEach(r=>{
