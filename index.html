@@ -494,7 +494,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.2';
+const APP_VERSION='4.9.3';
 const APP_BUILD='14-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -9486,6 +9486,10 @@ auth&&auth.onAuthStateChanged(async user=>{
         S._loggingIn=false;S._registering=false;go('studentPending');return;
       }
 
+      // ── ניווט מיידי — לא מחכים לטעינת נתונים ────────────────────────────
+      S._loggingIn=false;S._registering=false;
+      if(S.screen==='splash'||S.screen==='login'){go('home');setTimeout(showOnboarding,800);}
+
       await loadStudentBookings();
       await loadParentChildren();
       await loadFavorites();
@@ -9571,23 +9575,17 @@ auth&&auth.onAuthStateChanged(async user=>{
       }
 
     }catch(e){
-      console.warn('Auth error:',e);
+      console.warn('Data load error:',e);
       S._loggingIn=false;S._registering=false;
-      // Sign out only on real auth errors — not data loading failures
-      if(e?.code&&(e.code.startsWith('auth/')||e.code==='PERMISSION_DENIED')){
+      // רק שגיאות auth אמיתיות מנתקות — PERMISSION_DENIED בטעינת נתונים לא מנתק
+      if(e?.code&&e.code.startsWith('auth/')){
         showFireToast('❌ שגיאת כניסה — נסה שוב');
         await auth.signOut().catch(()=>{});
         go('login');return;
       }
-      // Data loading error — continue to home with a warning
       showFireToast('⚠️ בעיית רשת — חלק מהנתונים לא נטענו');
     }
-    S._loggingIn=false;
-    S._registering=false;
-    if(S.screen==='splash'||S.screen==='login'){
-      go('home');
-      setTimeout(showOnboarding,800);
-    }else render();
+    render();
   } else {
     stopChatListener();
     teardownConvListeners();
@@ -9936,7 +9934,7 @@ function installApp(){
 // ── AUTO-UPDATE SERVICE WORKER ────────────────────────────────────────────────
 if('serviceWorker' in navigator){
   // Unregister any old SW not matching current version, then register fresh
-  const currentSwUrl='/sw.js?v=4.9.2';
+  const currentSwUrl='/sw.js?v=4.9.3';
   navigator.serviceWorker.getRegistrations().then(regs=>{
     regs.forEach(r=>{if(r.active&&r.active.scriptURL&&!r.active.scriptURL.includes('4.9.0'))r.unregister();});
   });
