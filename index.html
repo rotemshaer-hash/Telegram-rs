@@ -486,7 +486,7 @@ const ACHIEVEMENTS=[
   {id:6,em:"👥",ttl:"שיעור קבוצתי",desc:"לימדת קבוצה של 4 תלמידים",col:"#27AE60"},
 ];
 
-const APP_VERSION='4.8.9';
+const APP_VERSION='4.9.0';
 const APP_BUILD='14-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -9846,9 +9846,9 @@ function installApp(){
 // ── AUTO-UPDATE SERVICE WORKER ────────────────────────────────────────────────
 if('serviceWorker' in navigator){
   // Unregister any old SW not matching current version, then register fresh
-  const currentSwUrl='/sw.js?v=4.8.9';
+  const currentSwUrl='/sw.js?v=4.9.0';
   navigator.serviceWorker.getRegistrations().then(regs=>{
-    regs.forEach(r=>{if(r.active&&r.active.scriptURL&&!r.active.scriptURL.includes('4.8.9'))r.unregister();});
+    regs.forEach(r=>{if(r.active&&r.active.scriptURL&&!r.active.scriptURL.includes('4.9.0'))r.unregister();});
   });
   navigator.serviceWorker.register(currentSwUrl).then(reg=>{
     reg.update();
