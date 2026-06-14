@@ -30,7 +30,7 @@ const auth    = firebase.auth();
 const db      = firebase.database();
 const storage = firebase.storage();
 // אין כניסה אוטומטית — המשתמש חייב להזין פרטים בכל כניסה לאפליקציה
-auth.setPersistence(firebase.auth.Auth.Persistence.NONE);
+(async()=>{try{await auth.setPersistence(firebase.auth.Auth.Persistence.NONE);}catch(e){}})();
 </script>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
@@ -488,7 +488,7 @@ const ACHIEVEMENTS=[
   {id:6,em:"👥",ttl:"שיעור קבוצתי",desc:"לימדת קבוצה של 4 תלמידים",col:"#27AE60"},
 ];
 
-const APP_VERSION='4.8.6';
+const APP_VERSION='4.8.7';
 const APP_BUILD='14-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -1743,7 +1743,6 @@ async function saveTeacherProfile(){
       rating:0,reviews:0,lessons:0,
       online:_modeOnline,
       group:false,
-      meetingLink:document.getElementById('tMeetingLink')?.value.trim()||'',
       verified:false,active:false,
       createdAt:Date.now(),
       ageVerification:{
@@ -1806,7 +1805,7 @@ async function processPayment(payMethod,totalAmount){
   }
   const _bookNow=Date.now();
   if(_bookNow-_lastBookingTime<5000){showFireToast('⚠️ אנא המתן לפני הגשת בקשה נוספת');return;}
-  _lastBookingTime=_bookNow;
+  _lastBookingTime=_bookNow;sessionStorage.setItem('_lbt',_bookNow);
   try{
     showFireToast('⏳ יוצר הזמנה...');
     const days=["א'","ב'","ג'","ד'","ה'","ו'"];
@@ -2568,8 +2567,8 @@ function showCropDialog(dataUrl,callback,aw=1,ah=1){
 let _idPhotoBase64=null;
 
 // ─── RATE LIMITING ────────────────────────────────────────────────────────────
-let _lastMsgTime=0;
-let _lastBookingTime=0;
+let _lastMsgTime=parseInt(sessionStorage.getItem('_lmt')||'0');
+let _lastBookingTime=parseInt(sessionStorage.getItem('_lbt')||'0');
 
 // ─── SECURITY HELPERS ─────────────────────────────────────────────────────────
 async function sha256hex(text){
@@ -2605,9 +2604,18 @@ async function deleteMyAccount(){
       'forceSignout/'+uid,
     ];
     if(isTeacher) paths.push('teachers/'+uid);
-    await Promise.all(paths.map(p=>db.ref(p).remove().catch(()=>{})));
-    // מחיקת חשבון Auth
+    // מחיקת Auth קודם — אם נכשל (token פג) נציג שגיאה לפני שמוחקים DB
     await currentUser.delete();
+    // Auth נמחק — עכשיו מנקים DB
+    try{
+      const ucSnap=await db.ref('userChats/'+uid).get();
+      if(ucSnap.exists()){
+        const chatDels=[];
+        ucSnap.forEach(child=>{chatDels.push(db.ref('messages/'+getChatId(uid,child.key)).remove().catch(()=>{}));});
+        await Promise.all(chatDels);
+      }
+    }catch(e2){}
+    await Promise.all(paths.map(p=>db.ref(p).remove().catch(()=>{})));
     currentUser=null;currentUserData=null;
     showFireToast('✅ החשבון נמחק בהצלחה');
     setTimeout(()=>go('login'),1500);
@@ -2843,7 +2851,7 @@ async function sendChatMessage(otherUid,otherName){
   if(!inp||!inp.value.trim())return;
   const now=Date.now();
   if(now-_lastMsgTime<2000){showFireToast('⚠️ המתן שנייה בין הודעות');return;}
-  _lastMsgTime=now;
+  _lastMsgTime=now;sessionStorage.setItem('_lmt',now);
   const text=inp.value.trim();
   inp.value='';
   const chatId=getChatId(currentUser.uid,otherUid);
@@ -9370,12 +9378,12 @@ auth.onAuthStateChanged(async user=>{
       if(currentUserData?.role==='teacher'){
         const tSnap=await db.ref('teachers/'+user.uid).get();
         if(!tSnap.exists()){
-          if(!isAdmin()){go('teacherSetup');return;}
+          if(!isAdmin()){S._loggingIn=false;S._registering=false;go('teacherSetup');return;}
         } else {
           const tData=tSnap.val();
           if(!tData.verified&&!isAdmin()){
             S.pendingTeacherData=tData;
-            go('teacherPending');return;
+            S._loggingIn=false;S._registering=false;go('teacherPending');return;
           }
           await loadTeacherBookings();
         }
@@ -9383,7 +9391,7 @@ auth.onAuthStateChanged(async user=>{
 
       // ── בדיקת תלמיד שלא אושר עדיין ──────────────────────────────
       if(currentUserData?.role==='student'&&currentUserData?.verified!==true&&!isAdmin()){
-        go('studentPending');return;
+        S._loggingIn=false;S._registering=false;go('studentPending');return;
       }
 
       await loadStudentBookings();
@@ -9470,7 +9478,13 @@ auth.onAuthStateChanged(async user=>{
         });
       }
 
-    }catch(e){console.warn('Auth error:',e);}
+    }catch(e){
+      console.warn('Auth error:',e);
+      S._loggingIn=false;S._registering=false;
+      showFireToast('❌ שגיאת כניסה — נסה שוב');
+      await auth.signOut().catch(()=>{});
+      go('login');return;
+    }
     S._loggingIn=false;
     S._registering=false;
     if(S.screen==='splash'||S.screen==='login'){
@@ -9747,13 +9761,14 @@ async function firebaseLogin(usernameOrEmail,password){
     // אם הוזן שם משתמש בלבד (לא מייל), הוסף @kidemy.app
     const email=usernameOrEmail.includes('@')?usernameOrEmail:usernameOrEmail.toLowerCase()+'@kidemy.app';
     await auth.signInWithEmailAndPassword(email,password);
-    showFireToast('✅ ברוך הבא!');go('home');
+    showFireToast('✅ ברוך הבא!');
   }catch(e){
     S._loggingIn=false;
     const m={
       'auth/user-not-found':'❌ שם משתמש לא קיים',
       'auth/wrong-password':'❌ סיסמה שגויה',
-      'auth/invalid-credential':'❌ שם משתמש או סיסמה שגויים'
+      'auth/invalid-credential':'❌ שם משתמש או סיסמה שגויים',
+      'auth/too-many-requests':'❌ יותר מדי ניסיונות – המתן כמה דקות'
     };
     showFireToast(m[e.code]||'❌ '+e.message);
   }
@@ -9822,11 +9837,11 @@ function installApp(){
 // ── AUTO-UPDATE SERVICE WORKER ────────────────────────────────────────────────
 if('serviceWorker' in navigator){
   // Unregister any old SW not matching current version, then register fresh
+  const currentSwUrl='/sw.js?v=4.8.6';
   navigator.serviceWorker.getRegistrations().then(regs=>{
-    const currentSwUrl='/sw.js?v=4.5.4';
-    regs.forEach(r=>{if(r.active&&r.active.scriptURL&&!r.active.scriptURL.includes('4.4.2'))r.unregister();});
+    regs.forEach(r=>{if(r.active&&r.active.scriptURL&&!r.active.scriptURL.includes('4.8.6'))r.unregister();});
   });
-  navigator.serviceWorker.register('/sw.js?v=4.8.6').then(reg=>{
+  navigator.serviceWorker.register(currentSwUrl).then(reg=>{
     reg.update();
     setInterval(()=>reg.update(),30000);
   });
