@@ -494,7 +494,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.3';
+const APP_VERSION='4.9.4';
 const APP_BUILD='14-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -9806,23 +9806,45 @@ async function resendVerification(){
 
 async function sendResetEmail(){
   const e=document.getElementById('loginEmail');
-  if(!e||!e.value||!e.value.trim()){
-    showFireToast('❌ הכנס שם משתמש קודם');return;
-  }
+  if(!e||!e.value||!e.value.trim()){showFireToast('❌ הכנס שם משתמש קודם');return;}
   const raw=e.value.trim();
-  // אם הוזן שם משתמש — לא ניתן לשלוח reset למייל @kidemy.app
-  // הפנה לפנייה למנהל
-  if(!raw.includes('@')||raw.endsWith('@kidemy.app')){
-    showFireToast('לשחזור סיסמה פנה למנהל: '+ADMIN_EMAIL);return;
+  const isUsernameOnly=!raw.includes('@')||raw.endsWith('@kidemy.app');
+
+  if(isUsernameOnly){
+    // חשבונות שם-משתמש: נחפש את מייל ההורה ב-DB ונציע איפוס דרכו
+    const fakeEmail=raw.includes('@')?raw:raw.toLowerCase()+'@kidemy.app';
+    let parentEmail='';
+    try{
+      const snap=await db.ref('users').orderByChild('email').equalTo(fakeEmail).get();
+      if(snap.exists()){snap.forEach(c=>{parentEmail=c.val()?.parentEmail||'';});}
+    }catch(e2){}
+    const ov=document.createElement('div');
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(10px);padding:24px;direction:rtl';
+    ov.innerHTML=`
+      <div style="background:#fff;border-radius:24px;padding:28px 24px;width:100%;max-width:340px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.4)">
+        <div style="font-size:54px;margin-bottom:12px">🔑</div>
+        <h3 style="font-weight:900;font-size:19px;margin:0 0 10px;color:#0F1A1F">שחזור סיסמה</h3>
+        ${parentEmail?`
+          <p style="color:#64748B;font-size:13px;margin:0 0 14px;line-height:1.7">נשלח קישור לאיפוס סיסמה למייל ההורה:</p>
+          <div style="background:rgba(20,184,166,0.08);border:1px solid rgba(20,184,166,0.3);border-radius:14px;padding:10px;margin-bottom:16px">
+            <strong style="color:#0D9488;font-size:14px">${parentEmail}</strong>
+          </div>
+          <button onclick="sendResetToParentEmail('${parentEmail}',this)" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;border-radius:50px;padding:13px;font-size:14px;font-weight:800;color:#fff;cursor:pointer;margin-bottom:10px">📧 שלח קישור לאיפוס</button>
+        `:`
+          <p style="color:#64748B;font-size:13px;margin:0 0 14px;line-height:1.7">חשבון זה משתמש בשם משתמש בלבד.<br>לאיפוס סיסמה, פנה למנהל:</p>
+        `}
+        <a href="mailto:${ADMIN_EMAIL}?subject=איפוס%20סיסמה&body=שם%20משתמש:%20${encodeURIComponent(raw)}" style="display:block;background:rgba(168,85,247,0.1);border:1.5px solid rgba(168,85,247,0.3);color:#7E22CE;border-radius:50px;padding:11px;font-size:13px;font-weight:800;text-decoration:none;margin-bottom:10px">✉️ פנה למנהל</a>
+        <button onclick="this.closest('div[style*=fixed]').remove()" style="width:100%;background:#F1F5F9;border:none;border-radius:50px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;color:#64748B">סגור</button>
+      </div>`;
+    document.body.appendChild(ov);
+    ov.onclick=ev=>{if(ev.target===ov)ov.remove();};
+    return;
   }
-  const email=raw;
+
+  // מייל אמיתי — שלח Reset רגיל
   try{
     showFireToast('⏳ שולח מייל איפוס...');
-    await auth.sendPasswordResetEmail(email,{
-      url:window.location.origin,
-      handleCodeInApp:false
-    });
-    // הודעת הצלחה מפורטת
+    await auth.sendPasswordResetEmail(raw,{url:window.location.origin,handleCodeInApp:false});
     setTimeout(()=>{
       const ov=document.createElement('div');
       ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px);padding:24px;direction:rtl';
@@ -9830,23 +9852,36 @@ async function sendResetEmail(){
         <div style="background:#fff;border-radius:24px;padding:28px 24px;width:100%;max-width:340px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
           <div style="font-size:54px;margin-bottom:12px">📧</div>
           <h3 style="font-weight:900;font-size:20px;margin:0 0 10px;color:#0F1A1F">מייל איפוס נשלח!</h3>
-          <p style="color:#64748B;font-size:13px;margin:0 0 18px;line-height:1.7">שלחנו מייל ל:<br><strong style="color:#14B8A6;font-size:15px">${email}</strong></p>
+          <p style="color:#64748B;font-size:13px;margin:0 0 18px;line-height:1.7">שלחנו מייל ל:<br><strong style="color:#14B8A6;font-size:15px">${raw}</strong></p>
           <div style="background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);border-radius:14px;padding:12px;text-align:right;margin-bottom:16px">
             <p style="margin:0;font-size:12px;color:#7E22CE;font-weight:600;line-height:1.7">⚠️ אם לא הגיע תוך דקה:<br>1. בדוק תיקיית <strong>ספאם / קידום מכירות</strong><br>2. ודא שהמייל נכון<br>3. נסה שוב בעוד 60 שניות</p>
           </div>
-          <button onclick="this.closest('div[style*=fixed]').remove()" style="width:100%;background:linear-gradient(135deg,#14B8A6 0%,#06B6D4 50%,#A855F7 100%);border:none;border-radius:50px;padding:13px;font-size:14px;font-weight:800;color:#fff;cursor:pointer">הבנתי 👍</button>
+          <button onclick="this.closest('div[style*=fixed]').remove()" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4,#A855F7);border:none;border-radius:50px;padding:13px;font-size:14px;font-weight:800;color:#fff;cursor:pointer">הבנתי 👍</button>
         </div>`;
       document.body.appendChild(ov);
       ov.onclick=ev=>{if(ev.target===ov)ov.remove();};
     },300);
   }catch(err){
-    const m={
-      'auth/user-not-found':'❌ המייל הזה לא רשום במערכת',
-      'auth/invalid-email':'❌ כתובת מייל לא תקינה',
-      'auth/too-many-requests':'❌ יותר מדי ניסיונות – המתן 5 דקות',
-      'auth/network-request-failed':'❌ אין חיבור לאינטרנט'
-    };
+    const m={'auth/user-not-found':'❌ המייל הזה לא רשום במערכת','auth/invalid-email':'❌ כתובת מייל לא תקינה','auth/too-many-requests':'❌ יותר מדי ניסיונות – המתן 5 דקות','auth/network-request-failed':'❌ אין חיבור לאינטרנט'};
     showFireToast(m[err.code]||'❌ '+err.message);
+  }
+}
+
+async function sendResetToParentEmail(parentEmail,btn){
+  try{
+    if(btn){btn.disabled=true;btn.textContent='שולח...';}
+    await auth.sendPasswordResetEmail(parentEmail,{url:window.location.origin,handleCodeInApp:false});
+    btn?.closest('div[style*=fixed]')?.remove();
+    setTimeout(()=>{
+      const ov=document.createElement('div');
+      ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px);padding:24px;direction:rtl';
+      ov.innerHTML=`<div style="background:#fff;border-radius:24px;padding:28px 24px;width:100%;max-width:340px;text-align:center"><div style="font-size:54px;margin-bottom:12px">✅</div><h3 style="font-weight:900;font-size:18px;margin:0 0 10px">נשלח למייל ההורה!</h3><p style="color:#64748B;font-size:13px;margin:0 0 16px;line-height:1.7">קישור לאיפוס נשלח ל:<br><strong style="color:#14B8A6">${parentEmail}</strong><br><br>ההורה יכול לאפס את הסיסמה ולמסור לך.</p><button onclick="this.closest('div[style*=fixed]').remove()" style="width:100%;background:linear-gradient(135deg,#14B8A6,#A855F7);border:none;border-radius:50px;padding:13px;font-size:14px;font-weight:800;color:#fff;cursor:pointer">הבנתי 👍</button></div>`;
+      document.body.appendChild(ov);
+      ov.onclick=ev=>{if(ev.target===ov)ov.remove();};
+    },200);
+  }catch(err){
+    if(btn){btn.disabled=false;btn.textContent='📧 שלח קישור לאיפוס';}
+    showFireToast('❌ לא ניתן לשלוח — פנה למנהל');
   }
 }
 
@@ -9933,18 +9968,23 @@ function installApp(){
 
 // ── AUTO-UPDATE SERVICE WORKER ────────────────────────────────────────────────
 if('serviceWorker' in navigator){
-  // Unregister any old SW not matching current version, then register fresh
-  const currentSwUrl='/sw.js?v=4.9.3';
+  const currentSwUrl='/sw.js?v=4.9.4';
+  // Unregister SWs that are NOT the current version
   navigator.serviceWorker.getRegistrations().then(regs=>{
-    regs.forEach(r=>{if(r.active&&r.active.scriptURL&&!r.active.scriptURL.includes('4.9.0'))r.unregister();});
+    regs.forEach(r=>{
+      if(r.active&&r.active.scriptURL&&!r.active.scriptURL.includes(currentSwUrl.replace(/^\//,''))){
+        r.unregister();
+      }
+    });
   });
   navigator.serviceWorker.register(currentSwUrl).then(reg=>{
     reg.update();
-    setInterval(()=>reg.update(),30000);
+    setInterval(()=>reg.update(),60000);
   });
   let _swReloading=false;
   navigator.serviceWorker.addEventListener('controllerchange',()=>{
-    if(!_swReloading){_swReloading=true;location.reload();}
+    // לא מבצע reload אם המשתמש באמצע login/הרשמה — יחכה לסיום
+    if(!_swReloading&&!S._loggingIn&&!S._registering){_swReloading=true;location.reload();}
   });
 }
 </script>
