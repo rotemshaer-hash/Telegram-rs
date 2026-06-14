@@ -494,7 +494,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.4';
+const APP_VERSION='4.9.5';
 const APP_BUILD='14-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -9477,7 +9477,7 @@ auth&&auth.onAuthStateChanged(async user=>{
             S.pendingTeacherData=tData;
             S._loggingIn=false;S._registering=false;go('teacherPending');return;
           }
-          await loadTeacherBookings();
+          // loadTeacherBookings נטען אחרי הניווט (ראה למטה)
         }
       }
 
@@ -9486,10 +9486,12 @@ auth&&auth.onAuthStateChanged(async user=>{
         S._loggingIn=false;S._registering=false;go('studentPending');return;
       }
 
-      // ── ניווט מיידי — לא מחכים לטעינת נתונים ────────────────────────────
+      // ── ניווט מיידי — כל שאר הטעינה ברקע ────────────────────────
       S._loggingIn=false;S._registering=false;
       if(S.screen==='splash'||S.screen==='login'){go('home');setTimeout(showOnboarding,800);}
 
+      // כל הטעינות אחרי הניווט — כישלון כאן לא מחזיר ל-login
+      if(currentUserData?.role==='teacher')await loadTeacherBookings();
       await loadStudentBookings();
       await loadParentChildren();
       await loadFavorites();
@@ -9575,14 +9577,15 @@ auth&&auth.onAuthStateChanged(async user=>{
       }
 
     }catch(e){
-      console.warn('Data load error:',e);
+      console.warn('Auth/data error:',e);
       S._loggingIn=false;S._registering=false;
-      // רק שגיאות auth אמיתיות מנתקות — PERMISSION_DENIED בטעינת נתונים לא מנתק
-      if(e?.code&&e.code.startsWith('auth/')){
+      // שגיאת auth אמיתית לפני הניווט — חזור ל-login
+      if(e?.code&&e.code.startsWith('auth/')&&(S.screen==='login'||S.screen==='splash')){
         showFireToast('❌ שגיאת כניסה — נסה שוב');
         await auth.signOut().catch(()=>{});
         go('login');return;
       }
+      // כל שגיאה אחרת (כולל PERMISSION_DENIED) — המשתמש כבר בפנים, רק הצג אזהרה
       showFireToast('⚠️ בעיית רשת — חלק מהנתונים לא נטענו');
     }
     render();
@@ -9968,7 +9971,7 @@ function installApp(){
 
 // ── AUTO-UPDATE SERVICE WORKER ────────────────────────────────────────────────
 if('serviceWorker' in navigator){
-  const currentSwUrl='/sw.js?v=4.9.4';
+  const currentSwUrl='/sw.js?v=4.9.5';
   // Unregister SWs that are NOT the current version
   navigator.serviceWorker.getRegistrations().then(regs=>{
     regs.forEach(r=>{
