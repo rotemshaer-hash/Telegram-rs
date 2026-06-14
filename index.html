@@ -456,7 +456,7 @@ const ACHIEVEMENTS=[
   {id:6,em:"👥",ttl:"שיעור קבוצתי",desc:"לימדת קבוצה של 4 תלמידים",col:"#27AE60"},
 ];
 
-const APP_VERSION='4.8.3';
+const APP_VERSION='4.8.4';
 const APP_BUILD='14-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -1657,6 +1657,9 @@ async function processPayment(payMethod,totalAmount){
   if(!t.id||typeof t.id!=='string'){
     showFireToast('❌ ניתן להזמין רק מורים אמיתיים');return;
   }
+  const _bookNow=Date.now();
+  if(_bookNow-_lastBookingTime<5000){showFireToast('⚠️ אנא המתן לפני הגשת בקשה נוספת');return;}
+  _lastBookingTime=_bookNow;
   try{
     showFireToast('⏳ יוצר הזמנה...');
     const days=["א'","ב'","ג'","ד'","ה'","ו'"];
@@ -2416,6 +2419,60 @@ function showCropDialog(dataUrl,callback,aw=1,ah=1){
 }
 
 let _idPhotoBase64=null;
+
+// ─── RATE LIMITING ────────────────────────────────────────────────────────────
+let _lastMsgTime=0;
+let _lastBookingTime=0;
+
+// ─── SECURITY HELPERS ─────────────────────────────────────────────────────────
+async function sha256hex(text){
+  const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+// ─── ACCOUNT DELETION (GDPR) ──────────────────────────────────────────────────
+async function deleteMyAccount(){
+  if(!currentUser){showFireToast('❌ לא מחובר');return;}
+  const confirmed=confirm('האם אתה בטוח שברצונך למחוק את חשבונך לצמיתות?\n\nכל הנתונים שלך יימחקו ולא ניתן יהיה לשחזרם.');
+  if(!confirmed)return;
+  const confirmed2=confirm('אישור אחרון — מחיקת חשבון היא בלתי הפיכה.\nלחץ אישור כדי למחוק.');
+  if(!confirmed2)return;
+  try{
+    showFireToast('⏳ מוחק חשבון...');
+    const uid=currentUser.uid;
+    const isTeacher=currentUserData?.role==='teacher';
+    // מחיקת כל הנתונים מ-RTDB
+    const paths=[
+      'users/'+uid,
+      'userChats/'+uid,
+      'notifications/'+uid,
+      'userBookings/'+uid,
+      'favorites/'+uid,
+      'userGroups/'+uid,
+      'parentLinks/'+uid,
+      'schedules/'+uid,
+      'lessonSummaries/'+uid,
+      'studentProgress/'+uid,
+      'teacherSummaries/'+uid,
+      'teacherBookings/'+uid,
+      'forceSignout/'+uid,
+    ];
+    if(isTeacher) paths.push('teachers/'+uid);
+    await Promise.all(paths.map(p=>db.ref(p).remove().catch(()=>{})));
+    // מחיקת חשבון Auth
+    await currentUser.delete();
+    currentUser=null;currentUserData=null;
+    showFireToast('✅ החשבון נמחק בהצלחה');
+    setTimeout(()=>go('login'),1500);
+  }catch(e){
+    if(e.code==='auth/requires-recent-login'){
+      showFireToast('❌ נדרשת כניסה מחדש לפני מחיקה — התנתק והתחבר שוב');
+    }else{
+      showFireToast('❌ שגיאה במחיקה: '+e.message);
+    }
+  }
+}
+
 function previewIdPhoto(){
   const input=document.getElementById('tIdPhoto');
   if(!input?.files?.[0])return;
@@ -2637,6 +2694,9 @@ async function sendChatMessage(otherUid,otherName){
   if(!currentUser){showFireToast('❌ לא מחובר');return;}
   const inp=document.getElementById('chatInputBox');
   if(!inp||!inp.value.trim())return;
+  const now=Date.now();
+  if(now-_lastMsgTime<2000){showFireToast('⚠️ המתן שנייה בין הודעות');return;}
+  _lastMsgTime=now;
   const text=inp.value.trim();
   inp.value='';
   const chatId=getChatId(currentUser.uid,otherUid);
@@ -4942,9 +5002,66 @@ async function adminSendTestEmail(){
   }
 }
 
+let _adminPinVerified=false;
+
+async function _verifyAdminPin(onSuccess){
+  if(_adminPinVerified){onSuccess();return;}
+  // בדוק אם קיים PIN שמור ב-Firebase
+  let storedHash=null;
+  try{
+    const snap=await db.ref('adminConfig/pinHash').get();
+    storedHash=snap.exists()?snap.val():null;
+  }catch(e){console.warn('adminConfig read failed:',e);}
+
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:99999;display:flex;align-items:center;justify-content:center;direction:rtl;backdrop-filter:blur(10px)';
+  const isFirstTime=!storedHash;
+  ov.innerHTML=`
+    <div style="background:#0F1A1F;border:1px solid rgba(239,68,68,0.3);border-radius:24px;padding:32px 28px;width:90%;max-width:360px;text-align:center">
+      <div style="font-size:48px;margin-bottom:12px">${isFirstTime?'🔐':'🔑'}</div>
+      <h3 style="color:#fff;font-weight:900;font-size:20px;margin:0 0 8px">${isFirstTime?'הגדר קוד PIN למנהל':'קוד PIN מנהל'}</h3>
+      <p style="color:rgba(255,255,255,0.5);font-size:13px;margin:0 0 20px">${isFirstTime?'בחר קוד 4–8 ספרות לאבטחה נוספת':'הזן קוד PIN כדי להמשיך'}</p>
+      <input id="_adminPinInput" type="password" inputmode="numeric" maxlength="8" placeholder="••••" style="width:100%;box-sizing:border-box;text-align:center;letter-spacing:8px;font-size:24px;font-weight:900;padding:14px;background:rgba(255,255,255,0.05);border:1.5px solid rgba(239,68,68,0.3);border-radius:14px;color:#fff;outline:none;margin-bottom:${isFirstTime?'12px':'20px'}">
+      ${isFirstTime?`<input id="_adminPinInput2" type="password" inputmode="numeric" maxlength="8" placeholder="אמת קוד" style="width:100%;box-sizing:border-box;text-align:center;letter-spacing:8px;font-size:24px;font-weight:900;padding:14px;background:rgba(255,255,255,0.05);border:1.5px solid rgba(239,68,68,0.3);border-radius:14px;color:#fff;outline:none;margin-bottom:20px">`:''}
+      <div style="display:flex;gap:10px">
+        <button id="_adminPinCancel" style="flex:1;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.6);border-radius:50px;padding:12px;font-size:14px;font-weight:700;cursor:pointer">ביטול</button>
+        <button id="_adminPinSubmit" style="flex:2;background:linear-gradient(135deg,#EF4444,#DC2626);border:none;color:#fff;border-radius:50px;padding:12px;font-size:14px;font-weight:800;cursor:pointer">${isFirstTime?'הגדר PIN':'כניסה'}</button>
+      </div>
+    </div>`;
+  document.body.appendChild(ov);
+  const pinInput=ov.querySelector('#_adminPinInput');
+  pinInput.focus();
+  ov.querySelector('#_adminPinCancel').onclick=()=>ov.remove();
+  ov.querySelector('#_adminPinSubmit').onclick=async()=>{
+    const pin=pinInput.value.trim();
+    if(!pin||pin.length<4){showFireToast('❌ קוד חייב להכיל לפחות 4 ספרות');return;}
+    if(isFirstTime){
+      const pin2=(ov.querySelector('#_adminPinInput2')?.value||'').trim();
+      if(pin!==pin2){showFireToast('❌ הקודים אינם תואמים');return;}
+      const hash=await sha256hex(pin);
+      await db.ref('adminConfig/pinHash').set(hash);
+      _adminPinVerified=true;
+      ov.remove();
+      showFireToast('✅ PIN הוגדר בהצלחה');
+      onSuccess();
+    }else{
+      const hash=await sha256hex(pin);
+      if(hash===storedHash){
+        _adminPinVerified=true;
+        ov.remove();
+        onSuccess();
+      }else{
+        showFireToast('❌ קוד שגוי');
+        pinInput.value='';pinInput.focus();
+      }
+    }
+  };
+  pinInput.addEventListener('keydown',e=>{if(e.key==='Enter')ov.querySelector('#_adminPinSubmit').click();});
+}
+
 function showAdminPanel(forceTab=null){
   if(!isAdmin()){showFireToast('🚫 אין הרשאת מנהל');return;}
-  loadAdminData().then(()=>{
+  _verifyAdminPin(()=>{loadAdminData().then(()=>{
     if(forceTab){
       adminTab=forceTab;
     } else {
@@ -4961,7 +5078,7 @@ function showAdminPanel(forceTab=null){
       else if(hasPendingReviews) adminTab='reviews';
     }
     renderAdminPanel();
-  });
+  });});
 }
 
 async function adminSwitchTab(id){
@@ -5617,6 +5734,11 @@ function renderAdminTab(){
         ${notifGranted
           ?`<div style="background:rgba(16,185,129,0.1);border-radius:10px;padding:8px 12px;font-size:12px;font-weight:800;color:#10B981">✅ התראות פעילות!</div>`
           :`<button onclick="_requestBrowserNotifPermission()" style="width:100%;background:linear-gradient(135deg,#10B981,#14B8A6);border:none;color:#fff;border-radius:50px;padding:11px;font-weight:900;font-size:13px;cursor:pointer">🔔 הפעל התראות דפדפן</button>`}
+      </div>
+      <div style="background:rgba(239,68,68,0.07);border:1.5px solid rgba(239,68,68,0.25);border-radius:16px;padding:14px;margin-bottom:14px">
+        <h4 style="margin:0 0 8px;font-weight:900;font-size:14px;color:#EF4444">🔐 אבטחת מנהל (2FA PIN)</h4>
+        <p style="margin:0 0 10px;font-size:12px;color:#64748B">קוד PIN נוסף מעל האימות של Google — מוגן ב-Firebase</p>
+        <button onclick="_adminPinVerified=false;_verifyAdminPin(()=>{showFireToast('✅ PIN עודכן');_adminPinVerified=true;})" style="width:100%;background:linear-gradient(135deg,#EF4444,#DC2626);border:none;color:#fff;border-radius:50px;padding:11px;font-weight:800;font-size:13px;cursor:pointer">🔑 שנה PIN מנהל</button>
       </div>
       ${EMAILJS_SERVICE_ID&&EMAILJS_TEMPLATE_ID&&EMAILJS_PUBLIC_KEY
         ?`<div style="background:rgba(168,85,247,0.07);border:1.5px solid rgba(168,85,247,0.3);border-radius:16px;padding:14px;margin-bottom:14px">
@@ -7870,6 +7992,9 @@ function TeacherPending(){
             ${!rejected?`<button onclick="showWhatsAppDialog('',WA_TEMPLATES.inviteFriend(),'שתף חברים')" style="flex:1;background:linear-gradient(135deg,#25D366,#128C7E);border:none;color:#fff;border-radius:50px;padding:12px;font-size:13px;font-weight:800;cursor:pointer">📱 שתף חברים</button>`:''}
             <button onclick="auth.signOut();go('login')" style="flex:1;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.6);border-radius:50px;padding:12px;font-size:13px;font-weight:700;cursor:pointer">יציאה</button>
           </div>
+          <div style="margin-top:10px">
+            <button onclick="deleteMyAccount()" style="width:100%;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);color:#EF4444;border-radius:50px;padding:11px;font-size:12px;font-weight:700;cursor:pointer">🗑 מחק חשבון (GDPR)</button>
+          </div>
         </div>
       </div>
 
@@ -7943,6 +8068,7 @@ function StudentPending(){
             ${parentPhone?`<div style="color:rgba(255,255,255,0.6);font-size:12px;direction:ltr;text-align:right">📱 ${parentPhone}</div>`:''}
           </div>`:''}
           <button onclick="auth.signOut().then(()=>go('login'))" style="width:100%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.7);border-radius:50px;padding:12px;font-size:13px;font-weight:700;cursor:pointer">← התנתק</button>
+          <button onclick="deleteMyAccount()" style="margin-top:8px;width:100%;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);color:#EF4444;border-radius:50px;padding:11px;font-size:12px;font-weight:700;cursor:pointer">🗑 מחק חשבון</button>
         </div>
       </div>
       ${!rejected?'<p style="text-align:center;color:rgba(255,255,255,0.3);font-size:11px;margin-top:14px">הדף מתרענן אוטומטית כשהחשבון מאושר 🔄</p>':''}
@@ -9540,7 +9666,7 @@ if('serviceWorker' in navigator){
     const currentSwUrl='/sw.js?v=4.5.4';
     regs.forEach(r=>{if(r.active&&r.active.scriptURL&&!r.active.scriptURL.includes('4.4.2'))r.unregister();});
   });
-  navigator.serviceWorker.register('/sw.js?v=4.8.3').then(reg=>{
+  navigator.serviceWorker.register('/sw.js?v=4.8.4').then(reg=>{
     reg.update();
     setInterval(()=>reg.update(),30000);
   });
