@@ -253,6 +253,32 @@ input,textarea,select{font-family:inherit;-webkit-appearance:none;appearance:non
 
 /* REFERRAL */
 .ref-card{background:linear-gradient(135deg,#14B8A6 0%,#06B6D4 50%,#A855F7 100%);border-radius:var(--radius);padding:20px;color:#fff;margin-bottom:14px;box-shadow:var(--gp)}
+/* ─── DARK MODE ──────────────────────────────────────────────────────────── */
+body.dark{background:#0D1117 !important;color:#E2E8F0}
+body.dark .card,body.dark .card-sm,body.dark .tc,body.dark .role-card,body.dark .pay-m,body.dark .post,body.dark .lb-row,body.dark .ach{background:#161B22 !important;color:#E2E8F0 !important;box-shadow:0 4px 20px rgba(0,0,0,.4) !important}
+body.dark .screen{background:linear-gradient(165deg,#0D1117 0%,#111827 50%,#0F172A 100%) !important}
+body.dark .chat-wrap{background:#0D1117 !important}
+body.dark .chat-hdr,body.dark .chat-bar{background:rgba(13,17,23,.97) !important;border-color:rgba(255,255,255,.06) !important}
+body.dark .chat-bar input{background:rgba(255,255,255,.05) !important;color:#E2E8F0 !important}
+body.dark .bbl-me{background:#1F2937 !important;color:#E2E8F0 !important}
+body.dark .share-box,body.dark .modal-box{background:#161B22 !important;color:#E2E8F0 !important}
+body.dark .inp,body.dark input:not([type=range]):not([type=file]),body.dark textarea,body.dark select{background:rgba(255,255,255,.05) !important;color:#E2E8F0 !important;border-color:rgba(255,255,255,.1) !important}
+body.dark .kcb-box{background:rgba(255,255,255,.07) !important;border-color:#475569 !important}
+body.dark .cat-btn{background:rgba(22,27,34,.85) !important;color:#E2E8F0 !important;border-color:rgba(20,184,166,.25) !important}
+body.dark .slot{background:rgba(20,184,166,.08) !important;color:#E2E8F0 !important}
+body.dark .slot.taken{background:rgba(255,255,255,.04) !important;color:rgba(255,255,255,.2) !important}
+body.dark .day-btn{background:rgba(255,255,255,.05) !important;color:#94A3B8 !important}
+body.dark .warn{background:rgba(133,100,4,.15) !important;color:#FCD34D !important}
+body.dark .info{background:rgba(20,184,166,.1) !important}
+body.dark .tabs{background:rgba(255,255,255,.05) !important}
+body.dark .bw{background:#1E2535 !important;color:#5EEAD4 !important;box-shadow:0 4px 16px rgba(0,0,0,.3) !important}
+body.dark .p-acts{border-top-color:rgba(255,255,255,.06) !important}
+body.dark .p-acts button{color:#94A3B8 !important}
+body.dark .otp input{background:rgba(255,255,255,.05) !important;color:#E2E8F0 !important;border-color:rgba(255,255,255,.1) !important}
+body.dark .kcb-row{border-color:rgba(255,255,255,.1) !important;background:rgba(255,255,255,.03) !important}
+body.dark .kcb-row.light{border-color:rgba(20,184,166,.25) !important;background:rgba(20,184,166,.06) !important}
+body.dark .bnav{background:rgba(8,10,18,.98) !important}
+body.dark .online-dot{border-color:#0D1117 !important}
 </style>
 </head>
 <body>
@@ -260,7 +286,10 @@ input,textarea,select{font-family:inherit;-webkit-appearance:none;appearance:non
 <script>
 "use strict";
 // ─── DATA ─────────────────────────────────────────────────────────────────────
-const C={p:"#14B8A6",s:"#14B8A6",g:"#14B8A6",y:"#FFD23F",dark:"#0F1A1F",muted:"#8A94A6",text:"#1A1A2E"};
+let darkMode=localStorage.getItem('_dk')==='1';
+const _CL={p:"#14B8A6",s:"#14B8A6",g:"#14B8A6",y:"#FFD23F",dark:"#0F1A1F",muted:"#8A94A6",text:"#1A1A2E"};
+const _CD={p:"#5EEAD4",s:"#5EEAD4",g:"#34D399",y:"#FCD34D",dark:"#E2E8F0",muted:"#94A3B8",text:"#E2E8F0"};
+const C=new Proxy({},{get:(_,k)=>(darkMode?_CD:_CL)[k]??_CL[k]});
 
 const CATS=[
   {id:"math",    lbl:"מתמטיקה",        em:"📐",col:"#14B8A6",grp:"לימודים"},
@@ -456,7 +485,7 @@ const ACHIEVEMENTS=[
   {id:6,em:"👥",ttl:"שיעור קבוצתי",desc:"לימדת קבוצה של 4 תלמידים",col:"#27AE60"},
 ];
 
-const APP_VERSION='4.8.4';
+const APP_VERSION='4.8.5';
 const APP_BUILD='14-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -559,6 +588,61 @@ window.addEventListener('popstate',()=>{
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 function escapeHtml(s){if(!s)return '';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 function safeUrl(u){if(!u)return '';return /^https?:\/\//i.test(String(u).trim())?String(u).trim():'';}
+
+// ─── AVATAR ───────────────────────────────────────────────────────────────────
+function avatarHtml(photo,name,size=52,radius='16px'){
+  if(photo){
+    return `<img src="${photo}" style="width:${size}px;height:${size}px;border-radius:${radius};object-fit:cover;flex-shrink:0;display:block" alt="" loading="lazy">`;
+  }
+  const initials=((name||'?').trim().split(/\s+/).map(w=>w[0]||'').slice(0,2).join('')||'?').toUpperCase();
+  const pal=['#14B8A6','#06B6D4','#A855F7','#F59E0B','#EF4444','#10B981','#EC4899','#6366F1'];
+  const col=pal[((name||'').charCodeAt(0)||0)%pal.length];
+  return `<div style="width:${size}px;height:${size}px;border-radius:${radius};background:${col};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:${Math.round(size*.35)}px;flex-shrink:0">${initials}</div>`;
+}
+
+// ─── DARK MODE ────────────────────────────────────────────────────────────────
+function toggleDarkMode(){
+  darkMode=!darkMode;
+  localStorage.setItem('_dk',darkMode?'1':'0');
+  document.body.classList.toggle('dark',darkMode);
+  render();
+  showFireToast(darkMode?'🌙 מצב לילה':'☀️ מצב יום');
+}
+function initDarkMode(){document.body.classList.toggle('dark',darkMode);}
+
+// ─── ONBOARDING ───────────────────────────────────────────────────────────────
+function showOnboarding(){
+  if(localStorage.getItem('_onboardingDone'))return;
+  const steps=[
+    {em:'🔍',title:'מצא מורה',desc:'חפש מורה לפי מקצוע, מיקום ומחיר — מאות מורים מוסמכים'},
+    {em:'📅',title:'הזמן שיעור',desc:'בחר תאריך ושעה שנוחים לך ושלם בקלות — ביט, PayPal או PayBox'},
+    {em:'🌟',title:'למד והתקדם',desc:'קבל סיכומי שיעורים, עקוב אחר ההתקדמות ורכוש הישגים'},
+  ];
+  let step=0;
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:999999;display:flex;align-items:center;justify-content:center;direction:rtl;backdrop-filter:blur(20px)';
+  function _draw(){
+    const s=steps[step];
+    const dots=steps.map((_,i)=>`<div style="width:${i===step?24:8}px;height:8px;border-radius:4px;background:${i===step?'#14B8A6':'rgba(255,255,255,.2)'};transition:all .3s"></div>`).join('');
+    ov.innerHTML=`
+      <div style="background:linear-gradient(135deg,#0F1A1F,#1E1B4B);border-radius:28px;padding:40px 28px;width:88%;max-width:360px;text-align:center;color:#fff">
+        <div style="font-size:72px;margin-bottom:20px">${s.em}</div>
+        <h2 style="font-weight:900;font-size:24px;margin:0 0 12px">${s.title}</h2>
+        <p style="color:rgba(255,255,255,.7);font-size:15px;margin:0 0 28px;line-height:1.7">${s.desc}</p>
+        <div style="display:flex;gap:8px;justify-content:center;margin-bottom:28px">${dots}</div>
+        <button id="_obNext" style="width:100%;background:linear-gradient(135deg,#14B8A6,#A855F7);border:none;color:#fff;border-radius:50px;padding:16px;font-size:16px;font-weight:900;cursor:pointer">${step<steps.length-1?'הבא →':'התחל !'}</button>
+        ${step>0?`<button id="_obBack" style="width:100%;background:none;border:none;color:rgba(255,255,255,.4);padding:12px;font-size:14px;cursor:pointer;margin-top:6px">← חזור</button>`:''}
+      </div>`;
+    ov.querySelector('#_obNext').onclick=()=>{
+      if(step<steps.length-1){step++;_draw();}
+      else{localStorage.setItem('_onboardingDone','1');ov.remove();}
+    };
+    const b=ov.querySelector('#_obBack');
+    if(b)b.onclick=()=>{step--;_draw();};
+  }
+  _draw();
+  document.body.appendChild(ov);
+}
 
 // ─── Firebase Storage upload ──────────────────────────────────────────────────
 // Uploads base64 data URL to Firebase Storage; returns download URL.
@@ -6321,7 +6405,7 @@ function Home(){
             </div>
           `:filtered.map(t=>`
             <button class="tc" onclick="go('teacher',{teacher:TEACHERS.find(x=>x.id==='${t.id}'),teacherCat:'${S.catFilter}'})">
-              <div class="tc-av" style="background:${t.col}20">${t.av}${t.online?`<div class="online-dot"></div>`:""}</div>
+              <div class="tc-av" style="background:${t.col}20;overflow:hidden;padding:${t.photo?'0':'0'}">${t.photo?avatarHtml(t.photo,t.name,52,'16px'):t.av}${t.online?`<div class="online-dot"></div>`:""}</div>
               <div style="flex:1">
                 <div style="display:flex;justify-content:space-between;align-items:flex-start">
                   <span style="color:#FFD23F;font-weight:700;font-size:12px">${t.rating>0?stars(t.rating):'חדש 🆕'}</span>
@@ -6342,7 +6426,7 @@ function Home(){
         <h3 style="font-size:16px;font-weight:800;margin:0 0 14px">🔍 תוצאות חיפוש "${S.search}"</h3>
         ${(()=>{const r=smartSearch(S.search);return r.length===0?`<div style="background:rgba(255,255,255,0.7);backdrop-filter:blur(10px);border-radius:18px;padding:24px;text-align:center;margin-bottom:14px"><div style="font-size:42px;margin-bottom:8px">😕</div><p style="color:#64748B;font-size:13px;margin:0">לא נמצאו תוצאות עבור "${S.search}"</p></div>`:r.slice(0,10).map(t=>`
           <button class="tc" onclick="go('teacher',{teacher:TEACHERS.find(x=>x.id==='${t.id}')})">
-            <div class="tc-av" style="background:${t.col}20">${t.av}${t.online?`<div class="online-dot"></div>`:""}</div>
+            <div class="tc-av" style="background:${t.col}20;overflow:hidden;padding:${t.photo?'0':'0'}">${t.photo?avatarHtml(t.photo,t.name,52,'16px'):t.av}${t.online?`<div class="online-dot"></div>`:""}</div>
             <div style="flex:1">
               <div style="display:flex;justify-content:space-between;align-items:flex-start">
                 <span style="color:#FFD23F;font-weight:700;font-size:12px">${t.rating>0?stars(t.rating):'חדש 🆕'}</span>
@@ -6372,7 +6456,7 @@ function Home(){
       <h3 style="font-size:16px;font-weight:800;margin:6px 0 14px">❤️ המועדפים שלך</h3>
       ${TEACHERS.filter(t=>favorites.includes(t.id)).slice(0,5).map(t=>`
         <button class="tc" onclick="go('teacher',{teacher:TEACHERS.find(x=>x.id==='${t.id}')})" style="border:1.5px solid rgba(231,76,60,0.25)">
-          <div class="tc-av" style="background:${t.col}20">${t.av}${t.online?`<div class="online-dot"></div>`:""}</div>
+          <div class="tc-av" style="background:${t.col}20;overflow:hidden;padding:${t.photo?'0':'0'}">${t.photo?avatarHtml(t.photo,t.name,52,'16px'):t.av}${t.online?`<div class="online-dot"></div>`:""}</div>
           <div style="flex:1">
             <div style="display:flex;justify-content:space-between;align-items:flex-start">
               <span style="font-size:14px">❤️</span>
@@ -6396,7 +6480,7 @@ function Home(){
           <button class="btn bp" style="max-width:240px;margin:0 auto" onclick="${currentUser?"go('teacherSetup')":"go('register')"}">🎓 הצטרף כמורה</button>
         </div>`:applyFilters(TEACHERS).slice(0,8).map(t=>`
         <button class="tc" onclick="go('teacher',{teacher:TEACHERS.find(x=>x.id==='${t.id}')})" data-tid="${t.id}">
-          <div class="tc-av" style="background:${t.col}20">${t.av}${t.online?`<div class="online-dot"></div>`:""}</div>
+          <div class="tc-av" style="background:${t.col}20;overflow:hidden;padding:${t.photo?'0':'0'}">${t.photo?avatarHtml(t.photo,t.name,52,'16px'):t.av}${t.online?`<div class="online-dot"></div>`:""}</div>
           <div style="flex:1">
             <div style="display:flex;justify-content:space-between;align-items:flex-start">
               <span style="color:#FFD23F;font-weight:700;font-size:12px">${t.rating>0?stars(t.rating):'חדש 🆕'}</span>
@@ -6477,7 +6561,7 @@ function Nearby(){
           </div>
         `:inRange.map(t=>`
           <button class="tc" onclick="go('teacher',{teacher:TEACHERS.find(x=>x.id==='${t.id}')})">
-            <div class="tc-av" style="background:${t.col}20">${t.av}${t.online?`<div class="online-dot"></div>`:""}</div>
+            <div class="tc-av" style="background:${t.col}20;overflow:hidden;padding:${t.photo?'0':'0'}">${t.photo?avatarHtml(t.photo,t.name,52,'16px'):t.av}${t.online?`<div class="online-dot"></div>`:""}</div>
             <div style="flex:1">
               <div style="display:flex;justify-content:space-between;align-items:flex-start">
                 <span style="background:${t._coordType==='gps'?'linear-gradient(135deg,#14B8A6,#06B6D4)':'linear-gradient(135deg,#F59E0B,#F97316)'};color:#fff;font-weight:900;font-size:11px;padding:3px 10px;border-radius:50px;box-shadow:0 2px 8px rgba(20,184,166,0.3)">${t._coordType==='gps'?'📍':'🏙️'} ${formatDistance(t.distance)}</span>
@@ -7992,8 +8076,9 @@ function TeacherPending(){
             ${!rejected?`<button onclick="showWhatsAppDialog('',WA_TEMPLATES.inviteFriend(),'שתף חברים')" style="flex:1;background:linear-gradient(135deg,#25D366,#128C7E);border:none;color:#fff;border-radius:50px;padding:12px;font-size:13px;font-weight:800;cursor:pointer">📱 שתף חברים</button>`:''}
             <button onclick="auth.signOut();go('login')" style="flex:1;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.6);border-radius:50px;padding:12px;font-size:13px;font-weight:700;cursor:pointer">יציאה</button>
           </div>
-          <div style="margin-top:10px">
-            <button onclick="deleteMyAccount()" style="width:100%;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);color:#EF4444;border-radius:50px;padding:11px;font-size:12px;font-weight:700;cursor:pointer">🗑 מחק חשבון (GDPR)</button>
+          <div style="display:flex;gap:10px;margin-top:10px">
+            <button onclick="toggleDarkMode()" style="flex:1;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.7);border-radius:50px;padding:11px;font-size:13px;font-weight:700;cursor:pointer">${darkMode?'☀️ מצב יום':'🌙 מצב לילה'}</button>
+            <button onclick="deleteMyAccount()" style="flex:1;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);color:#EF4444;border-radius:50px;padding:11px;font-size:12px;font-weight:700;cursor:pointer">🗑 מחק חשבון</button>
           </div>
         </div>
       </div>
@@ -8924,6 +9009,7 @@ function render(){
   if(S.screen==="profile"&&isAdmin())setTimeout(_checkAdminBadge,200);
 }
 
+initDarkMode();
 render();
 
 // בדיקת parentView token ב-URL (לפורטל הורים ללא התחברות)
@@ -9315,8 +9401,10 @@ auth.onAuthStateChanged(async user=>{
     }catch(e){console.warn('Auth error:',e);}
     S._loggingIn=false;
     S._registering=false;
-    if(S.screen==='splash'||S.screen==='login'){go('home');}
-    else render();
+    if(S.screen==='splash'||S.screen==='login'){
+      go('home');
+      setTimeout(showOnboarding,800);
+    }else render();
   } else {
     stopChatListener();
     teardownConvListeners();
@@ -9666,7 +9754,7 @@ if('serviceWorker' in navigator){
     const currentSwUrl='/sw.js?v=4.5.4';
     regs.forEach(r=>{if(r.active&&r.active.scriptURL&&!r.active.scriptURL.includes('4.4.2'))r.unregister();});
   });
-  navigator.serviceWorker.register('/sw.js?v=4.8.4').then(reg=>{
+  navigator.serviceWorker.register('/sw.js?v=4.8.5').then(reg=>{
     reg.update();
     setInterval(()=>reg.update(),30000);
   });
