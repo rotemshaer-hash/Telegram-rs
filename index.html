@@ -494,7 +494,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.6';
+const APP_VERSION='4.9.7';
 const APP_BUILD='14-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -9468,16 +9468,20 @@ auth&&auth.onAuthStateChanged(async user=>{
 
       // ── בדיקת מורה שלא אושר עדיין ──────────────────────────────
       if(currentUserData?.role==='teacher'){
-        const tSnap=await db.ref('teachers/'+user.uid).get();
-        if(!tSnap.exists()){
-          if(!isAdmin()){S._loggingIn=false;S._registering=false;go('teacherSetup');return;}
-        } else {
-          const tData=tSnap.val();
-          if(!tData.verified&&!isAdmin()){
-            S.pendingTeacherData=tData;
-            S._loggingIn=false;S._registering=false;go('teacherPending');return;
+        try{
+          const tSnap=await db.ref('teachers/'+user.uid).get();
+          if(!tSnap.exists()){
+            if(!isAdmin()){S._loggingIn=false;S._registering=false;go('teacherSetup');return;}
+          } else {
+            const tData=tSnap.val();
+            if(!tData.verified&&!isAdmin()){
+              S.pendingTeacherData=tData;
+              S._loggingIn=false;S._registering=false;go('teacherPending');return;
+            }
           }
-          // loadTeacherBookings נטען אחרי הניווט (ראה למטה)
+        }catch(tErr){
+          // אם שאילתת teachers/ נכשלת — מניחים שהמורה פעיל וממשיכים
+          console.warn('Teacher status check failed, assuming active:',tErr);
         }
       }
 
@@ -9588,9 +9592,7 @@ auth&&auth.onAuthStateChanged(async user=>{
       // כל שגיאה אחרת (כולל PERMISSION_DENIED) — המשתמש כבר בפנים, רק הצג אזהרה
       showFireToast('⚠️ בעיית רשת — חלק מהנתונים לא נטענו');
     }
-    // אם המשתמש מאומת ועדיין על מסך login/splash לאחר שגיאה — נווט לבית
-    if(auth?.currentUser&&(S.screen==='login'||S.screen==='splash')){go('home');}
-    else render();
+    render();
   } else {
     stopChatListener();
     teardownConvListeners();
@@ -9900,10 +9902,20 @@ async function firebaseLogin(usernameOrEmail,password){
     await auth.signInWithEmailAndPassword(email,password);
     showFireToast('✅ ברוך הבא!');
     // Safety net: if onAuthStateChanged doesn't navigate within 4s, force navigate
-    setTimeout(()=>{
+    setTimeout(async()=>{
       if((S.screen==='login'||S.screen==='splash')&&auth?.currentUser){
         S._loggingIn=false;
         currentUser=auth.currentUser;
+        // טעינת נתוני משתמש אם חסרים
+        if(!currentUserData&&db){
+          try{
+            const _s=await db.ref('users/'+currentUser.uid).get();
+            if(_s.exists()){
+              currentUserData=_s.val();
+              if(isAdmin()&&currentUserData.role!=='teacher'){currentUserData={...currentUserData,role:'teacher',verified:true};}
+            }
+          }catch(_e){}
+        }
         go('home');
       }
     },4000);
@@ -9981,7 +9993,7 @@ function installApp(){
 
 // ── AUTO-UPDATE SERVICE WORKER ────────────────────────────────────────────────
 if('serviceWorker' in navigator){
-  const currentSwUrl='/sw.js?v=4.9.6';
+  const currentSwUrl='/sw.js?v=4.9.7';
   // Unregister SWs that are NOT the current version
   navigator.serviceWorker.getRegistrations().then(regs=>{
     regs.forEach(r=>{
