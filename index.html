@@ -494,7 +494,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.9';
+const APP_VERSION='4.9.10';
 const APP_BUILD='14-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -9864,9 +9864,10 @@ async function sendResetEmail(){
           <div style="background:rgba(20,184,166,0.08);border:1px solid rgba(20,184,166,0.3);border-radius:14px;padding:10px;margin-bottom:16px">
             <strong style="color:#0D9488;font-size:14px">${parentEmail}</strong>
           </div>
-          <button onclick="sendResetToParentEmail('${parentEmail}',this)" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;border-radius:50px;padding:13px;font-size:14px;font-weight:800;color:#fff;cursor:pointer;margin-bottom:10px">📧 שלח קישור לאיפוס</button>
+          <button onclick="sendResetToParentEmail('${parentEmail}','${fakeEmail}',this)" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;border-radius:50px;padding:13px;font-size:14px;font-weight:800;color:#fff;cursor:pointer;margin-bottom:10px">📧 שלח בקשה למנהל</button>
         `:`
-          <p style="color:#64748B;font-size:13px;margin:0 0 14px;line-height:1.7">חשבון זה משתמש בשם משתמש בלבד.<br>לאיפוס סיסמה, פנה למנהל:</p>
+          <p style="color:#64748B;font-size:13px;margin:0 0 14px;line-height:1.7">לאיפוס סיסמה, שלח בקשה למנהל:</p>
+          <button onclick="notifyAdminPasswordReset('${fakeEmail}',this)" style="width:100%;background:linear-gradient(135deg,#A855F7,#7E22CE);border:none;border-radius:50px;padding:13px;font-size:14px;font-weight:800;color:#fff;cursor:pointer;margin-bottom:10px">📨 בקש מהמנהל לאפס</button>
         `}
         <a href="mailto:${ADMIN_EMAIL}?subject=איפוס%20סיסמה&body=שם%20משתמש:%20${encodeURIComponent(raw)}" style="display:block;background:rgba(168,85,247,0.1);border:1.5px solid rgba(168,85,247,0.3);color:#7E22CE;border-radius:50px;padding:11px;font-size:13px;font-weight:800;text-decoration:none;margin-bottom:10px">✉️ פנה למנהל</a>
         <button onclick="this.closest('div[style*=fixed]').remove()" style="width:100%;background:#F1F5F9;border:none;border-radius:50px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;color:#64748B">סגור</button>
@@ -9902,21 +9903,46 @@ async function sendResetEmail(){
   }
 }
 
-async function sendResetToParentEmail(parentEmail,btn){
+async function notifyAdminPasswordReset(fakeEmail,btn){
   try{
     if(btn){btn.disabled=true;btn.textContent='שולח...';}
-    await auth.sendPasswordResetEmail(parentEmail,{url:window.location.origin,handleCodeInApp:false});
+    const username=fakeEmail.replace('@kidemy.app','');
+    await sendAdminEmail('🔑 בקשת איפוס סיסמה',
+      `שם משתמש: ${username}\n\nאין מייל הורה רשום.\nאפס ידנית דרך Firebase Console:\nhttps://console.firebase.google.com/u/0/project/kidemy-83a17/authentication/users\n\nחפש: ${fakeEmail}`
+    );
+    btn?.closest('div[style*=fixed]')?.remove();
+    showFireToast('✅ בקשה נשלחה — המנהל יצור קשר בהקדם');
+  }catch(err){
+    if(btn){btn.disabled=false;btn.textContent='📨 בקש מהמנהל לאפס';}
+    showFireToast('❌ שגיאה — פנה למנהל ישירות');
+  }
+}
+
+async function sendResetToParentEmail(parentEmail,fakeEmail,btn){
+  // legacy call with 2 args
+  if(typeof fakeEmail==='object'){btn=fakeEmail;fakeEmail='';}
+  try{
+    if(btn){btn.disabled=true;btn.textContent='שולח...';}
+    const username=fakeEmail?fakeEmail.replace('@kidemy.app',''):'';
+    // שלח מייל להורה
+    await sendEmail(parentEmail,'🔑 בקשת איפוס סיסמה – Kidemy',
+      `שלום,\n\nילדך (שם משתמש: ${username||'לא ידוע'}) ביקש לאפס את הסיסמה שלו ב-Kidemy.\n\nצוות Kidemy יצור איתך קשר בהקדם כדי לאפס את הסיסמה.\n\nלכל שאלה: ${ADMIN_EMAIL}\n\n– צוות Kidemy`
+    );
+    // שלח התראה למנהל
+    await sendAdminEmail('🔑 בקשת איפוס סיסמה',
+      `שם משתמש: ${username||fakeEmail||'לא ידוע'}\nמייל הורה: ${parentEmail}\n\nאפס ידנית ב-Firebase Console:\nhttps://console.firebase.google.com/u/0/project/kidemy-83a17/authentication/users\n\nחפש: ${fakeEmail||username+'@kidemy.app'}`
+    );
     btn?.closest('div[style*=fixed]')?.remove();
     setTimeout(()=>{
       const ov=document.createElement('div');
       ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px);padding:24px;direction:rtl';
-      ov.innerHTML=`<div style="background:#fff;border-radius:24px;padding:28px 24px;width:100%;max-width:340px;text-align:center"><div style="font-size:54px;margin-bottom:12px">✅</div><h3 style="font-weight:900;font-size:18px;margin:0 0 10px">נשלח למייל ההורה!</h3><p style="color:#64748B;font-size:13px;margin:0 0 16px;line-height:1.7">קישור לאיפוס נשלח ל:<br><strong style="color:#14B8A6">${parentEmail}</strong><br><br>ההורה יכול לאפס את הסיסמה ולמסור לך.</p><button onclick="this.closest('div[style*=fixed]').remove()" style="width:100%;background:linear-gradient(135deg,#14B8A6,#A855F7);border:none;border-radius:50px;padding:13px;font-size:14px;font-weight:800;color:#fff;cursor:pointer">הבנתי 👍</button></div>`;
+      ov.innerHTML=`<div style="background:#fff;border-radius:24px;padding:28px 24px;width:100%;max-width:340px;text-align:center"><div style="font-size:54px;margin-bottom:12px">✅</div><h3 style="font-weight:900;font-size:18px;margin:0 0 10px">הבקשה נשלחה!</h3><p style="color:#64748B;font-size:13px;margin:0 0 16px;line-height:1.7">שלחנו בקשה למנהל ומייל לאבא/אמא:<br><strong style="color:#14B8A6">${parentEmail}</strong><br><br>המנהל יצור קשר בהקדם לאיפוס הסיסמה.</p><button onclick="this.closest('div[style*=fixed]').remove()" style="width:100%;background:linear-gradient(135deg,#14B8A6,#A855F7);border:none;border-radius:50px;padding:13px;font-size:14px;font-weight:800;color:#fff;cursor:pointer">הבנתי 👍</button></div>`;
       document.body.appendChild(ov);
       ov.onclick=ev=>{if(ev.target===ov)ov.remove();};
     },200);
   }catch(err){
-    if(btn){btn.disabled=false;btn.textContent='📧 שלח קישור לאיפוס';}
-    showFireToast('❌ לא ניתן לשלוח — פנה למנהל');
+    if(btn){btn.disabled=false;btn.textContent='📧 שלח בקשה למנהל';}
+    showFireToast('❌ לא ניתן לשלוח — פנה למנהל ישירות');
   }
 }
 
@@ -10021,7 +10047,7 @@ function installApp(){
 
 // ── AUTO-UPDATE SERVICE WORKER ────────────────────────────────────────────────
 if('serviceWorker' in navigator){
-  const currentSwUrl='/sw.js?v=4.9.9';
+  const currentSwUrl='/sw.js?v=4.9.10';
   // Unregister SWs that are NOT the current version
   navigator.serviceWorker.getRegistrations().then(regs=>{
     regs.forEach(r=>{
