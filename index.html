@@ -478,15 +478,23 @@ function rebuildLeaderboard(){
 }
 
 const ACHIEVEMENTS=[
-  {id:1,em:"🎯",ttl:"10 שיעורים",  desc:"השלמת 10 שיעורים",         col:"#14B8A6"},
-  {id:2,em:"⭐",ttl:"מורה מצוין",  desc:"קיבלת 5 כוכבים 5 פעמים",  col:"#FFD23F"},
-  {id:3,em:"🏆",ttl:"50 שיעורים",  desc:"השלמת 50 שיעורים",         col:"#0F766E"},
-  {id:4,em:"🔥",ttl:"שבוע רצוף",   desc:"לימדת 7 ימים ברציפות",     col:"#E74C3C"},
-  {id:5,em:"💎",ttl:"מורה מוסמך",  desc:"אושרת על ידי צוות Kidemy", col:"#1B4FCC"},
-  {id:6,em:"👥",ttl:"שיעור קבוצתי",desc:"לימדת קבוצה של 4 תלמידים",col:"#27AE60"},
+  {id:1,em:"🎯",ttl:"10 שיעורים",  desc:"השלמת 10 שיעורים כמורה",     col:"#14B8A6"},
+  {id:2,em:"⭐",ttl:"מורה מצוין",  desc:"קיבלת 5 כוכבים 5 פעמים",    col:"#FFD23F"},
+  {id:3,em:"🏆",ttl:"50 שיעורים",  desc:"השלמת 50 שיעורים כמורה",     col:"#0F766E"},
+  {id:4,em:"🔥",ttl:"שבוע רצוף",   desc:"לימדת 7 ימים ברציפות",       col:"#E74C3C"},
+  {id:5,em:"💎",ttl:"מורה מוסמך",  desc:"אושרת על ידי צוות Kidemy",   col:"#1B4FCC"},
+  {id:6,em:"👥",ttl:"שיעור קבוצתי",desc:"לימדת קבוצה של 4 תלמידים",  col:"#27AE60"},
+];
+const STUDENT_ACHIEVEMENTS=[
+  {id:'s1',em:"🌟",ttl:"שיעור ראשון",  desc:"השלמת את השיעור הראשון שלך",   col:"#14B8A6"},
+  {id:'s2',em:"📚",ttl:"10 שיעורים",   desc:"השלמת 10 שיעורים",             col:"#6366F1"},
+  {id:'s3',em:"🏆",ttl:"50 שיעורים",   desc:"השלמת 50 שיעורים",             col:"#F59E0B"},
+  {id:'s4',em:"🔥",ttl:"שבוע לומד",    desc:"למדת 7 ימים ברציפות",          col:"#EF4444"},
+  {id:'s5',em:"⭐",ttl:"מדרג מצוין",   desc:"דירגת 3 מורים שונים",          col:"#FFD23F"},
+  {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.1';
+const APP_VERSION='4.9.2';
 const APP_BUILD='14-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -5959,28 +5967,43 @@ function renderAdminTab(){
 }
 
 // ─── מערכת דרגות 🏅 ──────────────────────────────────────────────────────────
+// דרגות מורה
 const RANKS=[
-  {min:0,name:"מתחיל",icon:"🌱",col:"#94A3B8",grad:"linear-gradient(135deg,#94A3B8,#64748B)"},
-  {min:1,name:"חוקר",icon:"🔍",col:"#06B6D4",grad:"linear-gradient(135deg,#06B6D4,#0891B2)"},
-  {min:5,name:"מתקדם",icon:"⚡",col:"#14B8A6",grad:"linear-gradient(135deg,#14B8A6,#0D9488)"},
-  {min:10,name:"מורה זהב",icon:"🥇",col:"#F59E0B",grad:"linear-gradient(135deg,#FBBF24,#F59E0B)"},
-  {min:25,name:"מורה אלמוג",icon:"💎",col:"#A855F7",grad:"linear-gradient(135deg,#A855F7,#9333EA)"},
-  {min:50,name:"מורה יהלום",icon:"💠",col:"#EC4899",grad:"linear-gradient(135deg,#EC4899,#DB2777)"},
-  {min:100,name:"אגדה",icon:"👑",col:"#FFD700",grad:"linear-gradient(135deg,#FFD700,#FBBF24,#A855F7)"}
+  {min:0,  name:"מתחיל",     icon:"🌱",col:"#94A3B8",grad:"linear-gradient(135deg,#94A3B8,#64748B)"},
+  {min:1,  name:"חוקר",      icon:"🔍",col:"#06B6D4",grad:"linear-gradient(135deg,#06B6D4,#0891B2)"},
+  {min:5,  name:"מתקדם",     icon:"⚡",col:"#14B8A6",grad:"linear-gradient(135deg,#14B8A6,#0D9488)"},
+  {min:10, name:"מורה זהב",  icon:"🥇",col:"#F59E0B",grad:"linear-gradient(135deg,#FBBF24,#F59E0B)"},
+  {min:25, name:"מורה אלמוג",icon:"💎",col:"#A855F7",grad:"linear-gradient(135deg,#A855F7,#9333EA)"},
+  {min:50, name:"מורה יהלום",icon:"💠",col:"#EC4899",grad:"linear-gradient(135deg,#EC4899,#DB2777)"},
+  {min:100,name:"אגדה",      icon:"👑",col:"#FFD700",grad:"linear-gradient(135deg,#FFD700,#FBBF24,#A855F7)"}
+];
+// דרגות תלמיד — ייחודיות, ללא הזכרת "מורה"
+const STUDENT_RANKS=[
+  {min:0,  name:"מתחיל",  icon:"🌱",col:"#94A3B8",grad:"linear-gradient(135deg,#94A3B8,#64748B)"},
+  {min:1,  name:"סקרן",   icon:"🔍",col:"#06B6D4",grad:"linear-gradient(135deg,#06B6D4,#0891B2)"},
+  {min:3,  name:"לומד",   icon:"📚",col:"#14B8A6",grad:"linear-gradient(135deg,#14B8A6,#0D9488)"},
+  {min:5,  name:"מתקדם",  icon:"⚡",col:"#3B82F6",grad:"linear-gradient(135deg,#3B82F6,#2563EB)"},
+  {min:10, name:"מתמיד",  icon:"🔥",col:"#F59E0B",grad:"linear-gradient(135deg,#FBBF24,#F59E0B)"},
+  {min:20, name:"כוכב",   icon:"⭐",col:"#A855F7",grad:"linear-gradient(135deg,#A855F7,#9333EA)"},
+  {min:50, name:"אלוף",   icon:"👑",col:"#FFD700",grad:"linear-gradient(135deg,#FFD700,#FBBF24,#EC4899)"},
 ];
 
 function getRank(lessonsCount){
   let r=RANKS[0];
-  for(const rank of RANKS){
-    if(lessonsCount>=rank.min)r=rank;
-  }
+  for(const rank of RANKS){if(lessonsCount>=rank.min)r=rank;}
   return r;
 }
-
 function getNextRank(lessonsCount){
-  for(const rank of RANKS){
-    if(lessonsCount<rank.min)return rank;
-  }
+  for(const rank of RANKS){if(lessonsCount<rank.min)return rank;}
+  return null;
+}
+function getStudentRank(count){
+  let r=STUDENT_RANKS[0];
+  for(const rank of STUDENT_RANKS){if(count>=rank.min)r=rank;}
+  return r;
+}
+function getNextStudentRank(count){
+  for(const rank of STUDENT_RANKS){if(count<rank.min)return rank;}
   return null;
 }
 
@@ -6205,10 +6228,11 @@ function showAnalyticsPanel(){
 // ─── תעודות הצטיינות 🎖 ─────────────────────────────────────────────────────
 function showCertificate(type='completion'){
   if(!currentUser){showFireToast('❌ צריך להתחבר');return;}
+  const isStudent=currentUserData?.role==='student';
   const userName=currentUserData?.name||currentUser.email.split('@')[0];
-  const lessons=teacherAnalytics?.completed||0;
-  const rating=teacherAnalytics?.avgRating||0;
-  const rank=getRank(lessons);
+  const lessons=isStudent?studentBookings.filter(b=>b.status==='completed').length:(teacherAnalytics?.completed||0);
+  const rating=isStudent?null:(teacherAnalytics?.avgRating||0);
+  const rank=isStudent?getStudentRank(lessons):getRank(lessons);
   const date=new Date().toLocaleDateString('he-IL');
   
   const ov=document.createElement('div');
@@ -6236,10 +6260,15 @@ function showCertificate(type='completion'){
             <div style="font-size:24px;font-weight:900;color:#14B8A6">${lessons}</div>
             <div style="font-size:10px;color:rgba(255,255,255,0.7);font-weight:600">שיעורים</div>
           </div>
+          ${isStudent?`
+          <div style="flex:1;background:rgba(99,102,241,0.15);border-radius:14px;padding:12px;border:1px solid rgba(99,102,241,0.3)">
+            <div style="font-size:24px;font-weight:900;color:#6366F1">${rank.icon}</div>
+            <div style="font-size:10px;color:rgba(255,255,255,0.7);font-weight:600">דרגה: ${rank.name}</div>
+          </div>`:`
           <div style="flex:1;background:rgba(168,85,247,0.15);border-radius:14px;padding:12px;border:1px solid rgba(168,85,247,0.3)">
             <div style="font-size:24px;font-weight:900;color:#A855F7">${rating}⭐</div>
             <div style="font-size:10px;color:rgba(255,255,255,0.7);font-weight:600">דירוג ממוצע</div>
-          </div>
+          </div>`}
         </div>
         
         <div style="font-size:11px;color:rgba(255,255,255,0.6);font-weight:600;letter-spacing:1px;position:relative;z-index:1">${date}</div>
@@ -6264,10 +6293,13 @@ function downloadCert(){
 }
 
 async function shareCert(){
+  const isStudent=currentUserData?.role==='student';
   const userName=currentUserData?.name||currentUser?.email?.split('@')[0]||'משתמש';
-  const lessons=teacherAnalytics?.completed||0;
-  const rank=getRank(lessons);
-  const text=`🎓 קיבלתי תעודת הצטיינות מ-Kidemy!\n${rank.icon} ${rank.name}\n${lessons} שיעורים | דירוג: ${teacherAnalytics?.avgRating||0}⭐\nהצטרפו אלי: kidemy-app.netlify.app`;
+  const lessons=isStudent?studentBookings.filter(b=>b.status==='completed').length:(teacherAnalytics?.completed||0);
+  const rank=isStudent?getStudentRank(lessons):getRank(lessons);
+  const text=isStudent
+    ?`🎓 קיבלתי תעודת הצטיינות מ-Kidemy!\n${rank.icon} ${rank.name}\n${lessons} שיעורים הושלמו\nהצטרפו: kidemy-app.netlify.app`
+    :`🎓 קיבלתי תעודת הצטיינות מ-Kidemy!\n${rank.icon} ${rank.name}\n${lessons} שיעורים | דירוג: ${teacherAnalytics?.avgRating||0}⭐\nהצטרפו אלי: kidemy-app.netlify.app`;
   if(navigator.share){
     try{await navigator.share({title:'תעודת הצטיינות Kidemy',text});}catch(e){}
   } else {
@@ -6277,9 +6309,11 @@ async function shareCert(){
 }
 
 function showRanksPanel(){
-  const lessons=teacherAnalytics?.completed||0;
-  const currentRank=getRank(lessons);
-  const nextRank=getNextRank(lessons);
+  const isStudent=currentUserData?.role==='student';
+  const lessons=isStudent?studentBookings.filter(b=>b.status==='completed').length:(teacherAnalytics?.completed||0);
+  const ranksArr=isStudent?STUDENT_RANKS:RANKS;
+  const currentRank=isStudent?getStudentRank(lessons):getRank(lessons);
+  const nextRank=isStudent?getNextStudentRank(lessons):getNextRank(lessons);
   const progress=nextRank?Math.round((lessons/nextRank.min)*100):100;
   
   const ov=document.createElement('div');
@@ -6313,7 +6347,7 @@ function showRanksPanel(){
       `:'<div style="text-align:center;padding:14px;color:#FFD700;font-weight:900;font-size:15px;margin-bottom:18px">👑 הגעת לדרגה הגבוהה ביותר!</div>'}
 
       <h4 style="font-weight:800;font-size:14px;margin:18px 0 12px;color:#0F1A1F">🏆 כל הדרגות</h4>
-      ${RANKS.map(r=>{
+      ${ranksArr.map(r=>{
         const achieved=lessons>=r.min;
         const isCurrent=r.name===currentRank.name;
         return `<div style="display:flex;align-items:center;gap:12px;padding:12px;background:${isCurrent?r.col+'15':achieved?'rgba(20,184,166,0.05)':'rgba(148,163,184,0.05)'};border:${isCurrent?'2px solid '+r.col:'1px solid rgba(20,184,166,0.1)'};border-radius:14px;margin-bottom:8px;${achieved?'':'opacity:0.5'}">
@@ -7412,11 +7446,11 @@ function Profile(){
       </div>`;}).join("")}`;
   }
 
-  if(tab==="ach") content=`
+  if(tab==="ach"){const achArr=isTeacher?ACHIEVEMENTS:STUDENT_ACHIEVEMENTS;content=`
     <p style="color:${C.muted};font-size:14px;margin:0 0 16px;line-height:1.7">הישגים שצברת:</p>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
-      ${ACHIEVEMENTS.map(a=>{const own=(currentUserData?.achievements||[]).includes(a.id);return `<div class="ach ${own?"":"locked"}"><div style="font-size:28px;margin-bottom:7px">${a.em}</div><div style="font-size:11px;font-weight:800;line-height:1.3">${a.ttl}</div>${own?`<div style="font-size:10px;color:${a.col};margin-top:4px;font-weight:700">✓ הושג</div>`:`<div style="font-size:9px;color:${C.muted};margin-top:4px">${a.desc}</div>`}</div>`;}).join("")}
-    </div>`;
+      ${achArr.map(a=>{const own=(currentUserData?.achievements||[]).includes(a.id);return `<div class="ach ${own?"":"locked"}"><div style="font-size:28px;margin-bottom:7px">${a.em}</div><div style="font-size:11px;font-weight:800;line-height:1.3">${a.ttl}</div>${own?`<div style="font-size:10px;color:${a.col};margin-top:4px;font-weight:700">✓ הושג</div>`:`<div style="font-size:9px;color:${C.muted};margin-top:4px">${a.desc}</div>`}</div>`;}).join("")}
+    </div>`;}
 
   if(tab==="about") content=`
     <div class="card"><h4 style="margin:0 0 10px;font-weight:800">👋 קצת עליי</h4><p style="margin:0;font-size:14px;line-height:1.7">${currentUserData?.bio||'עדיין לא כתבת קצת על עצמך.'}</p></div>
@@ -7466,7 +7500,7 @@ function Profile(){
 
   // ─── STUDENT PROFILE (dedicated design) ─────────────────────────────────────
   if(!isTeacher&&currentUserData?.role==='student'){
-    const _rank=getRank(studentBookings.filter(b=>b.status==='completed').length);
+    const _rank=getStudentRank(studentBookings.filter(b=>b.status==='completed').length);
     const _nextLesson=studentBookings.find(b=>b.status==='approved');
     const _achCount=(currentUserData?.achievements||[]).length;
     return `<div class="screen" style="background:linear-gradient(165deg,#EDE9FE 0%,#CCFBF1 50%,#BAE6FD 100%);padding-bottom:100px">
