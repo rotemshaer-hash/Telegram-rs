@@ -26,11 +26,9 @@ const firebaseConfig = {
   appId: "1:799651449632:web:3e16d3e8e28029f58aa545"
 };
 firebase.initializeApp(firebaseConfig);
-const auth    = firebase.auth();
-const db      = firebase.database();
-const storage = firebase.storage();
-// אין כניסה אוטומטית — המשתמש חייב להזין פרטים בכל כניסה לאפליקציה
-(async()=>{try{await auth.setPersistence(firebase.auth.Auth.Persistence.NONE);}catch(e){}})();
+// var (not const/let) prevents TDZ issues if Firebase CDN fails to load
+var auth=null,db=null,storage=null;
+try{auth=firebase.auth();db=firebase.database();storage=firebase.storage();}catch(e){console.error('Firebase init failed:',e);}
 </script>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
@@ -488,7 +486,7 @@ const ACHIEVEMENTS=[
   {id:6,em:"👥",ttl:"שיעור קבוצתי",desc:"לימדת קבוצה של 4 תלמידים",col:"#27AE60"},
 ];
 
-const APP_VERSION='4.8.8';
+const APP_VERSION='4.8.9';
 const APP_BUILD='14-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -9296,7 +9294,7 @@ if(typeof auth==='undefined'||!auth){
 auth&&auth.onAuthStateChanged(async user=>{
   if(user){loadRealTeachers();}
   if(user){
-    // אם המשתמש נכנס אוטומטית (session ישן לפני שהגדרנו NONE) — נתק מיד
+    // אין כניסה אוטומטית — רק כניסה ידנית מתקבלת (S._loggingIn=true מסמן כניסה ידנית)
     const _inRegFlow=['safety','parentReg','register','teacherPending','studentPending'].includes(S.screen);
     if(!S._registering&&!S._loggingIn&&!S._googleImporting&&!_inRegFlow){
       await auth.signOut().catch(()=>{});
@@ -9848,9 +9846,9 @@ function installApp(){
 // ── AUTO-UPDATE SERVICE WORKER ────────────────────────────────────────────────
 if('serviceWorker' in navigator){
   // Unregister any old SW not matching current version, then register fresh
-  const currentSwUrl='/sw.js?v=4.8.8';
+  const currentSwUrl='/sw.js?v=4.8.9';
   navigator.serviceWorker.getRegistrations().then(regs=>{
-    regs.forEach(r=>{if(r.active&&r.active.scriptURL&&!r.active.scriptURL.includes('4.8.8'))r.unregister();});
+    regs.forEach(r=>{if(r.active&&r.active.scriptURL&&!r.active.scriptURL.includes('4.8.9'))r.unregister();});
   });
   navigator.serviceWorker.register(currentSwUrl).then(reg=>{
     reg.update();
