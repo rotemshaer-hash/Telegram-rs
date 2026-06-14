@@ -407,7 +407,7 @@ async function loadRealTeachers(){
             av:t.photo?'📸':catObj.em,
             photo:t.photo||null,
             col:catObj.col,
-            badge:t.verified?'🏅 מורה מוסמך':(t.age?'🤝 עמית ללמידה | גיל '+(t.age||t.ageVerification?.age||16):'🤝 עמית ללמידה'),
+            badge:t.verified?'מורה מוסמך':'',
             ageVerified:t.ageVerification?.status==='verified',
             meetingLink:t.meetingLink||'',
             online:t.online!==false,
@@ -488,7 +488,7 @@ const ACHIEVEMENTS=[
   {id:6,em:"👥",ttl:"שיעור קבוצתי",desc:"לימדת קבוצה של 4 תלמידים",col:"#27AE60"},
 ];
 
-const APP_VERSION='4.8.7';
+const APP_VERSION='4.8.6';
 const APP_BUILD='14-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -1484,42 +1484,6 @@ function TeacherSetup(){
           <input id="tWhyTeach" class="inp" placeholder="❓ למה אתה מלמד?" style="margin-bottom:10px">
           <input id="tProudOf" class="inp" placeholder="🏆 מה הצלחה שגאית בה?" style="margin-bottom:10px">
           <input id="tTypicalLesson" class="inp" placeholder="🎯 איך שיעור טיפוסי שלך נראה?">
-          <div style="margin-top:14px;display:flex;align-items:flex-start;gap:10px;background:rgba(99,102,241,0.08);border:1.5px solid rgba(99,102,241,0.3);border-radius:14px;padding:14px">
-            <input type="checkbox" id="tParentConsent" style="margin-top:2px;flex-shrink:0;width:18px;height:18px;accent-color:#6366F1;cursor:pointer">
-            <label for="tParentConsent" style="font-size:13px;line-height:1.5;color:#334155;cursor:pointer;font-weight:600">👪 ההורים שלי יודעים ומאשרים שאני מלמד/ת בKidemy</label>
-          </div>
-        </div>
-      </div>
-
-      <!-- שעות זמינות -->
-      <div class="card" style="margin-bottom:18px;background:linear-gradient(135deg,rgba(16,185,129,0.08),rgba(20,184,166,0.05));border:1.5px solid rgba(16,185,129,0.25)">
-        <h3 style="font-weight:900;font-size:16px;margin:0 0 8px;color:#059669">⏰ זמינות ללימוד</h3>
-        <p style="color:#64748B;font-size:12px;margin:0 0 12px;line-height:1.6">הגדר מתי אתה זמין כדי שתלמידים יוכלו לתאם שיעורים בזמן שנוח לך</p>
-        <div class="ing" style="margin-bottom:10px"><label>עד מתי זמין ביום?</label>
-          <select id="tMaxHour" class="inp">
-            <option value="">בחר שעה מקסימלית</option>
-            <option value="15">עד 15:00</option>
-            <option value="16">עד 16:00</option>
-            <option value="17">עד 17:00</option>
-            <option value="18">עד 18:00</option>
-            <option value="19">עד 19:00</option>
-            <option value="20">עד 20:00</option>
-            <option value="21">עד 21:00</option>
-            <option value="22">עד 22:00</option>
-          </select>
-        </div>
-        <div class="ing"><label>מאיזו שעה זמין?</label>
-          <select id="tMinHour" class="inp">
-            <option value="">בחר שעה מינימלית</option>
-            <option value="8">מ-8:00</option>
-            <option value="9">מ-9:00</option>
-            <option value="10">מ-10:00</option>
-            <option value="12">מ-12:00</option>
-            <option value="13">מ-13:00</option>
-            <option value="14">מ-14:00</option>
-            <option value="15">מ-15:00</option>
-            <option value="16">מ-16:00</option>
-          </select>
         </div>
       </div>
 
@@ -1776,10 +1740,6 @@ async function saveTeacherProfile(){
       whyTeach:document.getElementById('tWhyTeach')?.value.trim()||null,
       proudOf:document.getElementById('tProudOf')?.value.trim()||null,
       typicalLesson:document.getElementById('tTypicalLesson')?.value.trim()||null,
-      parentConsent:document.getElementById('tParentConsent')?.checked||false,
-      parentConsentAt:document.getElementById('tParentConsent')?.checked?Date.now():null,
-      availableFrom:parseInt(document.getElementById('tMinHour')?.value)||null,
-      availableTo:parseInt(document.getElementById('tMaxHour')?.value)||null,
       rating:0,reviews:0,lessons:0,
       online:_modeOnline,
       group:false,
@@ -3049,14 +3009,7 @@ async function _saveLessonSummary(bookingId,enc){
     });
     // הגדל ספירת שיעורים אצל המורה
     const tSnap=await db.ref('teachers/'+tid+'/lessons').get();
-    const newLessonCount=(tSnap.val()||0)+1;
-    await db.ref('teachers/'+tid+'/lessons').set(newLessonCount).catch(()=>{});
-    // חגיגת אבן דרך לעמית המלמד
-    const _milestones={5:'🌟 וואו! 5 שיעורים! אתה כבר עמית מנוסה!',10:'🔥 10 שיעורים! אתה מדהים — המשך כך!',25:'💫 25 שיעורים! כבר מורה מנוסה! גאים בך!',50:'🏆 50 שיעורים!! אתה אגדה של Kidemy!'};
-    if(_milestones[newLessonCount]){
-      showFireToast(_milestones[newLessonCount]);
-      await db.ref('notifications/'+tid).push({type:'milestone',icon:'🏆',preview:_milestones[newLessonCount],read:false,createdAt:Date.now()}).catch(()=>{});
-    }
+    await db.ref('teachers/'+tid+'/lessons').set((tSnap.val()||0)+1).catch(()=>{});
     // התראה לתלמיד — סיכום + בקשת דירוג
     await db.ref('notifications/'+b.studentId).push({type:'lessonSummary',from:summary.teacherName,preview:'סיכום שיעור: '+topic,read:false,createdAt:Date.now()}).catch(()=>{});
     await db.ref('notifications/'+b.studentId).push({type:'rateLesson',bookingId,teacherId:tid,teacherName:summary.teacherName,from:summary.teacherName,preview:'איך היה השיעור עם '+summary.teacherName+'?',read:false,createdAt:Date.now()+1}).catch(()=>{});
@@ -7320,7 +7273,6 @@ function Chat(){
       <div style="width:42px;height:42px;border-radius:14px;background:#14B8A6 20;display:flex;align-items:center;justify-content:center;font-size:22px;background:rgba(20,184,166,0.15)">👤</div>
       <div><div style="font-weight:800;font-size:15px">${c.otherName||c.name||'משתמש'}</div><span style="font-size:11px;padding:3px 9px;background:rgba(16,185,129,0.15);color:#10B981;border-radius:50px;font-weight:700">פעיל</span></div>
       <div style="margin-right:auto;display:flex;gap:8px">
-        <button onclick="showReportDialog('user','${c.otherUid}','${(c.otherName||'משתמש').replace(/'/g,'')}')" style="background:rgba(239,68,68,0.1);border:none;color:#EF4444;font-size:14px;cursor:pointer;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center" title="דווח">🚨</button>
       </div>
     </div>
     <div style="background:#FFF8E1;padding:7px 14px;display:flex;gap:7px;align-items:center"><span>👁</span><span style="font-size:11px;color:#856404;font-weight:600">ההורים יכולים לצפות בשיחה זו</span></div>
