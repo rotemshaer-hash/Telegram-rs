@@ -494,7 +494,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.8';
+const APP_VERSION='4.9.9';
 const APP_BUILD='14-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -1944,6 +1944,10 @@ async function approveBooking(bookingId){
       if(stu.parentEmail)sendEmail(stu.parentEmail,`✅ שיעור אושר – ${stu.name||b.studentName||''}`,
         `שלום ${stu.parentName||'הורה יקר'} 👋\n\nהשיעור של ${stu.name||b.studentName||''} אושר!\n\n👨‍🏫 מורה: ${b.teacherName||''}\n📅 יום: ${b.day||''}\n🕐 שעה: ${b.time||''}\n${b.jitsiUrl?'🔗 קישור לשיעור: '+b.jitsiUrl:''}\n\nניתן לעקוב באפליקציה:\nhttps://kidemy-app.netlify.app\n\n– צוות Kidemy 💙`).catch(()=>{});
     }).catch(()=>{});
+    // יצירת ערך שיחה בשני הצדדים כדי שהמורה יקבל הודעות מהתלמיד ב-realtime
+    const _convInit={otherUid:b.studentId,otherName:b.studentName||'תלמיד',lastMessage:`שיעור אושר ✅ ${b.day||''} ${b.time||''}`,lastTime:Date.now(),unread:false};
+    db.ref('userChats/'+currentUser.uid+'/'+b.studentId).set(_convInit).catch(()=>{});
+    db.ref('userChats/'+b.studentId+'/'+currentUser.uid).set({..._convInit,otherUid:currentUser.uid,otherName:currentUserData?.name||b.teacherName||'',unread:false}).catch(()=>{});
     showFireToast('✅ אישרת את ההזמנה!');
     await loadTeacherBookings();
     render();
@@ -1987,6 +1991,18 @@ async function rejectBooking(bookingId){
   }catch(e){
     showFireToast('❌ שגיאה: '+e.message);
   }
+}
+
+// מחיקת הזמנה ישנה מרשימת המורה (הושלמה/נדחתה)
+async function deleteBooking(bookingId){
+  if(!confirm('למחוק הזמנה זו מהרשימה?'))return;
+  try{
+    teacherAllBookings=teacherAllBookings.filter(b=>(b.id||b.bookingId)!==bookingId);
+    teacherPendingBookings=teacherPendingBookings.filter(b=>(b.id||b.bookingId)!==bookingId);
+    await db.ref('teacherBookings/'+currentUser.uid+'/'+bookingId).remove();
+    render();
+    showFireToast('🗑 הוסר מהרשימה');
+  }catch(e){showFireToast('❌ '+e.message);}
 }
 
 function getMeetingLabel(url){
@@ -2079,6 +2095,8 @@ async function submitDirectReview(teacherId){
     await newRef.set(reviewData);
     // ALSO write to pendingReviews/ — flat admin queue, guaranteed readable
     await db.ref('pendingReviews').push({...reviewData, reviewId:newRef.key});
+    // שלח אימייל למנהל על ביקורת חדשה
+    sendAdminEmail('⭐ ביקורת חדשה ממתינה לאישור',`מאת: ${reviewData.fromName}\nלמורה: ${reviewData.to}\nדירוג: ${'⭐'.repeat(reviewData.stars)} (${reviewData.stars}/5)\n\nביקורת:\n"${(reviewData.review||'').substring(0,200)}"\n\nאשר/דחה בפאנל המנהל:\nhttps://kidemy-app.netlify.app`).catch(()=>{});
     // verify main write succeeded
     const verify=await newRef.get();
     if(!verify.exists()){
@@ -7490,7 +7508,7 @@ function Profile(){
             ${status==='pending'?`<div style="display:flex;gap:8px">
               <button onclick="rejectBooking('${b.id||b.bookingId||''}')" style="flex:1;background:rgba(239,68,68,0.1);border:1.5px solid rgba(239,68,68,0.3);color:#EF4444;border-radius:12px;padding:9px;font-weight:800;font-size:12px;cursor:pointer">✗ דחה</button>
               <button onclick="approveBooking('${b.id||b.bookingId||''}')" style="flex:1;background:linear-gradient(135deg,#10B981,#14B8A6);border:none;color:#fff;border-radius:12px;padding:9px;font-weight:800;font-size:12px;cursor:pointer">✓ אשר</button>
-            </div>`:(status==='approved'?`<button onclick="S.chat={otherUid:'${b.studentId||''}',otherName:'${(b.studentName||'תלמיד').replace(/'/g,'')}'};go('chat')" style="width:100%;background:rgba(6,182,212,0.1);border:1.5px solid rgba(6,182,212,0.3);color:#06B6D4;border-radius:12px;padding:9px;font-weight:800;font-size:12px;cursor:pointer">💬 שלח הודעה</button>`:'')}
+            </div>`:status==='approved'?`<button onclick="S.chat={otherUid:'${b.studentId||''}',otherName:'${(b.studentName||'תלמיד').replace(/'/g,'')}'};go('chat')" style="width:100%;background:rgba(6,182,212,0.1);border:1.5px solid rgba(6,182,212,0.3);color:#06B6D4;border-radius:12px;padding:9px;font-weight:800;font-size:12px;cursor:pointer">💬 שלח הודעה</button>`:`<button onclick="deleteBooking('${b.id||b.bookingId||''}')" style="width:100%;background:rgba(148,163,184,0.1);border:1.5px solid rgba(148,163,184,0.3);color:#94A3B8;border-radius:12px;padding:9px;font-weight:800;font-size:12px;cursor:pointer">🗑 מחק מהרשימה</button>`}
           </div>`).join('')}
       </div>`;
     }).join('');
@@ -7519,9 +7537,16 @@ function Profile(){
       </div>
 
       <div style="padding:0 14px">
+        ${studentBookings.length===0?`
+        <div style="background:linear-gradient(135deg,rgba(99,102,241,0.12),rgba(20,184,166,0.12));border:1.5px dashed rgba(99,102,241,0.35);border-radius:22px;padding:20px 16px;text-align:center;margin:-22px 0 16px;position:relative;z-index:2">
+          <div style="font-size:38px;margin-bottom:8px">🚀</div>
+          <div style="font-weight:900;font-size:15px;color:#1E1B4B;margin-bottom:4px">מוכן להתחיל?</div>
+          <div style="font-size:12px;color:#64748B;margin-bottom:12px">הזמן את השיעור הראשון שלך עכשיו!</div>
+          <button onclick="go('home')" style="background:linear-gradient(135deg,#6366F1,#14B8A6);border:none;color:#fff;border-radius:50px;padding:10px 24px;font-weight:900;font-size:13px;cursor:pointer;box-shadow:0 4px 14px rgba(99,102,241,0.4)">🔍 חפש מורה</button>
+        </div>`:`
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:-26px 0 16px;position:relative;z-index:2">
           ${[['📚',studentBookings.filter(b=>b.status==='completed').length,'הושלמו'],['⏰',studentBookings.filter(b=>b.status==='approved').length,'קרובים'],['🏆',_achCount,'הישגים'],['⏳',studentBookings.filter(b=>b.status==='pending').length,'ממתינים']].map(([e,v,l])=>`<div style="background:rgba(255,255,255,0.94);backdrop-filter:blur(16px);border-radius:18px;padding:13px 6px;text-align:center;box-shadow:0 6px 20px rgba(0,0,0,0.1)"><div style="font-size:18px;margin-bottom:2px">${e}</div><div style="font-weight:900;font-size:19px;color:#1E1B4B;line-height:1">${v}</div><div style="font-size:9px;color:#64748B;font-weight:700;margin-top:2px">${l}</div></div>`).join('')}
-        </div>
+        </div>`}
 
         ${_nextLesson?`<div style="background:linear-gradient(135deg,rgba(20,184,166,0.1),rgba(99,102,241,0.1));border:1.5px solid rgba(20,184,166,0.4);border-radius:20px;padding:14px 16px;margin-bottom:14px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span style="background:linear-gradient(135deg,#14B8A6,#06B6D4);color:#fff;padding:4px 12px;border-radius:50px;font-size:11px;font-weight:800">⏰ הבא</span><span style="font-weight:900;font-size:14px;color:#1E1B4B">📅 השיעור הבא שלי</span></div><div style="display:flex;justify-content:space-between;align-items:center"><button onclick="S.chat={otherUid:'${_nextLesson.teacherId||''}',otherName:'${((_nextLesson.teacherName||'').replace(/'/g,"\\'"))}'}; go('chat')" style="background:rgba(6,182,212,0.1);border:1.5px solid rgba(6,182,212,0.35);color:#06B6D4;border-radius:50px;padding:8px 15px;font-weight:800;font-size:12px;cursor:pointer">💬 הודעה</button><div style="text-align:right"><div style="font-weight:900;font-size:14px;color:#0F1A1F">${_nextLesson.teacherName||'מורה'}</div><div style="font-size:12px;color:#64748B">📅 ${_nextLesson.day||''} • ⏰ ${_nextLesson.time||''}</div></div></div></div>`:''}
 
@@ -7870,6 +7895,7 @@ async function postNew(){
     const ref=await db.ref('communityPosts').push(post);
     if(!isAdmin()){
       db.ref('adminAlerts/posts/'+ref.key).set({author:post.author,text:(post.text||'').substring(0,60),createdAt:Date.now()}).catch(()=>{});
+      sendAdminEmail('📝 פוסט חדש ממתין לאישור',`מאת: ${post.author} (${currentUserData?.role==='teacher'?'מורה':'תלמיד'})\n\nתוכן:\n"${(post.text||'').substring(0,200)}"\n\nאשר/מחק בפאנל המנהל:\nhttps://kidemy-app.netlify.app`).catch(()=>{});
     }
     // מייל להורה על פרסום בקהילה
     if(currentUserData?.parentEmail){
@@ -9995,7 +10021,7 @@ function installApp(){
 
 // ── AUTO-UPDATE SERVICE WORKER ────────────────────────────────────────────────
 if('serviceWorker' in navigator){
-  const currentSwUrl='/sw.js?v=4.9.8';
+  const currentSwUrl='/sw.js?v=4.9.9';
   // Unregister SWs that are NOT the current version
   navigator.serviceWorker.getRegistrations().then(regs=>{
     regs.forEach(r=>{
