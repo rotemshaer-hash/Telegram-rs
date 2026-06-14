@@ -486,7 +486,7 @@ const ACHIEVEMENTS=[
   {id:6,em:"👥",ttl:"שיעור קבוצתי",desc:"לימדת קבוצה של 4 תלמידים",col:"#27AE60"},
 ];
 
-const APP_VERSION='4.9.0';
+const APP_VERSION='4.9.1';
 const APP_BUILD='14-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -6848,9 +6848,9 @@ function Teacher(){
       <!-- Share -->
       <button onclick="shareTeacher(S.teacher)" style="width:100%;background:linear-gradient(135deg,#833AB4,#FD1D1D,#F77737);color:#fff;border:none;border-radius:50px;padding:12px 20px;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;margin-bottom:16px">📤 שתף מורה</button>
 
-      ${currentUser&&t.id!==currentUser?.uid?`
-        <button onclick="S.chat={otherUid:'${t.id}',otherName:'${(t.name||'').replace(/'/g,"\\'")}'}; go('chat')" style="width:100%;background:rgba(6,182,212,0.1);border:1.5px solid rgba(6,182,212,0.3);color:#06B6D4;border-radius:50px;padding:13px;font-weight:800;font-size:14px;cursor:pointer;margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:8px">💬 שלח הודעה פרטית</button>
-        <button onclick="S.ratingT='${t.id}';S.ratingDone=false;S.ratingStars=0;render()" style="width:100%;background:rgba(251,191,36,0.1);border:1.5px solid rgba(251,191,36,0.35);color:#B45309;border-radius:50px;padding:13px;font-weight:800;font-size:14px;cursor:pointer;margin-bottom:14px;display:flex;align-items:center;justify-content:center;gap:8px">⭐ כתוב ביקורת על המורה</button>
+      ${t.id!==currentUser?.uid?`
+        <button onclick="${currentUser?`S.chat={otherUid:'${t.id}',otherName:'${(t.name||'').replace(/'/g,"\\'")}'}; go('chat')`:`showFireToast('יש להתחבר כדי לשלוח הודעה');go('login')`}" style="width:100%;background:rgba(6,182,212,0.1);border:1.5px solid rgba(6,182,212,0.3);color:#06B6D4;border-radius:50px;padding:13px;font-weight:800;font-size:14px;cursor:pointer;margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:8px">💬 שלח הודעה פרטית</button>
+        <button onclick="${currentUser?`S.ratingT='${t.id}';S.ratingDone=false;S.ratingStars=0;render()`:`showFireToast('יש להתחבר כדי לכתוב ביקורת');go('login')`}" style="width:100%;background:rgba(251,191,36,0.1);border:1.5px solid rgba(251,191,36,0.35);color:#B45309;border-radius:50px;padding:13px;font-weight:800;font-size:14px;cursor:pointer;margin-bottom:14px;display:flex;align-items:center;justify-content:center;gap:8px">⭐ כתוב ביקורת על המורה</button>
       `:''}
 
       <!-- Book -->
