@@ -494,7 +494,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.7';
+const APP_VERSION='4.9.8';
 const APP_BUILD='14-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -7356,6 +7356,8 @@ function Profile(){
   const isTeacher=currentUserData?.role==='teacher'&&!!myT;
   const myCats=isTeacher&&myT.cats?.length?myT.cats:(myT?.cat?[myT.cat]:[]);
   if(isTeacher&&myCats.length&&(!S.pTab||S.pTab==='videos'||S.pTab==='upload'))S.pTab=myCats[0];
+  // תלמיד — אם pTab לא שייך לטאבים שלו (כגון "videos" שהוא ברירת מחדל למורה), אפס ל-lessons
+  if(!isTeacher&&!['lessons','ach','about'].includes(S.pTab))S.pTab=null;
   const tab=S.pTab||(isTeacher&&myCats.length?myCats[0]:'lessons');
   let content="";
 
@@ -9993,7 +9995,7 @@ function installApp(){
 
 // ── AUTO-UPDATE SERVICE WORKER ────────────────────────────────────────────────
 if('serviceWorker' in navigator){
-  const currentSwUrl='/sw.js?v=4.9.7';
+  const currentSwUrl='/sw.js?v=4.9.8';
   // Unregister SWs that are NOT the current version
   navigator.serviceWorker.getRegistrations().then(regs=>{
     regs.forEach(r=>{
