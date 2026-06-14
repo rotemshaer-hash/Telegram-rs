@@ -494,7 +494,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.5';
+const APP_VERSION='4.9.6';
 const APP_BUILD='14-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -9588,7 +9588,9 @@ auth&&auth.onAuthStateChanged(async user=>{
       // כל שגיאה אחרת (כולל PERMISSION_DENIED) — המשתמש כבר בפנים, רק הצג אזהרה
       showFireToast('⚠️ בעיית רשת — חלק מהנתונים לא נטענו');
     }
-    render();
+    // אם המשתמש מאומת ועדיין על מסך login/splash לאחר שגיאה — נווט לבית
+    if(auth?.currentUser&&(S.screen==='login'||S.screen==='splash')){go('home');}
+    else render();
   } else {
     stopChatListener();
     teardownConvListeners();
@@ -9897,6 +9899,14 @@ async function firebaseLogin(usernameOrEmail,password){
     const email=usernameOrEmail.includes('@')?usernameOrEmail:usernameOrEmail.toLowerCase()+'@kidemy.app';
     await auth.signInWithEmailAndPassword(email,password);
     showFireToast('✅ ברוך הבא!');
+    // Safety net: if onAuthStateChanged doesn't navigate within 4s, force navigate
+    setTimeout(()=>{
+      if((S.screen==='login'||S.screen==='splash')&&auth?.currentUser){
+        S._loggingIn=false;
+        currentUser=auth.currentUser;
+        go('home');
+      }
+    },4000);
   }catch(e){
     S._loggingIn=false;
     const m={
@@ -9971,7 +9981,7 @@ function installApp(){
 
 // ── AUTO-UPDATE SERVICE WORKER ────────────────────────────────────────────────
 if('serviceWorker' in navigator){
-  const currentSwUrl='/sw.js?v=4.9.5';
+  const currentSwUrl='/sw.js?v=4.9.6';
   // Unregister SWs that are NOT the current version
   navigator.serviceWorker.getRegistrations().then(regs=>{
     regs.forEach(r=>{
