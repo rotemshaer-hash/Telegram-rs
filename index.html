@@ -2526,8 +2526,12 @@ function showCropDialog(dataUrl,callback,aw=1,ah=1){
     cx=cx??stage.clientWidth/2;cy=cy??stage.clientHeight/2;
     ox=(ox-cx)*f+cx;oy=(oy-cy)*f+cy;sc*=f;applyT();
   }
-  img.onload=()=>{updateFrame();initImg();};
-  if(img.complete&&img.naturalWidth)setTimeout(()=>{updateFrame();initImg();},30);
+  const _doInit=()=>{updateFrame();initImg();};
+  img.onload=_doInit;
+  // Force reload so onload always fires, even for cached/instant data URLs
+  if(img.complete){const s=img.src;img.src='';img.src=s;}
+  // decode() fallback for browsers that skip onload on fast data URLs
+  img.decode?.().then(_doInit).catch(()=>{});
 
   document.getElementById('_cropZoomIn').onclick=()=>doZoom(1.18);
   document.getElementById('_cropZoomOut').onclick=()=>doZoom(0.85);
@@ -7318,7 +7322,7 @@ function Profile(){
   const isTeacher=currentUserData?.role==='teacher'&&!!myT;
   const myCats=isTeacher&&myT.cats?.length?myT.cats:(myT?.cat?[myT.cat]:[]);
   if(isTeacher&&myCats.length&&(!S.pTab||S.pTab==='videos'||S.pTab==='upload'))S.pTab=myCats[0];
-  const tab=S.pTab||(isTeacher&&myCats.length?myCats[0]:'videos');
+  const tab=S.pTab||(isTeacher&&myCats.length?myCats[0]:'lessons');
   let content="";
 
   if(isTeacher&&myCats.includes(tab)){
@@ -7347,6 +7351,20 @@ function Profile(){
         return `<div class="card" style="padding:0;overflow:hidden"><div style="aspect-ratio:16/9;background:${thumb?'url('+thumb+') center/cover,':''}linear-gradient(135deg,#14B8A6,#A855F7);position:relative;cursor:pointer" onclick="window.open('${v.url}','_blank')"><div style="position:absolute;inset:0;background:rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center"><div style="background:rgba(255,255,255,0.95);width:54px;height:54px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px">▶️</div></div>${v.approved===true?`<div style="position:absolute;top:10px;right:10px;background:rgba(16,185,129,0.95);color:#fff;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:800">✓ פורסם</div>`:v.approved==='rejected'?`<div style="position:absolute;top:10px;right:10px;background:rgba(239,68,68,0.95);color:#fff;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:800">✗ לא מאושר</div>`:`<div style="position:absolute;top:10px;right:10px;background:rgba(245,158,11,0.95);color:#fff;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:800">⏳ מחכה לאישור</div>`}</div><div style="padding:13px 15px"><p style="margin:0 0 5px;font-weight:800;font-size:14px">${v.title}</p>${v.desc?`<p style="margin:0 0 7px;font-size:12px;color:#64748B;line-height:1.5">${v.desc}</p>`:''}<div style="display:flex;gap:8px;align-items:center;justify-content:space-between">${!v.cat?`<button onclick="assignVideoCategory('${v.id}','${tab}')" style="background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.4);color:#B45309;border-radius:50px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer">🏷 שייך ל${catObj.lbl}</button>`:`<div></div>`}<div style="display:flex;gap:8px"><button onclick="deleteMyVideo('${v.id}')" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#EF4444;border-radius:50px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer">🗑</button><span style="font-size:12px;color:${C.muted};align-self:center">👁 ${v.views||0}</span></div></div></div></div>`;
       }).join('');
     })()}`;
+  }
+
+  if(!isTeacher&&tab==='lessons'){
+    const _sb={upcoming:studentBookings.filter(b=>b.status==='approved'),pending:studentBookings.filter(b=>b.status==='pending'),completed:studentBookings.filter(b=>b.status==='completed'),rejected:studentBookings.filter(b=>b.status==='rejected')};
+    if(studentBookings.length===0){
+      content=`<div style="background:rgba(255,255,255,0.85);backdrop-filter:blur(12px);border-radius:22px;padding:36px 20px;text-align:center;margin-top:10px"><div style="font-size:64px;margin-bottom:12px">📚</div><h3 style="font-weight:900;font-size:17px;margin:0 0 8px;color:#1E1B4B">עוד לא הזמנת שיעור</h3><p style="color:#64748B;font-size:14px;margin:0 0 20px;line-height:1.6">מצא מורה מדהים ותתחיל ללמוד משהו חדש!</p><button onclick="go('home')" style="background:linear-gradient(135deg,#14B8A6,#A855F7);border:none;color:#fff;border-radius:50px;padding:13px 28px;font-weight:900;font-size:14px;cursor:pointer;box-shadow:0 6px 20px rgba(168,85,247,0.35)">🔍 חפש מורה עכשיו</button></div>`;
+    } else {
+      content=['approved','pending','completed','rejected'].map(status=>{
+        const list=_sb[status]||[];if(!list.length)return '';
+        const cfg={approved:['#10B981','✅ שיעורים קרובים'],pending:['#F59E0B','⏳ ממתינים לאישור'],completed:['#6366F1','🎓 שיעורים שהושלמו'],rejected:['#EF4444','✗ שיעורים שנדחו']};
+        const[col,label]=cfg[status];
+        return `<div style="margin-bottom:14px"><h4 style="font-size:13px;font-weight:800;color:${col};margin:0 0 8px">${label} (${list.length})</h4>${list.map(b=>`<div style="background:#fff;border-radius:18px;padding:14px 16px;margin-bottom:8px;box-shadow:0 3px 14px rgba(0,0,0,0.06);border-right:4px solid ${col}"><div style="display:flex;justify-content:space-between;align-items:center"><div style="display:flex;gap:8px">${status==='approved'?`<button onclick="S.chat={otherUid:'${b.teacherId||''}',otherName:'${(b.teacherName||'').replace(/'/g,"\\'")}'}; go('chat')" style="background:rgba(6,182,212,0.1);border:1.5px solid rgba(6,182,212,0.3);color:#06B6D4;border-radius:50px;padding:7px 13px;font-size:11px;font-weight:800;cursor:pointer">💬</button>`:''} ${status==='completed'?`<button onclick="S.ratingT='${b.teacherId||''}';S.ratingDone=false;S.ratingStars=0;render()" style="background:rgba(251,191,36,0.1);border:1.5px solid rgba(251,191,36,0.4);color:#B45309;border-radius:50px;padding:7px 13px;font-size:11px;font-weight:800;cursor:pointer">⭐ דרג</button>`:''}</div><div style="text-align:right"><div style="font-weight:900;font-size:14px;color:#0F1A1F">${b.teacherName||'מורה'}</div><div style="font-size:12px;color:#64748B">📅 ${b.day||''} • ⏰ ${b.time||''}</div><div style="font-size:12px;color:#64748B">💰 ₪${b.price||0}</div></div></div></div>`).join('')}</div>`;
+      }).join('');
+    }
   }
 
   if(!isTeacher&&tab==="videos"){
@@ -7444,7 +7462,45 @@ function Profile(){
 
   const tabItems=isTeacher&&myCats.length
     ?[...myCats.map(cid=>{const c=CATS.find(x=>x.id===cid)||{em:'🎓',lbl:cid};return [cid,c.em+' '+c.lbl];}),...[['bookings','📅 הזמנות'+(teacherPendingBookings.length>0?` (${teacherPendingBookings.length})`:'')],['ach','🏆 הישגים'],['about','👤 אודות']]]
-    :[['videos','📹 סרטונים'],['ach','🏆 הישגים'],['about','👤 אודות']];
+    :[['lessons','📅 שיעורים'],['ach','🏆 הישגים'],['about','👤 אודות']];
+
+  // ─── STUDENT PROFILE (dedicated design) ─────────────────────────────────────
+  if(!isTeacher&&currentUserData?.role==='student'){
+    const _rank=getRank(studentBookings.filter(b=>b.status==='completed').length);
+    const _nextLesson=studentBookings.find(b=>b.status==='approved');
+    const _achCount=(currentUserData?.achievements||[]).length;
+    return `<div class="screen" style="background:linear-gradient(165deg,#EDE9FE 0%,#CCFBF1 50%,#BAE6FD 100%);padding-bottom:100px">
+      <div style="background:linear-gradient(155deg,#1E1B4B 0%,#312E81 45%,#14B8A6 100%);padding:36px 20px 52px;border-radius:0 0 40px 40px;text-align:center;color:#fff;position:relative;overflow:hidden">
+        <div style="position:absolute;top:-70px;left:-50px;width:200px;height:200px;border-radius:50%;background:rgba(168,85,247,0.18);filter:blur(10px)"></div>
+        <div style="position:absolute;bottom:-50px;right:-40px;width:160px;height:160px;border-radius:50%;background:rgba(20,184,166,0.2);filter:blur(10px)"></div>
+        <button onclick="confirmLogout()" style="position:absolute;top:18px;left:16px;background:rgba(231,76,60,0.88);border:none;color:#fff;font-size:12px;font-weight:800;cursor:pointer;border-radius:50px;padding:8px 14px;z-index:2">🚪 יציאה</button>
+        <button onclick="shareApp()" style="position:absolute;top:18px;right:16px;background:rgba(255,255,255,0.18);border:none;color:#fff;font-size:17px;cursor:pointer;border-radius:50%;width:38px;height:38px;display:flex;align-items:center;justify-content:center;z-index:2">📤</button>
+        <div onclick="document.getElementById('profilePhotoInput').click()" style="width:88px;height:88px;border-radius:50%;margin:0 auto 12px;background:rgba(255,255,255,0.18);display:flex;align-items:center;justify-content:center;font-size:42px;position:relative;z-index:1;cursor:pointer;overflow:hidden;border:3px solid rgba(255,255,255,0.4);box-shadow:0 8px 28px rgba(0,0,0,0.3)">${currentUserData?.photo?`<img src="${currentUserData.photo}" style="width:100%;height:100%;object-fit:cover" alt="">`:'🎒'}<div style="position:absolute;bottom:0;right:0;background:#14B8A6;border:2px solid #fff;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:12px">📷</div></div>
+        <input type="file" id="profilePhotoInput" accept="image/*" style="display:none" onchange="uploadProfilePhoto()">
+        <h2 style="font-size:23px;font-weight:900;margin:0 0 4px;position:relative;z-index:1">${currentUserData?.name||'תלמיד'}</h2>
+        <p style="font-size:13px;opacity:0.75;margin:0 0 12px;position:relative;z-index:1">תלמיד ב-Kidemy ✨</p>
+        <span style="background:${_rank.grad};color:#fff;padding:7px 18px;border-radius:50px;font-size:13px;font-weight:900;display:inline-flex;align-items:center;gap:7px;box-shadow:0 4px 16px rgba(0,0,0,0.28);position:relative;z-index:1">${_rank.icon} ${_rank.name}</span>
+      </div>
+
+      <div style="padding:0 14px">
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:-26px 0 16px;position:relative;z-index:2">
+          ${[['📚',studentBookings.filter(b=>b.status==='completed').length,'הושלמו'],['⏰',studentBookings.filter(b=>b.status==='approved').length,'קרובים'],['🏆',_achCount,'הישגים'],['⏳',studentBookings.filter(b=>b.status==='pending').length,'ממתינים']].map(([e,v,l])=>`<div style="background:rgba(255,255,255,0.94);backdrop-filter:blur(16px);border-radius:18px;padding:13px 6px;text-align:center;box-shadow:0 6px 20px rgba(0,0,0,0.1)"><div style="font-size:18px;margin-bottom:2px">${e}</div><div style="font-weight:900;font-size:19px;color:#1E1B4B;line-height:1">${v}</div><div style="font-size:9px;color:#64748B;font-weight:700;margin-top:2px">${l}</div></div>`).join('')}
+        </div>
+
+        ${_nextLesson?`<div style="background:linear-gradient(135deg,rgba(20,184,166,0.1),rgba(99,102,241,0.1));border:1.5px solid rgba(20,184,166,0.4);border-radius:20px;padding:14px 16px;margin-bottom:14px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span style="background:linear-gradient(135deg,#14B8A6,#06B6D4);color:#fff;padding:4px 12px;border-radius:50px;font-size:11px;font-weight:800">⏰ הבא</span><span style="font-weight:900;font-size:14px;color:#1E1B4B">📅 השיעור הבא שלי</span></div><div style="display:flex;justify-content:space-between;align-items:center"><button onclick="S.chat={otherUid:'${_nextLesson.teacherId||''}',otherName:'${((_nextLesson.teacherName||'').replace(/'/g,"\\'"))}'}; go('chat')" style="background:rgba(6,182,212,0.1);border:1.5px solid rgba(6,182,212,0.35);color:#06B6D4;border-radius:50px;padding:8px 15px;font-weight:800;font-size:12px;cursor:pointer">💬 הודעה</button><div style="text-align:right"><div style="font-weight:900;font-size:14px;color:#0F1A1F">${_nextLesson.teacherName||'מורה'}</div><div style="font-size:12px;color:#64748B">📅 ${_nextLesson.day||''} • ⏰ ${_nextLesson.time||''}</div></div></div></div>`:''}
+
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px">
+          <button onclick="go('home')" style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:18px;padding:14px 6px;font-weight:900;font-size:12px;cursor:pointer;box-shadow:0 5px 16px rgba(20,184,166,0.38)">📚<br>הזמן שיעור</button>
+          <button onclick="showCertificate()" style="background:linear-gradient(135deg,#EC4899,#DB2777);border:none;color:#fff;border-radius:18px;padding:14px 6px;font-weight:900;font-size:12px;cursor:pointer;box-shadow:0 5px 16px rgba(236,72,153,0.38)">🎖<br>התעודה שלי</button>
+          <button onclick="showRanksPanel()" style="background:linear-gradient(135deg,#A855F7,#7E22CE);border:none;color:#fff;border-radius:18px;padding:14px 6px;font-weight:900;font-size:12px;cursor:pointer;box-shadow:0 5px 16px rgba(168,85,247,0.38)">🏅<br>דרגות</button>
+        </div>
+
+        <div class="tabs" style="margin-bottom:14px">${tabItems.map(([id,lbl])=>`<button class="${tab===id?'on':''}" onclick="S.pTab='${id}';render()">${lbl}</button>`).join('')}</div>
+        ${content}
+      </div>
+      ${BNav("profile")}
+    </div>`;
+  }
 
   return `<div class="screen" style="background:linear-gradient(165deg,#CCFBF1 0%,#A5F3FC 50%,#7DD3FC 100%);padding-bottom:100px">
     <div style="background:linear-gradient(135deg,#0F766E,#8E44AD);padding:32px 20px 40px;border-radius:0 0 32px 32px;text-align:center;color:#fff;position:relative;overflow:hidden">
