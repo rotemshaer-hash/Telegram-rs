@@ -14,6 +14,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
 <script>
 const firebaseConfig = {
   apiKey: "AIzaSyAH_mPUppf6_4nTz450N-doDSXUSgigwtE",
@@ -25,8 +26,9 @@ const firebaseConfig = {
   appId: "1:799651449632:web:3e16d3e8e28029f58aa545"
 };
 firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db   = firebase.database();
+const auth    = firebase.auth();
+const db      = firebase.database();
+const storage = firebase.storage();
 // אין כניסה אוטומטית — המשתמש חייב להזין פרטים בכל כניסה לאפליקציה
 auth.setPersistence(firebase.auth.Auth.Persistence.NONE);
 </script>
@@ -454,8 +456,8 @@ const ACHIEVEMENTS=[
   {id:6,em:"👥",ttl:"שיעור קבוצתי",desc:"לימדת קבוצה של 4 תלמידים",col:"#27AE60"},
 ];
 
-const APP_VERSION='4.8.2';
-const APP_BUILD='13-06-2026';
+const APP_VERSION='4.8.3';
+const APP_BUILD='14-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
 let S={
@@ -557,6 +559,54 @@ window.addEventListener('popstate',()=>{
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 function escapeHtml(s){if(!s)return '';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 function safeUrl(u){if(!u)return '';return /^https?:\/\//i.test(String(u).trim())?String(u).trim():'';}
+
+// ─── Firebase Storage upload ──────────────────────────────────────────────────
+// Uploads base64 data URL to Firebase Storage; returns download URL.
+// Gracefully falls back to the base64 string if Storage is unavailable.
+async function uploadBase64ToStorage(base64DataUrl, path){
+  if(!base64DataUrl||!base64DataUrl.startsWith('data:'))return base64DataUrl||null;
+  try{
+    const res=await fetch(base64DataUrl);
+    const blob=await res.blob();
+    const ref=storage.ref(path);
+    const snap=await ref.put(blob,{contentType:blob.type||'image/jpeg'});
+    return await snap.ref.getDownloadURL();
+  }catch(e){
+    console.warn('[Storage] upload failed, fallback to base64:',e.message);
+    return base64DataUrl;
+  }
+}
+
+// ─── Offline detection banner ─────────────────────────────────────────────────
+function _updateOfflineBanner(){
+  const el=document.getElementById('_offlineBanner');
+  if(!navigator.onLine){
+    if(!el){
+      const b=document.createElement('div');
+      b.id='_offlineBanner';
+      b.style.cssText='position:fixed;top:0;left:0;right:0;background:#EF4444;color:#fff;text-align:center;padding:10px 16px;font-size:13px;font-weight:800;z-index:99999;direction:rtl;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 2px 12px rgba(239,68,68,0.4)';
+      b.innerHTML='<span>📡</span><span>אין חיבור לאינטרנט — חלק מהפיצ׳רים לא יעבדו</span>';
+      document.body.prepend(b);
+    }
+  }else{el?.remove();}
+}
+window.addEventListener('online',_updateOfflineBanner);
+window.addEventListener('offline',_updateOfflineBanner);
+
+// ─── Global error boundary ────────────────────────────────────────────────────
+window.onerror=function(msg,src,line,col,err){
+  console.error('[GlobalError]',msg,'@',src,line+':'+col,err);
+  if(src&&(src.includes('kidemy-app')||src.includes('localhost')||src.includes('127.0.0.1'))){
+    if(typeof showFireToast==='function')showFireToast('⚠️ שגיאה לא צפויה — נסה לרענן את הדף');
+  }
+  return false;
+};
+window.onunhandledrejection=function(ev){
+  const msg=(ev.reason?.message||String(ev.reason||''));
+  console.warn('[UnhandledPromise]',msg);
+  if(msg.includes('network')||msg.includes('Failed to fetch')||msg.includes('offline'))return;
+};
+
 
 function kcbToggle(el){const r=el.closest('.kcb-row');if(!r)return;const v=r.dataset.checked==='true';r.dataset.checked=v?'false':'true';}
 function kcbChecked(id){const el=document.getElementById(id);return el?.dataset.checked==='true';}
@@ -1494,10 +1544,12 @@ async function uploadSetupPhoto(input){
   reader.onload=ev=>{
     showCropDialog(ev.target.result,async(dataUrl)=>{
       try{
-        await db.ref('users/'+currentUser.uid+'/photo').set(dataUrl);
-        if(currentUserData)currentUserData.photo=dataUrl;
+        showFireToast('⏳ מעלה תמונה...');
+        const photoUrl=await uploadBase64ToStorage(dataUrl,`photos/${currentUser.uid}/profile`);
+        await db.ref('users/'+currentUser.uid+'/photo').set(photoUrl);
+        if(currentUserData)currentUserData.photo=photoUrl;
         const circle=document.getElementById('tSetupPhotoCircle');
-        if(circle)circle.innerHTML=`<img src="${dataUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%" alt=""><div style="position:absolute;bottom:0;right:0;background:#14B8A6;border:2px solid #fff;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:13px">📷</div>`;
+        if(circle)circle.innerHTML=`<img src="${photoUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%" alt=""><div style="position:absolute;bottom:0;right:0;background:#14B8A6;border:2px solid #fff;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:13px">📷</div>`;
         showFireToast('✅ תמונה הועלתה!');
       }catch(e){showFireToast('❌ '+e.message);}
     },1,1);
@@ -1550,11 +1602,16 @@ async function saveTeacherProfile(){
       ageVerification:{
         age:parseInt(document.getElementById('tAge')?.value||0)||null,
         idType:document.getElementById('tIdType')?.value||null,
-        idPhoto:_idPhotoBase64||null,
+        idPhoto:null,
         status:'pending',
         submittedAt:Date.now()
       }
     };
+
+    if(_idPhotoBase64){
+      showFireToast('⏳ מעלה תמונת תז...');
+      teacherData.ageVerification.idPhoto=await uploadBase64ToStorage(_idPhotoBase64,`id-photos/${currentUser.uid}/teacher-id`);
+    }
 
     if(_gpsSetup){
       try{
@@ -2113,25 +2170,34 @@ function smartSearch(query){
   if(!query||!query.trim())return TEACHERS;
   const q=query.toLowerCase().trim();
   const qHe=query.trim();
-  return TEACHERS.filter(t=>{
-    const catLabel=(CATS.find(c=>c.id===t.cat)?.lbl||'');
-    const catEm=(CATS.find(c=>c.id===t.cat)?.em||'');
-    // בדיקת כל הקטגוריות (כולל מרובות)
-    const allCatsMatch=(t.cats||[t.cat]).some(cid=>{
-      const cObj=CATS.find(c=>c.id===cid);
-      return (cObj?.lbl||'').includes(qHe)||(cObj?.lbl||'').toLowerCase().includes(q)||(cid||'').toLowerCase().includes(q);
-    });
-    // בדיקת מקצועות מותאמים
-    const customMatch=(t.customCats||[]).some(cc=>(cc||'').includes(qHe)||(cc||'').toLowerCase().includes(q));
-    return allCatsMatch||customMatch||
-           (t.name||'').toLowerCase().includes(q)||
-           catLabel.includes(qHe)||
-           catLabel.toLowerCase().includes(q)||
-           catEm.includes(q)||
-           (t.city||'').toLowerCase().includes(q)||
-           (t.area||'').toLowerCase().includes(q)||
-           (t.desc||'').toLowerCase().includes(q);
-  });
+  // Pre-build a cat lookup map once per call
+  const catMap=Object.fromEntries(CATS.map(c=>[c.id,c]));
+  const scored=[];
+  for(const t of TEACHERS){
+    const mainCat=catMap[t.cat]||{};
+    const allCatLabels=(t.cats||[t.cat]).map(cid=>(catMap[cid]?.lbl||''));
+    const nameLo=(t.name||'').toLowerCase();
+    const cityLo=(t.city||'').toLowerCase();
+    const areaLo=(t.area||'').toLowerCase();
+    const descLo=(t.desc||'').toLowerCase();
+    const mainLbl=(mainCat.lbl||'');
+    let score=0;
+    // Exact name match — highest priority
+    if(nameLo===q)score+=100;
+    else if(nameLo.startsWith(q))score+=60;
+    else if(nameLo.includes(q))score+=30;
+    // Category matches
+    if(allCatLabels.some(l=>l===qHe||l.toLowerCase()===q))score+=80;
+    else if(allCatLabels.some(l=>l.includes(qHe)||l.toLowerCase().includes(q)))score+=40;
+    // Custom cats
+    if((t.customCats||[]).some(cc=>(cc||'').includes(qHe)||(cc||'').toLowerCase().includes(q)))score+=35;
+    // City / area
+    if(cityLo.includes(q)||areaLo.includes(q))score+=20;
+    // Bio
+    if(descLo.includes(q))score+=10;
+    if(score>0)scored.push({t,score});
+  }
+  return scored.sort((a,b)=>b.score-a.score).map(x=>x.t);
 }
 
 // ─── פילטרים מתקדמים 🎯 ──────────────────────────────────────────────────────
@@ -2392,17 +2458,19 @@ async function uploadProfilePhoto(){
   reader.onload=ev=>{
     showCropDialog(ev.target.result,async(dataUrl)=>{
       try{
-        await db.ref('users/'+currentUser.uid+'/photo').set(dataUrl);
-        if(currentUserData)currentUserData.photo=dataUrl;
+        showFireToast('⏳ מעלה תמונה...');
+        const photoUrl=await uploadBase64ToStorage(dataUrl,`photos/${currentUser.uid}/profile`);
+        await db.ref('users/'+currentUser.uid+'/photo').set(photoUrl);
+        if(currentUserData)currentUserData.photo=photoUrl;
         if(currentUserData?.role==='teacher'){
-          await db.ref('teachers/'+currentUser.uid+'/photo').set(dataUrl);
+          await db.ref('teachers/'+currentUser.uid+'/photo').set(photoUrl);
           const t=TEACHERS.find(x=>x.id===currentUser.uid);
-          if(t)t.photo=dataUrl;
+          if(t)t.photo=photoUrl;
         }
         showFireToast('✅ התמונה הועלתה!');
         render();
       }catch(e){showFireToast('❌ '+e.message);}
-    },1,1); // square crop for profile photo
+    },1,1);
   };
   reader.readAsDataURL(file);
 }
@@ -9139,6 +9207,13 @@ async function firebaseRegister(email,password,userData){
     const cred=await auth.createUserWithEmailAndPassword(email,password);
     // שמור displayName ב-Auth עצמו — כגיבוי לשם גם אם DB יאבד
     if(userData.name) await cred.user.updateProfile({displayName:userData.name}).catch(()=>{});
+    // העלה תמונת תז הורה ל-Storage (אם קיימת) לפני כתיבה ל-RTDB
+    if(userData.parentIdPhoto&&userData.parentIdPhoto.startsWith('data:')){
+      try{
+        showFireToast('⏳ מעלה תמונת תז הורה...');
+        userData={...userData,parentIdPhoto:await uploadBase64ToStorage(userData.parentIdPhoto,`id-photos/${cred.user.uid}/parent-id`)};
+      }catch(storageErr){console.warn('Parent ID photo upload failed:',storageErr);}
+    }
     // שמירת פרטים ב-Database — אם נכשל, מוחקים את חשבון ה-Auth כדי למנוע "עצמות Auth"
     try{
       await db.ref('users/'+cred.user.uid).set({
@@ -9465,7 +9540,7 @@ if('serviceWorker' in navigator){
     const currentSwUrl='/sw.js?v=4.5.4';
     regs.forEach(r=>{if(r.active&&r.active.scriptURL&&!r.active.scriptURL.includes('4.4.2'))r.unregister();});
   });
-  navigator.serviceWorker.register('/sw.js?v=4.5.4').then(reg=>{
+  navigator.serviceWorker.register('/sw.js?v=4.8.3').then(reg=>{
     reg.update();
     setInterval(()=>reg.update(),30000);
   });
