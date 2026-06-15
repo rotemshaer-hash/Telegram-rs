@@ -5821,20 +5821,25 @@ function renderAdminTab(){
     if(pending.length>0){
       html+=`<h4 style="font-weight:800;font-size:14px;color:#F59E0B;margin:${adminIncompleteTeachers.length>0?'14px':0} 0 10px">⏳ ממתינים לאישור (${pending.length})</h4>`;
       html+=pending.map(t=>`
-        <div style="background:rgba(245,158,11,0.05);border:1.5px solid rgba(245,158,11,0.3);border-radius:18px;padding:14px;margin-bottom:10px">
-          <div style="margin-bottom:10px">
-            <div style="font-weight:900;font-size:15px;color:#0F1A1F">${t.name||'ללא שם'}</div>
-            <div style="font-size:12px;color:#64748B;margin-top:2px">📧 ${t.email||''}</div>
-            <div style="font-size:12px;color:#14B8A6;font-weight:700;margin-top:4px">📚 ${CATS.find(c=>c.id===t.cat)?.lbl||t.cat||'?'} • 📍 ${t.city||'?'} • 💰 ₪${t.price||'?'}/שיעור</div>
-            ${t.ageVerification?.age?`<div style="font-size:11px;color:#6366F1;font-weight:700;margin-top:4px">🪪 גיל ${t.ageVerification.age} • ${t.ageVerification.idType==='id'?'ת.ז.':t.ageVerification.idType==='passport'?'דרכון':'אישור הורה'} • ${t.ageVerification.status==='verified'?'✅ מאומת':'⏳ ממתין לאימות גיל'}</div>`:'<div style="font-size:11px;color:#EF4444;font-weight:700;margin-top:4px">⚠️ לא הוגשו פרטי גיל/זהות</div>'}
-            ${t.ageVerification?.idPhoto?`<div style="margin-top:8px"><div style="font-size:11px;color:#6366F1;font-weight:700;margin-bottom:4px">📸 צילום מסמך:</div><img src="${t.ageVerification.idPhoto}" style="width:100%;max-height:160px;object-fit:cover;border-radius:10px;border:1.5px solid rgba(99,102,241,0.3)" alt="מסמך זהות" onclick="this.style.maxHeight=this.style.maxHeight==='none'?'160px':'none'"></div>`:'<div style="font-size:11px;color:#F59E0B;font-weight:700;margin-top:4px">⚠️ לא הועלה צילום מסמך</div>'}
-            ${t.desc?`<div style="font-size:12px;color:#475569;margin-top:6px;background:rgba(20,184,166,0.05);border-radius:10px;padding:8px;line-height:1.5">${t.desc}</div>`:''}
+        <div style="background:#fff;border-radius:18px;margin-bottom:10px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,0.06)">
+          <div style="padding:14px 16px;display:flex;align-items:center;gap:12px">
+            <div style="width:44px;height:44px;border-radius:14px;background:rgba(20,184,166,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+            </div>
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:900;color:#0F1A1F">${t.name||'ללא שם'} — מורה חדש</div>
+              <div style="font-size:11px;color:#94A3B8;margin-top:2px">${CATS.find(c=>c.id===t.cat)?.lbl||t.cat||'?'} · ${t.city||'?'} · ₪${t.price||'?'}/שיעור</div>
+            </div>
+            <div style="font-size:10px;color:#CBD5E1;font-weight:700">${t.createdAt?new Date(t.createdAt).toLocaleDateString('he-IL'):''}</div>
           </div>
-          ${t.ageVerification?.age&&t.ageVerification?.status!=='verified'?`<button onclick="adminVerifyAge('${t.uid}')" style="width:100%;background:linear-gradient(135deg,#6366F1,#A855F7);border:none;color:#fff;border-radius:12px;padding:8px;font-weight:800;font-size:12px;cursor:pointer;margin-bottom:8px">🪪 אמת גיל וזהות</button>`:''}
-          <div style="display:flex;gap:8px">
-            <button onclick="adminApproveTeacher('${t.uid}')" style="flex:2;background:#10B981;border:none;color:#fff;border-radius:50px;padding:10px;font-weight:800;font-size:12px;cursor:pointer">✅ אשר</button>
-            <button onclick="adminRejectTeacher('${t.uid}')" style="flex:1;background:rgba(245,158,11,0.9);border:none;color:#fff;border-radius:50px;padding:10px;font-weight:800;font-size:12px;cursor:pointer">↩ דחה</button>
-            <button onclick="adminDeleteTeacherFull('${t.uid}')" style="flex:1;background:rgba(239,68,68,0.9);border:none;color:#fff;border-radius:50px;padding:10px;font-weight:800;font-size:12px;cursor:pointer">🗑 מחק</button>
+          ${t.ageVerification?.age?`<div style="padding:0 16px 4px;font-size:11px;color:#6366F1;font-weight:700">🪪 גיל ${t.ageVerification.age} • ${t.ageVerification.idType==='id'?'ת.ז.':t.ageVerification.idType==='passport'?'דרכון':'אישור הורה'} • ${t.ageVerification.status==='verified'?'✅ מאומת':'⏳ ממתין לאימות גיל'}</div>`:'<div style="padding:0 16px 4px;font-size:11px;color:#EF4444;font-weight:700">⚠️ לא הוגשו פרטי גיל/זהות</div>'}
+          ${t.ageVerification?.idPhoto?`<div style="padding:0 16px 10px"><img src="${t.ageVerification.idPhoto}" style="width:100%;max-height:120px;object-fit:cover;border-radius:10px;border:1.5px solid rgba(99,102,241,0.3)" alt="מסמך זהות" onclick="this.style.maxHeight=this.style.maxHeight==='none'?'120px':'none'"></div>`:''}
+          ${t.desc?`<div style="padding:0 16px 10px;font-size:12px;color:#64748B;line-height:1.5">"${t.desc.substring(0,120)}${t.desc.length>120?'...':''}"</div>`:''}
+          ${t.ageVerification?.age&&t.ageVerification?.status!=='verified'?`<div style="padding:0 16px 10px"><button onclick="adminVerifyAge('${t.uid}')" style="width:100%;background:linear-gradient(135deg,#6366F1,#A855F7);border:none;color:#fff;border-radius:12px;padding:8px;font-weight:800;font-size:12px;cursor:pointer">🪪 אמת גיל וזהות</button></div>`:''}
+          <div style="display:flex;border-top:1px solid #f1f5f9">
+            <button onclick="adminApproveTeacher('${t.uid}')" style="flex:1;padding:11px;border:none;background:transparent;color:#10B981;font-weight:800;font-size:12px;cursor:pointer;border-left:1px solid #f1f5f9;display:flex;align-items:center;justify-content:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg> אישור</button>
+            <button onclick="adminRejectTeacher('${t.uid}')" style="flex:1;padding:11px;border:none;background:transparent;color:#EF4444;font-weight:800;font-size:12px;cursor:pointer;border-left:1px solid #f1f5f9;display:flex;align-items:center;justify-content:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> דחייה</button>
+            <button onclick="adminDeleteTeacherFull('${t.uid}')" style="flex:1;padding:11px;border:none;background:transparent;color:#94A3B8;font-weight:800;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg> מחק</button>
           </div>
         </div>`).join('');
     }
@@ -5889,18 +5894,25 @@ function renderAdminTab(){
     if(pending.length>0){
       html+=`<h4 style="font-weight:800;font-size:14px;color:#F59E0B;margin:0 0 10px">⏳ ממתינים (${pending.length})</h4>`;
       html+=pending.map(v=>`
-        <div style="background:rgba(245,158,11,0.05);border:1.5px solid rgba(245,158,11,0.3);border-radius:18px;padding:14px;margin-bottom:10px">
-          <div style="margin-bottom:10px">
-            <div style="font-weight:900;font-size:14px;color:#0F1A1F">🎬 ${v.title}</div>
-            <div style="font-size:11px;color:#A855F7;font-weight:700;margin-top:2px">מאת: ${v.teacherName||'?'}</div>
-            ${v.desc?`<div style="font-size:12px;color:#475569;margin-top:6px;line-height:1.5">${v.desc}</div>`:''}
-            <a href="${v.url}" target="_blank" style="display:block;font-size:11px;color:#06B6D4;direction:ltr;text-align:right;margin-top:6px;text-decoration:underline;word-break:break-all">${v.url}</a>
+        <div style="background:#fff;border-radius:18px;margin-bottom:10px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,0.06)">
+          <div style="padding:14px 16px 10px;display:flex;align-items:center;gap:12px">
+            <div style="width:44px;height:44px;border-radius:14px;background:rgba(168,85,247,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#A855F7" stroke-width="2" stroke-linecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+            </div>
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:900;color:#0F1A1F">${v.title||'סרטון ללא שם'}</div>
+              <div style="font-size:11px;color:#A855F7;font-weight:700;margin-top:2px">מאת: ${v.teacherName||'?'}</div>
+            </div>
           </div>
-          <div style="display:flex;gap:8px">
-            <button onclick="window.open('${v.url}','_blank')" style="flex:1;background:rgba(6,182,212,0.1);border:1px solid rgba(6,182,212,0.3);color:#06B6D4;border-radius:50px;padding:9px;font-size:11px;font-weight:800;cursor:pointer">👁 צפה</button>
-            <button onclick="adminApproveVideo('${v.teacherId}','${v.id}')" style="flex:2;background:#10B981;border:none;color:#fff;border-radius:50px;padding:9px;font-size:11px;font-weight:800;cursor:pointer">✅ אשר</button>
-            <button onclick="adminRejectVideo('${v.teacherId}','${v.id}')" style="flex:1;background:rgba(245,158,11,0.9);border:none;color:#fff;border-radius:50px;padding:9px;font-size:11px;font-weight:800;cursor:pointer">↩ דחה</button>
-            <button onclick="adminDeleteVideo('${v.teacherId}','${v.id}')" style="flex:1;background:rgba(239,68,68,0.9);border:none;color:#fff;border-radius:50px;padding:9px;font-size:11px;font-weight:800;cursor:pointer">🗑</button>
+          ${v.desc?`<div style="padding:0 16px 10px;font-size:12px;color:#64748B;line-height:1.5">${v.desc}</div>`:''}
+          <div style="margin:0 16px 12px;background:#f4f7fa;border-radius:12px;height:70px;display:flex;align-items:center;justify-content:center;cursor:pointer" onclick="window.open('${v.url}','_blank')">
+            <div style="width:36px;height:36px;border-radius:50%;background:rgba(168,85,247,.15);border:2px solid rgba(168,85,247,.3);display:flex;align-items:center;justify-content:center">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="#A855F7"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            </div>
+          </div>
+          <div style="display:flex;border-top:1px solid #f1f5f9">
+            <button onclick="adminApproveVideo('${v.teacherId}','${v.id}')" style="flex:1;padding:11px;border:none;background:transparent;color:#10B981;font-weight:800;font-size:12px;cursor:pointer;border-left:1px solid #f1f5f9;display:flex;align-items:center;justify-content:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg> אישור</button>
+            <button onclick="adminRejectVideo('${v.teacherId}','${v.id}')" style="flex:1;padding:11px;border:none;background:transparent;color:#EF4444;font-weight:800;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> דחייה</button>
           </div>
         </div>`).join('');
     }
@@ -5928,15 +5940,20 @@ function renderAdminTab(){
     if(pendingPosts.length>0){
       html+=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><h4 style="font-weight:800;font-size:14px;color:#F59E0B;margin:0">⏳ ממתינים לאישור (${pendingPosts.length})</h4><button onclick="adminApproveAllPosts()" style="background:#10B981;border:none;color:#fff;border-radius:50px;padding:7px 14px;font-size:11px;font-weight:800;cursor:pointer">🟢 אשר הכל</button></div>`;
       html+=pendingPosts.map(p=>`
-        <div style="background:rgba(245,158,11,0.05);border:1.5px solid rgba(245,158,11,0.3);border-radius:18px;padding:14px;margin-bottom:10px">
-          <div style="margin-bottom:10px">
-            <div style="font-weight:900;font-size:13px;color:#0F1A1F">${p.author||'?'} <span style="font-size:11px;color:#64748B;font-weight:400">${p.role||''}</span></div>
-            <div style="font-size:12px;color:#475569;margin-top:6px;line-height:1.5">${(p.text||'').substring(0,200)}</div>
-            <div style="font-size:10px;color:#94A3B8;margin-top:5px">${new Date(p.createdAt||0).toLocaleString('he-IL')}</div>
+        <div style="background:#fff;border-radius:18px;margin-bottom:10px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,0.06)">
+          <div style="padding:14px 16px 10px;display:flex;align-items:center;gap:12px">
+            <div style="width:44px;height:44px;border-radius:14px;background:rgba(168,85,247,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#A855F7" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:900;color:#0F1A1F">${p.author||'?'} <span style="font-size:10px;color:#94A3B8;font-weight:400">${p.role||''}</span></div>
+              <div style="font-size:11px;color:#94A3B8;margin-top:2px">${new Date(p.createdAt||0).toLocaleDateString('he-IL')}</div>
+            </div>
           </div>
-          <div style="display:flex;gap:8px">
-            <button onclick="adminApprovePost('${p.id}')" style="flex:2;background:#10B981;border:none;color:#fff;border-radius:50px;padding:9px;font-size:11px;font-weight:800;cursor:pointer">✅ אשר</button>
-            <button onclick="adminRejectPost('${p.id}')" style="flex:1;background:rgba(239,68,68,0.9);border:none;color:#fff;border-radius:50px;padding:9px;font-size:11px;font-weight:800;cursor:pointer">🗑 דחה</button>
+          <div style="padding:0 16px 12px;font-size:12px;color:#64748B;line-height:1.5">"${(p.text||'').substring(0,180)}${(p.text||'').length>180?'...':''}"</div>
+          <div style="display:flex;border-top:1px solid #f1f5f9">
+            <button onclick="adminApprovePost('${p.id}')" style="flex:1;padding:11px;border:none;background:transparent;color:#10B981;font-weight:800;font-size:12px;cursor:pointer;border-left:1px solid #f1f5f9;display:flex;align-items:center;justify-content:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg> אישור</button>
+            <button onclick="adminRejectPost('${p.id}')" style="flex:1;padding:11px;border:none;background:transparent;color:#EF4444;font-weight:800;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> דחייה</button>
           </div>
         </div>`).join('');
     }
@@ -6895,7 +6912,7 @@ function Teacher(){
   </div>`;
 
   return `<div class="screen" style="background:linear-gradient(165deg,#CCFBF1 0%,#A5F3FC 50%,#7DD3FC 100%)">
-    <div style="background:linear-gradient(135deg,${t.col},${t.col}AA);padding:24px 20px 40px;border-radius:0 0 32px 32px;text-align:center;color:#fff;position:relative;overflow:hidden">
+    <div style="background:linear-gradient(150deg,#0F1A1F 0%,${t.col}BB 60%,${t.col} 100%);padding:24px 20px 40px;border-radius:0 0 32px 32px;text-align:center;color:#fff;position:relative;overflow:hidden">
       <div style="position:absolute;top:-60px;right:-60px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.06)"></div>
       <button onclick="back()" style="background:rgba(255,255,255,.2);border:none;color:#fff;font-size:14px;cursor:pointer;border-radius:50px;padding:8px 16px;font-weight:700;display:block;text-align:right;margin-bottom:18px;position:relative;z-index:1">← חזור</button>
       ${currentUser&&typeof t.id==='string'?`
