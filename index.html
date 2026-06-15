@@ -494,7 +494,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.11';
+const APP_VERSION='4.9.12';
 const APP_BUILD='14-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -2132,8 +2132,14 @@ async function submitReview(bookingId,booking,ratedId,stars,review,isStudent){
       approved:false,
       createdAt:Date.now()
     };
-    await db.ref('reviews/'+ratedId).push(reviewData);
+    const _rRef=db.ref('reviews/'+ratedId).push();
+    await _rRef.set(reviewData);
     if(bookingId)await db.ref('bookings/'+bookingId+'/'+(isStudent?'studentRating':'teacherRating')).set(stars);
+    // כתוב תור ממתין למנהל + שלח מייל
+    if(isStudent){
+      db.ref('pendingReviews').push({...reviewData,reviewId:_rRef.key}).catch(()=>{});
+      sendAdminEmail('⭐ ביקורת חדשה ממתינה לאישור',`מאת: ${reviewData.fromName}\nלמורה: ${reviewData.to}\nדירוג: ${'⭐'.repeat(stars)} (${stars}/5)\n\nביקורת:\n"${(review||'').substring(0,200)}"\n\nאשר/דחה בפאנל המנהל:\nhttps://kidemy-app.netlify.app`).catch(()=>{});
+    }
     // עדכון ממוצע מורה אם תלמיד דירג — רק ביקורות מאושרות
     if(isStudent){
       const allReviewsSnap=await db.ref('reviews/'+ratedId).get();
@@ -2770,7 +2776,7 @@ function setupConvListeners(){
       const m={id:snap.key,...snap.val()};
       if(!m||!m.from||m.from===currentUser.uid)return; // ignore my own messages
       const existing=userChats.find(c=>c.otherUid===uc.otherUid);
-      if(existing&&(m.createdAt||0)<=(existing.lastTime||0))return; // not newer, skip
+      if(existing&&(m.createdAt||0)<(existing.lastTime||0))return; // strictly older, skip
       const inChat=S.screen==='chat'&&S.chat?.otherUid===uc.otherUid;
       const updated={
         otherUid:uc.otherUid,
@@ -9530,6 +9536,21 @@ auth&&auth.onAuthStateChanged(async user=>{
       await loadNotifications();
       await loadMyGroupStatuses();
       await loadUserChats();
+      // ── backfill userChats for approved/completed bookings that predate v4.9.9 ──
+      if(currentUserData?.role==='teacher'&&teacherAllBookings.length){
+        const missing=teacherAllBookings.filter(b=>['approved','completed'].includes(b.status)&&b.studentId&&!userChats.find(c=>c.otherUid===b.studentId));
+        if(missing.length){
+          await Promise.allSettled(missing.map(b=>{
+            const _e={otherUid:b.studentId,otherName:b.studentName||'תלמיד',lastMessage:'שיעור אושר ✅ '+(b.day||''),lastTime:b.approvedAt||b.createdAt||Date.now(),unread:false};
+            return Promise.allSettled([
+              db.ref('userChats/'+currentUser.uid+'/'+b.studentId).set(_e).catch(()=>{}),
+              db.ref('userChats/'+b.studentId+'/'+currentUser.uid).set({..._e,otherUid:currentUser.uid,otherName:currentUserData?.name||'מורה'}).catch(()=>{})
+            ]);
+          }));
+          await loadUserChats();
+        }
+        setupConvListeners();
+      }
       if(currentUserData?.role==='teacher')await loadTeacherAnalytics();
       if(currentUserData?.role==='teacher')await loadTeacherVideos();
       await loadLessonSummaries();
@@ -10047,7 +10068,7 @@ function installApp(){
 
 // ── AUTO-UPDATE SERVICE WORKER ────────────────────────────────────────────────
 if('serviceWorker' in navigator){
-  const currentSwUrl='/sw.js?v=4.9.11';
+  const currentSwUrl='/sw.js?v=4.9.12';
   // Unregister SWs that are NOT the current version
   navigator.serviceWorker.getRegistrations().then(regs=>{
     regs.forEach(r=>{
