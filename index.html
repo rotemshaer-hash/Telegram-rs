@@ -494,7 +494,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.12';
+const APP_VERSION='4.9.13';
 const APP_BUILD='14-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -2004,6 +2004,15 @@ async function deleteBooking(bookingId){
     showFireToast('🗑 הוסר מהרשימה');
   }catch(e){showFireToast('❌ '+e.message);}
 }
+async function deleteStudentBooking(bookingId){
+  if(!confirm('למחוק הזמנה זו מהרשימה?'))return;
+  try{
+    studentBookings=studentBookings.filter(b=>(b.bookingId||b.id)!==bookingId);
+    await db.ref('userBookings/'+currentUser.uid+'/'+bookingId).remove();
+    render();
+    showFireToast('🗑 הוסר מהרשימה');
+  }catch(e){showFireToast('❌ '+e.message);}
+}
 
 function getMeetingLabel(url){
   if(!url)return 'Jitsi';
@@ -2738,6 +2747,7 @@ function getChatId(uid1,uid2){
 let _chatQuery=null;
 let _currentChatOtherUid=null; // tracks which conversation is active — reliable alternative to chatListener._otherUid
 let _convListeners={}; // otherUid → firebase query, background listeners for all conversations
+let _chatPollInterval=null; // fallback poll interval handle
 
 function listenToChat(otherUid){
   // Claim the UID immediately — BEFORE any teardown — so that any render()
@@ -2799,6 +2809,17 @@ function setupConvListeners(){
 function teardownConvListeners(){
   Object.values(_convListeners).forEach(q=>{try{q.off();}catch(e){}});
   _convListeners={};
+}
+
+async function refreshChats(){
+  if(!currentUser)return;
+  showFireToast('🔄 מרענן שיחות...');
+  await loadUserChats();
+  setupConvListeners();
+  if(currentUserData?.role==='teacher')await loadTeacherBookings();
+  else await loadStudentBookings();
+  render();
+  showFireToast('✅ השיחות עודכנו');
 }
 
 function stopChatListener(){
@@ -7165,6 +7186,7 @@ function Messages(){
         <div style="display:flex;gap:8px;align-items:center">
           <button onclick="back()" style="background:rgba(255,255,255,.2);border:none;color:#fff;font-size:14px;cursor:pointer;border-radius:50px;padding:8px 14px;font-weight:700">← חזור</button>
           <button onclick="go('weeklySchedule')" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;font-size:12px;cursor:pointer;border-radius:50px;padding:8px 12px;font-weight:800">📅 לוח</button>
+          <button onclick="refreshChats()" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;font-size:12px;cursor:pointer;border-radius:50px;padding:8px 12px;font-weight:800">🔄 רענן</button>
         </div>
         <div style="text-align:right"><h2 style="font-size:22px;font-weight:900;margin:0">${isTeacherRole?'📅 הזמנות שלי':'💬 השיעורים שלי'}</h2><p style="color:rgba(255,255,255,.85);font-size:12px;margin:4px 0 0">${approved.length} שיעורים פעילים</p></div>
       </div>
@@ -7294,9 +7316,10 @@ function Messages(){
 
       ${rejected.length>0?`
         <h3 style="font-size:14px;font-weight:800;margin:18px 0 12px;color:#EF4444">❌ נדחו (${rejected.length})</h3>
-        ${rejected.slice(0,3).map(b=>`
-          <div style="background:rgba(255,255,255,0.5);border-radius:16px;padding:13px;margin-bottom:8px;opacity:0.7">
-            <div style="font-weight:700;font-size:13px;color:#64748B">${isTeacherRole?b.studentName:b.teacherName} • יום ${b.day} ${b.time}</div>
+        ${rejected.map(b=>`
+          <div style="background:rgba(255,255,255,0.5);border-radius:16px;padding:13px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:10px">
+            <button onclick="${isTeacherRole?`deleteBooking('${b.id||b.bookingId||''}')`:`deleteStudentBooking('${b.bookingId||b.id||''}')`}" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);color:#EF4444;border-radius:10px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0">🗑</button>
+            <div style="text-align:right;flex:1"><div style="font-weight:700;font-size:13px;color:#64748B">${isTeacherRole?b.studentName:b.teacherName}</div><div style="font-size:11px;color:#94A3B8">📅 יום ${b.day||''} ${b.time||''}</div></div>
           </div>
         `).join('')}
       `:''}
@@ -9551,6 +9574,20 @@ auth&&auth.onAuthStateChanged(async user=>{
         }
         setupConvListeners();
       }
+      // ── student-side backfill: ensure teacher appears in student's userChats ──
+      if(currentUserData?.role==='student'&&studentBookings.length){
+        const missingS=studentBookings.filter(b=>['approved','completed'].includes(b.status)&&b.teacherId&&!userChats.find(c=>c.otherUid===b.teacherId));
+        if(missingS.length){
+          await Promise.allSettled(missingS.map(b=>{
+            const _es={otherUid:b.teacherId,otherName:b.teacherName||'מורה',lastMessage:'שיעור אושר ✅ '+(b.day||''),lastTime:b.approvedAt||b.createdAt||Date.now(),unread:false};
+            return Promise.allSettled([
+              db.ref('userChats/'+currentUser.uid+'/'+b.teacherId).set(_es).catch(()=>{}),
+              db.ref('userChats/'+b.teacherId+'/'+currentUser.uid).set({..._es,otherUid:currentUser.uid,otherName:currentUserData?.name||'תלמיד'}).catch(()=>{})
+            ]);
+          }));
+          await loadUserChats();
+        }
+      }
       if(currentUserData?.role==='teacher')await loadTeacherAnalytics();
       if(currentUserData?.role==='teacher')await loadTeacherVideos();
       await loadLessonSummaries();
@@ -9629,6 +9666,15 @@ auth&&auth.onAuthStateChanged(async user=>{
         });
       }
 
+      // ── polling fallback: reload userChats every 90s to catch missed real-time events ──
+      if(_chatPollInterval)clearInterval(_chatPollInterval);
+      _chatPollInterval=setInterval(async()=>{
+        if(!currentUser)return;
+        await loadUserChats();
+        setupConvListeners();
+        if(S.screen==='messages'||S.screen==='profile')render();
+      },90000);
+
     }catch(e){
       console.warn('Auth/data error:',e);
       S._loggingIn=false;S._registering=false;
@@ -9645,6 +9691,7 @@ auth&&auth.onAuthStateChanged(async user=>{
   } else {
     stopChatListener();
     teardownConvListeners();
+    if(_chatPollInterval){clearInterval(_chatPollInterval);_chatPollInterval=null;}
     currentUser=null;currentUserData=null;userChats=[];
     teacherPendingBookings=[];teacherAllBookings=[];studentBookings=[];
   }
@@ -10068,7 +10115,7 @@ function installApp(){
 
 // ── AUTO-UPDATE SERVICE WORKER ────────────────────────────────────────────────
 if('serviceWorker' in navigator){
-  const currentSwUrl='/sw.js?v=4.9.12';
+  const currentSwUrl='/sw.js?v=4.9.13';
   // Unregister SWs that are NOT the current version
   navigator.serviceWorker.getRegistrations().then(regs=>{
     regs.forEach(r=>{
