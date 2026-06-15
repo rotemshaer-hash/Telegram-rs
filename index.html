@@ -5445,18 +5445,36 @@ function renderAdminPanel(){
   const pendingVideos=adminAllVideos.filter(v=>!v.approved);
   const ov=document.createElement('div');
   ov.id='_adminPanel';
-  ov.style.cssText='position:fixed;inset:0;background:#0F1A1F;z-index:9999;direction:rtl;overflow-y:auto';
+  ov.style.cssText='position:fixed;inset:0;background:#f4f7fa;z-index:9999;direction:rtl;overflow-y:auto';
   ov.innerHTML=`
-    <div style="background:linear-gradient(135deg,#7E22CE,#A855F7,#EC4899);padding:20px;color:#fff;position:sticky;top:0;z-index:2;box-shadow:0 4px 20px rgba(0,0,0,0.3)">
-      <div style="display:flex;justify-content:space-between;align-items:center">
+    <div style="background:linear-gradient(135deg,#0F1A1F 0%,#0e4a44 50%,#3b1070 100%);padding:20px;color:#fff;position:sticky;top:0;z-index:2;box-shadow:0 4px 20px rgba(0,0,0,0.3);position:relative;overflow:hidden">
+      <div style="position:absolute;top:-40px;right:-50px;width:180px;height:180px;border-radius:50%;background:rgba(168,85,247,.25);filter:blur(45px);pointer-events:none"></div>
+      <div style="position:absolute;bottom:-30px;left:-30px;width:140px;height:140px;border-radius:50%;background:rgba(20,184,166,.2);filter:blur(45px);pointer-events:none"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;position:relative;z-index:2">
         <button onclick="document.getElementById('_adminPanel').remove();refreshStudentCount()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;border-radius:50px;padding:8px 14px;font-weight:800;font-size:13px;cursor:pointer">✕ סגור</button>
-        <h2 style="font-weight:900;font-size:22px;margin:0">👨‍💼 פאנל מנהל</h2>
+        <div style="text-align:right">
+          <p style="font-size:12px;color:rgba(255,255,255,.6);margin:0">לוח בקרה · ${currentUser?.email}</p>
+          <h2 style="font-weight:900;font-size:22px;margin:4px 0 0">ניהול המערכת</h2>
+        </div>
       </div>
-      <p style="font-size:12px;opacity:0.9;margin:4px 0 0">${currentUser?.email}</p>
-      ${totalPending>0?`<div onclick="adminTab='teachers';renderAdminPanel()" style="margin-top:10px;background:rgba(239,68,68,0.85);border-radius:12px;padding:10px 14px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:8px">🔔 <span>${totalPending} מורים ממתינים לטיפול – לחץ</span></div>`:''}
-      ${_adminCommunityOrphans.length>0?`<div onclick="adminTab='students';renderAdminPanel()" style="margin-top:8px;background:rgba(239,68,68,0.75);border-radius:12px;padding:10px 14px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:8px">⚠️ <span>${_adminCommunityOrphans.length} משתמשים פרסמו בקהילה ללא אישור — לחץ לטיפול</span></div>`:''}
-      ${adminAlertPayments.length>0?`<div onclick="adminSwitchTab('payments')" style="margin-top:8px;background:rgba(245,158,11,0.9);border-radius:12px;padding:10px 14px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:8px">💰 <span>${adminAlertPayments.length} תשלומים ממתינים לאימות — לחץ לאישור</span></div>`:''}
-      ${adminContactMessages.filter(m=>!m.read).length>0?`<div onclick="adminSwitchTab('messages')" style="margin-top:8px;background:rgba(168,85,247,0.9);border-radius:12px;padding:10px 14px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:8px">💬 <span>${adminContactMessages.filter(m=>!m.read).length} הודעות חדשות מהאפליקציה — לחץ לצפייה</span></div>`:''}
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px;position:relative;z-index:2">
+        <div style="background:rgba(255,255,255,.12);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.18);border-radius:14px;padding:10px 8px;text-align:center">
+          <div style="font-size:18px;font-weight:900;color:#fff">${adminAllTeachers.filter(t=>t.createdAt&&Date.now()-t.createdAt<7*24*3600*1000).length||adminAllTeachers.length}</div>
+          <div style="font-size:9px;color:rgba(255,255,255,.6);font-weight:700;margin-top:2px">מורים חדשים</div>
+        </div>
+        <div style="background:rgba(255,255,255,.12);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.18);border-radius:14px;padding:10px 8px;text-align:center">
+          <div style="font-size:18px;font-weight:900;color:#FBBF24">${totalPending+Math.max(adminAlertPosts.length,adminAllPosts.filter(p=>p.status==='pending').length)}</div>
+          <div style="font-size:9px;color:rgba(255,255,255,.6);font-weight:700;margin-top:2px">ממתינים לאישור</div>
+        </div>
+        <div style="background:rgba(255,255,255,.12);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.18);border-radius:14px;padding:10px 8px;text-align:center">
+          <div style="font-size:18px;font-weight:900;color:#34D399">₪${adminAllBookings.filter(b=>b.status==='approved'||b.status==='completed').reduce((s,b)=>s+(b.commission||0),0).toLocaleString()}</div>
+          <div style="font-size:9px;color:rgba(255,255,255,.6);font-weight:700;margin-top:2px">הכנסות החודש</div>
+        </div>
+      </div>
+      ${totalPending>0?`<div onclick="adminTab='teachers';renderAdminPanel()" style="margin-top:10px;background:rgba(239,68,68,0.85);border-radius:12px;padding:10px 14px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:8px;position:relative;z-index:2">🔔 <span>${totalPending} מורים ממתינים לטיפול – לחץ</span></div>`:''}
+      ${_adminCommunityOrphans.length>0?`<div onclick="adminTab='students';renderAdminPanel()" style="margin-top:8px;background:rgba(239,68,68,0.75);border-radius:12px;padding:10px 14px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:8px;position:relative;z-index:2">⚠️ <span>${_adminCommunityOrphans.length} משתמשים פרסמו בקהילה ללא אישור — לחץ לטיפול</span></div>`:''}
+      ${adminAlertPayments.length>0?`<div onclick="adminSwitchTab('payments')" style="margin-top:8px;background:rgba(245,158,11,0.9);border-radius:12px;padding:10px 14px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:8px;position:relative;z-index:2">💰 <span>${adminAlertPayments.length} תשלומים ממתינים לאימות — לחץ לאישור</span></div>`:''}
+      ${adminContactMessages.filter(m=>!m.read).length>0?`<div onclick="adminSwitchTab('messages')" style="margin-top:8px;background:rgba(168,85,247,0.9);border-radius:12px;padding:10px 14px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:8px;position:relative;z-index:2">💬 <span>${adminContactMessages.filter(m=>!m.read).length} הודעות חדשות מהאפליקציה — לחץ לצפייה</span></div>`:''}
     </div>
     ${!adminAllTeachers.find(t=>t.uid===currentUser?.uid)?`
     <div style="margin:12px 16px 0;background:linear-gradient(135deg,rgba(245,158,11,0.12),rgba(239,68,68,0.1));border:2px solid rgba(245,158,11,0.5);border-radius:16px;padding:14px">
@@ -5465,14 +5483,54 @@ function renderAdminPanel(){
       <button onclick="document.getElementById('_adminPanel').remove();go('teacherSetup')" style="width:100%;background:linear-gradient(135deg,#F59E0B,#EF4444);border:none;color:#fff;border-radius:50px;padding:11px;font-weight:900;font-size:13px;cursor:pointer">🎓 הגדר פרופיל מורה עכשיו</button>
     </div>`:''}
     <div style="padding:16px;display:grid;grid-template-columns:repeat(2,1fr);gap:10px">
-      <div style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border-radius:18px;padding:14px;color:#fff"><div style="font-size:28px;font-weight:900">${realStats.students}</div><div style="font-size:11px;opacity:0.95">תלמידים</div></div>
-      <div style="background:linear-gradient(135deg,#A855F7,#EC4899);border-radius:18px;padding:14px;color:#fff"><div style="font-size:28px;font-weight:900">${adminAllTeachers.length}</div><div style="font-size:11px;opacity:0.95">מורים</div></div>
-      <div style="background:linear-gradient(135deg,#F59E0B,#EF4444);border-radius:18px;padding:14px;color:#fff"><div style="font-size:28px;font-weight:900">${totalPending}</div><div style="font-size:11px;opacity:0.95">ממתינים לטיפול</div></div>
-      <div style="background:linear-gradient(135deg,#06B6D4,#0EA5E9);border-radius:18px;padding:14px;color:#fff"><div style="font-size:28px;font-weight:900">${pendingVideos.length}</div><div style="font-size:11px;opacity:0.95">סרטונים ממתינים</div></div>
-      <div onclick="adminSwitchTab('posts')" style="background:linear-gradient(135deg,#8B5CF6,#EC4899);border-radius:18px;padding:14px;color:#fff;cursor:pointer"><div style="font-size:28px;font-weight:900">${Math.max(adminAlertPosts.length,adminAllPosts.filter(p=>p.status==='pending').length)}</div><div style="font-size:11px;opacity:0.95">פוסטים ממתינים</div></div>
-      <div onclick="adminSwitchTab('payments')" style="background:linear-gradient(135deg,#F59E0B,#D97706);border-radius:18px;padding:14px;color:#fff;cursor:pointer"><div style="font-size:28px;font-weight:900">${adminAlertPayments.length}</div><div style="font-size:11px;opacity:0.95">💰 תשלומים ממתינים</div></div>
-      <div style="background:linear-gradient(135deg,#10B981,#14B8A6);border-radius:18px;padding:14px;color:#fff"><div style="font-size:28px;font-weight:900">${adminAllBookings.filter(b=>b.status==='pending').length}</div><div style="font-size:11px;opacity:0.95">הזמנות ממתינות</div></div>
-      <div onclick="adminSwitchTab('messages')" style="background:linear-gradient(135deg,#7E22CE,#A855F7);border-radius:18px;padding:14px;color:#fff;cursor:pointer"><div style="font-size:28px;font-weight:900">${adminContactMessages.filter(m=>!m.read).length}</div><div style="font-size:11px;opacity:0.95">💬 הודעות חדשות</div></div>
+      <div style="background:#fff;border-radius:20px;padding:16px;display:flex;align-items:center;gap:12px;box-shadow:0 2px 10px rgba(0,0,0,0.05)">
+        <div style="width:46px;height:46px;border-radius:14px;background:rgba(20,184,166,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        <div><div style="font-size:11px;color:#94A3B8;font-weight:700;margin-bottom:2px">סה"כ מורים</div><div style="font-size:22px;font-weight:900;color:#14B8A6;line-height:1">${adminAllTeachers.length}</div></div>
+      </div>
+      <div style="background:#fff;border-radius:20px;padding:16px;display:flex;align-items:center;gap:12px;box-shadow:0 2px 10px rgba(0,0,0,0.05)">
+        <div style="width:46px;height:46px;border-radius:14px;background:rgba(168,85,247,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#A855F7" stroke-width="2" stroke-linecap="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+        </div>
+        <div><div style="font-size:11px;color:#94A3B8;font-weight:700;margin-bottom:2px">תלמידים</div><div style="font-size:22px;font-weight:900;color:#A855F7;line-height:1">${realStats.students}</div></div>
+      </div>
+      <div style="background:#fff;border-radius:20px;padding:16px;display:flex;align-items:center;gap:12px;box-shadow:0 2px 10px rgba(0,0,0,0.05)">
+        <div style="width:46px;height:46px;border-radius:14px;background:rgba(245,158,11,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2" stroke-linecap="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+        </div>
+        <div><div style="font-size:11px;color:#94A3B8;font-weight:700;margin-bottom:2px">הזמנות</div><div style="font-size:22px;font-weight:900;color:#F59E0B;line-height:1">${adminAllBookings.length}</div></div>
+      </div>
+      <div onclick="adminSwitchTab('posts')" style="background:#fff;border-radius:20px;padding:16px;display:flex;align-items:center;gap:12px;box-shadow:0 2px 10px rgba(0,0,0,0.05);cursor:pointer">
+        <div style="width:46px;height:46px;border-radius:14px;background:rgba(239,68,68,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </div>
+        <div><div style="font-size:11px;color:#94A3B8;font-weight:700;margin-bottom:2px">דיווחים</div><div style="font-size:22px;font-weight:900;color:#EF4444;line-height:1">${adminAllReports.filter(r=>r.status==='open').length}</div></div>
+      </div>
+      <div onclick="adminSwitchTab('posts')" style="background:#fff;border-radius:20px;padding:16px;display:flex;align-items:center;gap:12px;box-shadow:0 2px 10px rgba(0,0,0,0.05);cursor:pointer">
+        <div style="width:46px;height:46px;border-radius:14px;background:rgba(139,92,246,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </div>
+        <div><div style="font-size:11px;color:#94A3B8;font-weight:700;margin-bottom:2px">פוסטים ממתינים</div><div style="font-size:22px;font-weight:900;color:#8B5CF6;line-height:1">${Math.max(adminAlertPosts.length,adminAllPosts.filter(p=>p.status==='pending').length)}</div></div>
+      </div>
+      <div onclick="adminSwitchTab('payments')" style="background:#fff;border-radius:20px;padding:16px;display:flex;align-items:center;gap:12px;box-shadow:0 2px 10px rgba(0,0,0,0.05);cursor:pointer">
+        <div style="width:46px;height:46px;border-radius:14px;background:rgba(245,158,11,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2" stroke-linecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        </div>
+        <div><div style="font-size:11px;color:#94A3B8;font-weight:700;margin-bottom:2px">תשלומים ממתינים</div><div style="font-size:22px;font-weight:900;color:#D97706;line-height:1">${adminAlertPayments.length}</div></div>
+      </div>
+      <div style="background:#fff;border-radius:20px;padding:16px;display:flex;align-items:center;gap:12px;box-shadow:0 2px 10px rgba(0,0,0,0.05)">
+        <div style="width:46px;height:46px;border-radius:14px;background:rgba(16,185,129,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2" stroke-linecap="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        </div>
+        <div><div style="font-size:11px;color:#94A3B8;font-weight:700;margin-bottom:2px">הזמנות ממתינות</div><div style="font-size:22px;font-weight:900;color:#10B981;line-height:1">${adminAllBookings.filter(b=>b.status==='pending').length}</div></div>
+      </div>
+      <div onclick="adminSwitchTab('messages')" style="background:#fff;border-radius:20px;padding:16px;display:flex;align-items:center;gap:12px;box-shadow:0 2px 10px rgba(0,0,0,0.05);cursor:pointer">
+        <div style="width:46px;height:46px;border-radius:14px;background:rgba(126,34,206,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#7E22CE" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </div>
+        <div><div style="font-size:11px;color:#94A3B8;font-weight:700;margin-bottom:2px">הודעות חדשות</div><div style="font-size:22px;font-weight:900;color:#7E22CE;line-height:1">${adminContactMessages.filter(m=>!m.read).length}</div></div>
+      </div>
     </div>
     <div style="background:#fff;padding:0 16px;border-bottom:1px solid rgba(20,184,166,0.15)">
       <div style="display:flex;gap:4px;overflow-x:auto;padding:8px 0">
@@ -5482,7 +5540,7 @@ function renderAdminPanel(){
           </button>`).join('')}
       </div>
     </div>
-    <div style="padding:16px;background:#fff;min-height:calc(100vh - 280px)">${renderAdminTab()}</div>`;
+    <div style="padding:16px;background:#f4f7fa;min-height:calc(100vh - 280px)">${renderAdminTab()}</div>`;
   document.body.appendChild(ov);
 }
 
@@ -7878,31 +7936,62 @@ function Community(){
   const _isTeacherU=currentUserData?.role==='teacher';
   const _groupsHtml=(()=>{const openG=communityGroups.filter(g=>g.status==='open'&&(!S.groupSubj||g.subject===S.groupSubj));const hdr=_isTeacherU?`<div style="display:flex;gap:8px;margin-bottom:16px"><button onclick="showCreateGroupDialog()" style="flex:1;background:linear-gradient(135deg,#14B8A6,#A855F7);border:none;color:#fff;border-radius:14px;padding:12px;font-weight:800;font-size:13px;cursor:pointer">+ צור קבוצה</button><button onclick="showTeacherGroupsPanel()" style="flex:1;background:rgba(20,184,166,0.1);border:1.5px solid rgba(20,184,166,0.3);color:#14B8A6;border-radius:14px;padding:12px;font-weight:800;font-size:13px;cursor:pointer">👥 הקבוצות שלי</button></div>`:currentUser?`<div style="margin-bottom:14px"><button onclick="showStudentGroupsPanel()" style="width:100%;background:rgba(20,184,166,0.08);border:1.5px solid rgba(20,184,166,0.25);color:#14B8A6;border-radius:14px;padding:11px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">👥 הקבוצות שלי${Object.keys(myGroupStatuses).length?' ('+Object.keys(myGroupStatuses).length+')':''}</button></div>`:'';const allSubjs=[...new Set(communityGroups.filter(g=>g.status==='open'&&g.subject).map(g=>g.subject))];const subjFilter=allSubjs.length>1?'<div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px">'+['<button onclick="S.groupSubj=null;render()" style="flex-shrink:0;padding:6px 14px;border-radius:50px;font-size:12px;font-weight:800;cursor:pointer;border:none;background:'+(S.groupSubj?'rgba(100,116,139,0.1)':'linear-gradient(135deg,#14B8A6,#A855F7)')+';color:'+(S.groupSubj?'#64748B':'#fff')+'">הכל</button>',...allSubjs.map(sid=>{const c=CATS.find(x=>x.id===sid)||{em:'🎓',lbl:sid,col:'#14B8A6'};const on=S.groupSubj===sid;return '<button onclick="S.groupSubj=\''+sid+'\';render()" style="flex-shrink:0;padding:6px 14px;border-radius:50px;font-size:12px;font-weight:800;cursor:pointer;border:none;background:'+(on?c.col:'rgba(100,116,139,0.1)')+';color:'+(on?'#fff':'#64748B')+'">'+c.em+' '+c.lbl+'</button>';})].join('')+'</div>':'';if(!openG.length)return hdr+subjFilter+`<div style="text-align:center;padding:40px 20px"><div style="font-size:64px;margin-bottom:14px">🏘️</div><h3 style="font-weight:900;font-size:18px;margin:0 0 8px">אין קבוצות פעילות</h3><p style="color:#64748B;font-size:13px">${S.groupSubj?'נסה לשנות את הסינון':_isTeacherU?'היה הראשון ליצור קבוצה!':'בקרוב יהיו קבוצות זמינות...'}</p></div>`;return hdr+subjFilter+openG.map(g=>{const cat=CATS.find(c=>c.id===g.subject)||{em:'🎓',lbl:g.subject||'כללי',col:'#14B8A6'};const spots=Math.max(0,(g.maxStudents||0)-(g.membersCount||0));const spotsHtml=(g.maxStudents||0)>0?spots>0?`<div style="text-align:center;background:rgba(16,185,129,0.1);border-radius:12px;padding:8px 12px;flex-shrink:0"><div style="font-weight:900;font-size:16px;color:#10B981">${spots}</div><div style="font-size:10px;color:#64748B">מקומות</div></div>`:`<div style="background:rgba(239,68,68,0.1);border-radius:12px;padding:8px 12px;flex-shrink:0"><div style="font-size:11px;font-weight:800;color:#EF4444">מלא</div></div>`:'';return `<div class="card" onclick="showGroupDetail('${g.id}')" style="cursor:pointer;margin-bottom:12px;padding:16px 18px"><div style="display:flex;gap:12px;align-items:center"><div style="width:48px;height:48px;border-radius:14px;background:${cat.col}18;display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0">${cat.em}</div><div style="flex:1;min-width:0"><div style="font-weight:900;font-size:15px;margin-bottom:3px">${g.title}</div><div style="font-size:12px;color:${cat.col};font-weight:700">${cat.lbl}${g.isMixed?' · 🌈 מעורבת':''}</div></div>${spotsHtml}</div>${g.desc?`<p style="margin:10px 0 0;font-size:13px;color:#64748B;line-height:1.5">${g.desc.substring(0,100)}${g.desc.length>100?'...':''}</p>`:''}<div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">${g.day?`<span style="background:rgba(20,184,166,0.1);color:#14B8A6;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">📅 ${g.day}</span>`:''}${g.time?` <span style="background:rgba(20,184,166,0.1);color:#14B8A6;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">⏰ ${g.time}</span>`:''}${g.location?` <span style="background:rgba(20,184,166,0.1);color:#14B8A6;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">📍 ${g.location}</span>`:''}${g.price?`<span style="background:rgba(168,85,247,0.1);color:#A855F7;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">₪${g.price}</span>`:`<span style="background:rgba(16,185,129,0.1);color:#10B981;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">חינם!</span>`}</div></div>`;}).join('');})();
 
+  const memberCount=S.posts.filter(p=>p.authUid).reduce((acc,p)=>{if(p.authUid)acc.add(p.authUid);return acc;},new Set()).size||0;
+  const postCount=vis.length||S.posts.length||0;
   return `<div class="screen">
-    <div style="background:linear-gradient(135deg,#0d5e56,#0D9488);padding:22px 20px 28px;border-radius:0 0 32px 32px;color:#fff">
-      <div style="display:flex;justify-content:space-between;align-items:center">
+    <div style="background:linear-gradient(135deg,#4C1D95 0%,#7C3AED 50%,#A855F7 100%);padding:22px 20px 24px;border-radius:0 0 32px 32px;color:#fff;position:relative;overflow:hidden">
+      <div style="position:absolute;top:-40px;right:-50px;width:180px;height:180px;border-radius:50%;background:rgba(139,92,246,.3);filter:blur(45px);pointer-events:none"></div>
+      <div style="position:absolute;bottom:-30px;left:-40px;width:150px;height:150px;border-radius:50%;background:rgba(20,184,166,.2);filter:blur(45px);pointer-events:none"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;position:relative;z-index:1">
         <div style="display:flex;gap:8px;align-items:center">
           <button onclick="back()" style="background:rgba(255,255,255,.2);border:none;color:#fff;font-size:14px;cursor:pointer;border-radius:50px;padding:8px 14px;font-weight:700">← חזור</button>
-          <button onclick="S.showCompose=true;render()" style="background:rgba(255,255,255,.2);border:none;color:#fff;font-weight:800;font-size:13px;cursor:pointer;border-radius:50px;padding:9px 16px">✏️ שאל/שתף</button>
+          <button onclick="S.showCompose=true;render()" style="background:rgba(255,255,255,.2);border:none;color:#fff;font-weight:800;font-size:13px;cursor:pointer;border-radius:50px;padding:9px 16px;display:flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> שאל/שתף</button>
         </div>
-        <div style="text-align:right"><h2 style="font-size:22px;font-weight:900;margin:0">🌐 קהילה</h2><p style="color:rgba(255,255,255,.55);font-size:12px;margin:4px 0 0">שאלות, טיפים ושיתופים</p></div>
+        <div style="text-align:right;position:relative;z-index:1">
+          <h2 style="font-size:22px;font-weight:900;margin:0">קהילה</h2>
+          <p style="color:rgba(255,255,255,.6);font-size:12px;margin:3px 0 0">שתף, שאל, ולמד יחד</p>
+        </div>
       </div>
-      ${S.comTab!=='groups'?`<div style="overflow-x:auto;display:flex;gap:8px;margin-top:15px;padding-bottom:2px">
-        ${CC.map(c=>`<button onclick="S.comFilter='${c.id}';render()" style="flex-shrink:0;padding:7px 13px;border-radius:50px;border:none;font-weight:700;font-size:12px;cursor:pointer;background:${S.comFilter===c.id?"#fff":"rgba(255,255,255,.18)"};color:${S.comFilter===c.id?"#0d5e56":"#fff"};transition:all .2s">${c.e} ${c.l}</button>`).join("")}
+      <div style="display:flex;gap:10px;position:relative;z-index:1;margin-bottom:14px">
+        <div style="background:rgba(255,255,255,.15);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.2);border-radius:14px;padding:8px 14px;display:flex;align-items:center;gap:8px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.8)" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <span style="font-size:12px;color:#fff;font-weight:700">${memberCount||S.posts.length||0} חברים</span>
+        </div>
+        <div style="background:rgba(255,255,255,.15);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.2);border-radius:14px;padding:8px 14px;display:flex;align-items:center;gap:8px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.8)" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <span style="font-size:12px;color:#fff;font-weight:700">${postCount} פוסטים</span>
+        </div>
+      </div>
+      ${S.comTab!=='groups'?`<div style="overflow-x:auto;display:flex;gap:8px;padding-bottom:2px;position:relative;z-index:1">
+        ${CC.map(c=>`<button onclick="S.comFilter='${c.id}';render()" style="flex-shrink:0;padding:7px 13px;border-radius:50px;border:none;font-weight:700;font-size:12px;cursor:pointer;background:${S.comFilter===c.id?"#fff":"rgba(255,255,255,.18)"};color:${S.comFilter===c.id?"#7C3AED":"#fff"};transition:all .2s">${c.e} ${c.l}</button>`).join("")}
       </div>`:''}
-
       ${S.comTab!=='groups'&&myArea?`
-        <div style="margin-top:10px">
-          <button onclick="S.areaOnly=!S.areaOnly;render()" style="background:${S.areaOnly?'#fff':'rgba(255,255,255,.22)'};color:${S.areaOnly?'#0d5e56':'#fff'};border:none;border-radius:50px;padding:7px 14px;font-weight:800;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:6px">
+        <div style="margin-top:10px;position:relative;z-index:1">
+          <button onclick="S.areaOnly=!S.areaOnly;render()" style="background:${S.areaOnly?'#fff':'rgba(255,255,255,.22)'};color:${S.areaOnly?'#7C3AED':'#fff'};border:none;border-radius:50px;padding:7px 14px;font-weight:800;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:6px">
             📍 ${S.areaOnly?'מציג רק '+myArea:'הצג רק '+myArea}
           </button>
         </div>
       `:''}
-      <div style="display:flex;gap:4px;background:rgba(255,255,255,0.15);border-radius:12px;padding:3px;margin-top:12px">
-        <button onclick="S.comTab='posts';render()" style="flex:1;padding:8px;border:none;border-radius:10px;font-weight:800;font-size:13px;cursor:pointer;transition:all .2s;background:${S.comTab!=='groups'?'rgba(255,255,255,0.9)':'transparent'};color:${S.comTab!=='groups'?'#0d5e56':'rgba(255,255,255,0.85)'}">📝 פוסטים</button>
-        <button onclick="S.comTab='groups';render()" style="flex:1;padding:8px;border:none;border-radius:10px;font-weight:800;font-size:13px;cursor:pointer;transition:all .2s;background:${S.comTab==='groups'?'rgba(255,255,255,0.9)':'transparent'};color:${S.comTab==='groups'?'#0d5e56':'rgba(255,255,255,0.85)'}">🏘️ קבוצות${communityGroups.length?' ('+communityGroups.length+')':''}</button>
+      <div style="display:flex;gap:4px;background:rgba(255,255,255,0.15);border-radius:12px;padding:3px;margin-top:12px;position:relative;z-index:1">
+        <button onclick="S.comTab='posts';render()" style="flex:1;padding:8px;border:none;border-radius:10px;font-weight:800;font-size:13px;cursor:pointer;transition:all .2s;background:${S.comTab!=='groups'?'rgba(255,255,255,0.9)':'transparent'};color:${S.comTab!=='groups'?'#7C3AED':'rgba(255,255,255,0.85)'}">פוסטים</button>
+        <button onclick="S.comTab='groups';render()" style="flex:1;padding:8px;border:none;border-radius:10px;font-weight:800;font-size:13px;cursor:pointer;transition:all .2s;background:${S.comTab==='groups'?'rgba(255,255,255,0.9)':'transparent'};color:${S.comTab==='groups'?'#7C3AED':'rgba(255,255,255,0.85)'}">קבוצות${communityGroups.length?' ('+communityGroups.length+')':''}</button>
       </div>
     </div>
+    ${currentUser&&S.comTab!=='groups'?`
+    <div style="background:#fff;margin:14px 16px 0;border-radius:20px;padding:14px 16px;box-shadow:0 2px 12px rgba(0,0,0,0.07);display:flex;align-items:center;gap:12px;cursor:pointer" onclick="S.showCompose=true;render()">
+      <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#14B8A6,#06B6D4);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      </div>
+      <span style="flex:1;font-size:13px;color:#94A3B8">שתף עם הקהילה...</span>
+      <div style="display:flex;gap:8px">
+        <div style="width:30px;height:30px;border-radius:10px;background:rgba(20,184,166,.1);display:flex;align-items:center;justify-content:center">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        </div>
+        <div style="width:30px;height:30px;border-radius:10px;background:rgba(168,85,247,.1);display:flex;align-items:center;justify-content:center">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#A855F7" stroke-width="2" stroke-linecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+        </div>
+      </div>
+    </div>`:''}
     <div style="padding:15px 16px 100px">${S.comTab==='groups'?_groupsHtml:vis.length===0?`
       <div style="background:rgba(255,255,255,0.7);backdrop-filter:blur(12px);border-radius:24px;padding:40px 24px;text-align:center;margin-top:30px">
         <div style="font-size:64px;margin-bottom:14px">💬</div>
