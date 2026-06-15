@@ -494,7 +494,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.13';
+const APP_VERSION='4.9.14';
 const APP_BUILD='14-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -1182,7 +1182,8 @@ async function signInWithGoogleParent(){
     showFireToast('✅ פרטים הועתקו! השלם את שאר השדות ולחץ המשך.');
   }catch(e){
     S._googleImporting=false;
-    if(e.code!=='auth/popup-closed-by-user')showFireToast('❌ '+e.message);
+    const _silentCodes=['auth/popup-closed-by-user','auth/cancelled-popup-request'];
+    if(!_silentCodes.includes(e.code))showFireToast('❌ '+e.message);
   }finally{
     // Delay clearing flag so onAuthStateChanged fires WHILE it's still true
     setTimeout(()=>{S._googleImporting=false;},2000);
@@ -2277,7 +2278,12 @@ async function loadNotifications(){
       if(aSnap.exists()){
         const arr2=[];
         aSnap.forEach(c=>arr2.push({id:'an_'+c.key,_adminNotif:true,...c.val()}));
-        arr2.reverse().forEach(n=>{notifications.push(n);if(!n.read)unreadCount++;});
+        // newVideo/newTeacher/newReport/newUser belong in admin panel — exclude from personal bell
+        const _adminActionTypes=new Set(['newVideo','newTeacher','newReport','newUser']);
+        arr2.reverse().forEach(n=>{
+          if(_adminActionTypes.has(n.type))return;
+          notifications.push(n);if(!n.read)unreadCount++;
+        });
       }
     }
     notifications.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
@@ -5294,6 +5300,16 @@ function showAdminPanel(forceTab=null){
 
 async function adminSwitchTab(id){
   adminTab=id;
+  if(id==='messages'){
+    // auto-mark all contact messages as read so the badge clears
+    const unreadMsgs=adminContactMessages.filter(m=>!m.read);
+    if(unreadMsgs.length){
+      const upd={};
+      unreadMsgs.forEach(m=>{upd[m.id+'/read']=true;m.read=true;});
+      db.ref('contactMessages').update(upd).catch(()=>{});
+      _updateAdminBadge(adminAlertStudents.length+adminAlertPosts.length+adminAlertPayments.length+adminContactMessages.filter(m=>!m.read).length);
+    }
+  }
   if(id==='posts'){
     try{
       showFireToast('⏳ טוען פוסטים...');
@@ -10115,7 +10131,7 @@ function installApp(){
 
 // ── AUTO-UPDATE SERVICE WORKER ────────────────────────────────────────────────
 if('serviceWorker' in navigator){
-  const currentSwUrl='/sw.js?v=4.9.13';
+  const currentSwUrl='/sw.js?v=4.9.14';
   // Unregister SWs that are NOT the current version
   navigator.serviceWorker.getRegistrations().then(regs=>{
     regs.forEach(r=>{
