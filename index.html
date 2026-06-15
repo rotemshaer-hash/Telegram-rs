@@ -494,7 +494,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.14';
+const APP_VERSION='4.9.15';
 const APP_BUILD='14-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -2822,10 +2822,43 @@ async function refreshChats(){
   showFireToast('🔄 מרענן שיחות...');
   await loadUserChats();
   setupConvListeners();
+  await pollForNewMessages();
   if(currentUserData?.role==='teacher')await loadTeacherBookings();
   else await loadStudentBookings();
   render();
   showFireToast('✅ השיחות עודכנו');
+}
+
+// ── Active poll: check each known chat for new messages via .get() ──────────
+// More reliable than limitToLast(1) listeners which miss messages sent while
+// app is backgrounded / WebSocket reconnects. Runs every 30s + on foreground.
+async function pollForNewMessages(){
+  if(!currentUser||!userChats.length)return;
+  const myUid=currentUser.uid;
+  let changed=false;
+  await Promise.allSettled(userChats.map(async uc=>{
+    if(!uc.otherUid)return;
+    try{
+      const chatId=getChatId(myUid,uc.otherUid);
+      const snap=await db.ref('messages/'+chatId).limitToLast(3).get();
+      if(!snap.exists())return;
+      snap.forEach(s=>{
+        const m={id:s.key,...s.val()};
+        if(!m.from||m.from===myUid)return; // skip own messages
+        if((m.createdAt||0)<=(uc.lastTime||0))return; // not newer
+        const inChat=S.screen==='chat'&&S.chat?.otherUid===uc.otherUid;
+        const updated={otherUid:uc.otherUid,otherName:m.fromName||uc.otherName||'משתמש',lastMessage:m.text||'🎤 הקלטה',lastTime:m.createdAt||Date.now(),unread:!inChat};
+        const _i=userChats.findIndex(c=>c.otherUid===uc.otherUid);
+        if(_i>=0)userChats[_i]=updated;else userChats.unshift(updated);
+        db.ref('userChats/'+myUid+'/'+uc.otherUid).set(updated).catch(()=>{});
+        changed=true;
+      });
+    }catch(e){}
+  }));
+  if(changed){
+    userChats.sort((a,b)=>(b.lastTime||0)-(a.lastTime||0));
+    render();
+  }
 }
 
 function stopChatListener(){
@@ -5278,6 +5311,14 @@ async function _verifyAdminPin(onSuccess){
 
 function showAdminPanel(forceTab=null){
   if(!isAdmin()){showFireToast('🚫 אין הרשאת מנהל');return;}
+  // auto-clear unread contact messages when admin opens the panel
+  const unreadMsgs=adminContactMessages.filter(m=>!m.read);
+  if(unreadMsgs.length){
+    const upd={};
+    unreadMsgs.forEach(m=>{upd[m.id+'/read']=true;m.read=true;});
+    db.ref('contactMessages').update(upd).catch(()=>{});
+    _updateAdminBadge(adminAlertStudents.length+adminAlertPosts.length+adminAlertPayments.length);
+  }
   _verifyAdminPin(()=>{loadAdminData().then(()=>{
     if(forceTab){
       adminTab=forceTab;
@@ -9608,6 +9649,9 @@ auth&&auth.onAuthStateChanged(async user=>{
       if(currentUserData?.role==='teacher')await loadTeacherVideos();
       await loadLessonSummaries();
 
+      // ── immediate catch-up poll for missed messages ───────────────────────
+      pollForNewMessages().catch(()=>{});
+
       // האזנה בזמן אמת להתראות + לאישור מנהל
       if(isAdmin()){_requestBrowserNotifPermission();_startAdminAlertsListener();}
       // Timestamp of when we attached the listener — used to skip old notifications
@@ -9682,14 +9726,25 @@ auth&&auth.onAuthStateChanged(async user=>{
         });
       }
 
-      // ── polling fallback: reload userChats every 90s to catch missed real-time events ──
+      // ── active poll: every 30s + on foreground restore ──────────────────────
       if(_chatPollInterval)clearInterval(_chatPollInterval);
       _chatPollInterval=setInterval(async()=>{
         if(!currentUser)return;
         await loadUserChats();
         setupConvListeners();
-        if(S.screen==='messages'||S.screen==='profile')render();
-      },90000);
+        await pollForNewMessages();
+      },30000);
+      // wake poll — fires when user brings the PWA to foreground
+      if(!window._kidemy_visibilityBound){
+        window._kidemy_visibilityBound=true;
+        document.addEventListener('visibilitychange',async()=>{
+          if(document.visibilityState==='visible'&&currentUser){
+            await loadUserChats();
+            setupConvListeners();
+            await pollForNewMessages();
+          }
+        });
+      }
 
     }catch(e){
       console.warn('Auth/data error:',e);
@@ -10131,7 +10186,7 @@ function installApp(){
 
 // ── AUTO-UPDATE SERVICE WORKER ────────────────────────────────────────────────
 if('serviceWorker' in navigator){
-  const currentSwUrl='/sw.js?v=4.9.14';
+  const currentSwUrl='/sw.js?v=4.9.15';
   // Unregister SWs that are NOT the current version
   navigator.serviceWorker.getRegistrations().then(regs=>{
     regs.forEach(r=>{
