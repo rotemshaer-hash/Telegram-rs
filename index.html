@@ -90,15 +90,15 @@ input,textarea,select{font-family:inherit;-webkit-appearance:none;appearance:non
 
 /* NAV */
 .bnav{position:fixed;bottom:0;left:0;right:0;
-  background:rgba(255,255,255,.96);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
-  border-top:1px solid rgba(15,26,31,.08);
+  background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);
+  border-top:1px solid rgba(255,255,255,.1);
   display:flex;padding:8px 0 max(14px,env(safe-area-inset-bottom));
-  box-shadow:0 -4px 30px rgba(0,0,0,.12);z-index:90}
-.bnav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:2px 0;color:rgba(15,26,31,.4);background:none;border:none}
+  box-shadow:0 -4px 30px rgba(0,0,0,.25);z-index:90}
+.bnav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:2px 0;color:rgba(255,255,255,.5);background:none;border:none}
 .nb-icon{font-size:20px;position:relative;line-height:1}
-.nb-lbl{font-size:9px;font-weight:700;color:rgba(15,26,31,.4);transition:color .2s;white-space:nowrap}
-.bnav button.active{color:var(--p)}
-.bnav button.active .nb-lbl{color:var(--p)}
+.nb-lbl{font-size:9px;font-weight:700;color:rgba(255,255,255,.5);transition:color .2s;white-space:nowrap}
+.bnav button.active{color:#fff}
+.bnav button.active .nb-lbl{color:#fff}
 .nb-dot{width:4px;height:4px;border-radius:50%;background:var(--p);margin-top:1px}
 .nb-badge{position:absolute;top:-4px;right:-7px;background:#E74C3C;color:#fff;font-size:8px;font-weight:900;border-radius:50%;width:15px;height:15px;display:flex;align-items:center;justify-content:center}
 
