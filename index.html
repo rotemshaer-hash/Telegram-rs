@@ -1009,8 +1009,8 @@ function Safety(){
           <div><div style="font-weight:900;font-size:15px">שיעורים אונליין מאובטחים</div><div style="font-size:11px;color:#94A3B8;margin-top:2px">טכנולוגיה מוכחת ובטוחה</div></div>
         </div>
         ${[
-          'שיעורי וידאו מתקיימים דרך Jitsi Meet – פלטפורמה אירופאית מוצפנת, ללא צורך בהורדת תוכנה.',
-          'לכל שיעור נוצר חדר ייחודי עם מזהה אקראי שאי-אפשר לנחש. אורחים לא מוזמנים לא יכולים להיכנס.',
+          'שיעורי וידאו מתקיימים דרך הקישור האישי של המורה (Zoom / Google Meet / Teams), ללא צורך בהורדת תוכנה נוספת.',
+          'לכל שיעור יש קישור אישי וייחודי שהמורה מגדיר. אורחים לא מוזמנים לא יכולים להיכנס.',
           'שיעורים פרונטליים (פנים-אל-פנים) מחייבים אישור הורה מפורש לפני האישור הסופי.',
           'שיעורי אונליין פתוחים לכל המשתתפים המוזמנים – ללא הגבלת מספר.',
         ].map(t=>`<div style="display:flex;gap:9px;margin-bottom:10px;align-items:flex-start"><span style="color:#06B6D4;font-size:16px;flex-shrink:0;margin-top:1px">✓</span><span style="font-size:13px;line-height:1.6;color:#CBD5E1">${t}</span></div>`).join('')}
@@ -1094,7 +1094,7 @@ function ParentReg(){
       <div style="background:rgba(20,184,166,.08);border:1.5px solid rgba(20,184,166,.25);border-radius:16px;padding:12px 15px">
         <div style="font-size:12px;font-weight:800;color:#5EEAD4;margin-bottom:8px">🛡️ בטיחות Kidemy – בקצרה:</div>
         <div style="display:flex;flex-direction:column;gap:5px">
-          ${[['👨‍👩‍👧','פיקוח הורים מלא – ההורה מאשר כל שיעור'],['🎓','כל מורה עובר בדיקה לפני שמופיע בחיפוש'],['📹','שיעורים אונליין דרך Jitsi Meet מאובטח'],['🚨','מערכת דיווח – אפס סבלנות לתוכן פוגעני']].map(([e,t])=>`<div style="display:flex;gap:8px;align-items:center"><span style="font-size:13px">${e}</span><span style="font-size:11px;color:#CBD5E1">${t}</span></div>`).join('')}
+          ${[['👨‍👩‍👧','פיקוח הורים מלא – ההורה מאשר כל שיעור'],['🎓','כל מורה עובר בדיקה לפני שמופיע בחיפוש'],['📹','שיעורים אונליין דרך קישור Zoom / Google Meet מאובטח'],['🚨','מערכת דיווח – אפס סבלנות לתוכן פוגעני']].map(([e,t])=>`<div style="display:flex;gap:8px;align-items:center"><span style="font-size:13px">${e}</span><span style="font-size:11px;color:#CBD5E1">${t}</span></div>`).join('')}
         </div>
       </div>
 
@@ -1555,9 +1555,9 @@ function TeacherSetup(){
       <!-- קישור שיעור אישי -->
       <div class="card" style="margin-bottom:18px;background:linear-gradient(135deg,rgba(6,182,212,0.06),rgba(20,184,166,0.04));border:1.5px solid rgba(6,182,212,0.3)">
         <h3 style="font-weight:900;font-size:16px;margin:0 0 6px;color:#0891B2">🎥 קישור שיעור אישי (Zoom / Google Meet)</h3>
-        <p style="color:#64748B;font-size:12px;margin:0 0 12px;line-height:1.6">הכנס את הקישור האישי שלך ל-Zoom, Google Meet, או Teams. אם לא תמלא, יווצר חדר Jitsi בחינם אוטומטית.</p>
+        <p style="color:#64748B;font-size:12px;margin:0 0 12px;line-height:1.6">הכנס את הקישור האישי שלך ל-Zoom, Google Meet, או Teams. יש להגדיר קישור כדי שתלמידים יוכלו להצטרף לשיעור.</p>
         <input id="tMeetingLink" class="inp" type="url" placeholder="https://zoom.us/j/... או https://meet.google.com/...">
-        <p style="font-size:11px;color:#94A3B8;margin:6px 0 0">⚡ אם לא תמלא – יווצר חדר Jitsi אוטומטי בחינם</p>
+        <p style="font-size:11px;color:#94A3B8;margin:6px 0 0">⚠️ ללא קישור, תלמידים לא יוכלו להצטרף לשיעור</p>
       </div>
 
       <div class="warn" style="margin-bottom:14px"><span>🛡</span><span>הפרופיל יעבור אישור צוות הבטיחות תוך 24 שעות.</span></div>
@@ -1576,7 +1576,7 @@ function TeacherSetup(){
           </div>
           <div style="display:flex;gap:10px;align-items:flex-start">
             <div style="width:26px;height:26px;border-radius:50%;background:#A855F7;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;flex-shrink:0">3</div>
-            <div style="font-size:13px;line-height:1.6"><strong>השיעור מתקיים</strong> – וידאו דרך Jitsi Meet</div>
+            <div style="font-size:13px;line-height:1.6"><strong>השיעור מתקיים</strong> – וידאו דרך הקישור האישי של המורה (Zoom / Google Meet)</div>
           </div>
           <div style="display:flex;gap:10px;align-items:flex-start">
             <div style="width:26px;height:26px;border-radius:50%;background:#10B981;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;flex-shrink:0">4</div>
@@ -1865,7 +1865,7 @@ async function processPayment(payMethod,totalAmount){
       netToTeacher:totalAmount-Math.round(totalAmount*COMMISSION_RATE),
       status:'awaitingPayment',
       jitsiRoom:jitsiRoom,
-      jitsiUrl:t.meetingLink||('https://meet.jit.si/'+jitsiRoom),
+      jitsiUrl:t.meetingLink||'',
       meetingPlatform:getMeetingLabel(t.meetingLink||''),
       createdAt:Date.now()
     };
@@ -2037,15 +2037,16 @@ async function deleteStudentBooking(bookingId){
 }
 
 function getMeetingLabel(url){
-  if(!url)return 'Jitsi';
+  if(!url)return 'וידאו';
   if(url.includes('zoom.us'))return 'Zoom';
   if(url.includes('meet.google.com'))return 'Google Meet';
   if(url.includes('teams.microsoft.com'))return 'Teams';
   if(url.includes('whereby.com'))return 'Whereby';
-  return 'Jitsi';
+  return 'וידאו';
 }
 function joinJitsi(jitsiUrl,room,bookingData){
-  const url=jitsiUrl||('https://meet.jit.si/'+room);
+  if(!jitsiUrl){showFireToast('⚠️ המורה עדיין לא הגדיר קישור לשיעור');return;}
+  const url=jitsiUrl;
   showFireToast('🎥 פותח שיעור...');
   const w=window.open(url,'_blank');
   if(!w)location.href=url; // popup blocked (common in standalone PWA) — navigate instead
@@ -7920,7 +7921,7 @@ function Parent(){
 
       <div style="background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);border-radius:24px;padding:20px;color:#fff;margin-top:14px">
         <h4 style="margin:0 0 8px;font-weight:900;font-size:16px;display:flex;align-items:center;gap:7px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> אבטחת ילדים</h4>
-        <p style="margin:0;font-size:13px;line-height:1.7;opacity:.95">כל שיעור פרונטלי מחייב אישור הורה. שיעורי אונליין מתבצעים ב-Jitsi Meet מאובטח. הורים מקבלים דוח אחרי כל שיעור.</p>
+        <p style="margin:0;font-size:13px;line-height:1.7;opacity:.95">כל שיעור פרונטלי מחייב אישור הורה. שיעורי אונליין מתבצעים בקישור מאובטח (Zoom / Google Meet) של המורה. הורים מקבלים דוח אחרי כל שיעור.</p>
       </div>
     </div>
     ${BNav("parent")}
@@ -8298,7 +8299,7 @@ function About(){
     ${[
       {e:'🔍',t:'חיפוש ובחירת מורה',d:'רואים פרופיל מלא – תמונה, וידאו, דירוג, ביקורות ומחיר.'},
       {e:'📅',t:'קביעת שיעור',d:'בוחרים תאריך ושעה מלוח הזמנים של המורה. ההורה מקבל הודעה.'},
-      {e:'📹',t:'שיעור אונליין',d:'השיעור מתקיים דרך Jitsi Meet – הפלטפורמה המובילה לשיעורים אונליין.'},
+      {e:'📹',t:'שיעור אונליין',d:'השיעור מתקיים דרך הקישור האישי שהמורה הגדיר – Zoom, Google Meet או Teams.'},
       {e:'⭐',t:'דירוג וביקורת',d:'אחרי השיעור שניהם מדרגים אחד את השני. זה בונה אמון בקהילה.'},
     ].map(s=>`
       <div class="card" style="display:flex;gap:12px;align-items:flex-start;margin-bottom:10px">
@@ -8784,7 +8785,7 @@ function showEditTeacherProfileDialog(){
       <div style="margin-bottom:14px">
         <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:6px">🎥 קישור שיעור (Zoom / Google Meet)</label>
         <input id="_etMeetingLink" class="inp" type="url" value="${(t.meetingLink||'').replace(/"/g,'&quot;')}" placeholder="https://zoom.us/j/... או https://meet.google.com/...">
-        <p style="font-size:10px;color:#94A3B8;margin:4px 0 0">ריק = Jitsi אוטומטי בחינם</p>
+        <p style="font-size:10px;color:#94A3B8;margin:4px 0 0">⚠️ ללא קישור, תלמידים לא יוכלו להצטרף לשיעור</p>
       </div>
       <div style="background:rgba(168,85,247,0.04);border:1.5px solid rgba(168,85,247,0.15);border-radius:18px;padding:16px;margin-bottom:16px">
         <h3 style="font-weight:900;font-size:15px;margin:0 0 12px;color:#A855F7">📱 רשתות חברתיות</h3>
@@ -8803,7 +8804,7 @@ function showEditTeacherProfileDialog(){
       </div>
       <div style="background:rgba(6,182,212,0.04);border:1.5px solid rgba(6,182,212,0.25);border-radius:18px;padding:16px;margin-bottom:16px">
         <h3 style="font-weight:900;font-size:15px;margin:0 0 6px;color:#0891B2">🎥 קישור שיעור אישי (Zoom / Google Meet)</h3>
-        <p style="font-size:12px;color:#64748B;margin:0 0 10px;line-height:1.6">תלמידים ישתמשו בקישור זה לכניסה לשיעור. אם ריק – יווצר חדר Jitsi אוטומטי.</p>
+        <p style="font-size:12px;color:#64748B;margin:0 0 10px;line-height:1.6">תלמידים ישתמשו בקישור זה לכניסה לשיעור. יש להגדיר קישור פעיל כדי שתלמידים יוכלו להצטרף.</p>
         <input id="_etMeetingLink" class="inp" type="url" value="${(t.meetingLink||'').replace(/"/g,'&quot;')}" placeholder="https://zoom.us/j/... או https://meet.google.com/...">
       </div>
       <div style="background:rgba(239,68,68,0.04);border:1.5px solid rgba(239,68,68,0.18);border-radius:18px;padding:16px;margin-bottom:16px">
@@ -9502,7 +9503,7 @@ function openWhatsApp(phone,message){
 // תבניות הודעות מוכנות
 const WA_TEMPLATES={
   newBookingTeacher:(b)=>`שלום ${b.teacherName} 👋\n\nתלמיד חדש הזמין שיעור ב-Kidemy:\n👤 ${b.studentName}\n📅 יום ${b.day} בשעה ${b.time}\n💰 ₪${b.price} (${b.payMethod})\n\nכנס לאפליקציה כדי לאשר:\n${window.location.origin}`,
-  bookingApproved:(b)=>`היי ${b.studentName} 🎉\n\nהשיעור שלך אושר!\n👨‍🏫 ${b.teacherName}\n📅 יום ${b.day} בשעה ${b.time}\n📹 שיעור אונליין דרך Jitsi Meet\n\nכנס לאפליקציה:\n${window.location.origin}`,
+  bookingApproved:(b)=>`היי ${b.studentName} 🎉\n\nהשיעור שלך אושר!\n👨‍🏫 ${b.teacherName}\n📅 יום ${b.day} בשעה ${b.time}\n📹 שיעור אונליין${b.jitsiUrl?':\n'+b.jitsiUrl:' – הקישור יישלח על ידי המורה'}\n\nכנס לאפליקציה:\n${window.location.origin}`,
   bookingReminder:(b)=>`היי ${b.studentName} ⏰\n\nתזכורת: השיעור שלך עוד מעט!\n👨‍🏫 ${b.teacherName}\n📅 יום ${b.day} בשעה ${b.time}\n\nהצטרף לשיעור:\n${b.jitsiUrl||window.location.origin}`,
   parentNotify:(b,childName)=>`שלום! 👋\n\nהילד/ה ${childName} הזמין שיעור ב-Kidemy:\n📚 ${b.teacherCat}\n👨‍🏫 ${b.teacherName}\n📅 יום ${b.day} בשעה ${b.time}\n💰 ₪${b.price}\n\nלצפייה ואישור:\n${window.location.origin}`,
   inviteFriend:()=>`היי! 👋\n\nגיליתי אפליקציה מגניבה - Kidemy 🎓\nשיעורים פרטיים בטוחים ואיכותיים:\nגיטרה, מתמטיקה, אמנות, ספורט ועוד!\n\nתבדוק:\nhttps://kidemy-app.netlify.app`,
