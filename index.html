@@ -6012,19 +6012,21 @@ function renderAdminTab(){
     const starsHtml=n=>'⭐'.repeat(n)+'☆'.repeat(5-n);
     const ago=ts=>{const m=Math.round((Date.now()-ts)/60000);return m<60?m+' דק\'':m<1440?Math.floor(m/60)+' שע\'':Math.floor(m/1440)+' ימים';};
     const renderReview=(r,showActions)=>`
-      <div style="background:${r.approved?'rgba(16,185,129,0.04)':'rgba(245,158,11,0.04)'};border:1.5px solid ${r.approved?'rgba(16,185,129,0.2)':'rgba(245,158,11,0.3)'};border-radius:16px;padding:14px;margin-bottom:10px">
-        <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px">
-          <span style="background:${r.approved?'rgba(16,185,129,0.15)':'rgba(245,158,11,0.15)'};color:${r.approved?'#059669':'#92400E'};font-size:11px;font-weight:800;padding:3px 10px;border-radius:50px">${r.approved?'✓ מאושר':'⏳ ממתין'}</span>
-          <div style="text-align:right">
-            <div style="font-weight:800;font-size:13px">${r.fromName||'תלמיד'} → ${r.teacherName}</div>
-            <div style="font-size:11px;color:#94A3B8">${ago(r.createdAt||0)} לפני</div>
+      <div style="background:#fff;border-radius:18px;margin-bottom:10px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,0.06)">
+        <div style="padding:14px 16px 10px;display:flex;align-items:center;gap:12px">
+          <div style="width:44px;height:44px;border-radius:14px;background:rgba(245,158,11,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2" stroke-linecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
           </div>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:900;color:#0F1A1F">ביקורת חדשה — ${r.teacherName||'מורה'}</div>
+            <div style="font-size:11px;color:#94A3B8;margin-top:2px">${starsHtml(r.stars||0)} מ-${r.fromName||'תלמיד'}</div>
+          </div>
+          <div style="font-size:10px;color:#CBD5E1;font-weight:700">${ago(r.createdAt||0)} לפני</div>
         </div>
-        <div style="font-size:15px;margin-bottom:6px">${starsHtml(r.stars||0)}</div>
-        ${r.review?`<p style="margin:0 0 10px;font-size:13px;color:#374151;line-height:1.6;background:rgba(0,0,0,0.03);border-radius:10px;padding:10px">"${r.review}"</p>`:''}
-        ${showActions?`<div style="display:flex;gap:8px">
-          <button onclick="adminRejectReview('${r.id}','${r.teacherId}')" style="flex:1;background:rgba(239,68,68,0.1);border:1.5px solid rgba(239,68,68,0.3);color:#EF4444;border-radius:12px;padding:9px;font-weight:800;font-size:13px;cursor:pointer">✗ דחה</button>
-          <button onclick="adminApproveReview('${r.id}','${r.teacherId}')" style="flex:1;background:linear-gradient(135deg,#10B981,#14B8A6);border:none;color:#fff;border-radius:12px;padding:9px;font-weight:800;font-size:13px;cursor:pointer">✓ אשר ופרסם</button>
+        ${r.review?`<div style="padding:0 16px 12px;font-size:12px;color:#64748B;line-height:1.5">"${r.review.substring(0,180)}${r.review.length>180?'...':''}"</div>`:''}
+        ${showActions?`<div style="display:flex;border-top:1px solid #f1f5f9">
+          <button onclick="adminApproveReview('${r.id}','${r.teacherId}')" style="flex:1;padding:11px;border:none;background:transparent;color:#10B981;font-weight:800;font-size:12px;cursor:pointer;border-left:1px solid #f1f5f9;display:flex;align-items:center;justify-content:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg> פרסום</button>
+          <button onclick="adminRejectReview('${r.id}','${r.teacherId}')" style="flex:1;padding:11px;border:none;background:transparent;color:#EF4444;font-weight:800;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> דחייה</button>
         </div>`:''}
       </div>`;
     return `
@@ -6936,7 +6938,8 @@ function Teacher(){
         }).join('')}
       </div>
       <!-- Share teacher -->
-      <button onclick="shareTeacher(TEACHERS.find(x=>x.id===''+t.id)||TEACHERS.find(x=>String(x.id)===String(t.id)))" style="position:absolute;top:20px;left:20px;background:rgba(255,255,255,.2);border:none;color:#fff;font-size:18px;cursor:pointer;border-radius:50%;width:40px;height:40px;display:flex;align-items:center;justify-content:center;z-index:2">📤</button>
+      <button onclick="shareTeacher(TEACHERS.find(x=>x.id===''+t.id)||TEACHERS.find(x=>String(x.id)===String(t.id)))" style="position:absolute;top:20px;left:20px;background:rgba(255,255,255,.2);border:none;color:#fff;cursor:pointer;border-radius:50%;width:40px;height:40px;display:flex;align-items:center;justify-content:center;z-index:2">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
     </div>
 
     <div style="padding:18px 20px 100px">
