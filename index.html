@@ -90,13 +90,14 @@ input,textarea,select{font-family:inherit;-webkit-appearance:none;appearance:non
 
 /* NAV */
 .bnav{position:fixed;bottom:0;left:0;right:0;
-  background:rgba(15,15,26,.96);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
-  border-top:1px solid rgba(255,255,255,.08);
+  background:rgba(255,255,255,.96);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
+  border-top:1px solid rgba(15,26,31,.08);
   display:flex;padding:8px 0 max(14px,env(safe-area-inset-bottom));
-  box-shadow:0 -4px 30px rgba(0,0,0,.35);z-index:90}
-.bnav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:2px 0}
+  box-shadow:0 -4px 30px rgba(0,0,0,.12);z-index:90}
+.bnav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:2px 0;color:rgba(15,26,31,.4);background:none;border:none}
 .nb-icon{font-size:20px;position:relative;line-height:1}
-.nb-lbl{font-size:9px;font-weight:700;color:rgba(255,255,255,.35);transition:color .2s;white-space:nowrap}
+.nb-lbl{font-size:9px;font-weight:700;color:rgba(15,26,31,.4);transition:color .2s;white-space:nowrap}
+.bnav button.active{color:var(--p)}
 .bnav button.active .nb-lbl{color:var(--p)}
 .nb-dot{width:4px;height:4px;border-radius:50%;background:var(--p);margin-top:1px}
 .nb-badge{position:absolute;top:-4px;right:-7px;background:#E74C3C;color:#fff;font-size:8px;font-weight:900;border-radius:50%;width:15px;height:15px;display:flex;align-items:center;justify-content:center}
@@ -6615,10 +6616,10 @@ function Home(){
       </div>
       <p style="color:rgba(255,255,255,.88);font-size:14px;margin:0 0 2px;position:relative;z-index:1">שלום, ${currentUser ? (currentUserData?.name || currentUser.email.split('@')[0]) : 'אורח'} 👋</p>
       <h2 style="color:#fff;font-size:20px;font-weight:900;margin:0 0 16px;position:relative;z-index:1">מה תרצה ללמוד היום?</h2>
-      <div style="background:rgba(255,255,255,.18);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.22);border-radius:50px;padding:12px 18px;display:flex;align-items:center;gap:10px;position:relative;z-index:1">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.7)" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-        <input id="homeSearch" value="${S.search||''}" oninput="S.search=this.value;clearTimeout(S._st);S._st=setTimeout(render,280)" placeholder="חפש מורה, נושא, עיר..." style="border:none;outline:none;flex:1;font-size:15px;direction:rtl;background:transparent;color:#fff;font-family:inherit">
-        ${S.search?`<button onclick="S.search='';render()" style="background:rgba(255,255,255,0.25);border:none;color:#fff;cursor:pointer;border-radius:50%;width:24px;height:24px;font-size:12px">✕</button>`:`<span style="color:rgba(255,255,255,.6);font-size:14px">⌨</span>`}
+      <div style="background:rgba(255,255,255,.94);border:1px solid rgba(255,255,255,.5);border-radius:50px;padding:12px 18px;display:flex;align-items:center;gap:10px;position:relative;z-index:1;box-shadow:0 6px 20px rgba(0,0,0,.12)">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#0F1A1F" stroke-opacity=".55" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input id="homeSearch" value="${S.search||''}" oninput="S.search=this.value;clearTimeout(S._st);S._st=setTimeout(render,280)" placeholder="חפש מורה, נושא, עיר..." style="border:none;outline:none;flex:1;font-size:15px;direction:rtl;background:transparent;color:#0F1A1F;font-family:inherit">
+        ${S.search?`<button onclick="S.search='';render()" style="background:rgba(15,26,31,0.08);border:none;color:#0F1A1F;cursor:pointer;border-radius:50%;width:24px;height:24px;font-size:12px">✕</button>`:`<span style="color:rgba(15,26,31,.4);font-size:14px">⌨</span>`}
       </div>
     </div>
 
