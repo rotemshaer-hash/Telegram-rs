@@ -9390,7 +9390,20 @@ async function _loadParentPortalData(token){
   }
 }
 
-const SCREENS={splash:Splash,safety:Safety,parentReg:ParentReg,register:Register,login:Login,regSuccess:RegSuccess,teacherSetup:TeacherSetup,teacherPending:TeacherPending,studentPending:StudentPending,home:Home,nearby:Nearby,teacher:Teacher,booking:Booking,messages:Messages,chat:Chat,profile:Profile,community:Community,leaderboard:Leaderboard,about:About,parentPortal:ParentPortal,weeklySchedule:WeeklySchedule};
+function EmailVerify(){
+  return `<div class="screen" style="background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px">
+    <div style="background:#fff;border-radius:28px;padding:36px 28px;max-width:360px;width:100%;text-align:center">
+      <div style="font-size:60px;margin-bottom:16px">📧</div>
+      <h2 style="font-size:22px;font-weight:900;margin:0 0 10px;color:#0F1A1F">אמת את כתובת המייל</h2>
+      <p style="color:#64748B;font-size:14px;line-height:1.7;margin:0 0 24px">שלחנו לך מייל אימות לכתובת<br><strong style="color:#0F1A1F">${currentUser?.email||''}</strong><br><br>פתח/י את המייל ולחץ/י על הקישור — ואז חזור/י לכאן להתחבר.</p>
+      <button onclick="auth.currentUser?.reload().then(()=>{if(auth.currentUser?.emailVerified){location.reload();}else{showFireToast('עדיין לא אומת — בדוק/י את המייל');}})" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:14px;padding:14px;font-size:15px;font-weight:800;cursor:pointer;margin-bottom:10px">✅ אימתתי — כנס/י</button>
+      <button onclick="auth.currentUser?.sendEmailVerification({url:window.location.origin}).then(()=>showFireToast('📧 מייל נשלח מחדש!')).catch(()=>showFireToast('⏳ נסה שוב בעוד דקה'))" style="width:100%;background:rgba(20,184,166,0.08);border:1.5px solid rgba(20,184,166,0.3);color:#0F766E;border-radius:14px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:10px">📨 שלח מייל מחדש</button>
+      <button onclick="auth.signOut().then(()=>go('login'))" style="background:none;border:none;color:#94A3B8;font-size:13px;cursor:pointer">← חזור להתחברות</button>
+    </div>
+  </div>`;
+}
+
+const SCREENS={splash:Splash,safety:Safety,parentReg:ParentReg,register:Register,login:Login,regSuccess:RegSuccess,emailVerify:EmailVerify,teacherSetup:TeacherSetup,teacherPending:TeacherPending,studentPending:StudentPending,home:Home,nearby:Nearby,teacher:Teacher,booking:Booking,messages:Messages,chat:Chat,profile:Profile,community:Community,leaderboard:Leaderboard,about:About,parentPortal:ParentPortal,weeklySchedule:WeeklySchedule};
 
 function render(){
   const fn=SCREENS[S.screen]||Home;
@@ -9715,6 +9728,11 @@ auth&&auth.onAuthStateChanged(async user=>{
       // ── בדיקת תלמיד שלא אושר עדיין ──────────────────────────────
       if(currentUserData?.role==='student'&&currentUserData?.verified!==true&&!isAdmin()){
         S._loggingIn=false;S._registering=false;go('studentPending');return;
+      }
+
+      // ── בדיקת אימות מייל (לא חל על אדמין ומשתמשי Google שמאומתים אוטומטית) ──
+      if(!user.emailVerified&&!isAdmin()){
+        S._loggingIn=false;S._registering=false;go('emailVerify');return;
       }
 
       // ── ניווט מיידי — כל שאר הטעינה ברקע ────────────────────────

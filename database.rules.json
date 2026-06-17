@@ -38,7 +38,13 @@
       }
     },
     "notifications": {
-      "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth != null" }
+      "$uid": {
+        ".read": "auth != null && auth.uid == $uid",
+        "$notifId": {
+          ".write": "auth != null",
+          ".validate": "newData.hasChildren(['type', 'createdAt', 'read']) && newData.child('createdAt').isNumber() && newData.child('read').isBoolean() && newData.child('read').val() == false"
+        }
+      }
     },
     "messages": {
       "$chatId": {
@@ -64,11 +70,29 @@
     "forceSignout": {
       "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth != null" }
     },
-    "reviews":        { ".read": "auth != null", ".write": "auth != null" },
+    "reviews":        {
+      ".read": "auth != null",
+      "$teacherId": {
+        "$reviewId": {
+          ".write": "auth != null && (!data.exists() && newData.child('from').val() == auth.uid || data.child('from').val() == auth.uid || auth.token.email == 'rotemshaer@gmail.com')"
+        }
+      }
+    },
     "pendingReviews": { ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'", ".write": "auth != null" },
     "videos":         { ".read": "auth != null", ".write": "auth != null" },
-    "communityPosts": { ".read": "auth != null", ".write": "auth != null" },
-    "posts":          { ".read": "auth != null", ".write": "auth != null" },
+    "communityPosts": {
+      ".read": "auth != null",
+      "$postId": {
+        ".write": "auth != null && (!data.exists() && newData.child('authUid').val() == auth.uid || data.child('authUid').val() == auth.uid || auth.token.email == 'rotemshaer@gmail.com')",
+        ".validate": "!newData.exists() || newData.hasChildren(['authUid', 'author', 'text', 'createdAt'])"
+      }
+    },
+    "posts":          {
+      ".read": "auth != null",
+      "$postId": {
+        ".write": "auth != null && (!data.exists() && newData.child('authUid').val() == auth.uid || data.child('authUid').val() == auth.uid || auth.token.email == 'rotemshaer@gmail.com')"
+      }
+    },
     "groups":         { ".read": "auth != null", ".write": "auth != null" },
     "groupMembers":   { ".read": "auth != null", ".write": "auth != null" },
     "userGroups": {
