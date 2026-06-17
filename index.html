@@ -1940,6 +1940,7 @@ async function loadStudentBookings(){
 async function approveBooking(bookingId){
   try{
     showFireToast('⏳ מאשר...');
+    if(currentUserData?.verified!==true){showFireToast('❌ החשבון שלך טרם אושר על ידי הצוות');return;}
     const snap=await db.ref('bookings/'+bookingId).get();
     if(!snap.exists()){showFireToast('❌ הזמנה לא נמצאה');return;}
     const b=snap.val();

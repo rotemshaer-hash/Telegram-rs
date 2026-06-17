@@ -8,7 +8,13 @@
     "users": {
       "$uid": {
         ".read": "auth != null && auth.uid == $uid",
-        ".write": "auth != null && auth.uid == $uid"
+        ".write": "auth != null && auth.uid == $uid",
+        "role": {
+          ".validate": "auth.token.email == 'rotemshaer@gmail.com' || !data.exists()"
+        },
+        "verified": {
+          ".validate": "auth.token.email == 'rotemshaer@gmail.com' || newData.val() == false"
+        }
       }
     },
     "bookings": {
@@ -21,7 +27,15 @@
       "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth != null && (auth.uid == $uid || auth.token.email == 'rotemshaer@gmail.com')" }
     },
     "userBookings": {
-      "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth != null && auth.uid == $uid" }
+      "$uid": {
+        ".read": "auth != null && auth.uid == $uid",
+        "$bookingId": {
+          ".write": "auth != null",
+          "status": {
+            ".validate": "auth.uid != $uid || newData.val() == 'pending' || newData.val() == 'awaitingPayment'"
+          }
+        }
+      }
     },
     "notifications": {
       "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth != null" }
