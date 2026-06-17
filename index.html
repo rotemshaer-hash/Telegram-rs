@@ -1988,13 +1988,14 @@ async function cancelApprovedBooking(bookingId){
     if(!snap.exists()){showFireToast('❌ הזמנה לא נמצאה');return;}
     const b=snap.val();
     if(b.teacherId!==currentUser?.uid){showFireToast('❌ אין הרשאה');return;}
+    if(b.status!=='approved'){showFireToast('❌ ניתן לבטל רק שיעורים מאושרים');return;}
     await db.ref().update({
       ['bookings/'+bookingId+'/status']:'cancelled',
       ['userBookings/'+b.studentId+'/'+bookingId+'/status']:'cancelled',
       ['teacherBookings/'+b.teacherId+'/'+bookingId+'/status']:'cancelled',
     });
     await db.ref('notifications/'+b.studentId).push({
-      type:'bookingRejected',
+      type:'bookingCancelled',
       bookingId,
       from:b.teacherName,
       day:b.day,
@@ -2049,10 +2050,12 @@ async function rejectBooking(bookingId){
 async function deleteBooking(bookingId){
   if(!confirm('למחוק הזמנה זו מהרשימה?'))return;
   try{
+    const localB=teacherAllBookings.find(b=>(b.id||b.bookingId)===bookingId)||teacherPendingBookings.find(b=>(b.id||b.bookingId)===bookingId);
     teacherAllBookings=teacherAllBookings.filter(b=>(b.id||b.bookingId)!==bookingId);
     teacherPendingBookings=teacherPendingBookings.filter(b=>(b.id||b.bookingId)!==bookingId);
     await db.ref('teacherBookings/'+currentUser.uid+'/'+bookingId).remove();
     db.ref('bookings/'+bookingId).remove().catch(()=>{});
+    if(localB?.studentId)db.ref('userBookings/'+localB.studentId+'/'+bookingId).remove().catch(()=>{});
     render();
     showFireToast('🗑 הוסר מהרשימה');
   }catch(e){showFireToast('❌ '+e.message);}
@@ -2337,9 +2340,9 @@ function showNotificationsPanel(){
   const items=notifications.length===0?
     `<div style="text-align:center;padding:40px 20px"><div style="font-size:54px;margin-bottom:12px">🔔</div><h3 style="font-weight:900;font-size:17px;margin:0 0 6px;color:#0F1A1F">אין התראות חדשות</h3><p style="color:#64748B;font-size:13px;margin:0">כשתקבל הזמנות או הודעות הן יופיעו כאן</p></div>`:
     notifications.map(n=>{
-      const icons={newBooking:'📚',bookingApproved:'✅',bookingRejected:'❌',newMessage:'💬',newReview:'⭐',newVideo:'📹',newTeacher:'🎓',newReport:'🚨',newUser:'👋',groupJoin:'🙋',groupApproved:'🎉',groupRejected:'😔',rateLesson:'⭐',lessonSummary:'📖'};
-      const titles={newBooking:'הזמנת שיעור חדשה',bookingApproved:'ההזמנה אושרה!',bookingRejected:'ההזמנה נדחתה',newMessage:'הודעה חדשה',newReview:'דירוג חדש',newVideo:'סרטון חדש לאישור',newTeacher:'מורה חדש נרשם',newReport:'דיווח חדש!',newUser:'משתמש חדש',groupJoin:'בקשת הצטרפות לקבוצה',groupApproved:'התקבלת לקבוצה! 🎉',groupRejected:'הבקשה לא אושרה',rateLesson:'⭐ דרג את השיעור',lessonSummary:'📖 סיכום שיעור חדש'};
-      const cols={newBooking:'#A855F7',bookingApproved:'#10B981',bookingRejected:'#EF4444',newMessage:'#06B6D4',newReview:'#FBBF24',newVideo:'#EC4899',newTeacher:'#7E22CE',newReport:'#E74C3C',newUser:'#0EA5E9',groupJoin:'#14B8A6',groupApproved:'#10B981',groupRejected:'#EF4444',rateLesson:'#FBBF24',lessonSummary:'#6366F1'};
+      const icons={newBooking:'📚',bookingApproved:'✅',bookingRejected:'❌',bookingCancelled:'🚫',newMessage:'💬',newReview:'⭐',newVideo:'📹',newTeacher:'🎓',newReport:'🚨',newUser:'👋',groupJoin:'🙋',groupApproved:'🎉',groupRejected:'😔',rateLesson:'⭐',lessonSummary:'📖'};
+      const titles={newBooking:'הזמנת שיעור חדשה',bookingApproved:'ההזמנה אושרה!',bookingRejected:'ההזמנה נדחתה',bookingCancelled:'השיעור בוטל על ידי המורה',newMessage:'הודעה חדשה',newReview:'דירוג חדש',newVideo:'סרטון חדש לאישור',newTeacher:'מורה חדש נרשם',newReport:'דיווח חדש!',newUser:'משתמש חדש',groupJoin:'בקשת הצטרפות לקבוצה',groupApproved:'התקבלת לקבוצה! 🎉',groupRejected:'הבקשה לא אושרה',rateLesson:'⭐ דרג את השיעור',lessonSummary:'📖 סיכום שיעור חדש'};
+      const cols={newBooking:'#A855F7',bookingApproved:'#10B981',bookingRejected:'#EF4444',bookingCancelled:'#F59E0B',newMessage:'#06B6D4',newReview:'#FBBF24',newVideo:'#EC4899',newTeacher:'#7E22CE',newReport:'#E74C3C',newUser:'#0EA5E9',groupJoin:'#14B8A6',groupApproved:'#10B981',groupRejected:'#EF4444',rateLesson:'#FBBF24',lessonSummary:'#6366F1'};
       const ico=icons[n.type]||'🔔';
       const ttl=titles[n.type]||'התראה';
       const col=cols[n.type]||'#14B8A6';

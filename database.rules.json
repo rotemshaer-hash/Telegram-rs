@@ -13,8 +13,8 @@
     },
     "bookings": {
       "$id": {
-        ".read": "auth != null && (auth.uid == data.child('studentUid').val() || auth.uid == data.child('teacherUid').val() || auth.token.email == 'rotemshaer@gmail.com')",
-        ".write": "auth != null && (auth.uid == data.child('studentUid').val() || auth.uid == newData.child('studentUid').val() || auth.token.email == 'rotemshaer@gmail.com')"
+        ".read": "auth != null && (auth.uid == data.child('studentId').val() || auth.uid == data.child('teacherId').val() || auth.token.email == 'rotemshaer@gmail.com')",
+        ".write": "auth != null && (auth.uid == data.child('studentId').val() || auth.uid == newData.child('studentId').val() || auth.uid == data.child('teacherId').val() || auth.uid == newData.child('teacherId').val() || auth.token.email == 'rotemshaer@gmail.com')"
       }
     },
     "teacherBookings": {
