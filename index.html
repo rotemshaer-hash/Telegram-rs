@@ -1204,6 +1204,13 @@ async function signInWithGoogleParent(){
   }
 }
 
+function validateIsraeliId(id){
+  if(!/^\d{9}$/.test(id))return false;
+  let sum=0;
+  for(let i=0;i<9;i++){let d=parseInt(id[i])*(i%2===0?1:2);if(d>9)d-=9;sum+=d;}
+  return sum%10===0;
+}
+
 function submitParentReg(){
   const name=(document.getElementById('prName')?.value||'').trim();
   const id=(document.getElementById('prId')?.value||'').trim();
@@ -1211,7 +1218,7 @@ function submitParentReg(){
   const email=(document.getElementById('prEmail')?.value||'').trim().toLowerCase();
   const phone=(document.getElementById('prPhone')?.value||'').trim();
   if(!name){showFireToast('❌ הכנס שם מלא של ההורה');return;}
-  if(!/^\d{9}$/.test(id)){showFireToast('❌ תעודת זהות חייבת להיות 9 ספרות');return;}
+  if(!validateIsraeliId(id)){showFireToast('❌ תעודת זהות לא תקינה — בדוק שהזנת 9 ספרות נכונות');return;}
   if(!age||age<18){showFireToast('❌ ההורה חייב להיות מעל גיל 18');return;}
   if(!email.includes('@')){showFireToast('❌ הכנס כתובת מייל תקינה של ההורה');return;}
   if(phone.replace(/\D/g,'').length<9){showFireToast('❌ הכנס מספר טלפון תקין של ההורה');return;}
