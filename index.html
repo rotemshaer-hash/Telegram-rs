@@ -9886,8 +9886,9 @@ auth&&auth.onAuthStateChanged(async user=>{
         await auth.signOut().catch(()=>{});
         go('login');return;
       }
-      // כל שגיאה אחרת (כולל PERMISSION_DENIED) — המשתמש כבר בפנים, רק הצג אזהרה
-      showFireToast('⚠️ בעיית רשת — חלק מהנתונים לא נטענו');
+      showFireToast('⚠️ '+(e?.message||e?.code||'בעיית רשת — חלק מהנתונים לא נטענו'));
+      // אם המשתמש מחובר אך תקוע במסך כניסה בגלל שגיאת טעינת נתונים — נווט הביתה
+      if(auth?.currentUser&&(S.screen==='login'||S.screen==='splash')){go('home');}
     }
     render();
   } else {
@@ -10227,7 +10228,7 @@ async function firebaseLogin(usernameOrEmail,password){
     const email=usernameOrEmail.includes('@')?usernameOrEmail:usernameOrEmail.toLowerCase()+'@kidemy.app';
     await auth.signInWithEmailAndPassword(email,password);
     showFireToast('✅ ברוך הבא!');
-    // Safety net: if onAuthStateChanged doesn't navigate within 4s, force navigate
+    // Safety net: if onAuthStateChanged doesn't navigate within 2s, force navigate
     setTimeout(async()=>{
       if((S.screen==='login'||S.screen==='splash')&&auth?.currentUser){
         S._loggingIn=false;
@@ -10244,7 +10245,7 @@ async function firebaseLogin(usernameOrEmail,password){
         }
         go('home');
       }
-    },4000);
+    },2000);
   }catch(e){
     S._loggingIn=false;
     const m={

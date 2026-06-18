@@ -42,7 +42,7 @@
         ".read": "auth != null && auth.uid == $uid",
         "$notifId": {
           ".write": "auth != null",
-          ".validate": "newData.hasChildren(['type', 'createdAt', 'read']) && newData.child('createdAt').isNumber() && newData.child('read').isBoolean() && newData.child('read').val() == false"
+          ".validate": "newData.hasChildren(['type', 'createdAt', 'read']) && newData.child('createdAt').isNumber() && newData.child('read').isBoolean()"
         }
       }
     },
