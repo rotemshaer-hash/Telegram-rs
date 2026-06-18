@@ -1,2 +1,5 @@
 # Local Netlify folder
 .netlify
+# Firebase debug logs
+firebase-debug.log
+.firebase/
