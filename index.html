@@ -8341,6 +8341,9 @@ function Login(){
         <input id="loginEmail" class="inp" type="text" placeholder="שם המשתמש שלך" autocomplete="username" autocapitalize="none"></div>
       <div class="ing"><label>סיסמה</label>
         <input id="loginPass" class="inp" type="password" placeholder="הסיסמה שלך"></div>
+      <div style="text-align:left;margin-top:-8px;margin-bottom:12px">
+        <button onclick="forgotPassword()" style="color:rgba(255,255,255,0.6);font-size:13px;cursor:pointer;text-decoration:underline;background:none;border:none;margin-top:8px">שכחתי סיסמה?</button>
+      </div>
 
       <button class="btn bp" style="margin-bottom:14px" onclick="
         const e=document.getElementById('loginEmail');
@@ -10216,6 +10219,19 @@ async function sendResetToParentEmail(parentEmail,fakeEmail,btn){
   }catch(err){
     if(btn){btn.disabled=false;btn.textContent='📧 שלח בקשה למנהל';}
     showFireToast('❌ לא ניתן לשלוח — פנה למנהל ישירות');
+  }
+}
+
+async function forgotPassword(){
+  const email=prompt('הכנס את כתובת המייל שלך:');
+  if(!email)return;
+  const normalized=email.includes('@')?email.toLowerCase():email.toLowerCase()+'@kidemy.app';
+  try{
+    await auth.sendPasswordResetEmail(normalized);
+    showFireToast('📧 קישור לאיפוס סיסמה נשלח למייל שלך');
+  }catch(e){
+    const msgs={'auth/user-not-found':'❌ מייל לא נמצא במערכת','auth/invalid-email':'❌ מייל לא תקין'};
+    showFireToast(msgs[e.code]||'❌ '+e.message);
   }
 }
 
