@@ -3717,6 +3717,30 @@ async function adminRejectStudent(uid){
     await loadAdminData();renderAdminPanel();
   }catch(e){showFireToast('❌ '+e.message);}
 }
+async function approveStudent(uid, name){
+  if(!confirm('לאשר את התלמיד/ה '+name+'?'))return;
+  try{
+    showFireToast('⏳ מאשר...');
+    await db.ref('users/'+uid+'/verified').set(true);
+    await db.ref('users/'+uid+'/rejected').set(false);
+    await db.ref('adminAlerts/students/'+uid).remove();
+    await db.ref('notifications/'+uid).push({
+      type:'bookingApproved', from:'Kidemy', read:false, createdAt:Date.now(),
+      message:'חשבונך אושר! ברוך הבא ל-Kidemy 🎉'
+    });
+    showFireToast('✅ '+name+' אושר/ה');
+    render();
+  }catch(e){showFireToast('❌ '+e.message);}
+}
+async function rejectStudent(uid, name){
+  if(!confirm('לדחות את התלמיד/ה '+name+'?'))return;
+  try{
+    await db.ref('users/'+uid+'/rejected').set(true);
+    await db.ref('adminAlerts/students/'+uid).remove();
+    showFireToast('🚫 '+name+' נדחה/תה');
+    render();
+  }catch(e){showFireToast('❌ '+e.message);}
+}
 async function adminApproveTeacher(uid){
   try{
     await db.ref('teachers/'+uid+'/verified').set(true);
