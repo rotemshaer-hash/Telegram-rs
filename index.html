@@ -9975,11 +9975,16 @@ async function firebaseRegister(email,password,userData){
     // מייל ברכה — שלח למייל אמיתי בלבד (לא לכתובות אוטומטיות @kidemy.app)
     const realEmail=email.endsWith('@kidemy.app')?userData.parentEmail||null:email;
     if(realEmail) await sendWelcomeEmail(realEmail, userData.name||email.split('@')[0], userData.role||'student');
-    // מייל להורה על הצטרפות הילד
+    // מייל אימות להורה על הצטרפות הילד
     if(userData.parentEmail){
-      const roleHe=(userData.role||'student')==='teacher'?'מורה':'תלמיד/ה';
-      sendEmail(userData.parentEmail,`אישור הצטרפות ל-Kidemy – ${userData.name||''}`,
-        `שלום ${userData.parentName||'הורה יקר'},\n\nילדך ${userData.name||''} נרשם/ה בהצלחה ל-Kidemy כ${roleHe}.\n\nתוכלו לעקוב אחרי כל הפעילות שלו/ה באפליקציה.\n\nבכל שאלה – פנו למנהל האפליקציה: ${ADMIN_EMAIL}\n\n– צוות Kidemy`);
+      try{
+        const roleHe=(userData.role||'student')==='teacher'?'מורה':'תלמיד/ה';
+        await sendEmail(userData.parentEmail,`אישור הצטרפות ל-Kidemy – ${userData.name||''}`,
+          `שלום ${userData.parentName||'הורה יקר'},\n\nשלום, ילדך ${userData.name||''} נרשם/ה ל-Kidemy כ${roleHe}. אם לא אישרת זאת, צור קשר.\n\nתוכלו לעקוב אחרי כל הפעילות שלו/ה באפליקציה.\n\nבכל שאלה – פנו למנהל האפליקציה: ${ADMIN_EMAIL}\n\n– צוות Kidemy`);
+      }catch(parentEmailErr){
+        console.warn('Parent email notification failed:',parentEmailErr);
+        showFireToast('⚠️ לא הצלחנו לשלוח מייל להורה — ההרשמה הצליחה');
+      }
     }
     // עדכון currentUserData מיד
     currentUserData={...userData,email,uid:cred.user.uid,role:userData.role||'student'};
@@ -10120,6 +10125,12 @@ function RegSuccess(){
       </div>
     </div>
 
+    ${currentUserData?.parentEmail?`
+    <!-- הודעה על מייל להורה -->
+    <div style="background:rgba(20,184,166,0.07);border:1.5px solid rgba(20,184,166,0.25);border-radius:18px;padding:13px 16px;margin-bottom:14px;display:flex;align-items:center;gap:10px">
+      <span style="font-size:22px">📧</span>
+      <div style="font-size:13px;color:#0F766E;font-weight:600;line-height:1.5">מייל נשלח להורה: <strong>${currentUserData.parentEmail}</strong></div>
+    </div>`:''}
     <!-- כפתורי פעולה -->
     <div style="display:flex;gap:10px;margin-bottom:14px">
       <button onclick="resendVerification()" style="flex:1;background:rgba(255,255,255,0.85);border:1.5px solid rgba(20,184,166,0.3);border-radius:50px;padding:14px;font-size:13px;font-weight:800;color:#14B8A6;cursor:pointer">🔄 שלח שוב</button>
