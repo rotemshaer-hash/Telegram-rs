@@ -3013,6 +3013,8 @@ async function sendChatMessage(otherUid,otherName){
   if(now-_lastMsgTime<2000){showFireToast('⚠️ המתן שנייה בין הודעות');return;}
   _lastMsgTime=now;sessionStorage.setItem('_lmt',now);
   const text=inp.value.trim();
+  if(!text || text.trim().length === 0) return;
+  if(text.length > 2000){ showFireToast('❌ הודעה ארוכה מדי (מקסימום 2000 תווים)'); return; }
   inp.value='';
   const chatId=getChatId(currentUser.uid,otherUid);
   try{
