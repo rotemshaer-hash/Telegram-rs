@@ -1,5 +1,5 @@
 // Kidemy Service Worker — auto-update on every deploy
-const VERSION = '4.9.15';
+const VERSION = '2.7.0';
 
 // Activate immediately without waiting for old tabs to close
 self.addEventListener('install', () => self.skipWaiting());
@@ -13,10 +13,8 @@ self.addEventListener('activate', e => {
   );
 });
 
-// Same-origin only — cross-origin CDN requests (Firebase, fonts, etc.)
-// are handled by the browser natively so they never fail due to missing cache
+// Always fetch from network — never serve stale content
 self.addEventListener('fetch', e => {
-  if(!e.request.url.startsWith(self.location.origin)) return;
   e.respondWith(
     fetch(e.request).catch(() => caches.match(e.request))
   );
