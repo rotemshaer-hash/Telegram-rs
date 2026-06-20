@@ -30,7 +30,7 @@
       "$uid": {
         ".read": "auth != null && auth.uid == $uid",
         "$bookingId": {
-          ".write": "auth != null",
+          ".write": "auth != null && (auth.uid == $uid || auth.token.email == 'rotemshaer@gmail.com')",
           "status": {
             ".validate": "auth.uid != $uid || newData.val() == 'pending' || newData.val() == 'awaitingPayment'"
           }
