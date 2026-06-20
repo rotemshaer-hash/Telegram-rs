@@ -6765,14 +6765,25 @@ function Home(){
         </button>`).join("")}
       `:''}
 
-      <h3 style="font-size:16px;font-weight:800;margin:6px 0 14px">⭐ ${TEACHERS.length>0?(activeFiltersCount()>0?'מורים לפי הפילטרים שלך':'מורים מובילים השבוע'):'מורים אצלך באזור'}</h3>
+      <!-- Category filter chips -->
+      ${(()=>{
+        const catChips=[['all','הכל'],...CATS.map(c=>[c.id,c.lbl])].map(([val,label])=>`
+          <button onclick="S.filterCat=${val==='all'?'null':`'${val}'`};render()" style="
+            background:${(S.filterCat||null)===(val==='all'?null:val)?'linear-gradient(135deg,#14B8A6,#A855F7)':'rgba(255,255,255,0.1)'};
+            border:1.5px solid ${(S.filterCat||null)===(val==='all'?null:val)?'transparent':'rgba(255,255,255,0.2)'};
+            color:#fff;border-radius:50px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap
+          ">${label}</button>
+        `).join('');
+        return `<div style="overflow-x:auto;display:flex;gap:8px;padding:0 0 12px;margin-bottom:8px;scrollbar-width:none;-ms-overflow-style:none">${catChips}</div>`;
+      })()}
+      <h3 style="font-size:16px;font-weight:800;margin:6px 0 14px">⭐ ${TEACHERS.length>0?(S.filterCat?'מורים בנושא זה':activeFiltersCount()>0?'מורים לפי הפילטרים שלך':'מורים מובילים השבוע'):'מורים אצלך באזור'}</h3>
       ${TEACHERS.length===0?`
         <div style="background:linear-gradient(135deg,rgba(20,184,166,0.12),rgba(168,85,247,0.10));backdrop-filter:blur(20px);border:1.5px dashed rgba(20,184,166,0.4);border-radius:24px;padding:32px 24px;text-align:center;margin-bottom:14px">
           <div style="font-size:56px;margin-bottom:14px">🌱</div>
           <h3 style="font-weight:900;font-size:18px;margin:0 0 8px;color:#0F1A1F">היה הראשון להצטרף!</h3>
           <p style="color:#64748B;font-size:13px;line-height:1.7;margin:0 0 18px">עוד אין מורים רשומים בפלטפורמה.<br>הירשם כמורה ותהיה הראשון להופיע כאן!</p>
           <button class="btn bp" style="max-width:240px;margin:0 auto" onclick="${currentUser?"go('teacherSetup')":"go('register')"}">🎓 הצטרף כמורה</button>
-        </div>`:applyFilters(TEACHERS).slice(0,8).map(t=>`
+        </div>`:(S.filterCat?applyFilters(TEACHERS).filter(t=>t.cat===S.filterCat||(Array.isArray(t.cats)&&t.cats.includes(S.filterCat))):applyFilters(TEACHERS)).slice(0,8).map(t=>`
         <button class="tc" onclick="go('teacher',{teacher:TEACHERS.find(x=>x.id==='${t.id}')})" data-tid="${t.id}">
           <div class="tc-av" style="background:${t.col}20;overflow:hidden;padding:${t.photo?'0':'0'}">${t.photo?avatarHtml(t.photo,t.name,52,'16px'):t.av}${t.online?`<div class="online-dot"></div>`:""}</div>
           <div style="flex:1">
