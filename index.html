@@ -1862,6 +1862,13 @@ async function processPayment(payMethod,totalAmount){
         return DAYS_S[d.getDay()]+' '+d.getDate()+' '+MONTHS[d.getMonth()];
       })(),
       dayIndex:S.bookDayIdx??0,
+      lessonTimestamp:(()=>{
+        // חישוב חותמת זמן מדויקת של השיעור לצורך בדיקת מדיניות ביטול
+        const d=new Date();
+        d.setDate(d.getDate()+(S.bookDayIdx??1)+1);
+        if(S.bookTime){const [hh,mm]=(S.bookTime||'09:00').split(':');d.setHours(parseInt(hh)||9,parseInt(mm)||0,0,0);}
+        return d.getTime();
+      })(),
       time:S.bookTime,
       type:S.bookType||'single',
       payMethod:payMethod,
@@ -2009,10 +2016,21 @@ async function cancelApprovedBooking(bookingId){
     const b=snap.val();
     if(b.teacherId!==currentUser?.uid){showFireToast('❌ אין הרשאה');return;}
     if(b.status!=='approved'){showFireToast('❌ ניתן לבטל רק שיעורים מאושרים');return;}
+    // בדיקת מדיניות ביטול — אזהרה אם פחות מ-24 שעות
+    if(b.lessonTimestamp){
+      const hoursUntil=(b.lessonTimestamp-Date.now())/3600000;
+      if(hoursUntil<24&&hoursUntil>0){
+        if(!confirm('⚠️ ביטול פחות מ-24 שעות לפני השיעור — ייתכן שלא תקבל החזר כסף. להמשיך?'))return;
+      }
+    }
+    const cancelledAt=Date.now();
     await db.ref().update({
       ['bookings/'+bookingId+'/status']:'cancelled',
+      ['bookings/'+bookingId+'/cancelledAt']:cancelledAt,
       ['userBookings/'+b.studentId+'/'+bookingId+'/status']:'cancelled',
+      ['userBookings/'+b.studentId+'/'+bookingId+'/cancelledAt']:cancelledAt,
       ['teacherBookings/'+b.teacherId+'/'+bookingId+'/status']:'cancelled',
+      ['teacherBookings/'+b.teacherId+'/'+bookingId+'/cancelledAt']:cancelledAt,
     });
     await db.ref('notifications/'+b.studentId).push({
       type:'bookingCancelled',
