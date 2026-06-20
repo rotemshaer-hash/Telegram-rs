@@ -1578,6 +1578,22 @@ async function approveBooking(bookingId){
     if(!snap.exists()){showFireToast('❌ הזמנה לא נמצאה');return;}
     const b=snap.val();
     if(b.teacherId!==currentUser?.uid){showFireToast('❌ אין הרשאה לאשר הזמנה זו');return;}
+    // בדיקת כפל הזמנות — מניעת אישור שני שיעורים באותו זמן
+    const existingSnap = await db.ref('teacherBookings/'+currentUser.uid).get();
+    if(existingSnap.exists()){
+      let conflict=false;
+      existingSnap.forEach(child=>{
+        const ex=child.val();
+        if(ex.status==='approved'&&ex.day===b.day&&ex.time===b.time&&child.key!==bookingId){
+          conflict=true;
+        }
+      });
+      if(conflict){showFireToast('❌ יש לך כבר שיעור מאושר באותו זמן');return;}
+    }
+    // בדיקה שיש קישור לשיעור
+    if(!currentUserData?.jitsiUrl&&!currentUserData?.meetingLink){
+      if(!confirm('⚠️ לא הגדרת קישור לשיעור (Zoom/Jitsi/Meet) בפרופיל שלך.\nהתלמיד לא יוכל להצטרף!\n\nלאשר בכל זאת?'))return;
+    }
     await db.ref('bookings/'+bookingId+'/status').set('approved');
     await db.ref('userBookings/'+b.studentId+'/'+bookingId+'/status').set('approved');
     await db.ref('teacherBookings/'+b.teacherId+'/'+bookingId+'/status').set('approved');
@@ -1721,6 +1737,14 @@ function showRatingDialog(bookingId,booking){
 
 // שמירת דירוג
 async function submitReview(bookingId,booking,ratedId,stars,review,isStudent){
+  // בדיקה שיש שיעור מאושר עם המורה הזה
+  if(isStudent){
+    const hasLesson = studentBookings.some(b=>
+      (b.teacherId === (S.ratingT?.uid || S.ratingT?.id || ratedId)) &&
+      (b.status === 'completed' || b.status === 'approved')
+    );
+    if(!hasLesson){showFireToast('❌ ניתן לדרג רק לאחר שיעור מאושר');return;}
+  }
   try{
     showFireToast('⏳ שומר דירוג...');
     const reviewData={
@@ -2243,6 +2267,8 @@ async function sendChatMessage(otherUid,otherName){
   const inp=document.getElementById('chatInputBox');
   if(!inp||!inp.value.trim())return;
   const text=inp.value.trim();
+  if(!text||text.trim().length===0)return;
+  if(text.length>2000){showFireToast('❌ הודעה ארוכה מדי (מקסימום 2000 תווים)');return;}
   inp.value='';
   const chatId=getChatId(currentUser.uid,otherUid);
   try{
@@ -2603,6 +2629,32 @@ async function adminRejectTeacher(uid){
     await db.ref('teachers/'+uid).remove().catch(()=>{});
     showFireToast('🚫 המורה נדחה');
     await loadAdminData();renderAdminPanel();
+  }catch(e){showFireToast('❌ '+e.message);}
+}
+
+async function approveStudent(uid, name){
+  if(!confirm('לאשר את התלמיד/ה '+name+'?'))return;
+  try{
+    showFireToast('⏳ מאשר...');
+    await db.ref('users/'+uid+'/verified').set(true);
+    await db.ref('users/'+uid+'/rejected').set(false);
+    await db.ref('adminAlerts/students/'+uid).remove();
+    await db.ref('notifications/'+uid).push({
+      type:'bookingApproved', from:'Kidemy', read:false, createdAt:Date.now(),
+      message:'חשבונך אושר! ברוכים הבאים ל-Kidemy 🎉'
+    });
+    showFireToast('✅ '+name+' אושר/ה');
+    render();
+  }catch(e){showFireToast('❌ '+e.message);}
+}
+
+async function rejectStudent(uid, name){
+  if(!confirm('לדחות את התלמיד/ה '+name+'?'))return;
+  try{
+    await db.ref('users/'+uid+'/rejected').set(true);
+    await db.ref('adminAlerts/students/'+uid).remove();
+    showFireToast('🚫 '+name+' נדחה/תה');
+    render();
   }catch(e){showFireToast('❌ '+e.message);}
 }
 
@@ -4843,6 +4895,15 @@ function Home(){
         <div style="margin-right:auto;color:rgba(255,255,255,.35);font-size:20px;position:relative;z-index:1">←</div>
       </button>
 
+      <!-- Category Filter Chips -->
+      ${(()=>{const catChips=[['all','הכל'],...(CATS||[]).map(c=>[c.id||c,c.lbl||c])].map(([val,label])=>`
+        <button onclick="S.filterCat=${val==='all'?'null':`'${val}'`};render()" style="
+          background:${(!S.filterCat&&val==='all')||(S.filterCat===val)?'linear-gradient(135deg,#14B8A6,#A855F7)':'rgba(255,255,255,0.1)'};
+          border:1.5px solid ${(!S.filterCat&&val==='all')||(S.filterCat===val)?'transparent':'rgba(255,255,255,0.2)'};
+          color:#fff;border-radius:50px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0
+        ">${label}</button>
+      `).join('');return `<div style="display:flex;gap:8px;overflow-x:auto;padding:0 0 12px;margin-bottom:8px;-webkit-overflow-scrolling:touch">${catChips}</div>`;})()}
+
       ${S.catFilter?(()=>{
         const cat=CATS.find(c=>c.id===S.catFilter);
         // תמוך במקצועות מרובים - בדוק cat ראשי וגם cats array
@@ -5630,7 +5691,8 @@ function Profile(){
   if(tab==="about") content=`
     <div class="card"><h4 style="margin:0 0 10px;font-weight:800">👋 קצת עליי</h4><p style="margin:0;font-size:14px;line-height:1.7">${currentUserData?.bio||'עדיין לא כתבת קצת על עצמך.'}</p></div>
     <div class="ref-card"><h4 style="margin:0 0 6px;font-weight:900;font-size:16px">🎁 הפנה חבר – קבל ₪15!</h4><p style="margin:0 0 14px;font-size:13px;opacity:.9;line-height:1.6">על כל חבר שנרשם דרכך תקבל ₪15 לחשבון שלך.</p><button onclick="shareApp()" style="background:rgba(255,255,255,.2);border:1.5px solid rgba(255,255,255,.3);color:#fff;border-radius:50px;padding:10px 20px;font-weight:700;cursor:pointer;font-size:13px">📤 שתף את Kidemy</button></div>
-    ${[["✏️","ערוך פרופיל",isTeacher?"showEditTeacherProfileDialog()":`showEditProfileDialog()`],["💰","ניהול תשלומים","showPaymentManagement()"],["🏆","ראה לידרבורד","go('leaderboard')"],["🚪","התנתקות","confirmLogout()"]].map(([e,l,fn])=>`<div class="card-sm" style="display:flex;align-items:center;gap:13px;cursor:pointer" onclick="${fn}"><span style="font-size:22px">${e}</span><span style="font-weight:700;font-size:15px;color:${l==="התנתקות"?"#E74C3C":"#1A1A2E"}">${l}</span><span style="margin-right:auto;color:#8A94A6">←</span></div>`).join("")}`;
+    ${[["✏️","ערוך פרופיל",isTeacher?"showEditTeacherProfileDialog()":`showEditProfileDialog()`],["💰","ניהול תשלומים","showPaymentManagement()"],["🏆","ראה לידרבורד","go('leaderboard')"],["🚪","התנתקות","confirmLogout()"]].map(([e,l,fn])=>`<div class="card-sm" style="display:flex;align-items:center;gap:13px;cursor:pointer" onclick="${fn}"><span style="font-size:22px">${e}</span><span style="font-weight:700;font-size:15px;color:${l==="התנתקות"?"#E74C3C":"#1A1A2E"}">${l}</span><span style="margin-right:auto;color:#8A94A6">←</span></div>`).join("")}
+    <button onclick="localStorage.removeItem('_onboardingDone');showFireToast('✅ המדריך יוצג בכניסה הבאה')" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.7);border-radius:12px;padding:10px 18px;font-size:13px;cursor:pointer;margin-top:8px">🎓 הצג מדריך מחדש</button>`;
 
   const tabItems=isTeacher&&myCats.length
     ?[...myCats.map(cid=>{const c=CATS.find(x=>x.id===cid)||{em:'🎓',lbl:cid};return [cid,c.em+' '+c.lbl];}),...[['ach','🏆 הישגים'],['about','👤 אודות']]]
@@ -5910,6 +5972,8 @@ async function postNew(){
   const t=document.getElementById("ptxt");
   if(!t||!t.value.trim()){showFireToast('❌ כתוב משהו');return;}
   if(!currentUser){showFireToast('❌ צריך להתחבר');return;}
+  const postText=t.value.trim();
+  if(postText.length>5000){showFireToast('❌ פוסט ארוך מדי (מקסימום 5000 תווים)');return;}
   const userName=currentUserData?.name||currentUser.email.split('@')[0]||"אורח";
   const post={
     author:userName,
@@ -6159,8 +6223,8 @@ function Login(){
         }
       ">🔑 התחבר</button>
 
-      <button onclick="sendResetEmail()" style="width:100%;background:none;border:none;padding:10px;font-size:13px;color:var(--p);cursor:pointer;font-weight:700;margin-bottom:8px">
-        🔑 שכחתי סיסמה
+      <button onclick="forgotPassword()" style="width:100%;background:none;border:none;padding:8px;font-size:13px;color:#0891B2;cursor:pointer;font-weight:700;margin-bottom:8px;text-decoration:underline">
+        שכחתי סיסמה?
       </button>
 
       <button onclick="go('register')" style="width:100%;background:none;border:2px solid rgba(20,184,166,.3);border-radius:50px;padding:14px;font-size:15px;font-weight:700;color:var(--s);cursor:pointer">
@@ -7345,7 +7409,18 @@ auth.onAuthStateChanged(async user=>{
         });
       }
 
-    }catch(e){console.warn('Auth error:',e);}
+    }catch(e){
+      console.warn('Auth/data error:',e.code||e.message,e);
+      S._loggingIn=false;S._registering=false;
+      // אם המשתמש מחובר — נווט הביתה גם אם טעינת נתונים נכשלה
+      if(auth?.currentUser){
+        if(S.screen==='login'||S.screen==='splash'){go('home');}
+        showFireToast('⚠️ חלק מהנתונים לא נטענו — '+(e?.code||e?.message||'בעיית רשת'));
+      } else {
+        showFireToast('❌ שגיאת כניסה — נסה שוב');
+        go('login');
+      }
+    }
     if(S.screen==='splash'||S.screen==='login'){go('home');}
     else render();
   } else {currentUser=null;currentUserData=null;teacherPendingBookings=[];studentBookings=[];}
@@ -7584,6 +7659,19 @@ async function sendResetEmail(){
       'auth/network-request-failed':'❌ אין חיבור לאינטרנט'
     };
     showFireToast(m[err.code]||'❌ '+err.message);
+  }
+}
+
+async function forgotPassword(){
+  const email=prompt('הכנס את כתובת המייל שלך:');
+  if(!email)return;
+  const normalized=email.includes('@')?email.toLowerCase():email.toLowerCase()+'@kidemy.app';
+  try{
+    await auth.sendPasswordResetEmail(normalized);
+    showFireToast('📧 קישור לאיפוס סיסמה נשלח למייל שלך');
+  }catch(e){
+    const msgs={'auth/user-not-found':'❌ מייל לא נמצא במערכת','auth/invalid-email':'❌ מייל לא תקין'};
+    showFireToast(msgs[e.code]||'❌ '+e.message);
   }
 }
 
