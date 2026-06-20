@@ -2119,6 +2119,12 @@ async function submitDirectReview(teacherId){
   if(!currentUser){showFireToast('יש להתחבר כדי לכתוב ביקורת');return;}
   if(!S.ratingStars){showFireToast('אנא בחר דירוג כוכבים');return;}
   if(!teacherId){showFireToast('שגיאה: מזהה מורה חסר');return;}
+  // בדיקה שיש שיעור מאושר עם המורה הזה
+  const hasLesson = studentBookings.some(b=>
+    b.teacherId === (S.ratingT?.uid || S.ratingT?.id || teacherId) &&
+    (b.status === 'completed' || b.status === 'approved')
+  );
+  if(!hasLesson){showFireToast('❌ ניתן לדרג רק לאחר שיעור מאושר');return;}
   const reviewText=document.getElementById('_reviewTextarea')?.value.trim()||'';
   showFireToast('⏳ שומר ביקורת...');
   try{
