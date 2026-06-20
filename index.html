@@ -8034,7 +8034,7 @@ function Community(){
         ${CC.filter(c=>c.id!=="all").map(c=>`<button onclick="S.newPostCat='${c.id}';document.querySelectorAll('.cc').forEach(b=>{b.style.background='rgba(20,184,166,.06)';b.style.color='#1A1A2E'});this.style.background='linear-gradient(135deg,#14B8A6 0%,#06B6D4 50%,#A855F7 100%)';this.style.color='#fff'"
           class="cc" style="flex-shrink:0;padding:7px 13px;border-radius:50px;border:none;font-weight:700;font-size:12px;cursor:pointer;background:rgba(20,184,166,.06)">${c.e} ${c.l}</button>`).join("")}
       </div>
-      <textarea id="ptxt" class="inp" placeholder="שאל שאלה, שתף טיפ, הצע שיעור חינם..." style="min-height:110px;resize:none;border-radius:16px"></textarea>
+      <textarea id="ptxt" class="inp" placeholder="שאל שאלה, שתף טיפ, הצע שיעור חינם..." maxlength="5000" style="min-height:110px;resize:none;border-radius:16px"></textarea>
       <div class="warn" style="margin-top:11px"><span>🔍</span><span>כל פוסט עובר סינון אוטומטי. אל תשתף מידע אישי.</span></div>
     </div>
   </div>`:"";
@@ -8154,6 +8154,9 @@ async function sendReply(id){
 async function postNew(){
   const t=document.getElementById("ptxt");
   if(!t||!t.value.trim()){showFireToast('❌ כתוב משהו');return;}
+  const postText=t.value.trim();
+  if(!postText || postText.trim().length === 0) return;
+  if(postText.length > 5000){ showFireToast('❌ פוסט ארוך מדי (מקסימום 5000 תווים)'); return; }
   if(!currentUser){showFireToast('❌ צריך להתחבר');return;}
   // בדיקה: תלמיד שטרם אושר לא יכול לפרסם
   if(currentUserData?.role==='student'&&currentUserData?.verified!==true&&!isAdmin()){
