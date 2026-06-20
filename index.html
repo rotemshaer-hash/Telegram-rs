@@ -2101,8 +2101,17 @@ async function deleteBooking(bookingId){
 async function deleteStudentBooking(bookingId){
   if(!confirm('למחוק הזמנה זו מהרשימה?'))return;
   try{
-    studentBookings=studentBookings.filter(b=>(b.bookingId||b.id)!==bookingId);
+    const b=studentBookings.find(x=>(x.bookingId||x.id)===bookingId);
+    if(b&&b.lessonTimestamp){
+      const hoursUntil=(b.lessonTimestamp-Date.now())/3600000;
+      if(hoursUntil>=0&&hoursUntil<24){
+        if(!confirm('⚠️ ביטול פחות מ-24 שעות לפני השיעור. להמשיך?'))return;
+      }
+    }
+    studentBookings=studentBookings.filter(x=>(x.bookingId||x.id)!==bookingId);
+    await db.ref('userBookings/'+currentUser.uid+'/'+bookingId).update({cancelledAt:Date.now()});
     await db.ref('userBookings/'+currentUser.uid+'/'+bookingId).remove();
+    db.ref('bookings/'+bookingId).update({cancelledAt:Date.now()}).catch(()=>{});
     db.ref('bookings/'+bookingId).remove().catch(()=>{});
     render();
     showFireToast('🗑 הוסר מהרשימה');
@@ -7466,7 +7475,9 @@ function Messages(){
               ${isTeacherRole&&b.status==='approved'?`<button onclick="cancelApprovedBooking('${b.id||b.bookingId||''}')" title="בטל שיעור" style="background:rgba(245,158,11,0.1);border:1.5px solid rgba(245,158,11,0.3);color:#D97706;border-radius:14px;padding:10px 12px;font-weight:800;font-size:13px;cursor:pointer;flex-shrink:0">🚫</button>`:''}
               ${isTeacherRole&&b.status!=='completed'?`<button onclick="completeLesson('${b.id}')" style="flex:1;background:rgba(168,85,247,0.1);border:1.5px solid rgba(168,85,247,0.3);color:#A855F7;border-radius:14px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">✅ סיים ודרג</button>`:
               !isTeacherRole&&b.status==='completed'&&!b.studentRating?`<button onclick="showRatingDialog('${b.id||b.bookingId||''}','${b.teacherId||''}','${(b.teacherName||'').replace(/'/g,'')}')" style="flex:1;background:rgba(251,191,36,0.1);border:1.5px solid rgba(251,191,36,0.4);color:#D97706;border-radius:14px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">⭐ דרג שיעור</button>`:''}
-              <button onclick="${isTeacherRole?`deleteBooking('${b.id||b.bookingId||''}')`:`deleteStudentBooking('${b.bookingId||b.id||''}')`}" title="${b.status==='completed'?'מחק שיעור שעבר':'מחק הזמנה'}" style="background:rgba(239,68,68,0.1);border:1.5px solid rgba(239,68,68,0.25);color:#EF4444;border-radius:14px;padding:10px 12px;font-weight:800;font-size:13px;cursor:pointer;flex-shrink:0"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+              ${isTeacherRole?`<button onclick="deleteBooking('${b.id||b.bookingId||''}')" title="מחק הזמנה" style="background:rgba(239,68,68,0.1);border:1.5px solid rgba(239,68,68,0.25);color:#EF4444;border-radius:14px;padding:10px 12px;font-weight:800;font-size:13px;cursor:pointer;flex-shrink:0"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>`:
+              (b.status==='approved'||b.status==='completed')?`<button onclick="S.chat={otherUid:'${b.teacherId}',otherName:'${(b.teacherName||'').replace(/'/g,'')}'}; go('chat')" style="background:rgba(6,182,212,0.1);border:1.5px solid rgba(6,182,212,0.3);color:#06B6D4;border-radius:14px;padding:10px 12px;font-weight:800;font-size:12px;cursor:pointer;flex-shrink:0">צור קשר</button>`:
+              `<button onclick="deleteStudentBooking('${b.bookingId||b.id||''}')" title="מחק הזמנה" style="background:rgba(239,68,68,0.1);border:1.5px solid rgba(239,68,68,0.25);color:#EF4444;border-radius:14px;padding:10px 12px;font-weight:800;font-size:13px;cursor:pointer;flex-shrink:0"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>`}
             </div>
           </div>
         `).join('')}
