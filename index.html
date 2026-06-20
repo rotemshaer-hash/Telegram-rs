@@ -1955,6 +1955,9 @@ async function approveBooking(bookingId){
   try{
     showFireToast('⏳ מאשר...');
     if(currentUserData?.verified!==true){showFireToast('❌ החשבון שלך טרם אושר על ידי הצוות');return;}
+    if(!currentUserData?.jitsiUrl){
+      if(!confirm('⚠️ לא הגדרת קישור לשיעור (Zoom/Jitsi/Meet) בפרופיל שלך.\nהתלמיד לא יוכל להצטרף!\n\nלאשר בכל זאת?')) return;
+    }
     const snap=await db.ref('bookings/'+bookingId).get();
     if(!snap.exists()){showFireToast('❌ הזמנה לא נמצאה');return;}
     const b=snap.val();
@@ -1998,7 +2001,6 @@ async function approveBooking(bookingId){
     db.ref('userChats/'+currentUser.uid+'/'+b.studentId).set(_convInit).catch(()=>{});
     db.ref('userChats/'+b.studentId+'/'+currentUser.uid).set({..._convInit,otherUid:currentUser.uid,otherName:currentUserData?.name||b.teacherName||'',unread:false}).catch(()=>{});
     showFireToast('✅ אישרת את ההזמנה!');
-    if(!b.jitsiUrl)setTimeout(()=>showFireToast('⚠️ שים לב: טרם הוספת קישור לשיעור — הוסף בפרופיל'),1500);
     await loadTeacherBookings();
     render();
   }catch(e){
