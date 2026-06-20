@@ -1952,6 +1952,18 @@ async function approveBooking(bookingId){
     if(!snap.exists()){showFireToast('❌ הזמנה לא נמצאה');return;}
     const b=snap.val();
     if(b.teacherId!==currentUser?.uid){showFireToast('❌ אין הרשאה לאשר הזמנה זו');return;}
+    // בדיקת כפל הזמנות — מניעת אישור שני שיעורים באותו זמן
+    const existingSnap = await db.ref('teacherBookings/'+currentUser.uid).get();
+    if(existingSnap.exists()){
+      let conflict=false;
+      existingSnap.forEach(child=>{
+        const ex=child.val();
+        if(ex.status==='approved'&&ex.day===b.day&&ex.time===b.time&&child.key!==bookingId){
+          conflict=true;
+        }
+      });
+      if(conflict){showFireToast('❌ יש לך כבר שיעור מאושר באותו זמן');return;}
+    }
     await db.ref().update({
       ['bookings/'+bookingId+'/status']:'approved',
       ['userBookings/'+b.studentId+'/'+bookingId+'/status']:'approved',
