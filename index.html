@@ -2425,6 +2425,7 @@ async function markAllNotificationsRead(){
 }
 
 function showNotificationsPanel(){
+  if(unreadCount>0)markAllNotificationsRead();
   const ov=document.createElement('div');
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:flex-start;justify-content:center;backdrop-filter:blur(8px);padding:60px 16px 16px;direction:rtl';
   const items=notifications.length===0?
@@ -7087,7 +7088,7 @@ function Teacher(){
     <div style="background:linear-gradient(150deg,#0F1A1F 0%,${t.col}BB 60%,${t.col} 100%);padding:24px 20px 40px;border-radius:0 0 32px 32px;text-align:center;color:#fff;position:relative;overflow:hidden">
       <div style="position:absolute;top:-60px;right:-60px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.06)"></div>
       <button onclick="back()" style="background:rgba(255,255,255,.2);border:none;color:#fff;font-size:14px;cursor:pointer;border-radius:50px;padding:8px 16px;font-weight:700;display:block;text-align:right;margin-bottom:18px;position:relative;z-index:1">← חזור</button>
-      ${currentUser&&typeof t.id==='string'?`
+      ${currentUser&&typeof t.id==='string'&&t.id!==currentUser.uid?`
         <button onclick="toggleFavorite('${t.id}')" style="position:absolute;top:24px;left:20px;background:${favorites.includes(t.id)?'rgba(231,76,60,0.95)':'rgba(255,255,255,0.2)'};border:none;color:#fff;font-size:18px;cursor:pointer;border-radius:50%;width:42px;height:42px;display:flex;align-items:center;justify-content:center;z-index:2;${favorites.includes(t.id)?'box-shadow:0 4px 14px rgba(231,76,60,0.4)':''}">${favorites.includes(t.id)?'❤️':'🤍'}</button>
         <button onclick="showReportDialog('teacher','${t.id}','${(t.name||'').replace(/'/g,'')}')" style="position:absolute;top:24px;left:72px;background:rgba(231,76,60,0.85);border:none;color:#fff;cursor:pointer;border-radius:50%;width:42px;height:42px;display:flex;align-items:center;justify-content:center;z-index:2"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></button>
       `:''}
@@ -7139,7 +7140,7 @@ function Teacher(){
         ${cat?`<div style="background:linear-gradient(135deg,${t.col}15,${t.col}08);border:1.5px solid ${t.col}30;border-radius:18px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:10px">
           <span style="font-size:28px">${cat.em}</span>
           <div><div style="font-weight:900;font-size:15px;color:${t.col}">${cat.lbl}</div><div style="font-size:12px;color:#64748B">פרופיל קטגוריה</div></div>
-          ${isOwn?`<button onclick="showEditCatProfileDialog('${S.teacherCat}')" style="margin-right:auto;background:${t.col}18;border:1px solid ${t.col}40;color:${t.col};border-radius:50px;padding:7px 14px;font-size:12px;font-weight:800;cursor:pointer">✏️ ערוך</button>`:''}
+          ${isOwn?`<button onclick="showEditSubjectDialog('${S.teacherCat}')" style="margin-right:auto;background:${t.col}18;border:1px solid ${t.col}40;color:${t.col};border-radius:50px;padding:7px 14px;font-size:12px;font-weight:800;cursor:pointer">✏️ ערוך מלא</button>`:''}
         </div>`:''}
         <div class="card"><h4 style="margin:0 0 10px;font-weight:800">👋 קצת עליי${cat?' ב'+cat.lbl:''}</h4><p style="margin:0;font-size:14px;line-height:1.7">${escapeHtml(desc)}</p></div>
         ${tags.length?`<div class="card"><h4 style="margin:0 0 12px;font-weight:800">🏷 מה אני מלמד/ת${cat?' ב'+cat.lbl:''}</h4>
