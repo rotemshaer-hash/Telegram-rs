@@ -3268,9 +3268,27 @@ const EMAILJS_SERVICE_ID='service_h1v7whg';
 const EMAILJS_TEMPLATE_ID='template_i016jci';
 const EMAILJS_PUBLIC_KEY='kjqdW8av2HU2kOA8W';
 
+function _emailRateLimitOk(){
+  const key='ejs_sends';
+  const now=Date.now();
+  const hour=60*60*1000;
+  let sends=JSON.parse(localStorage.getItem(key)||'[]').filter(t=>now-t<hour);
+  if(sends.length>=5){
+    console.warn('[Email] rate limit reached (5/hour)');
+    return false;
+  }
+  sends.push(now);
+  localStorage.setItem(key,JSON.stringify(sends));
+  return true;
+}
+
 async function sendEmail(to,subject,body){
   if(!EMAILJS_SERVICE_ID||!EMAILJS_TEMPLATE_ID||!EMAILJS_PUBLIC_KEY){
     console.log('[Email] EmailJS not configured — would send to:',to,'|',subject);
+    return null;
+  }
+  if(!_emailRateLimitOk()){
+    console.warn('[Email] blocked by rate limit');
     return null;
   }
   try{
@@ -4623,6 +4641,9 @@ async function _submitVideo(){
   document.getElementById('_vidUpOv')?.remove();
   if(mode==='gallery'){
     if(!_selectedVideoFile){showFireToast('❌ בחר סרטון');return;}
+    const _allowedTypes=['video/mp4','video/quicktime','video/x-m4v'];
+    if(!_allowedTypes.includes(_selectedVideoFile.type)){showFireToast('❌ סוג קובץ לא נתמך — MP4 או MOV בלבד');return;}
+    if(_selectedVideoFile.size>200*1024*1024){showFireToast('❌ הסרטון גדול מדי — מקסימום 200MB');return;}
     _showVideoUploadProgress(title);
     if(CLOUDINARY_ENABLED){
       try{
