@@ -2646,19 +2646,28 @@ function uploadImage(inputId,callback,maxSizeMB=7){
 
 function _resizeImageForCrop(file,maxPx=1080){
   return new Promise((resolve,reject)=>{
-    const url=URL.createObjectURL(file);
+    const blobUrl=URL.createObjectURL(file);
     const img=new Image();
-    img.onload=()=>{
-      URL.revokeObjectURL(url);
+    const tryDraw=()=>{
       const w=img.naturalWidth,h=img.naturalHeight;
+      if(!w||!h){resolve(blobUrl);return;} // naturalWidth=0: use blob url directly
       const ratio=Math.min(1,maxPx/Math.max(w,h));
-      const canvas=document.createElement('canvas');
-      canvas.width=Math.round(w*ratio);canvas.height=Math.round(h*ratio);
-      canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
-      resolve(canvas.toDataURL('image/jpeg',0.92));
+      const cv=document.createElement('canvas');
+      cv.width=Math.round(w*ratio);cv.height=Math.round(h*ratio);
+      try{
+        cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
+        const out=cv.toDataURL('image/jpeg',0.92);
+        if(out.length>1000){URL.revokeObjectURL(blobUrl);resolve(out);}
+        else resolve(blobUrl); // blank canvas (iOS decode lag): use blob url directly
+      }catch(e){resolve(blobUrl);}
     };
-    img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error('load error'));};
-    img.src=url;
+    img.onload=()=>{
+      typeof img.decode==='function'
+        ?img.decode().then(tryDraw).catch(()=>resolve(blobUrl))
+        :tryDraw();
+    };
+    img.onerror=()=>{URL.revokeObjectURL(blobUrl);reject(new Error('load error'));};
+    img.src=blobUrl;
   });
 }
 function showCropDialog(dataUrl,callback,aw=1,ah=1){
