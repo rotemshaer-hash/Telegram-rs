@@ -2652,7 +2652,7 @@ function showCropDialog(srcUrl,callback,aw=1,ah=1){
       <button id="_cropDone" style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:9px 20px;font-weight:900;font-size:14px;cursor:pointer">חתוך ✓</button>
     </div>
     <div id="_cropStage" style="flex:1;position:relative;overflow:hidden;touch-action:none;cursor:grab">
-      <img id="_cropImg" style="position:absolute;transform-origin:0 0;pointer-events:none;max-width:none" draggable="false">
+      <img id="_cropImg" src="${srcUrl}" style="position:absolute;transform-origin:0 0;pointer-events:none;max-width:none" draggable="false">
       <div id="_cropFrame" style="position:absolute;border:2px solid #fff;pointer-events:none;box-shadow:0 0 0 9999px rgba(0,0,0,0.6)"></div>
       <div style="position:absolute;inset:0;pointer-events:none;display:flex;align-items:center;justify-content:center">
         <span style="color:rgba(255,255,255,0.35);font-size:12px;font-weight:700;text-align:center;line-height:1.8">גרור להזזה<br>צבט לזום</span>
@@ -2667,7 +2667,7 @@ function showCropDialog(srcUrl,callback,aw=1,ah=1){
   const stage=document.getElementById('_cropStage');
   const img=document.getElementById('_cropImg');
   const frame=document.getElementById('_cropFrame');
-  let sc=1,ox=0,oy=0,initialized=false;
+  let sc=1,ox=0,oy=0;
 
   function updateFrame(){
     const sw=stage.clientWidth,sh=stage.clientHeight;
@@ -2678,11 +2678,8 @@ function showCropDialog(srcUrl,callback,aw=1,ah=1){
   }
   function applyT(){img.style.transform=`translate(${ox}px,${oy}px) scale(${sc})`;}
   function initImg(){
-    if(initialized)return;
-    const sw=stage.clientWidth,sh=stage.clientHeight;
-    if(!sw||!sh||!img.naturalWidth||!img.naturalHeight){requestAnimationFrame(initImg);return;}
-    initialized=true;
     updateFrame();
+    const sw=stage.clientWidth,sh=stage.clientHeight;
     const fw=parseFloat(frame.style.width),fh=parseFloat(frame.style.height);
     sc=Math.max(fw/img.naturalWidth,fh/img.naturalHeight)*1.05;
     ox=(sw-img.naturalWidth*sc)/2;oy=(sh-img.naturalHeight*sc)/2;
@@ -2693,11 +2690,14 @@ function showCropDialog(srcUrl,callback,aw=1,ah=1){
     ox=(ox-cx)*f+cx;oy=(oy-cy)*f+cy;sc*=f;applyT();
   }
   const _cleanup=()=>{if(srcUrl.startsWith('blob:'))URL.revokeObjectURL(srcUrl);};
-  img.onload=()=>requestAnimationFrame(initImg);
+  let _inited=false;
+  const _doInit=()=>{if(_inited)return;_inited=true;initImg();};
+  img.onload=_doInit;
   img.onerror=()=>{_cleanup();showFireToast('❌ שגיאה בטעינת התמונה');ov.remove();};
-  img.src=srcUrl;
-  // fallback: force init after 600ms in case onload fired before rAF ran
-  setTimeout(()=>{if(!initialized&&img.naturalWidth)initImg();},600);
+  // force-reload after append so onload fires with correct layout dimensions
+  if(img.complete&&img.naturalWidth){const s=img.src;img.src='';img.src=s;}
+  // decode() fallback for browsers that skip onload on fast data/blob URLs
+  img.decode?.().then(_doInit).catch(()=>{});
 
   document.getElementById('_cropZoomIn').onclick=()=>doZoom(1.18);
   document.getElementById('_cropZoomOut').onclick=()=>doZoom(0.85);
