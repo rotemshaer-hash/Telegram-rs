@@ -2405,18 +2405,16 @@ async function markNotificationRead(notifId){
 }
 async function markAllNotificationsRead(silent=false){
   if(!currentUser||notifications.length===0)return;
-  // עדכן מצב מקומי מיד — לפני Firebase
   notifications.forEach(n=>n.read=true);
   unreadCount=0;
   render();
   try{
-    const upd={};const admUpd={};
-    notifications.forEach(n=>{
-      if(n._adminNotif)admUpd[n.id.slice(3)+'/read']=true;
-      else upd[n.id+'/read']=true;
+    // Individual writes instead of batch update — avoids one bad notification blocking all
+    const writes=notifications.map(n=>{
+      if(n._adminNotif)return db.ref('adminNotifs/'+n.id.slice(3)+'/read').set(true);
+      return db.ref('notifications/'+currentUser.uid+'/'+n.id+'/read').set(true);
     });
-    if(Object.keys(upd).length)await db.ref('notifications/'+currentUser.uid).update(upd);
-    if(Object.keys(admUpd).length)await db.ref('adminNotifs').update(admUpd);
+    await Promise.allSettled(writes);
     if(!silent)showFireToast('✅ כל ההתראות סומנו כנקראו');
   }catch(e){console.warn('[markAllRead]',e);}
 }
@@ -10027,8 +10025,11 @@ auth&&auth.onAuthStateChanged(async user=>{
       });
       // האזנה ל-adminNotifs (מורים חדשים, סרטונים, משתמשים) – ללא חיפוש UID
       if(isAdmin()){
+        const _adminNotifListenStart=Date.now();
         db.ref('adminNotifs').on('child_added',snap=>{
           const n=snap.val();
+          const isNew=(n?.createdAt||0)>=_adminNotifListenStart-5000;
+          if(!isNew)return; // skip existing notifications on initial attachment
           if(n&&!n.read){
             if(n.type==='newTeacher')_sendBrowserNotif('🎓 מורה חדש נרשם!',`${n.from||''} · ${n.teacherEmail||''}`);
             else if(n.type==='newVideo')_sendBrowserNotif('📹 סרטון חדש ממתין',n.from||'');
