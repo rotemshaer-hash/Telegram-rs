@@ -2658,7 +2658,7 @@ function showCropDialog(dataUrl,callback,aw=1,ah=1){
       <button id="_cropDone" style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:9px 20px;font-weight:900;font-size:14px;cursor:pointer">חתוך ✓</button>
     </div>
     <div id="_cropStage" style="flex:1;position:relative;overflow:hidden;touch-action:none;cursor:grab">
-      <img id="_cropImg" src="${dataUrl}" style="position:absolute;transform-origin:0 0;pointer-events:none;max-width:none" draggable="false">
+      <img id="_cropImg" style="position:absolute;transform-origin:0 0;pointer-events:none;max-width:none" draggable="false">
       <div id="_cropFrame" style="position:absolute;border:2px solid #fff;pointer-events:none;box-shadow:0 0 0 9999px rgba(0,0,0,0.6)"></div>
       <div style="position:absolute;inset:0;pointer-events:none;display:flex;align-items:center;justify-content:center">
         <span style="color:rgba(255,255,255,0.35);font-size:12px;font-weight:700;text-align:center;line-height:1.8">גרור להזזה<br>צבט לזום</span>
@@ -2685,6 +2685,8 @@ function showCropDialog(dataUrl,callback,aw=1,ah=1){
   function applyT(){img.style.transform=`translate(${ox}px,${oy}px) scale(${sc})`;}
   function initImg(){
     const sw=stage.clientWidth,sh=stage.clientHeight;
+    if(!sw||!sh||!img.naturalWidth||!img.naturalHeight){requestAnimationFrame(initImg);return;}
+    updateFrame();
     const fw=parseFloat(frame.style.width),fh=parseFloat(frame.style.height);
     sc=Math.max(fw/img.naturalWidth,fh/img.naturalHeight)*1.05;
     ox=(sw-img.naturalWidth*sc)/2;oy=(sh-img.naturalHeight*sc)/2;
@@ -2694,12 +2696,9 @@ function showCropDialog(dataUrl,callback,aw=1,ah=1){
     cx=cx??stage.clientWidth/2;cy=cy??stage.clientHeight/2;
     ox=(ox-cx)*f+cx;oy=(oy-cy)*f+cy;sc*=f;applyT();
   }
-  const _doInit=()=>{updateFrame();initImg();};
-  img.onload=_doInit;
-  // Force reload so onload always fires, even for cached/instant data URLs
-  if(img.complete){const s=img.src;img.src='';img.src=s;}
-  // decode() fallback for browsers that skip onload on fast data URLs
-  img.decode?.().then(_doInit).catch(()=>{});
+  img.onload=()=>requestAnimationFrame(initImg);
+  img.onerror=()=>showFireToast('❌ שגיאה בטעינת התמונה');
+  img.src=dataUrl;
 
   document.getElementById('_cropZoomIn').onclick=()=>doZoom(1.18);
   document.getElementById('_cropZoomOut').onclick=()=>doZoom(0.85);
