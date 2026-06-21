@@ -10086,6 +10086,9 @@ async function firebaseRegister(email,password,userData){
         verified:false,
         role:userData.role||'student'
       });
+      if(userData.parentId){
+        await db.ref('parentLinks/'+userData.parentId+'/'+cred.user.uid).set({linkedAt:Date.now()});
+      }
     }catch(dbErr){
       // rollback: מחק את חשבון ה-Auth שנוצר, כדי שהרשמה מחדש תהיה אפשרית
       await cred.user.delete().catch(()=>{});
