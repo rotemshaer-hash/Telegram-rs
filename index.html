@@ -9929,8 +9929,9 @@ auth&&auth.onAuthStateChanged(async user=>{
         S._loggingIn=false;S._registering=false;go('studentPending');return;
       }
 
-      // ── בדיקת אימות מייל (לא חל על אדמין ומשתמשי Google שמאומתים אוטומטית) ──
-      if(!user.emailVerified&&!isAdmin()){
+      // ── בדיקת אימות מייל (לא חל על אדמין ומשתמשי @kidemy.app שמשתמשים בכתובת פיקטיבית) ──
+      const _isKidemyEmail=user.email?.endsWith('@kidemy.app');
+      if(!user.emailVerified&&!isAdmin()&&!_isKidemyEmail){
         S._loggingIn=false;S._registering=false;go('emailVerify');return;
       }
 
@@ -10133,12 +10134,14 @@ async function firebaseRegister(email,password,userData){
       await cred.user.delete().catch(()=>{});
       throw new Error('שגיאה בשמירת פרטי החשבון — נסה שוב');
     }
-    // שליחת מייל אימות + מייל ברכה למשתמש
+    // שליחת מייל אימות — רק למשתמשים עם מייל אמיתי (לא @kidemy.app פיקטיבי)
     try{
-      await cred.user.sendEmailVerification({
-        url: window.location.origin,
-        handleCodeInApp: false
-      });
+      if(!email.endsWith('@kidemy.app')){
+        await cred.user.sendEmailVerification({
+          url: window.location.origin,
+          handleCodeInApp: false
+        });
+      }
     }catch(emailErr){
       console.warn('Email verification failed:',emailErr);
     }
