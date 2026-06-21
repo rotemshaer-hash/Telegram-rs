@@ -281,6 +281,32 @@ body.dark .online-dot{border-color:#0D1117 !important}
 </style>
 </head>
 <body>
+<!-- Mobile-only notice for desktop users -->
+<div id="_desktopWarn" style="display:none;position:fixed;inset:0;background:linear-gradient(135deg,#0F1A1F,#1A2530);z-index:99999;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:40px;color:#fff">
+  <div style="font-size:80px;margin-bottom:20px">📱</div>
+  <h1 style="font-size:28px;font-weight:900;margin:0 0 12px">Kidemy</h1>
+  <p style="font-size:16px;color:rgba(255,255,255,0.7);margin:0 0 8px">ילדים מלמדים ילדים</p>
+  <div style="background:rgba(255,255,255,0.08);border:1.5px solid rgba(255,255,255,0.15);border-radius:20px;padding:24px 32px;max-width:360px;margin-top:24px">
+    <div style="font-size:32px;margin-bottom:12px">🚫💻</div>
+    <p style="font-size:15px;font-weight:700;margin:0 0 10px">האפליקציה מיועדת לשימוש בסלולרי בלבד</p>
+    <p style="font-size:13px;color:rgba(255,255,255,0.6);margin:0 0 18px;line-height:1.6">סרוק את הקוד עם הטלפון שלך<br>או גש לאפליקציה ישירות מהדפדפן הנייד</p>
+    <canvas id="_qrCanvas" style="border-radius:12px;background:#fff;padding:8px"></canvas>
+  </div>
+</div>
+<script>
+(function(){
+  var el=document.getElementById('_desktopWarn');
+  if(window.innerWidth>768){
+    el.style.display='flex';
+    // Simple QR via API
+    var img=document.createElement('img');
+    img.src='https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://kidemy-app.netlify.app';
+    img.style.cssText='width:150px;height:150px;border-radius:8px';
+    var c=document.getElementById('_qrCanvas');
+    c.parentNode.replaceChild(img,c);
+  }
+})();
+</script>
 <div id="app"></div>
 <script>
 "use strict";
@@ -1451,7 +1477,7 @@ function TeacherSetup(){
         <div class="ing"><label>אזור</label>
           <select id="tArea" class="inp">
             <option value="">בחר אזור...</option>
-            ${["מרכז","תל אביב","ירושלים","צפון","דרום","שרון","שפלה","חיפה והקריות"].map(a=>`<option>${a}</option>`).join("")}
+            ${["מרכז","ירושלים","צפון","דרום","שרון","שפלה","חיפה והקריות"].map(a=>`<option>${a}</option>`).join("")}
           </select>
         </div>
         <div class="ing" style="margin-bottom:0"><label>עיר</label>
@@ -1472,7 +1498,7 @@ function TeacherSetup(){
             oninput="document.getElementById('priceDisplay').textContent=this.value"
             style="width:100%;height:6px;border-radius:50px;accent-color:#14B8A6;cursor:pointer">
         </div>
-        <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;color:#64748B;margin-top:6px">
+        <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;color:#64748B;margin-top:6px;direction:ltr">
           <span style="color:#14B8A6">₪20</span>
           <span style="color:#14B8A6">₪50</span>
         </div>
@@ -2526,7 +2552,7 @@ function showFiltersPanel(){
 
       <h4 style="font-weight:800;font-size:14px;margin:0 0 10px;color:#06B6D4">📍 אזור</h4>
       <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:18px">
-        ${["מרכז","תל אביב","ירושלים","צפון","דרום","שרון","שפלה","חיפה והקריות"].map(a=>`
+        ${["מרכז","ירושלים","צפון","דרום","שרון","שפלה","חיפה והקריות"].map(a=>`
           <button onclick="activeFilters.area=${f.area===a?'null':"'"+a+"'"};render();this.closest('._filtPanel').parentElement.remove();showFiltersPanel()" style="background:${f.area===a?'linear-gradient(135deg,#06B6D4,#0EA5E9)':'rgba(6,182,212,0.08)'};color:${f.area===a?'#fff':'#06B6D4'};border:1.5px solid ${f.area===a?'transparent':'rgba(6,182,212,0.2)'};border-radius:50px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer">${a}</button>
         `).join('')}
       </div>
@@ -3746,6 +3772,8 @@ async function rejectStudent(uid, name){
   }catch(e){showFireToast('❌ '+e.message);}
 }
 async function adminApproveTeacher(uid){
+  if(_adminActionInProgress){showFireToast('⏳ פעולה בתהליך...');return;}
+  _adminActionInProgress=true;
   try{
     await db.ref('teachers/'+uid+'/verified').set(true);
     await db.ref('teachers/'+uid+'/active').set(true);
@@ -3758,6 +3786,7 @@ async function adminApproveTeacher(uid){
     showFireToast('✅ המורה אושר!');
     await loadAdminData();renderAdminPanel();
   }catch(e){showFireToast('❌ '+e.message);}
+  finally{_adminActionInProgress=false;}
 }
 
 async function adminVerifyAge(uid){
@@ -3825,6 +3854,9 @@ async function adminFixUser(uid,email){
 
 function adminSendSetupReminder(uid,teacherName,parentEmail,parentName){
   if(!isAdmin()){showFireToast('❌ אין הרשאה');return;}
+  if(_adminActionInProgress){showFireToast('⏳ פעולה בתהליך...');return;}
+  _adminActionInProgress=true;
+  setTimeout(()=>{_adminActionInProgress=false;},5000);
   sendEmail(
     parentEmail,
     `תזכורת: ${teacherName} טרם השלים/ה הגדרת פרופיל מורה ב-Kidemy`,
@@ -5906,6 +5938,9 @@ function renderAdminTab(){
             <div style="flex:1">
               <div style="font-size:13px;font-weight:900;color:#0F1A1F">${t.name||'ללא שם'} — מורה חדש</div>
               <div style="font-size:11px;color:#94A3B8;margin-top:2px">${CATS.find(c=>c.id===t.cat)?.lbl||t.cat||'?'} · ${t.city||'?'} · ₪${t.price||'?'}/שיעור</div>
+              ${t.email?`<div style="font-size:11px;color:#64748B;margin-top:2px">📧 ${t.email}</div>`:''}
+              ${t.phone?`<div style="font-size:11px;color:#64748B;margin-top:1px">📞 ${t.phone}</div>`:''}
+              ${t.parentName?`<div style="font-size:11px;color:#A855F7;margin-top:2px">👨‍👩‍👧 הורה: ${t.parentName}${t.parentPhone?' · '+t.parentPhone:''}${t.parentEmail?' · '+t.parentEmail:''}</div>`:''}
             </div>
             <div style="font-size:10px;color:#CBD5E1;font-weight:700">${t.createdAt?new Date(t.createdAt).toLocaleDateString('he-IL'):''}</div>
           </div>
