@@ -624,6 +624,7 @@ window.addEventListener('popstate',()=>{
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 function escapeHtml(s){if(!s)return '';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+function displayEmail(e){if(!e||e.endsWith('@kidemy.app'))return '';return e;}
 function safeUrl(u){if(!u)return '';return /^https?:\/\//i.test(String(u).trim())?String(u).trim():'';}
 
 // ─── AVATAR ───────────────────────────────────────────────────────────────────
@@ -7933,7 +7934,7 @@ function Profile(){
       <div onclick="document.getElementById('profilePhotoInput').click()" style="width:84px;height:84px;border-radius:26px;margin:0 auto;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:42px;position:relative;z-index:1;cursor:pointer;overflow:hidden">${currentUserData?.photo?`<img src="${currentUserData.photo}" style="width:100%;height:100%;object-fit:cover" alt="">`:'🎸'}<div style="position:absolute;bottom:-2px;right:-2px;background:#A855F7;border:2px solid #fff;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff">📷</div></div>
       <input type="file" id="profilePhotoInput" accept="image/*" style="display:none" onchange="uploadProfilePhoto()">
       <h2 style="font-size:22px;font-weight:900;margin:14px 0 4px;position:relative;z-index:1">${currentUser?(currentUserData?.name||currentUser.email.split('@')[0]):'אורח'}</h2>
-      <p style="font-size:14px;opacity:.85;margin:0;position:relative;z-index:1">${currentUser?currentUser.email:'לא מחובר'}</p>
+      <p style="font-size:14px;opacity:.85;margin:0;position:relative;z-index:1">${currentUser?(displayEmail(currentUser.email)||''):'לא מחובר'}</p>
       ${currentUser?(()=>{const r=getRank(teacherAnalytics?.completed||0);return `<div style="margin-top:12px;position:relative;z-index:1"><span style="background:${r.grad};color:#fff;padding:6px 16px;border-radius:50px;font-size:13px;font-weight:900;display:inline-flex;align-items:center;gap:6px;box-shadow:0 4px 14px rgba(0,0,0,0.2)">${r.icon} ${r.name}</span></div>`;})():''}
     </div>
     <div style="padding:16px 20px 0">
@@ -8049,7 +8050,7 @@ function Parent(){
               <div style="width:54px;height:54px;border-radius:18px;background:linear-gradient(135deg,#14B8A6,#06B6D4);display:flex;align-items:center;justify-content:center;color:#fff"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
               <div style="flex:1">
                 <div style="font-weight:900;font-size:17px;color:#0F1A1F">${child.name||'ילד'}</div>
-                <div style="font-size:12px;color:#64748B">${child.email}</div>
+                ${displayEmail(child.email)?`<div style="font-size:12px;color:#64748B">${displayEmail(child.email)}</div>`:''}
               </div>
               <div style="text-align:left">
                 <div style="font-size:11px;color:#10B981;font-weight:700;background:rgba(16,185,129,0.1);padding:4px 10px;border-radius:50px">${active} פעילים</div>
@@ -8621,7 +8622,7 @@ function TeacherPending(){
             </div>
             <div style="display:flex;align-items:center;gap:8px">
               <span style="font-size:16px">📧</span>
-              <span style="color:rgba(255,255,255,0.7);font-size:13px;direction:ltr">${currentUser?.email||''}</span>
+              <span style="color:rgba(255,255,255,0.7);font-size:13px;direction:ltr">${displayEmail(currentUser?.email)||''}</span>
             </div>
             ${t.mode?`<div style="display:flex;align-items:center;gap:8px">
               <span style="font-size:16px">🖥</span>
