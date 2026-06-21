@@ -2405,27 +2405,26 @@ async function markNotificationRead(notifId){
     render();
   }catch(e){}
 }
-async function markAllNotificationsRead(){
+async function markAllNotificationsRead(silent=false){
   if(!currentUser||notifications.length===0)return;
+  // עדכן מצב מקומי מיד — לפני Firebase
+  notifications.forEach(n=>n.read=true);
+  unreadCount=0;
+  render();
   try{
     const upd={};const admUpd={};
     notifications.forEach(n=>{
-      if(!n.read){
-        if(n._adminNotif)admUpd[n.id.slice(3)+'/read']=true;
-        else upd[n.id+'/read']=true;
-      }
+      if(n._adminNotif)admUpd[n.id.slice(3)+'/read']=true;
+      else upd[n.id+'/read']=true;
     });
     if(Object.keys(upd).length)await db.ref('notifications/'+currentUser.uid).update(upd);
     if(Object.keys(admUpd).length)await db.ref('adminNotifs').update(admUpd);
-    notifications.forEach(n=>n.read=true);
-    unreadCount=0;
-    showFireToast('✅ כל ההתראות סומנו כנקראו');
-    render();
-  }catch(e){}
+    if(!silent)showFireToast('✅ כל ההתראות סומנו כנקראו');
+  }catch(e){console.warn('[markAllRead]',e);}
 }
 
 function showNotificationsPanel(){
-  if(unreadCount>0)markAllNotificationsRead();
+  if(unreadCount>0)markAllNotificationsRead(true);
   const ov=document.createElement('div');
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:flex-start;justify-content:center;backdrop-filter:blur(8px);padding:60px 16px 16px;direction:rtl';
   const items=notifications.length===0?
@@ -9991,12 +9990,12 @@ auth&&auth.onAuthStateChanged(async user=>{
       const _notifListenStart=Date.now();
       db.ref('notifications/'+user.uid).on('child_added',snap=>{
         const n=snap.val();
-        const isNew=(n?.createdAt||0)>=_notifListenStart-5000; // 5s buffer for clock skew
-        if(isNew&&n&&!n.read)_sendBrowserNotif(
+        const isNew=(n?.createdAt||0)>=_notifListenStart-5000;
+        if(!isNew)return; // התעלם מהתראות ישנות — נטענות כבר ב-loadNotifications
+        if(n&&!n.read)_sendBrowserNotif(
           n.type==='newBooking'?'📚 הזמנת שיעור חדשה!':'🔔 התראה חדשה',
           n.type==='newBooking'?`${n.from||''} · יום ${n.day||''} ${n.time||''}`:(n.from||''));
-        // Only update userChats for genuinely NEW notifications — old ones use the userChats Firebase listener
-        if(isNew&&n&&n.type==='newMessage'&&n.fromUid){
+        if(n&&n.type==='newMessage'&&n.fromUid){
           const inChat=S.screen==='chat'&&S.chat?.otherUid===n.fromUid;
           const newEntry={otherUid:n.fromUid,otherName:n.from||'משתמש',lastMessage:n.preview||'הודעה חדשה',lastTime:n.createdAt||Date.now(),unread:!inChat};
           const idx=userChats.findIndex(c=>c.otherUid===n.fromUid);
@@ -10004,6 +10003,7 @@ auth&&auth.onAuthStateChanged(async user=>{
           else{userChats.unshift(newEntry);}
           userChats.sort((a,b)=>(b.lastTime||0)-(a.lastTime||0));
         }
+        // טען מחדש רק להתראות חדשות אמיתיות
         loadNotifications().then(()=>{if(S.screen)render();});
       });
       // האזנה בזמן אמת לשיחות (לעדכון תג הודעות שלא נקראו)
