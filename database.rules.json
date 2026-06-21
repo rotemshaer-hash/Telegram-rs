@@ -41,7 +41,7 @@
       "$uid": {
         ".read": "auth != null && auth.uid == $uid",
         "$notifId": {
-          ".write": "auth != null",
+          ".write": "auth.uid == $uid || auth.token.email == 'rotemshaer@gmail.com'",
           ".validate": "newData.hasChildren(['type', 'createdAt', 'read']) && newData.child('createdAt').isNumber() && newData.child('read').isBoolean() && (newData.child('type').val() == 'newBooking' || newData.child('type').val() == 'bookingApproved' || newData.child('type').val() == 'bookingRejected' || newData.child('type').val() == 'bookingCancelled' || newData.child('type').val() == 'newMessage' || newData.child('type').val() == 'lessonCompleted' || newData.child('type').val() == 'newReview' || newData.child('type').val() == 'newPost' || newData.child('type').val() == 'adminMessage')"
         }
       }
@@ -49,6 +49,7 @@
     "messages": {
       "$chatId": {
         ".read": "auth != null",
+        ".write": "auth != null",
         "$msgId": {
           ".write": "auth != null && (!data.exists() && newData.child('from').val() == auth.uid && newData.child('text').isString() && newData.child('createdAt').isNumber())"
         }
@@ -56,19 +57,19 @@
     },
     "chats":    { "$id": { ".read": "auth != null", ".write": "auth != null" } },
     "userChats": {
-      "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth != null" }
+      "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth.uid == $uid || auth.token.email == 'rotemshaer@gmail.com'" }
     },
     "adminAlerts":  { ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'", ".write": "auth != null" },
     "adminNotifs":  { ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'", ".write": "auth != null" },
     "parentTokens": {
-      "$token": { ".read": "auth != null", ".write": "auth != null" }
+      "$token": { ".read": "auth.token.email == 'rotemshaer@gmail.com'", ".write": "auth.token.email == 'rotemshaer@gmail.com'" }
     },
     "parentLinks": {
       "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth != null && auth.uid == $uid" }
     },
     "bannedUsers":  { ".read": "auth != null", ".write": "auth != null && auth.token.email == 'rotemshaer@gmail.com'" },
     "forceSignout": {
-      "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth != null" }
+      "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth.uid == $uid || auth.token.email == 'rotemshaer@gmail.com'" }
     },
     "reviews":        {
       ".read": "auth != null",
@@ -79,7 +80,12 @@
       }
     },
     "pendingReviews": { ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'", ".write": "auth != null" },
-    "videos":         { ".read": "auth != null", ".write": "auth != null" },
+    "videos": {
+      "$teacherId": {
+        ".read": "auth != null",
+        ".write": "auth.uid == $teacherId || auth.token.email == 'rotemshaer@gmail.com'"
+      }
+    },
     "communityPosts": {
       ".read": "auth != null",
       "$postId": {
@@ -93,26 +99,31 @@
         ".write": "auth != null && (!data.exists() && newData.child('authUid').val() == auth.uid || data.child('authUid').val() == auth.uid || auth.token.email == 'rotemshaer@gmail.com')"
       }
     },
-    "groups":         { ".read": "auth != null", ".write": "auth != null" },
+    "groups": {
+      ".read": "auth != null",
+      "$groupId": {
+        ".write": "auth != null && (data.child('teacherId').val() == auth.uid || !data.exists() || auth.token.email == 'rotemshaer@gmail.com')"
+      }
+    },
     "groupMembers":   { ".read": "auth != null", ".write": "auth != null" },
     "userGroups": {
-      "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth != null" }
+      "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth.uid == $uid || auth.token.email == 'rotemshaer@gmail.com'" }
     },
     "reports":          { ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'", ".write": "auth != null" },
     "favorites": {
       "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth != null && auth.uid == $uid" }
     },
     "lessonSummaries": {
-      "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth != null" }
+      "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth.uid == $uid || auth.token.email == 'rotemshaer@gmail.com'" }
     },
     "studentProgress": {
-      "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth != null" }
+      "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth.uid == $uid || auth.token.email == 'rotemshaer@gmail.com'" }
     },
     "teacherSummaries": {
-      "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth != null" }
+      "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth.uid == $uid || auth.token.email == 'rotemshaer@gmail.com'" }
     },
     "schedules": {
-      "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth != null" }
+      "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth.uid == $uid || auth.token.email == 'rotemshaer@gmail.com'" }
     },
     "contactMessages":  { ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'", ".write": "auth != null" },
     "pendingCategories":{ ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'", ".write": "auth != null" },
