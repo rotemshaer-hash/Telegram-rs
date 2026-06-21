@@ -1864,6 +1864,9 @@ async function processPayment(payMethod,totalAmount){
   if(!t.id||typeof t.id!=='string'){
     showFireToast('❌ ניתן להזמין רק מורים אמיתיים');return;
   }
+  if(t.id===currentUser?.uid||t.uid===currentUser?.uid){
+    showFireToast('❌ לא ניתן להזמין שיעור אצל עצמך');return;
+  }
   const _bookNow=Date.now();
   if(_bookNow-_lastBookingTime<5000){showFireToast('⚠️ אנא המתן לפני הגשת בקשה נוספת');return;}
   _lastBookingTime=_bookNow;sessionStorage.setItem('_lbt',_bookNow);
@@ -2035,7 +2038,7 @@ async function approveBooking(bookingId){
 }
 
 // המורה מבטל שיעור שאושר
-async function cancelApprovedBooking(bookingId){
+async function cancelBookingAsTeacher(bookingId){
   if(!confirm('לבטל את השיעור? התלמיד יקבל הודעה.'))return;
   try{
     showFireToast('⏳ מבטל...');
@@ -2174,6 +2177,7 @@ async function submitDirectReview(teacherId){
   if(!currentUser){showFireToast('יש להתחבר כדי לכתוב ביקורת');return;}
   if(!S.ratingStars){showFireToast('אנא בחר דירוג כוכבים');return;}
   if(!teacherId){showFireToast('שגיאה: מזהה מורה חסר');return;}
+  if(teacherId===currentUser?.uid){showFireToast('❌ לא ניתן לדרג את עצמך');return;}
   // בדיקה שיש שיעור מאושר עם המורה הזה
   const hasLesson = studentBookings.some(b=>
     b.teacherId === (S.ratingT?.uid || S.ratingT?.id || teacherId) &&
@@ -2183,6 +2187,8 @@ async function submitDirectReview(teacherId){
   const reviewText=document.getElementById('_reviewTextarea')?.value.trim()||'';
   showFireToast('⏳ שומר ביקורת...');
   try{
+    const existingReviews=await db.ref('reviews/'+teacherId).orderByChild('from').equalTo(currentUser.uid).get();
+    if(existingReviews.exists()){showFireToast('❌ כבר דירגת מורה זה');return;}
     // build review — no null fields (Firebase rules may reject null bookingId)
     const reviewData={
       stars:S.ratingStars,
@@ -2223,6 +2229,7 @@ async function submitDirectReview(teacherId){
 
 // שמירת דירוג
 async function submitReview(bookingId,booking,ratedId,stars,review,isStudent){
+  if(ratedId===currentUser?.uid){showFireToast('❌ לא ניתן לדרג את עצמך');return;}
   try{
     showFireToast('⏳ שומר דירוג...');
     const reviewData={
@@ -3244,7 +3251,7 @@ async function loadUserChats(){
 
 // ─── ADMIN SYSTEM 👨‍💼 ────────────────────────────────────────────────────
 const ADMIN_EMAILS=['rotemshaer@gmail.com'];
-const TEACHER_AUTO_VERIFY=['rotemshaer@gmail.com','eyalxbeja+kidemyteacher@gmail.com'];
+const TEACHER_AUTO_VERIFY=['rotemshaer@gmail.com'];
 
 // ─── EMAIL NOTIFICATIONS (EmailJS) ───────────────────────────────────────────
 // הגדרה חד-פעמית:
@@ -3755,11 +3762,11 @@ async function approveStudent(uid, name){
     await db.ref('users/'+uid+'/rejected').set(false);
     await db.ref('adminAlerts/students/'+uid).remove();
     await db.ref('notifications/'+uid).push({
-      type:'bookingApproved', from:'Kidemy', read:false, createdAt:Date.now(),
+      type:'accountApproved', from:'Kidemy', read:false, createdAt:Date.now(),
       message:'חשבונך אושר! ברוך הבא ל-Kidemy 🎉'
     });
     showFireToast('✅ '+name+' אושר/ה');
-    render();
+    renderAdminPanel();
   }catch(e){showFireToast('❌ '+e.message);}
 }
 async function rejectStudent(uid, name){
@@ -3777,6 +3784,7 @@ async function adminApproveTeacher(uid){
   try{
     await db.ref('teachers/'+uid+'/verified').set(true);
     await db.ref('teachers/'+uid+'/active').set(true);
+    await db.ref('users/'+uid+'/verified').set(true);
     // שלח הודעה למורה
     await db.ref('notifications/'+uid).push({type:'teacherApproved',read:false,createdAt:Date.now()});
     // מייל למנהל
@@ -6012,8 +6020,8 @@ function renderAdminTab(){
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#A855F7" stroke-width="2" stroke-linecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
             </div>
             <div style="flex:1">
-              <div style="font-size:13px;font-weight:900;color:#0F1A1F">${v.title||'סרטון ללא שם'}</div>
-              <div style="font-size:11px;color:#A855F7;font-weight:700;margin-top:2px">מאת: ${v.teacherName||'?'}</div>
+              <div style="font-size:13px;font-weight:900;color:#0F1A1F">${escapeHtml(v.title||'סרטון ללא שם')}</div>
+              <div style="font-size:11px;color:#A855F7;font-weight:700;margin-top:2px">מאת: ${escapeHtml(v.teacherName||'?')}</div>
             </div>
           </div>
           ${v.desc?`<div style="padding:0 16px 10px;font-size:12px;color:#64748B;line-height:1.5">${v.desc}</div>`:''}
@@ -7555,7 +7563,7 @@ function Messages(){
             <div style="display:flex;gap:8px;margin-bottom:0">
               <button onclick="S.chat={otherUid:'${currentUserData?.role==='teacher'?b.studentId:b.teacherId}',otherName:'${(currentUserData?.role==='teacher'?b.studentName:b.teacherName).replace(/'/g,'')}'};go('chat')" style="flex:1;background:rgba(6,182,212,0.1);border:1.5px solid rgba(6,182,212,0.3);color:#06B6D4;border-radius:14px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">💬 צ'אט</button>
               <button onclick='showWhatsAppDialog("",WA_TEMPLATES.bookingReminder(${JSON.stringify(b).replace(/"/g,"&quot;").replace(/'/g,"&apos;")}),"שלח תזכורת")' style="background:linear-gradient(135deg,#25D366,#128C7E);border:none;color:#fff;border-radius:14px;padding:10px 12px;font-weight:800;font-size:13px;cursor:pointer">📱</button>
-              ${isTeacherRole&&b.status==='approved'?`<button onclick="cancelApprovedBooking('${b.id||b.bookingId||''}')" title="בטל שיעור" style="background:rgba(245,158,11,0.1);border:1.5px solid rgba(245,158,11,0.3);color:#D97706;border-radius:14px;padding:10px 12px;font-weight:800;font-size:13px;cursor:pointer;flex-shrink:0">🚫</button>`:''}
+              ${isTeacherRole&&b.status==='approved'?`<button onclick="cancelBookingAsTeacher('${b.id||b.bookingId||''}')" title="בטל שיעור" style="background:rgba(245,158,11,0.1);border:1.5px solid rgba(245,158,11,0.3);color:#D97706;border-radius:14px;padding:10px 12px;font-weight:800;font-size:13px;cursor:pointer;flex-shrink:0">🚫</button>`:''}
               ${isTeacherRole&&b.status!=='completed'?`<button onclick="completeLesson('${b.id}')" style="flex:1;background:rgba(168,85,247,0.1);border:1.5px solid rgba(168,85,247,0.3);color:#A855F7;border-radius:14px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">✅ סיים ודרג</button>`:
               !isTeacherRole&&b.status==='completed'&&!b.studentRating?`<button onclick="showRatingDialog('${b.id||b.bookingId||''}','${b.teacherId||''}','${(b.teacherName||'').replace(/'/g,'')}')" style="flex:1;background:rgba(251,191,36,0.1);border:1.5px solid rgba(251,191,36,0.4);color:#D97706;border-radius:14px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">⭐ דרג שיעור</button>`:''}
               ${isTeacherRole?`<button onclick="deleteBooking('${b.id||b.bookingId||''}')" title="מחק הזמנה" style="background:rgba(239,68,68,0.1);border:1.5px solid rgba(239,68,68,0.25);color:#EF4444;border-radius:14px;padding:10px 12px;font-weight:800;font-size:13px;cursor:pointer;flex-shrink:0"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>`:
