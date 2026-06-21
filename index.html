@@ -1747,19 +1747,17 @@ function toggleGPSSetup(){
 async function uploadSetupPhoto(input){
   if(!currentUser||!input?.files?.[0])return;
   const file=input.files[0];
-  _resizeImageForCrop(file).then(dataUrl=>{
-    showCropDialog(dataUrl,async(croppedUrl)=>{
-      try{
-        showFireToast('⏳ מעלה תמונה...');
-        const photoUrl=await uploadBase64ToStorage(croppedUrl,`photos/${currentUser.uid}/profile`);
-        await db.ref('users/'+currentUser.uid+'/photo').set(photoUrl);
-        if(currentUserData)currentUserData.photo=photoUrl;
-        const circle=document.getElementById('tSetupPhotoCircle');
-        if(circle)circle.innerHTML=`<img src="${photoUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%" alt=""><div style="position:absolute;bottom:0;right:0;background:#14B8A6;border:2px solid #fff;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:13px">📷</div>`;
-        showFireToast('✅ תמונה הועלתה!');
-      }catch(e){showFireToast('❌ '+e.message);}
-    },1,1);
-  }).catch(()=>showFireToast('❌ שגיאה בטעינת התמונה'));
+  showCropDialog(URL.createObjectURL(file),async(croppedUrl)=>{
+    try{
+      showFireToast('⏳ מעלה תמונה...');
+      const photoUrl=await uploadBase64ToStorage(croppedUrl,`photos/${currentUser.uid}/profile`);
+      await db.ref('users/'+currentUser.uid+'/photo').set(photoUrl);
+      if(currentUserData)currentUserData.photo=photoUrl;
+      const circle=document.getElementById('tSetupPhotoCircle');
+      if(circle)circle.innerHTML=`<img src="${photoUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%" alt=""><div style="position:absolute;bottom:0;right:0;background:#14B8A6;border:2px solid #fff;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:13px">📷</div>`;
+      showFireToast('✅ תמונה הועלתה!');
+    }catch(e){showFireToast('❌ '+e.message);}
+  },1,1);
 }
 
 async function saveTeacherProfile(){
@@ -2644,33 +2642,7 @@ function uploadImage(inputId,callback,maxSizeMB=7){
   reader.readAsDataURL(file);
 }
 
-function _resizeImageForCrop(file,maxPx=1080){
-  return new Promise((resolve,reject)=>{
-    const blobUrl=URL.createObjectURL(file);
-    const img=new Image();
-    const tryDraw=()=>{
-      const w=img.naturalWidth,h=img.naturalHeight;
-      if(!w||!h){resolve(blobUrl);return;} // naturalWidth=0: use blob url directly
-      const ratio=Math.min(1,maxPx/Math.max(w,h));
-      const cv=document.createElement('canvas');
-      cv.width=Math.round(w*ratio);cv.height=Math.round(h*ratio);
-      try{
-        cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
-        const out=cv.toDataURL('image/jpeg',0.92);
-        if(out.length>1000){URL.revokeObjectURL(blobUrl);resolve(out);}
-        else resolve(blobUrl); // blank canvas (iOS decode lag): use blob url directly
-      }catch(e){resolve(blobUrl);}
-    };
-    img.onload=()=>{
-      typeof img.decode==='function'
-        ?img.decode().then(tryDraw).catch(()=>resolve(blobUrl))
-        :tryDraw();
-    };
-    img.onerror=()=>{URL.revokeObjectURL(blobUrl);reject(new Error('load error'));};
-    img.src=blobUrl;
-  });
-}
-function showCropDialog(dataUrl,callback,aw=1,ah=1){
+function showCropDialog(srcUrl,callback,aw=1,ah=1){
   const ov=document.createElement('div');
   ov.style.cssText='position:fixed;inset:0;background:#000;z-index:99999;display:flex;flex-direction:column;direction:rtl;user-select:none';
   ov.innerHTML=`
@@ -2695,7 +2667,7 @@ function showCropDialog(dataUrl,callback,aw=1,ah=1){
   const stage=document.getElementById('_cropStage');
   const img=document.getElementById('_cropImg');
   const frame=document.getElementById('_cropFrame');
-  let sc=1,ox=0,oy=0;
+  let sc=1,ox=0,oy=0,initialized=false;
 
   function updateFrame(){
     const sw=stage.clientWidth,sh=stage.clientHeight;
@@ -2706,8 +2678,10 @@ function showCropDialog(dataUrl,callback,aw=1,ah=1){
   }
   function applyT(){img.style.transform=`translate(${ox}px,${oy}px) scale(${sc})`;}
   function initImg(){
+    if(initialized)return;
     const sw=stage.clientWidth,sh=stage.clientHeight;
     if(!sw||!sh||!img.naturalWidth||!img.naturalHeight){requestAnimationFrame(initImg);return;}
+    initialized=true;
     updateFrame();
     const fw=parseFloat(frame.style.width),fh=parseFloat(frame.style.height);
     sc=Math.max(fw/img.naturalWidth,fh/img.naturalHeight)*1.05;
@@ -2718,13 +2692,16 @@ function showCropDialog(dataUrl,callback,aw=1,ah=1){
     cx=cx??stage.clientWidth/2;cy=cy??stage.clientHeight/2;
     ox=(ox-cx)*f+cx;oy=(oy-cy)*f+cy;sc*=f;applyT();
   }
+  const _cleanup=()=>{if(srcUrl.startsWith('blob:'))URL.revokeObjectURL(srcUrl);};
   img.onload=()=>requestAnimationFrame(initImg);
-  img.onerror=()=>showFireToast('❌ שגיאה בטעינת התמונה');
-  img.src=dataUrl;
+  img.onerror=()=>{_cleanup();showFireToast('❌ שגיאה בטעינת התמונה');ov.remove();};
+  img.src=srcUrl;
+  // fallback: force init after 600ms in case onload fired before rAF ran
+  setTimeout(()=>{if(!initialized&&img.naturalWidth)initImg();},600);
 
   document.getElementById('_cropZoomIn').onclick=()=>doZoom(1.18);
   document.getElementById('_cropZoomOut').onclick=()=>doZoom(0.85);
-  document.getElementById('_cropCancel').onclick=()=>ov.remove();
+  document.getElementById('_cropCancel').onclick=()=>{_cleanup();ov.remove();};
 
   let drag=false,sx=0,sy=0,ltd=0;
   stage.addEventListener('mousedown',e=>{drag=true;sx=e.clientX-ox;sy=e.clientY-oy;stage.style.cursor='grabbing';e.preventDefault();});
@@ -2751,7 +2728,7 @@ function showCropDialog(dataUrl,callback,aw=1,ah=1){
     const outW=aw>=ah?OUT:Math.round(OUT*aw/ah),outH=aw>=ah?Math.round(OUT*ah/aw):OUT;
     const cv=document.createElement('canvas');cv.width=outW;cv.height=outH;
     cv.getContext('2d').drawImage(img,cx,cy,cw,ch,0,0,outW,outH);
-    ov.remove();callback(cv.toDataURL('image/jpeg',0.88));
+    _cleanup();ov.remove();callback(cv.toDataURL('image/jpeg',0.88));
   };
 }
 
@@ -2855,25 +2832,23 @@ function previewParentIdPhoto(){
 async function uploadProfilePhoto(){
   if(!currentUser){showFireToast('❌ לא מחובר');return;}
   const input=document.getElementById('profilePhotoInput');
-  if(!input?.files?.[0]){showFireToast('❌ בחר תמונה');return;}
-  const file=input.files[0];
-  _resizeImageForCrop(file).then(dataUrl=>{
-    showCropDialog(dataUrl,async(croppedUrl)=>{
-      try{
-        showFireToast('⏳ מעלה תמונה...');
-        const photoUrl=await uploadBase64ToStorage(croppedUrl,`photos/${currentUser.uid}/profile`);
-        await db.ref('users/'+currentUser.uid+'/photo').set(photoUrl);
-        if(currentUserData)currentUserData.photo=photoUrl;
-        if(currentUserData?.role==='teacher'){
-          await db.ref('teachers/'+currentUser.uid+'/photo').set(photoUrl);
-          const t=TEACHERS.find(x=>x.id===currentUser.uid);
-          if(t)t.photo=photoUrl;
-        }
-        showFireToast('✅ התמונה הועלתה!');
-        render();
-      }catch(e){showFireToast('❌ '+e.message);}
-    },1,1);
-  }).catch(()=>showFireToast('❌ שגיאה בטעינת התמונה'));
+  const file=input?.files?.[0];
+  if(!file){showFireToast('❌ בחר תמונה');return;}
+  showCropDialog(URL.createObjectURL(file),async(croppedUrl)=>{
+    try{
+      showFireToast('⏳ מעלה תמונה...');
+      const photoUrl=await uploadBase64ToStorage(croppedUrl,`photos/${currentUser.uid}/profile`);
+      await db.ref('users/'+currentUser.uid+'/photo').set(photoUrl);
+      if(currentUserData)currentUserData.photo=photoUrl;
+      if(currentUserData?.role==='teacher'){
+        await db.ref('teachers/'+currentUser.uid+'/photo').set(photoUrl);
+        const t=TEACHERS.find(x=>x.id===currentUser.uid);
+        if(t)t.photo=photoUrl;
+      }
+      showFireToast('✅ התמונה הועלתה!');
+      render();
+    }catch(e){showFireToast('❌ '+e.message);}
+  },1,1);
 }
 
 function avatarHTML(user,size=44){
@@ -4613,17 +4588,15 @@ function _vidCheckReady(){
 
 function _onThumbFile(f){
   if(!f)return;
-  _resizeImageForCrop(f,1280).then(dataUrl=>{
-    showCropDialog(dataUrl,cropped=>{
-      window._selectedThumbFile=f;
-      window._vidThumbDataUrl=cropped;
-      const p=document.getElementById('_thumbPreview');
-      const w=document.getElementById('_thumbPreviewWrap');
-      if(p)p.src=cropped;
-      if(w)w.style.display='block';
-      document.querySelectorAll('._frameThumb').forEach(el=>el.style.outline='none');
-    },16,9);
-  }).catch(()=>showFireToast('❌ שגיאה בטעינת התמונה'));
+  showCropDialog(URL.createObjectURL(f),cropped=>{
+    window._selectedThumbFile=f;
+    window._vidThumbDataUrl=cropped;
+    const p=document.getElementById('_thumbPreview');
+    const w=document.getElementById('_thumbPreviewWrap');
+    if(p)p.src=cropped;
+    if(w)w.style.display='block';
+    document.querySelectorAll('._frameThumb').forEach(el=>el.style.outline='none');
+  },16,9);
 }
 
 async function captureVideoFrames(videoEl){
