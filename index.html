@@ -1692,6 +1692,26 @@ async function completeLesson(bookingId){
   }
 }
 
+async function cancelApprovedBooking(bookingId){
+  if(!confirm('❌ ביטול שיעור מאושר\n\n⚠️ מדיניות ביטול: ביטול תוך 24 שעות מהשיעור עלול לגרור חיוב מלא.\n\nלבטל את השיעור?'))return;
+  try{
+    const snap=await db.ref('bookings/'+bookingId).get();
+    if(!snap.exists()){showFireToast('❌ הזמנה לא נמצאה');return;}
+    const b=snap.val();
+    const cancelledAt=Date.now();
+    await db.ref('bookings/'+bookingId).update({status:'cancelled',cancelledAt});
+    await db.ref('userBookings/'+b.studentId+'/'+bookingId).update({status:'cancelled',cancelledAt});
+    await db.ref('teacherBookings/'+b.teacherId+'/'+bookingId).update({status:'cancelled',cancelledAt});
+    await db.ref('notifications/'+b.teacherId).push({
+      type:'bookingCancelled',from:currentUserData?.name||'תלמיד',
+      day:b.day,time:b.time,ts:cancelledAt,read:false
+    }).catch(()=>{});
+    await loadStudentBookings();
+    render();
+    showFireToast('✅ הביטול בוצע');
+  }catch(e){showFireToast('❌ שגיאה: '+e.message);}
+}
+
 // חלון דירוג כוכבים
 function showRatingDialog(bookingId,booking){
   const isStudent=currentUser?.uid===booking.studentId;
@@ -5525,6 +5545,7 @@ function Messages(){
               <button onclick='showWhatsAppDialog("",WA_TEMPLATES.bookingReminder(${JSON.stringify(b).replace(/"/g,"&quot;")}),"שלח תזכורת")' style="background:linear-gradient(135deg,#25D366,#128C7E);border:none;color:#fff;border-radius:14px;padding:10px 12px;font-weight:800;font-size:13px;cursor:pointer">📱</button>
               <button onclick="completeLesson('${b.id}')" style="flex:1;background:rgba(168,85,247,0.1);border:1.5px solid rgba(168,85,247,0.3);color:#A855F7;border-radius:14px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">✅ סיים ודרג</button>
             </div>
+            ${b.status==='approved'?`<button onclick="cancelApprovedBooking('${b.id}')" style="width:100%;margin-top:8px;background:rgba(239,68,68,0.07);border:1.5px solid rgba(239,68,68,0.25);color:#EF4444;border-radius:14px;padding:9px;font-weight:700;font-size:12px;cursor:pointer">🚫 בטל שיעור</button>`:''}
           </div>
         `).join('')}
       `:''}
@@ -7322,8 +7343,7 @@ auth.onAuthStateChanged(async user=>{
       if(currentUserData?.role==='teacher'){
         const tSnap=await db.ref('teachers/'+user.uid).get();
         if(!tSnap.exists()){
-          // מנהל חייב להשלים פרופיל מורה — לא ניתן לדלג
-          if(!S.skippedSetup||isAdmin()){go('teacherSetup');return;}
+          if(!isAdmin()&&!S.skippedSetup){go('teacherSetup');return;}
           // שאר המורים שדילגו — המשך ללא פרופיל
         } else {
           const tData=tSnap.val();
@@ -7681,6 +7701,11 @@ async function firebaseLogin(usernameOrEmail,password){
     // אם הוזן שם משתמש בלבד (לא מייל), הוסף @kidemy.app
     const email=usernameOrEmail.includes('@')?usernameOrEmail:usernameOrEmail.toLowerCase()+'@kidemy.app';
     await auth.signInWithEmailAndPassword(email,password);
+    setTimeout(()=>{
+      if(auth.currentUser&&(S.screen==='login'||S.screen==='splash')){
+        go('home');
+      }
+    },1500);
     showFireToast('✅ ברוך הבא!');go('home');
   }catch(e){
     const m={
