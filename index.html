@@ -522,7 +522,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.27';
+const APP_VERSION='4.9.28';
 const APP_BUILD='22-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -2230,7 +2230,7 @@ async function submitDirectReview(teacherId){
     render();
   }catch(e){
     console.error('[submitDirectReview] error:',e);
-    alert('❌ שגיאה בשמירת הביקורת:\n\n'+e.message+'\n\nנסה שוב או פנה לתמיכה.');
+    showFireToast('❌ שגיאה בשמירת הביקורת. נסה שוב.');
   }
 }
 
@@ -3988,7 +3988,7 @@ async function _submitRatingFromNotif(bookingId,teacherId,teacherName){
 
 // ─── דוח שבועי להורים 📊 ─────────────────────────────────────────────────────
 async function generateParentViewToken(uid,parentEmail){
-  const token=btoa(uid+':'+Date.now()).replace(/[+/=]/g,'').substring(0,32);
+  const _ta=new Uint8Array(24);crypto.getRandomValues(_ta);const token=Array.from(_ta,b=>b.toString(16).padStart(2,'0')).join('').substring(0,32);
   await db.ref('parentTokens/'+token).set({
     uid,parentEmail,createdAt:Date.now(),
     expiresAt:Date.now()+30*24*60*60*1000
@@ -7582,7 +7582,7 @@ function Messages(){
             <div style="font-weight:900;font-size:15px;color:#0F1A1F;margin:2px 0">${isTeacherRole?next.studentName:next.teacherName}</div>
             <div style="font-size:12px;color:#64748B">📅 יום ${next.day} • ⏰ ${next.time}</div>
           </div>
-          <button onclick="joinJitsi('${next.jitsiUrl||''}','${next.jitsiRoom||''}',${JSON.stringify({teacherName:next.teacherName||'',day:next.day||'',time:next.time||''}).replace(/'/g,'&apos;')})" style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:12px;padding:10px 14px;font-weight:800;font-size:12px;cursor:pointer;white-space:nowrap">📹 כנס ${next.meetingPlatform||getMeetingLabel(next.jitsiUrl||'')}</button>
+          <button onclick="joinJitsi(${JSON.stringify(next.jitsiUrl||'')},${JSON.stringify(next.jitsiRoom||'')},${JSON.stringify({teacherName:next.teacherName||'',day:next.day||'',time:next.time||''})})" style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:12px;padding:10px 14px;font-weight:800;font-size:12px;cursor:pointer;white-space:nowrap">📹 כנס ${next.meetingPlatform||getMeetingLabel(next.jitsiUrl||'')}</button>
         </div>
       `})():''}
 
@@ -7666,7 +7666,7 @@ function Messages(){
               </div>
               <span style="background:rgba(16,185,129,0.15);color:#059669;font-size:10px;font-weight:800;padding:4px 10px;border-radius:50px">✓ מאושר</span>
             </div>
-            <button onclick="joinJitsi('${b.jitsiUrl||''}','${b.jitsiRoom||''}',${JSON.stringify({teacherName:b.teacherName||'',day:b.day||'',time:b.time||''}).replace(/'/g,'&apos;')})" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:14px;padding:12px;font-weight:800;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:8px">
+            <button onclick="joinJitsi(${JSON.stringify(b.jitsiUrl||'')},${JSON.stringify(b.jitsiRoom||'')},${JSON.stringify({teacherName:b.teacherName||'',day:b.day||'',time:b.time||''})})" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:14px;padding:12px;font-weight:800;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:8px">
               📹 הצטרף לשיעור (${b.meetingPlatform||getMeetingLabel(b.jitsiUrl||'')})
             </button>
             <div style="display:flex;gap:8px;margin-bottom:0">
@@ -9038,7 +9038,7 @@ function showEditTeacherProfileDialog(){
             <button type="button" onclick="addEtCustomCat()" style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:12px;padding:10px 14px;font-weight:800;cursor:pointer;white-space:nowrap">הוסף</button>
           </div>
           <div id="_etCustomList" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">
-            ${window._etCustomCats.map(cc=>`<span style="background:rgba(168,85,247,0.15);border:1px solid rgba(168,85,247,0.3);border-radius:50px;padding:5px 12px;font-size:12px;font-weight:700;color:#A855F7;display:inline-flex;align-items:center;gap:6px">✨ ${cc} <span onclick="removeEtCustomCat('${cc}',this)" style="color:#EF4444;font-weight:900;cursor:pointer">✕</span></span>`).join('')}
+            ${window._etCustomCats.map(cc=>`<span style="background:rgba(168,85,247,0.15);border:1px solid rgba(168,85,247,0.3);border-radius:50px;padding:5px 12px;font-size:12px;font-weight:700;color:#A855F7;display:inline-flex;align-items:center;gap:6px">✨ ${escapeHtml(cc)} <span onclick="removeEtCustomCat(${JSON.stringify(cc)},this)" style="color:#EF4444;font-weight:900;cursor:pointer">✕</span></span>`).join('')}
           </div>
         </div>
       </div>
@@ -9852,7 +9852,7 @@ function showWhatsAppDialog(phone,message,title='שלח דרך WhatsApp'){
       ${phone?`<div style="margin-bottom:14px"><label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:6px">📱 שולח אל:</label><div style="background:rgba(20,184,166,0.06);border-radius:12px;padding:10px;font-weight:700;color:#14B8A6;direction:ltr;text-align:left">${phone}</div></div>`:`<div style="margin-bottom:14px"><label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:6px">📱 מספר טלפון</label><input id="_waPhone" type="tel" placeholder="050-1234567" style="width:100%;background:rgba(20,184,166,0.06);border:1.5px solid rgba(20,184,166,0.25);border-radius:12px;padding:12px;font-size:14px;font-family:inherit;direction:ltr;outline:none;box-sizing:border-box"></div>`}
       <div style="display:flex;gap:10px">
         <button onclick="this.closest('div[style*=fixed]').remove()" style="flex:1;background:rgba(100,116,139,0.1);border:none;border-radius:50px;padding:13px;font-size:13px;font-weight:700;color:#64748B;cursor:pointer">ביטול</button>
-        <button onclick="const p='${phone||''}'||document.getElementById('_waPhone')?.value;if(!p){showFireToast('❌ הכנס מספר');return;}openWhatsApp(p,${JSON.stringify(message)});this.closest('div[style*=fixed]').remove()" style="flex:2;background:linear-gradient(135deg,#25D366,#128C7E);border:none;color:#fff;border-radius:50px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 4px 14px rgba(37,211,102,0.4);display:flex;align-items:center;justify-content:center;gap:6px">📱 פתח WhatsApp</button>
+        <button onclick="const p=${JSON.stringify(phone||'')}||document.getElementById('_waPhone')?.value;if(!p){showFireToast('❌ הכנס מספר');return;}openWhatsApp(p,${JSON.stringify(message)});this.closest('div[style*=fixed]').remove()" style="flex:2;background:linear-gradient(135deg,#25D366,#128C7E);border:none;color:#fff;border-radius:50px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 4px 14px rgba(37,211,102,0.4);display:flex;align-items:center;justify-content:center;gap:6px">📱 פתח WhatsApp</button>
       </div>
     </div>`;
   document.body.appendChild(ov);
