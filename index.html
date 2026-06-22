@@ -522,7 +522,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.28';
+const APP_VERSION='4.9.29';
 const APP_BUILD='22-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -1953,6 +1953,90 @@ async function processPayment(payMethod,totalAmount){
 // טוען הזמנות של מורה (לתצוגה ב-Home)
 let teacherPendingBookings=[];
 let teacherAllBookings=[];
+let STORIES=[];
+
+function loadStories(){
+  if(!db)return;
+  db.ref('stories').on('value',snap=>{
+    const now=Date.now();
+    STORIES=[];
+    if(snap.exists())snap.forEach(c=>{const s={id:c.key,...c.val()};if(s.status==='approved'&&s.expiresAt>now)STORIES.push(s);});
+    STORIES.sort((a,b)=>b.createdAt-a.createdAt);
+    if(S.screen==='home')render();
+  });
+}
+
+function openStoryViewer(teacherUid){
+  const list=STORIES.filter(s=>s.uid===teacherUid).sort((a,b)=>a.createdAt-b.createdAt);
+  if(!list.length)return;
+  const seen=JSON.parse(localStorage.getItem('_storySeen')||'{}');
+  seen[teacherUid]=Date.now();localStorage.setItem('_storySeen',JSON.stringify(seen));
+  let idx=0,timer=null;
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:#000;z-index:99999;direction:ltr';
+  document.body.appendChild(ov);
+  function show(){
+    const s=list[idx];
+    const ago=Math.round((Date.now()-s.createdAt)/60000);
+    const agoTxt=ago<1?'עכשיו':ago<60?ago+' דק\'':Math.floor(ago/60)+' שע\'';
+    ov.innerHTML=`
+      <div style="position:absolute;top:0;left:0;right:0;padding:10px 10px 0;display:flex;gap:3px;z-index:2">
+        ${list.map((_,i)=>`<div style="flex:1;height:3px;border-radius:2px;overflow:hidden;background:rgba(255,255,255,0.3)"><div id="_sp${i}" style="height:100%;background:#fff;width:${i<idx?'100%':'0%'};transition:${i===idx?'width 5s linear':'none'}"></div></div>`).join('')}
+      </div>
+      <div style="position:absolute;top:22px;left:0;right:0;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;z-index:2;direction:rtl">
+        <div style="display:flex;align-items:center;gap:8px">
+          <img src="${escapeHtml(s.teacherPhoto||'')}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:2.5px solid rgba(255,255,255,0.7)" onerror="this.style.display='none'">
+          <div>
+            <div style="color:#fff;font-weight:900;font-size:14px;text-shadow:0 1px 4px rgba(0,0,0,0.5)">${escapeHtml(s.teacherName||'')}</div>
+            <div style="color:rgba(255,255,255,0.6);font-size:11px">לפני ${agoTxt}</div>
+          </div>
+        </div>
+        <button id="_spClose" style="background:rgba(0,0,0,0.4);border:none;color:#fff;font-size:18px;cursor:pointer;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center">✕</button>
+      </div>
+      <img src="${escapeHtml(s.mediaUrl||'')}" style="width:100%;height:100%;object-fit:cover" onerror="this.style.background='#1a1a2e'">
+      ${s.text?`<div style="position:absolute;bottom:50px;left:0;right:0;padding:20px 20px 16px;background:linear-gradient(transparent,rgba(0,0,0,0.8));color:#fff;font-size:17px;font-weight:700;text-align:center;direction:rtl;line-height:1.4">${escapeHtml(s.text)}</div>`:''}
+      <div id="_spLeft" style="position:absolute;left:0;top:0;bottom:0;width:35%;cursor:pointer;z-index:1"></div>
+      <div id="_spRight" style="position:absolute;right:0;top:0;bottom:0;width:35%;cursor:pointer;z-index:1"></div>
+    `;
+    document.getElementById('_spClose').onclick=()=>{clearTimeout(timer);ov.remove();};
+    document.getElementById('_spLeft').onclick=()=>{if(idx>0){idx--;clearTimeout(timer);show();}};
+    document.getElementById('_spRight').onclick=()=>{if(idx<list.length-1){idx++;clearTimeout(timer);show();}else{clearTimeout(timer);ov.remove();}};
+    clearTimeout(timer);
+    timer=setTimeout(()=>{if(idx<list.length-1){idx++;show();}else ov.remove();},5000);
+    setTimeout(()=>{const p=document.getElementById('_sp'+idx);if(p)p.style.width='100%';},30);
+  }
+  show();
+}
+
+async function uploadStory(){
+  if(!currentUser||currentUserData?.role!=='teacher'){showFireToast('🎓 רק מורים יכולים להוסיף סטורי');return;}
+  const inp=document.createElement('input');
+  inp.type='file';inp.accept='image/*';inp.click();
+  inp.onchange=async()=>{
+    const file=inp.files[0];if(!file)return;
+    if(file.size>5*1024*1024){showFireToast('❌ תמונה גדולה מדי (מקסימום 5MB)');return;}
+    showFireToast('⏳ מעלה סטורי...');
+    try{
+      const ref=firebase.storage().ref('stories/'+currentUser.uid+'/'+Date.now()+'_'+file.name.replace(/[^a-zA-Z0-9.]/g,'_'));
+      await ref.put(file);
+      const url=await ref.getDownloadURL();
+      const text=await _prompt('הוסף כיתוב לסטורי (אופציונלי):','');
+      await db.ref('stories').push({
+        uid:currentUser.uid,
+        teacherName:currentUserData.name||'',
+        teacherPhoto:currentUserData.photo||'',
+        mediaUrl:url,
+        mediaType:'image',
+        text:text||'',
+        status:'pending',
+        createdAt:Date.now(),
+        expiresAt:Date.now()+24*60*60*1000
+      });
+      showFireToast('✅ הסטורי נשלח לאישור מנהל!');
+    }catch(e){showFireToast('❌ שגיאה בהעלאה: '+e.message);}
+  };
+}
+
 async function loadTeacherBookings(){
   if(!currentUser||currentUserData?.role!=='teacher')return;
   try{
@@ -1981,6 +2065,24 @@ async function loadStudentBookings(){
     if(snap.exists())snap.forEach(c=>studentBookings.push(c.val()));
     studentBookings.sort((a,b)=>b.createdAt-a.createdAt);
   }catch(e){}
+}
+
+// ─── ADMIN STORY ACTIONS ────────────────────────────────────────────────────
+async function adminApproveStory(id){
+  try{
+    await db.ref('stories/'+id+'/status').set('approved');
+    adminAllStories=adminAllStories.filter(s=>s.id!==id);
+    showFireToast('✅ סטורי אושר ופורסם!');
+    renderAdminPanel();
+  }catch(e){showFireToast('❌ '+e.message);}
+}
+async function adminRejectStory(id){
+  try{
+    await db.ref('stories/'+id).remove();
+    adminAllStories=adminAllStories.filter(s=>s.id!==id);
+    showFireToast('🗑 סטורי נדחה ונמחק');
+    renderAdminPanel();
+  }catch(e){showFireToast('❌ '+e.message);}
 }
 
 // המורה מאשר הזמנה
@@ -3397,7 +3499,7 @@ async function _requestBrowserNotifPermission(){
   }
 }
 
-let adminAllUsers=[],adminAllTeachers=[],adminAllVideos=[],adminAllReports=[],adminAllBookings=[],adminIncompleteTeachers=[],adminAllPosts=[],adminAllReviews=[];
+let adminAllUsers=[],adminAllTeachers=[],adminAllVideos=[],adminAllReports=[],adminAllBookings=[],adminIncompleteTeachers=[],adminAllPosts=[],adminAllReviews=[],adminAllStories=[];
 let adminAlertStudents=[],adminAlertPosts=[],adminAlertPayments=[],adminContactMessages=[]; // מקור ראשי לממתינים
 let adminTab='users';
 let _adminPendingCount=0;
@@ -3571,6 +3673,11 @@ async function loadAdminData(){
       });
     }
     adminAllReviews.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+    // טען סטוריז ממתינים
+    const storiesSnap=await db.ref('stories').orderByChild('status').equalTo('pending').get();
+    adminAllStories=[];
+    if(storiesSnap.exists())storiesSnap.forEach(c=>adminAllStories.push({id:c.key,...c.val()}));
+    adminAllStories.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
   }catch(e){showFireToast('❌ שגיאה בטעינת נתונים: '+e.message);console.error('loadAdminData error:',e);}
   // טען פוסטים בנפרד — כשל כאן לא יחסום את שאר הנתונים
   try{
@@ -5705,6 +5812,7 @@ function renderAdminPanel(){
            ['users','כל המשתמשים','#06B6D4','<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',adminAllUsers.length,null],
            ['videos','סרטונים','#EF4444','<polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>',pendingVideos.length,null],
            ['reviews','ביקורות','#FBBF24','<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>',adminAllReviews.filter(r=>!r.approved).length,null],
+           ['stories','סטוריז','#EC4899','<rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>',adminAllStories.length,adminAllStories.length>0?adminAllStories.length:null],
            ['stats','סטטיסטיקות','#10B981','<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>',null,null]
           ].map(([id,lbl,col,svg,num,badge])=>`
           <div onclick="adminSwitchTab('${id}')" style="background:${adminTab===id?col+'14':'#fff'};border:1.5px solid ${adminTab===id?col:'transparent'};border-radius:20px;padding:16px;display:flex;align-items:center;gap:12px;box-shadow:0 2px 10px rgba(0,0,0,0.05);cursor:pointer;position:relative">
@@ -6187,6 +6295,30 @@ function renderAdminTab(){
         </div>`).join('');
     }
     return html;
+  }
+  if(adminTab==='stories'){
+    if(!adminAllStories.length)return `<div style="text-align:center;padding:40px 20px;color:#64748B"><div style="font-size:54px;margin-bottom:12px">📸</div><div style="font-weight:800;font-size:16px">אין סטוריז ממתינים</div></div>`;
+    return adminAllStories.map(s=>`
+      <div style="background:#fff;border-radius:20px;overflow:hidden;margin-bottom:14px;box-shadow:0 2px 12px rgba(0,0,0,0.07)">
+        <div style="position:relative;width:100%;height:220px;background:#0F1A1F">
+          <img src="${escapeHtml(s.mediaUrl||'')}" style="width:100%;height:100%;object-fit:cover" onerror="this.style.background='#1e293b'">
+          <div style="position:absolute;top:10px;right:10px;background:rgba(236,72,153,0.9);color:#fff;font-size:11px;font-weight:800;padding:4px 10px;border-radius:50px">ממתין לאישור</div>
+        </div>
+        <div style="padding:14px 16px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+            <img src="${escapeHtml(s.teacherPhoto||'')}" style="width:36px;height:36px;border-radius:50%;object-fit:cover" onerror="this.style.display='none'">
+            <div>
+              <div style="font-weight:800;font-size:14px">${escapeHtml(s.teacherName||'')}</div>
+              <div style="font-size:11px;color:#64748B">${new Date(s.createdAt||0).toLocaleString('he-IL')}</div>
+            </div>
+          </div>
+          ${s.text?`<div style="background:#F8FAFC;border-radius:10px;padding:10px;font-size:13px;color:#0F1A1F;margin-bottom:10px;direction:rtl">"${escapeHtml(s.text)}"</div>`:''}
+          <div style="display:flex;gap:8px">
+            <button onclick="adminRejectStory('${s.id}')" style="flex:1;background:rgba(239,68,68,0.1);border:1.5px solid rgba(239,68,68,0.3);color:#EF4444;border-radius:12px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">✗ דחה</button>
+            <button onclick="adminApproveStory('${s.id}')" style="flex:2;background:linear-gradient(135deg,#EC4899,#A855F7);border:none;color:#fff;border-radius:12px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">✓ אשר ופרסם</button>
+          </div>
+        </div>
+      </div>`).join('');
   }
   if(adminTab==='reviews'){
     const pending=adminAllReviews.filter(r=>!r.approved);
@@ -6817,6 +6949,34 @@ function Home(){
         <div class="card-sm" onclick="go('nearby')" style="flex:1;text-align:center;padding:12px 6px;margin-bottom:0;cursor:pointer"><div style="width:32px;height:32px;border-radius:10px;background:#06B6D415;display:flex;align-items:center;justify-content:center;margin:0 auto 4px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#06B6D4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></div><div style="font-weight:900;font-size:17px;color:#06B6D4">${realStats.cities}</div><div style="font-size:10px;color:#94A3B8;font-weight:600">ערים</div></div>
         <div class="card-sm" onclick="${isAdmin()?"showAdminPanel('students')":'go(\'nearby\')'}" style="flex:1;text-align:center;padding:12px 6px;margin-bottom:0;cursor:pointer"><div style="width:32px;height:32px;border-radius:10px;background:#10B98115;display:flex;align-items:center;justify-content:center;margin:0 auto 4px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg></div><div style="font-weight:900;font-size:17px;color:#10B981" data-stat="students">${realStats.students}</div><div style="font-size:10px;color:#94A3B8;font-weight:600">תלמידים</div></div>
       </div>
+
+      ${(()=>{
+        if(!currentUser||!STORIES.length)return '';
+        const seen=JSON.parse(localStorage.getItem('_storySeen')||'{}');
+        const byTeacher={};
+        STORIES.forEach(s=>{if(!byTeacher[s.uid]||s.createdAt>byTeacher[s.uid].createdAt)byTeacher[s.uid]=s;});
+        const teachers=Object.values(byTeacher);
+        if(!teachers.length)return '';
+        return `<div style="margin-bottom:20px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+            <div style="width:28px;height:28px;border-radius:9px;background:linear-gradient(135deg,#EC4899,#A855F7);display:flex;align-items:center;justify-content:center;font-size:14px">📸</div>
+            <span style="font-weight:900;font-size:15px;color:#0F1A1F">סטוריז מורים</span>
+          </div>
+          <div style="display:flex;gap:14px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;-webkit-overflow-scrolling:touch">
+            ${teachers.map(s=>{
+              const isSeen=!!seen[s.uid];
+              return `<div onclick="openStoryViewer(${JSON.stringify(s.uid)})" style="display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;flex-shrink:0">
+                <div style="width:62px;height:62px;border-radius:50%;padding:2.5px;background:${isSeen?'#CBD5E1':'linear-gradient(135deg,#EC4899,#A855F7,#14B8A6)'}">
+                  <div style="width:100%;height:100%;border-radius:50%;background:#fff;padding:2px;box-sizing:border-box">
+                    <img src="${escapeHtml(s.teacherPhoto||'')}" style="width:100%;height:100%;border-radius:50%;object-fit:cover" onerror="this.parentElement.innerHTML='<div style=width:100%;height:100%;border-radius:50%;background:linear-gradient(135deg,#14B8A6,#A855F7);display:flex;align-items:center;justify-content:center;font-size:22px>🎓</div>'">
+                  </div>
+                </div>
+                <div style="font-size:10px;font-weight:700;color:#0F1A1F;max-width:64px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center">${escapeHtml(s.teacherName||'').split(' ')[0]}</div>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>`;
+      })()}
 
       ${(()=>{
         const openGroups=communityGroups.filter(g=>g.status==='open').slice(0,3);
@@ -8052,7 +8212,7 @@ function Profile(){
         ${currentUserData?.role==='teacher'?`<button onclick="showAnalyticsPanel()" style="flex:1;min-width:90px;background:linear-gradient(135deg,#06B6D4,#0EA5E9);border:none;color:#fff;border-radius:14px;padding:11px;font-weight:800;font-size:12px;cursor:pointer;box-shadow:0 4px 14px rgba(6,182,212,0.3)">📊 סטטיסטיקות</button>`:''}
         ${(currentUserData?.role==='teacher'||isAdmin())?`<button onclick="showScheduleEditor()" style="flex:1;min-width:90px;background:linear-gradient(135deg,#10B981,#14B8A6);border:none;color:#fff;border-radius:14px;padding:11px;font-weight:800;font-size:12px;cursor:pointer;box-shadow:0 4px 14px rgba(16,185,129,0.3)">📅 לוח זמנים</button>`:''}
         ${currentUserData?.role==='teacher'?(()=>{const ft=TEACHERS.find(x=>x.id===currentUser?.uid);const on=ft?.freeTrial;return `<button onclick="toggleFreeTrial()" style="flex:1;min-width:90px;background:${on?'linear-gradient(135deg,#10B981,#14B8A6)':'rgba(156,163,175,0.25)'};border:${on?'none':'2px solid rgba(156,163,175,0.4)'};color:${on?'#fff':'#6B7280'};border-radius:14px;padding:11px;font-weight:800;font-size:12px;cursor:pointer;box-shadow:${on?'0 4px 14px rgba(16,185,129,0.35)':'none'}" title="${on?'ניסיון חינם פעיל – לחץ לביטול':'לחץ להפעלת ניסיון חינם'}">${on?'🎁 ניסיון פעיל ✓':'🎁 ניסיון חינם'}</button>`;})():''}
-        ${currentUserData?.role==='teacher'?`<button onclick="showCreateGroupDialog()" style="flex:1;min-width:90px;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:14px;padding:11px;font-weight:800;font-size:12px;cursor:pointer;box-shadow:0 4px 14px rgba(20,184,166,0.3)">🏘️ צור קבוצה</button><button onclick="showTeacherGroupsPanel()" style="flex:1;min-width:90px;background:rgba(20,184,166,0.1);border:1.5px solid rgba(20,184,166,0.3);color:#14B8A6;border-radius:14px;padding:11px;font-weight:800;font-size:12px;cursor:pointer">👥 קבוצות שלי</button>`:''}
+        ${currentUserData?.role==='teacher'?`<button onclick="uploadStory()" style="flex:1;min-width:90px;background:linear-gradient(135deg,#EC4899,#A855F7);border:none;color:#fff;border-radius:14px;padding:11px;font-weight:800;font-size:12px;cursor:pointer;box-shadow:0 4px 14px rgba(236,72,153,0.3)">📸 הוסף סטורי</button><button onclick="showCreateGroupDialog()" style="flex:1;min-width:90px;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:14px;padding:11px;font-weight:800;font-size:12px;cursor:pointer;box-shadow:0 4px 14px rgba(20,184,166,0.3)">🏘️ צור קבוצה</button><button onclick="showTeacherGroupsPanel()" style="flex:1;min-width:90px;background:rgba(20,184,166,0.1);border:1.5px solid rgba(20,184,184,0.3);color:#14B8A6;border-radius:14px;padding:11px;font-weight:800;font-size:12px;cursor:pointer">👥 קבוצות שלי</button>`:''}
         <button onclick="showCertificate()" style="flex:1;min-width:90px;background:linear-gradient(135deg,#EC4899,#DB2777);border:none;color:#fff;border-radius:14px;padding:11px;font-weight:800;font-size:12px;cursor:pointer;box-shadow:0 4px 14px rgba(236,72,153,0.3)">🎖 תעודה</button>
         <button onclick="showRanksPanel()" style="flex:1;min-width:90px;background:linear-gradient(135deg,#A855F7,#7E22CE);border:none;color:#fff;border-radius:14px;padding:11px;font-weight:800;font-size:12px;cursor:pointer;box-shadow:0 4px 14px rgba(168,85,247,0.3)">🏅 דרגות</button>
         ${isAdmin()?`<button onclick="showAdminPanel()" style="flex:1;min-width:90px;background:linear-gradient(135deg,#7E22CE,#A855F7,#EC4899);border:none;color:#fff;border-radius:14px;padding:11px;font-weight:900;font-size:12px;cursor:pointer;box-shadow:0 4px 14px rgba(126,34,206,0.5);animation:fadeUp 1.5s ease infinite alternate;position:relative">👨‍💼 פאנל מנהל<span id="_adminPendingBadge" style="display:${_adminPendingCount>0?'inline-flex':'none'};position:absolute;top:-7px;right:-7px;background:#EF4444;color:#fff;border-radius:50px;min-width:20px;height:20px;font-size:11px;font-weight:900;align-items:center;justify-content:center;padding:0 4px;border:2px solid #fff;animation:pulse 1.2s infinite">${_adminPendingCount}</span></button>`:''}
@@ -10093,6 +10253,7 @@ auth&&auth.onAuthStateChanged(async user=>{
       await loadStudentBookings();
       await loadParentChildren();
       await loadFavorites();
+      loadStories();
       await loadNotifications();
       await loadMyGroupStatuses();
       await loadUserChats();
