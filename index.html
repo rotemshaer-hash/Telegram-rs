@@ -523,7 +523,7 @@ const STUDENT_ACHIEVEMENTS=[
 ];
 
 const APP_VERSION='4.9.15';
-const APP_BUILD='14-06-2026';
+const APP_BUILD='22-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
 let S={
@@ -1753,14 +1753,14 @@ async function uploadSetupPhoto(input){
   if(!currentUser||!input?.files?.[0])return;
   showFireToast('⏳ מעלה תמונה...');
   try{
-    const blob=await _resizeProfilePhoto(input.files[0],600);
-    const photoUrl=await _uploadPhotoBlob(blob,currentUser.uid);
+    const dataUrl=await _resizeProfilePhoto(input.files[0],400);
+    const photoUrl=await _savePhotoDataUrl(dataUrl,currentUser.uid);
     await db.ref('users/'+currentUser.uid+'/photo').set(photoUrl);
     if(currentUserData)currentUserData.photo=photoUrl;
     const circle=document.getElementById('tSetupPhotoCircle');
     if(circle)circle.innerHTML=`<img src="${photoUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%" alt=""><div style="position:absolute;bottom:0;right:0;background:#14B8A6;border:2px solid #fff;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:13px">📷</div>`;
     showFireToast('✅ תמונה הועלתה!');
-  }catch(e){showFireToast('❌ '+e.message);}
+  }catch(e){showFireToast('❌ '+(e.message||'שגיאה'));}
 }
 
 async function saveTeacherProfile(){
@@ -2827,31 +2827,42 @@ function previewParentIdPhoto(){
 }
 
 // Center-crops File to square, resizes to `size`px — returns a JPEG Blob (no base64)
+// Resize file to square data URL — 15s timeout guards against silent img.onload hang
 function _resizeProfilePhoto(file, size){
   return new Promise((resolve, reject)=>{
-    const url=URL.createObjectURL(file);
+    const blobUrl=URL.createObjectURL(file);
     const img=new Image();
+    const timer=setTimeout(()=>{URL.revokeObjectURL(blobUrl);reject(new Error('timeout בטעינת התמונה'));},15000);
     img.onload=()=>{
-      URL.revokeObjectURL(url);
+      clearTimeout(timer);
+      URL.revokeObjectURL(blobUrl);
       const sq=Math.min(img.naturalWidth,img.naturalHeight);
-      const sx=(img.naturalWidth-sq)/2, sy=(img.naturalHeight-sq)/2;
       const cv=document.createElement('canvas');
       cv.width=size; cv.height=size;
-      cv.getContext('2d').drawImage(img,sx,sy,sq,sq,0,0,size,size);
-      cv.toBlob(blob=>{
-        if(blob)resolve(blob);
-        else reject(new Error('שגיאה ביצירת התמונה'));
-      },'image/jpeg',0.88);
+      cv.getContext('2d').drawImage(img,(img.naturalWidth-sq)/2,(img.naturalHeight-sq)/2,sq,sq,0,0,size,size);
+      const dataUrl=cv.toDataURL('image/jpeg',0.85);
+      resolve(dataUrl);
     };
-    img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error('שגיאה בטעינת התמונה'));};
-    img.src=url;
+    img.onerror=()=>{clearTimeout(timer);URL.revokeObjectURL(blobUrl);reject(new Error('שגיאה בטעינת התמונה'));};
+    img.src=blobUrl;
   });
 }
 
-async function _uploadPhotoBlob(blob, uid){
-  const ref=storage.ref('photos/'+uid+'/profile.jpg');
-  const snap=await ref.put(blob,{contentType:'image/jpeg'});
-  return snap.ref.getDownloadURL();
+// Try uploading a data URL to Firebase Storage; on any failure return the data URL itself (RTDB fallback)
+async function _savePhotoDataUrl(dataUrl, uid){
+  if(storage){
+    try{
+      const [hdr,b64]=dataUrl.split(',');
+      const mime=(hdr.match(/:(.*?);/)||[])[1]||'image/jpeg';
+      const bin=atob(b64); const bytes=new Uint8Array(bin.length);
+      for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+      const blob=new Blob([bytes],{type:mime});
+      const ref=storage.ref('photos/'+uid+'/profile.jpg');
+      const snap=await ref.put(blob,{contentType:mime});
+      return await snap.ref.getDownloadURL();
+    }catch(e){ console.warn('[Photo] Storage failed, using data URL:',e.message); }
+  }
+  return dataUrl; // fallback: store base64 directly in RTDB (works, ~50KB)
 }
 
 async function uploadProfilePhoto(){
@@ -2861,8 +2872,8 @@ async function uploadProfilePhoto(){
   if(!file){showFireToast('❌ בחר תמונה');return;}
   showFireToast('⏳ מעלה תמונה...');
   try{
-    const blob=await _resizeProfilePhoto(file,600);
-    const photoUrl=await _uploadPhotoBlob(blob,currentUser.uid);
+    const dataUrl=await _resizeProfilePhoto(file,400);
+    const photoUrl=await _savePhotoDataUrl(dataUrl,currentUser.uid);
     await db.ref('users/'+currentUser.uid+'/photo').set(photoUrl);
     if(currentUserData)currentUserData.photo=photoUrl;
     if(currentUserData?.role==='teacher'){
@@ -2872,7 +2883,7 @@ async function uploadProfilePhoto(){
     }
     showFireToast('✅ התמונה הועלתה!');
     render();
-  }catch(e){showFireToast('❌ '+e.message);}
+  }catch(e){showFireToast('❌ '+(e.message||'שגיאה'));}
 }
 
 function avatarHTML(user,size=44){
