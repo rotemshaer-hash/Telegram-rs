@@ -522,7 +522,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.19';
+const APP_VERSION='4.9.20';
 const APP_BUILD='22-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -7020,9 +7020,9 @@ function Nearby(){
             <span style="font-weight:900;font-size:18px;color:#14B8A6">${formatDistance(r)}</span>
             <span style="font-size:13px;font-weight:800;color:#0F1A1F">🎯 טווח חיפוש</span>
           </div>
-          <input type="range" dir="ltr" class="slider" min="0.5" max="20" step="0.5" value="${r}"
-            style="background:linear-gradient(to right,#14B8A6 ${((r-0.5)/(20-0.5)*100).toFixed(1)}%,rgba(20,184,166,.15) ${((r-0.5)/(20-0.5)*100).toFixed(1)}%)"
-            oninput="S.nearbyR=parseFloat(this.value);const _p=((this.value-0.5)/(20-0.5)*100).toFixed(1);this.style.background='linear-gradient(to right,#14B8A6 '+_p+'%,rgba(20,184,166,.15) '+_p+'%)';render()">
+          <input type="range" class="slider" min="0.5" max="20" step="0.5" value="${r}"
+            style="background:linear-gradient(to right,rgba(20,184,166,.15) ${(100-((r-0.5)/(20-0.5)*100)).toFixed(1)}%,#14B8A6 ${(100-((r-0.5)/(20-0.5)*100)).toFixed(1)}%)"
+            oninput="S.nearbyR=parseFloat(this.value);var _p=(100-(this.value-0.5)/(20-0.5)*100).toFixed(1);this.style.background='linear-gradient(to right,rgba(20,184,166,.15) '+_p+'%,#14B8A6 '+_p+'%)';render()">
           <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:11px;color:#94A3B8;font-weight:600"><span>0.5 ק"מ</span><span>20 ק"מ</span></div>
         </div>
       </div>
