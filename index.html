@@ -522,7 +522,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.15';
+const APP_VERSION='4.9.16';
 const APP_BUILD='22-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -1753,12 +1753,11 @@ async function uploadSetupPhoto(input){
   if(!currentUser||!input?.files?.[0])return;
   showFireToast('⏳ מעלה תמונה...');
   try{
-    const dataUrl=await _resizeProfilePhoto(input.files[0],400);
-    const photoUrl=await _savePhotoDataUrl(dataUrl,currentUser.uid);
-    await db.ref('users/'+currentUser.uid+'/photo').set(photoUrl);
-    if(currentUserData)currentUserData.photo=photoUrl;
+    const dataUrl=await _resizeFileForProfile(input.files[0],400);
+    await db.ref('users/'+currentUser.uid+'/photo').set(dataUrl);
+    if(currentUserData)currentUserData.photo=dataUrl;
     const circle=document.getElementById('tSetupPhotoCircle');
-    if(circle)circle.innerHTML=`<img src="${photoUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%" alt=""><div style="position:absolute;bottom:0;right:0;background:#14B8A6;border:2px solid #fff;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:13px">📷</div>`;
+    if(circle)circle.innerHTML=`<img src="${dataUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%" alt=""><div style="position:absolute;bottom:0;right:0;background:#14B8A6;border:2px solid #fff;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:13px">📷</div>`;
     showFireToast('✅ תמונה הועלתה!');
   }catch(e){showFireToast('❌ '+(e.message||'שגיאה'));}
 }
@@ -2826,43 +2825,25 @@ function previewParentIdPhoto(){
   reader.readAsDataURL(file);
 }
 
-// Center-crops File to square, resizes to `size`px — returns a JPEG Blob (no base64)
-// Resize file to square data URL — 15s timeout guards against silent img.onload hang
-function _resizeProfilePhoto(file, size){
+// FileReader approach — same as working ID photo (previewParentIdPhoto), avoids blob URL hang on Android
+function _resizeFileForProfile(file, size){
   return new Promise((resolve, reject)=>{
-    const blobUrl=URL.createObjectURL(file);
-    const img=new Image();
-    const timer=setTimeout(()=>{URL.revokeObjectURL(blobUrl);reject(new Error('timeout בטעינת התמונה'));},15000);
-    img.onload=()=>{
-      clearTimeout(timer);
-      URL.revokeObjectURL(blobUrl);
-      const sq=Math.min(img.naturalWidth,img.naturalHeight);
-      const cv=document.createElement('canvas');
-      cv.width=size; cv.height=size;
-      cv.getContext('2d').drawImage(img,(img.naturalWidth-sq)/2,(img.naturalHeight-sq)/2,sq,sq,0,0,size,size);
-      const dataUrl=cv.toDataURL('image/jpeg',0.85);
-      resolve(dataUrl);
+    const reader=new FileReader();
+    reader.onerror=()=>reject(new Error('שגיאה בקריאת הקובץ'));
+    reader.onload=ev=>{
+      const img=new Image();
+      img.onerror=()=>reject(new Error('שגיאה בעיבוד התמונה'));
+      img.onload=()=>{
+        const sq=Math.min(img.naturalWidth,img.naturalHeight);
+        const cv=document.createElement('canvas');
+        cv.width=size; cv.height=size;
+        cv.getContext('2d').drawImage(img,(img.naturalWidth-sq)/2,(img.naturalHeight-sq)/2,sq,sq,0,0,size,size);
+        resolve(cv.toDataURL('image/jpeg',0.85));
+      };
+      img.src=ev.target.result;
     };
-    img.onerror=()=>{clearTimeout(timer);URL.revokeObjectURL(blobUrl);reject(new Error('שגיאה בטעינת התמונה'));};
-    img.src=blobUrl;
+    reader.readAsDataURL(file);
   });
-}
-
-// Try uploading a data URL to Firebase Storage; on any failure return the data URL itself (RTDB fallback)
-async function _savePhotoDataUrl(dataUrl, uid){
-  if(storage){
-    try{
-      const [hdr,b64]=dataUrl.split(',');
-      const mime=(hdr.match(/:(.*?);/)||[])[1]||'image/jpeg';
-      const bin=atob(b64); const bytes=new Uint8Array(bin.length);
-      for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
-      const blob=new Blob([bytes],{type:mime});
-      const ref=storage.ref('photos/'+uid+'/profile.jpg');
-      const snap=await ref.put(blob,{contentType:mime});
-      return await snap.ref.getDownloadURL();
-    }catch(e){ console.warn('[Photo] Storage failed, using data URL:',e.message); }
-  }
-  return dataUrl; // fallback: store base64 directly in RTDB (works, ~50KB)
 }
 
 async function uploadProfilePhoto(){
@@ -2872,14 +2853,13 @@ async function uploadProfilePhoto(){
   if(!file){showFireToast('❌ בחר תמונה');return;}
   showFireToast('⏳ מעלה תמונה...');
   try{
-    const dataUrl=await _resizeProfilePhoto(file,400);
-    const photoUrl=await _savePhotoDataUrl(dataUrl,currentUser.uid);
-    await db.ref('users/'+currentUser.uid+'/photo').set(photoUrl);
-    if(currentUserData)currentUserData.photo=photoUrl;
+    const dataUrl=await _resizeFileForProfile(file,400);
+    await db.ref('users/'+currentUser.uid+'/photo').set(dataUrl);
+    if(currentUserData)currentUserData.photo=dataUrl;
     if(currentUserData?.role==='teacher'){
-      await db.ref('teachers/'+currentUser.uid+'/photo').set(photoUrl);
+      await db.ref('teachers/'+currentUser.uid+'/photo').set(dataUrl);
       const t=TEACHERS.find(x=>x.id===currentUser.uid);
-      if(t)t.photo=photoUrl;
+      if(t)t.photo=dataUrl;
     }
     showFireToast('✅ התמונה הועלתה!');
     render();
