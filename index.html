@@ -522,7 +522,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.21';
+const APP_VERSION='4.9.22';
 const APP_BUILD='22-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -2029,6 +2029,10 @@ async function approveBooking(bookingId){
     const _convInit={otherUid:b.studentId,otherName:b.studentName||'תלמיד',lastMessage:`שיעור אושר ✅ ${b.day||''} ${b.time||''}`,lastTime:Date.now(),unread:false};
     db.ref('userChats/'+currentUser.uid+'/'+b.studentId).set(_convInit).catch(()=>{});
     db.ref('userChats/'+b.studentId+'/'+currentUser.uid).set({..._convInit,otherUid:currentUser.uid,otherName:currentUserData?.name||b.teacherName||'',unread:false}).catch(()=>{});
+    // רישום משתתפי הצ'אט — נדרש לכלל אבטחת messages ב-Firebase
+    const _cid=getChatId(currentUser.uid,b.studentId);
+    db.ref('chatParticipants/'+_cid+'/'+currentUser.uid).set(true).catch(()=>{});
+    db.ref('chatParticipants/'+_cid+'/'+b.studentId).set(true).catch(()=>{});
     showFireToast('✅ אישרת את ההזמנה!');
     await loadTeacherBookings();
     render();
@@ -2882,7 +2886,7 @@ let _currentChatOtherUid=null; // tracks which conversation is active — reliab
 let _convListeners={}; // otherUid → firebase query, background listeners for all conversations
 let _chatPollInterval=null; // fallback poll interval handle
 
-function listenToChat(otherUid){
+async function listenToChat(otherUid){
   // Claim the UID immediately — BEFORE any teardown — so that any render()
   // triggered by Firebase events during teardown sees the correct value and
   // does NOT re-enter listenToChat (which would wipe chatMessages again).
@@ -2892,6 +2896,8 @@ function listenToChat(otherUid){
   _chatQuery=null;chatListener=null;
   if(!currentUser||!otherUid){_currentChatOtherUid=null;return;}
   const chatId=getChatId(currentUser.uid,otherUid);
+  // כתיבת המשתתף לפני האזנה — הכרחי לכלל אבטחת messages
+  await db.ref('chatParticipants/'+chatId+'/'+currentUser.uid).set(true).catch(()=>{});
   chatMessages=[];
   chatListener=db.ref('messages/'+chatId);
   _chatQuery=chatListener.limitToLast(100);
@@ -10237,10 +10243,16 @@ async function firebaseRegister(email,password,userData){
           db.ref('users/'+uid).get()
         ]);
         S._reRegistering=false;
-        // אפשר הרשמה מחדש אם: חסום OR אין רשומה ב-DB (נמחק ע"י מנהל)
-        if(bannedSnap.exists()||!userSnap.exists()){
+        // חסום — לא מאפשרים הרשמה מחדש בשום מקרה
+        if(bannedSnap.exists()){
+          await auth.signOut().catch(()=>{});
+          showFireToast('❌ חשבון זה חסום. לפרטים פנה למנהל האפליקציה.');
+          go('login');
+          return;
+        }
+        // אין רשומה ב-DB (נמחק ע"י מנהל) — מאפשרים הרשמה מחדש
+        if(!userSnap.exists()){
           await sc.user.delete();
-          await db.ref('bannedUsers/'+uid).remove().catch(()=>{});
           return await firebaseRegister(email,password,userData);
         }else{
           await auth.signOut().catch(()=>{});

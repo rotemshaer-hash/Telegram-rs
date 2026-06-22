@@ -48,7 +48,7 @@
     },
     "messages": {
       "$chatId": {
-        ".read": "auth != null && (root.child('userChats').child(auth.uid).child($chatId.replace('-','_')).exists() || root.child('chatParticipants').child($chatId).child(auth.uid).exists() || auth.token.email == 'rotemshaer@gmail.com')",
+        ".read": "auth != null && (root.child('chatParticipants').child($chatId).child(auth.uid).exists() || auth.token.email == 'rotemshaer@gmail.com')",
         ".write": "auth != null",
         "$msgId": {
           ".write": "auth != null && (!data.exists() && newData.child('from').val() == auth.uid && newData.child('text').isString() && newData.child('createdAt').isNumber())"
