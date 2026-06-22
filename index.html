@@ -3296,6 +3296,7 @@ function _emailRateLimitOk(){
 }
 
 async function sendEmail(to,subject,body){
+  if(!to||(to+'').endsWith('@kidemy.app'))return null; // never send to fake internal addresses
   if(!EMAILJS_SERVICE_ID||!EMAILJS_TEMPLATE_ID||!EMAILJS_PUBLIC_KEY){
     console.log('[Email] EmailJS not configured — would send to:',to,'|',subject);
     return null;
@@ -3646,7 +3647,7 @@ async function adminConfirmPayment(bookingId){
     try{
       const stuSnap=await db.ref('users/'+payAlert.studentId).get();
       const stu=stuSnap.val()||{};
-      const notifyEmail=stu.parentEmail||stu.email||'';
+      const notifyEmail=stu.parentEmail||(!(stu.email||'').endsWith('@kidemy.app')&&stu.email)||'';
       if(notifyEmail)sendEmail(notifyEmail,
         `✅ התשלום אומת — שיעור עם ${payAlert.teacherName||''} — Kidemy`,
         `שלום ${stu.parentName||stu.name||''},\n\n✅ קיבלנו את התשלום שלך!\n\nהמורה ${payAlert.teacherName||''} יאשר את השיעור תוך 24 שעות.\n📌 קוד הפניה: ${payAlert.payRef||bid.substring(0,8)}\n\n– צוות Kidemy`
