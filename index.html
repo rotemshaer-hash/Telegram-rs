@@ -522,7 +522,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.22';
+const APP_VERSION='4.9.23';
 const APP_BUILD='22-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -1912,9 +1912,12 @@ async function processPayment(payMethod,totalAmount){
       meetingPlatform:getMeetingLabel(t.meetingLink||''),
       createdAt:Date.now()
     };
-    await bookingRef.set(bookingData);
-    await db.ref('userBookings/'+currentUser.uid+'/'+bookingId).set(bookingData);
-    await db.ref('teacherBookings/'+t.id+'/'+bookingId).set(bookingData);
+    // כתיבה אטומית לשלושת הנתיבים — אם אחד נכשל, הכל נכשל
+    await db.ref().update({
+      ['bookings/'+bookingId]: bookingData,
+      ['userBookings/'+currentUser.uid+'/'+bookingId]: bookingData,
+      ['teacherBookings/'+t.id+'/'+bookingId]: bookingData,
+    });
     // שלח התראה למנהל בלבד (לא למורה — הוא יקבל רק לאחר אימות תשלום)
     await db.ref('adminAlerts/payments/'+bookingId).set({
       bookingId,studentId:currentUser.uid,studentName:bookingData.studentName,
@@ -3299,18 +3302,18 @@ const EMAILJS_SERVICE_ID='service_h1v7whg';
 const EMAILJS_TEMPLATE_ID='template_i016jci';
 const EMAILJS_PUBLIC_KEY='kjqdW8av2HU2kOA8W';
 
-function _emailRateLimitOk(){
-  const key='ejs_sends';
-  const now=Date.now();
-  const hour=60*60*1000;
-  let sends=JSON.parse(localStorage.getItem(key)||'[]').filter(t=>now-t<hour);
-  if(sends.length>=5){
-    console.warn('[Email] rate limit reached (5/hour)');
-    return false;
-  }
-  sends.push(now);
-  localStorage.setItem(key,JSON.stringify(sends));
-  return true;
+async function _emailRateLimitOk(){
+  if(!currentUser||!db)return false;
+  try{
+    const now=Date.now();
+    const ref=db.ref('emailRateLimit/'+currentUser.uid);
+    const snap=await ref.get();
+    const sends=(snap.val()||[]).filter(t=>now-t<3600000);
+    if(sends.length>=5){console.warn('[Email] rate limit reached (5/hour per user)');return false;}
+    sends.push(now);
+    await ref.set(sends);
+    return true;
+  }catch(e){return true;} // אם DB לא זמין — אפשר לשלוח
 }
 
 async function sendEmail(to,subject,body){
@@ -3319,7 +3322,7 @@ async function sendEmail(to,subject,body){
     console.log('[Email] EmailJS not configured — would send to:',to,'|',subject);
     return null;
   }
-  if(!_emailRateLimitOk()){
+  if(!await _emailRateLimitOk()){
     console.warn('[Email] blocked by rate limit');
     return null;
   }
@@ -3598,8 +3601,10 @@ async function loadAdminData(){
 
 async function adminApproveBooking(teacherId,bookingId){
   try{
-    await db.ref('teacherBookings/'+teacherId+'/'+bookingId+'/status').set('approved');
-    await db.ref('bookings/'+bookingId+'/status').set('approved');
+    await db.ref().update({
+      ['teacherBookings/'+teacherId+'/'+bookingId+'/status']: 'approved',
+      ['bookings/'+bookingId+'/status']: 'approved',
+    });
     // הודע לתלמיד
     const b=adminAllBookings.find(x=>x.id===bookingId);
     if(b?.studentId){
@@ -3612,8 +3617,10 @@ async function adminApproveBooking(teacherId,bookingId){
 }
 async function adminRejectBooking(teacherId,bookingId){
   try{
-    await db.ref('teacherBookings/'+teacherId+'/'+bookingId+'/status').set('rejected');
-    await db.ref('bookings/'+bookingId+'/status').set('rejected');
+    await db.ref().update({
+      ['teacherBookings/'+teacherId+'/'+bookingId+'/status']: 'rejected',
+      ['bookings/'+bookingId+'/status']: 'rejected',
+    });
     const b=adminAllBookings.find(x=>x.id===bookingId);
     if(b?.studentId){
       await db.ref('notifications/'+b.studentId).push({type:'bookingRejected',from:b.teacherName||'המורה',read:false,createdAt:Date.now()});
