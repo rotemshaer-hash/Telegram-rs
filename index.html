@@ -522,7 +522,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.25';
+const APP_VERSION='4.9.26';
 const APP_BUILD='22-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -899,8 +899,8 @@ function doNative(){
   else doLink();
 }
 function doLink(){
-  if(navigator.clipboard)navigator.clipboard.writeText(S.shareUrl).then(()=>{showCopyToast("הלינק הועתק! 🔗");}).catch(()=>alert("העתק: "+S.shareUrl));
-  else alert("העתק: "+S.shareUrl);
+  if(navigator.clipboard)navigator.clipboard.writeText(S.shareUrl).then(()=>{showCopyToast("הלינק הועתק! 🔗");}).catch(()=>showCopyToast("העתק: "+S.shareUrl));
+  else showCopyToast("העתק: "+S.shareUrl);
 }
 function showCopyToast(msg){
   const t=document.createElement("div");
@@ -3909,7 +3909,7 @@ async function adminUnblockUser(uid){
 }
 
 async function adminFixUser(uid,email){
-  const name=prompt(`הכנס שם למשתמש:\n${email}`);
+  const name=await _prompt(`הכנס שם למשתמש:\n${escapeHtml(email)}`);
   if(!name||!name.trim())return;
   try{
     await db.ref('users/'+uid+'/name').set(name.trim());
@@ -4104,13 +4104,13 @@ function adminFilterStudents(){
   const dPending=sv?pendingStudents.filter(u=>(u.name||'').toLowerCase().includes(sv)||(u.email||'').toLowerCase().includes(sv)):pendingStudents;
   const dApproved=sv?approvedStudents.filter(u=>(u.name||'').toLowerCase().includes(sv)||(u.email||'').toLowerCase().includes(sv)):approvedStudents;
   if(dPending.length===0&&dApproved.length===0){
-    listDiv.innerHTML=sv?`<div style="text-align:center;padding:30px;color:#64748B">לא נמצאו תלמידים עבור: "${sv}"</div>`:'<div style="text-align:center;padding:30px;color:#64748B">אין תלמידים</div>';
+    listDiv.innerHTML=sv?`<div style="text-align:center;padding:30px;color:#64748B">לא נמצאו תלמידים עבור: "${escapeHtml(sv)}"</div>`:'<div style="text-align:center;padding:30px;color:#64748B">אין תלמידים</div>';
     return;
   }
   const cardHtml=u=>`
     <div style="background:${u.blocked?'rgba(239,68,68,0.05)':u.verified===false?'rgba(245,158,11,0.05)':'#fff'};border:1.5px solid ${u.blocked?'rgba(239,68,68,0.3)':u.verified===false?'rgba(245,158,11,0.4)':'rgba(6,182,212,0.15)'};border-radius:18px;padding:14px;margin-bottom:10px">
-      <div style="font-weight:900;font-size:14px;margin-bottom:4px">🎒 ${u.name||'ללא שם'}</div>
-      <div style="font-size:12px;color:#64748B;direction:ltr;text-align:right">${u.email||''}</div>
+      <div style="font-weight:900;font-size:14px;margin-bottom:4px">🎒 ${escapeHtml(u.name||'ללא שם')}</div>
+      <div style="font-size:12px;color:#64748B;direction:ltr;text-align:right">${escapeHtml(u.email||'')}</div>
       ${u.verified===false?'<div style="font-size:11px;color:#F59E0B;font-weight:700;margin-top:4px">⏳ ממתין לאישור</div>':''}
       <div style="display:flex;gap:8px;margin-top:8px">
         ${(u.verified===false||u._fromAlert)&&!u.blocked?`<button onclick="adminVerifyStudent('${u.uid}')" style="flex:2;background:#10B981;border:none;color:#fff;border-radius:50px;padding:8px;font-size:12px;font-weight:800;cursor:pointer">✅ אשר</button><button onclick="adminRejectStudent('${u.uid}')" style="flex:1;background:rgba(239,68,68,0.9);border:none;color:#fff;border-radius:50px;padding:8px;font-size:12px;font-weight:800;cursor:pointer">🚫 דחה</button>`:''}
@@ -9055,7 +9055,7 @@ function addEtCustomCat(){
   if(container){
     const tag=document.createElement('span');
     tag.style.cssText='background:rgba(168,85,247,0.15);border:1px solid rgba(168,85,247,0.3);border-radius:50px;padding:5px 12px;font-size:12px;font-weight:700;color:#A855F7;display:inline-flex;align-items:center;gap:6px';
-    tag.innerHTML=`✨ ${val} <span onclick="removeEtCustomCat('${val}',this)" style="color:#EF4444;font-weight:900;cursor:pointer">✕</span>`;
+    tag.innerHTML=`✨ ${escapeHtml(val)} <span onclick="removeEtCustomCat(${JSON.stringify(val)},this)" style="color:#EF4444;font-weight:900;cursor:pointer">✕</span>`;
     container.appendChild(tag);
   }
 }
@@ -10492,7 +10492,7 @@ async function sendResetToParentEmail(parentEmail,fakeEmail,btn){
     setTimeout(()=>{
       const ov=document.createElement('div');
       ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px);padding:24px;direction:rtl';
-      ov.innerHTML=`<div style="background:#fff;border-radius:24px;padding:28px 24px;width:100%;max-width:340px;text-align:center"><div style="font-size:54px;margin-bottom:12px">✅</div><h3 style="font-weight:900;font-size:18px;margin:0 0 10px">הבקשה נשלחה!</h3><p style="color:#64748B;font-size:13px;margin:0 0 16px;line-height:1.7">שלחנו בקשה למנהל ומייל לאבא/אמא:<br><strong style="color:#14B8A6">${parentEmail}</strong><br><br>המנהל יצור קשר בהקדם לאיפוס הסיסמה.</p><button onclick="this.closest('div[style*=fixed]').remove()" style="width:100%;background:linear-gradient(135deg,#14B8A6,#A855F7);border:none;border-radius:50px;padding:13px;font-size:14px;font-weight:800;color:#fff;cursor:pointer">הבנתי 👍</button></div>`;
+      ov.innerHTML=`<div style="background:#fff;border-radius:24px;padding:28px 24px;width:100%;max-width:340px;text-align:center"><div style="font-size:54px;margin-bottom:12px">✅</div><h3 style="font-weight:900;font-size:18px;margin:0 0 10px">הבקשה נשלחה!</h3><p style="color:#64748B;font-size:13px;margin:0 0 16px;line-height:1.7">שלחנו בקשה למנהל ומייל לאבא/אמא:<br><strong style="color:#14B8A6">${escapeHtml(parentEmail)}</strong><br><br>המנהל יצור קשר בהקדם לאיפוס הסיסמה.</p><button onclick="this.closest('div[style*=fixed]').remove()" style="width:100%;background:linear-gradient(135deg,#14B8A6,#A855F7);border:none;border-radius:50px;padding:13px;font-size:14px;font-weight:800;color:#fff;cursor:pointer">הבנתי 👍</button></div>`;
       document.body.appendChild(ov);
       ov.onclick=ev=>{if(ev.target===ov)ov.remove();};
     },200);
@@ -10503,7 +10503,7 @@ async function sendResetToParentEmail(parentEmail,fakeEmail,btn){
 }
 
 async function forgotPassword(){
-  const email=prompt('הכנס את כתובת המייל שלך:');
+  const email=await _prompt('הכנס את כתובת המייל שלך:');
   if(!email)return;
   const normalized=email.includes('@')?email.toLowerCase():email.toLowerCase()+'@kidemy.app';
   try{
@@ -10624,6 +10624,29 @@ function _confirm(msg,{confirmText='אישור',cancelText='ביטול',destruct
   });
 }
 
+function _prompt(msg,defaultVal=''){
+  return new Promise(resolve=>{
+    const ov=document.createElement('div');
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99999;display:flex;align-items:center;justify-content:center;padding:24px';
+    ov.innerHTML=`<div style="background:#fff;border-radius:22px;padding:26px 20px 20px;max-width:340px;width:100%;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,.35);direction:rtl">
+      <p style="font-size:15px;font-weight:600;color:#0F1A1F;margin:0 0 16px;line-height:1.6;white-space:pre-line">${msg}</p>
+      <input id="_prmptInp" value="${escapeHtml(defaultVal)}" style="width:100%;border:1.5px solid #E2E8F0;border-radius:14px;padding:12px 14px;font-size:14px;direction:rtl;font-family:inherit;box-sizing:border-box;margin-bottom:16px;outline:none">
+      <div style="display:flex;gap:10px">
+        <button id="_prmptNo" style="flex:1;background:#F1F5F9;border:none;border-radius:14px;padding:13px;font-weight:700;font-size:14px;cursor:pointer;color:#64748B">ביטול</button>
+        <button id="_prmptYes" style="flex:2;background:linear-gradient(135deg,#14B8A6,#A855F7);border:none;border-radius:14px;padding:13px;font-weight:900;font-size:14px;cursor:pointer;color:#fff">אישור</button>
+      </div>
+    </div>`;
+    document.body.appendChild(ov);
+    const inp=ov.querySelector('#_prmptInp');
+    setTimeout(()=>inp.focus(),50);
+    const cleanup=(v)=>{ov.remove();resolve(v);};
+    ov.querySelector('#_prmptYes').onclick=()=>cleanup(inp.value||null);
+    ov.querySelector('#_prmptNo').onclick=()=>cleanup(null);
+    ov.onclick=e=>{if(e.target===ov)cleanup(null);};
+    inp.onkeydown=e=>{if(e.key==='Enter')cleanup(inp.value||null);if(e.key==='Escape')cleanup(null);};
+  });
+}
+
 // ── HOME SCREEN INSTALL ───────────────────────────────────────────────────
 let _dPmt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();_dPmt=e;const b=document.getElementById('ib');if(b)b.style.display='flex';});
@@ -10635,7 +10658,7 @@ function installApp(){
 
 // ── AUTO-UPDATE SERVICE WORKER ────────────────────────────────────────────────
 if('serviceWorker' in navigator){
-  const currentSwUrl='/sw.js?v=4.9.15';
+  const currentSwUrl='/sw.js?v=4.9.26';
   // Unregister SWs that are NOT the current version
   navigator.serviceWorker.getRegistrations().then(regs=>{
     regs.forEach(r=>{
