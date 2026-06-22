@@ -522,7 +522,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.26';
+const APP_VERSION='4.9.27';
 const APP_BUILD='22-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -828,10 +828,11 @@ function openShare(title,text,url){
 }
 function shareTeacher(t){
   if(!t){showFireToast('❌ מורה לא נמצא');return;}
+  const profileUrl='https://kidemy-app.netlify.app/?t='+t.id;
   openShare(
     `${t.name} מלמד/ת ${catById(t.cat).lbl||""} ב-Kidemy`,
-    `🎓 מצאתי מורה בן/בת נוער מעולה ל${catById(t.cat).lbl||'שיעורים פרטיים'} דרך Kidemy!\n\n👤 ${t.name}${t.city?' · '+t.city:''}\n⭐ דירוג ${t.rating||0} | ₪${t.price||0} לשיעור\n✅ בן/בת נוער מאומת/ת ועבר/ה בדיקה אישית\n\n📲 Kidemy – האפליקציה שמחברת ילדים עם מורים בני נוער מוכשרים!\nשיעורים פרטיים בטוחים, מחירים נגישים, שיעור ניסיון במחצית המחיר\n👉 kidemy-app.netlify.app`,
-    "https://kidemy-app.netlify.app"
+    `🎓 מצאתי מורה בן/בת נוער מעולה ל${catById(t.cat).lbl||'שיעורים פרטיים'} דרך Kidemy!\n\n👤 ${t.name}${t.city?' · '+t.city:''}\n⭐ דירוג ${t.rating||0} | ₪${t.price||0} לשיעור\n✅ בן/בת נוער מאומת/ת ועבר/ה בדיקה אישית\n\n📲 הזמינו שיעור עכשיו:\n${profileUrl}`,
+    profileUrl
   );
 }
 
@@ -6437,6 +6438,26 @@ async function getTeacherAnalytics(){
   }catch(e){return null;}
 }
 
+function _teacherStreak(){
+  const done=teacherAllBookings.filter(b=>b.status==='completed'&&b.createdAt);
+  if(!done.length)return 0;
+  const daySet=new Set(done.map(b=>{const d=new Date(b.createdAt);return d.getFullYear()+'/'+(d.getMonth()+1)+'/'+d.getDate();}));
+  const today=new Date();
+  let streak=0;
+  const todayKey=today.getFullYear()+'/'+(today.getMonth()+1)+'/'+today.getDate();
+  if(daySet.has(todayKey))streak++;
+  for(let i=1;i<=365;i++){const d=new Date(today);d.setDate(today.getDate()-i);const k=d.getFullYear()+'/'+(d.getMonth()+1)+'/'+d.getDate();if(daySet.has(k))streak++;else break;}
+  return streak;
+}
+
+function _teacherEarnings(){
+  const done=teacherAllBookings.filter(b=>b.status==='completed');
+  const total=done.reduce((s,b)=>s+(b.netToTeacher||Math.round((b.grossAmount||b.price||0)*0.85)),0);
+  const startOfMonth=new Date(new Date().getFullYear(),new Date().getMonth(),1).getTime();
+  const monthly=done.filter(b=>(b.createdAt||0)>=startOfMonth).reduce((s,b)=>s+(b.netToTeacher||Math.round((b.grossAmount||b.price||0)*0.85)),0);
+  return{total,monthly,count:done.length};
+}
+
 let teacherAnalytics=null;
 async function loadTeacherAnalytics(){
   teacherAnalytics=await getTeacherAnalytics();
@@ -6843,6 +6864,30 @@ function Home(){
           </div>
         `).join('')}
       </div>`:''}
+
+      ${currentUserData?.role==='teacher'&&!isAdmin()?(()=>{
+        const _earn=_teacherEarnings();
+        const _streak=_teacherStreak();
+        const _views=teacherAnalytics?.profileViews||0;
+        if(!_earn.total&&!_streak&&!_views)return '';
+        return `<div style="background:linear-gradient(135deg,#0F1A1F,#1A2530);border-radius:24px;padding:16px 18px;margin-bottom:18px;color:#fff">
+          <div style="font-weight:900;font-size:14px;opacity:.7;margin-bottom:12px;text-align:right">📊 הסטטיסטיקות שלי</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+            <div onclick="S.pTab='wallet';go('profile')" style="background:rgba(16,185,129,0.18);border-radius:16px;padding:12px 8px;text-align:center;cursor:pointer">
+              <div style="font-size:20px;font-weight:900;color:#34D399">₪${_earn.monthly.toLocaleString()}</div>
+              <div style="font-size:10px;opacity:.75;margin-top:3px">החודש</div>
+            </div>
+            <div style="background:rgba(251,146,60,0.18);border-radius:16px;padding:12px 8px;text-align:center">
+              <div style="font-size:20px;font-weight:900;color:#FB923C">${_streak}${_streak>0?'🔥':''}</div>
+              <div style="font-size:10px;opacity:.75;margin-top:3px">ימים ברצף</div>
+            </div>
+            <div style="background:rgba(99,102,241,0.18);border-radius:16px;padding:12px 8px;text-align:center">
+              <div style="font-size:20px;font-weight:900;color:#818CF8">👁 ${_views}</div>
+              <div style="font-size:10px;opacity:.75;margin-top:3px">צפיות בפרופיל</div>
+            </div>
+          </div>
+        </div>`;
+      })():''}
 
       <!-- Nearby CTA -->
       <button onclick="go('nearby')" style="width:100%;background:linear-gradient(135deg,#0F1A1F,#1A2530);border:none;border-radius:var(--radius);padding:18px 20px;margin-bottom:22px;display:flex;align-items:center;gap:14px;cursor:pointer;text-align:right;position:relative;overflow:hidden">
@@ -7848,6 +7893,47 @@ function Profile(){
       </div>`;}).join("")}`;
   }
 
+  if(isTeacher&&tab==='wallet'){
+    const earn=_teacherEarnings();
+    const streak=_teacherStreak();
+    const views=teacherAnalytics?.profileViews||0;
+    const done=teacherAllBookings.filter(b=>b.status==='completed').sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+    const myUid=currentUser?.uid;
+    content=`
+    <div style="background:linear-gradient(135deg,#0F1A1F,#1a2a1a);border-radius:22px;padding:20px;margin-bottom:14px;color:#fff">
+      <div style="font-size:12px;opacity:.7;margin-bottom:4px">סה"כ הרווחת</div>
+      <div style="font-size:36px;font-weight:900;color:#34D399">₪${earn.total.toLocaleString()}</div>
+      <div style="font-size:12px;opacity:.6;margin-top:2px">${earn.count} שיעורים הושלמו</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+      <div style="background:#fff;border-radius:18px;padding:14px;text-align:center;box-shadow:0 2px 10px rgba(0,0,0,0.07)">
+        <div style="font-size:22px;font-weight:900;color:#10B981">₪${earn.monthly.toLocaleString()}</div>
+        <div style="font-size:11px;color:#64748B;margin-top:3px">החודש הנוכחי</div>
+      </div>
+      <div style="background:#fff;border-radius:18px;padding:14px;text-align:center;box-shadow:0 2px 10px rgba(0,0,0,0.07)">
+        <div style="font-size:22px;font-weight:900;color:#F59E0B">${earn.count>0?('₪'+(earn.total/earn.count).toFixed(0)):'—'}</div>
+        <div style="font-size:11px;color:#64748B;margin-top:3px">ממוצע לשיעור</div>
+      </div>
+      <div style="background:#fff;border-radius:18px;padding:14px;text-align:center;box-shadow:0 2px 10px rgba(0,0,0,0.07)">
+        <div style="font-size:22px;font-weight:900;color:#FB923C">${streak}${streak>0?' 🔥':''}</div>
+        <div style="font-size:11px;color:#64748B;margin-top:3px">ימי לימוד ברצף</div>
+      </div>
+      <div style="background:#fff;border-radius:18px;padding:14px;text-align:center;box-shadow:0 2px 10px rgba(0,0,0,0.07)">
+        <div style="font-size:22px;font-weight:900;color:#6366F1">👁 ${views}</div>
+        <div style="font-size:11px;color:#64748B;margin-top:3px">צפיות בפרופיל</div>
+      </div>
+    </div>
+    <button onclick="shareTeacher(TEACHERS.find(x=>x.id==='${myUid}'))" style="width:100%;background:linear-gradient(135deg,#14B8A6,#A855F7);border:none;border-radius:16px;padding:13px;font-weight:900;font-size:14px;color:#fff;cursor:pointer;margin-bottom:14px">📤 שתף פרופיל שלי — קבל יותר הזמנות</button>
+    ${done.length===0?`<div style="background:rgba(255,255,255,0.7);border-radius:18px;padding:28px;text-align:center"><div style="font-size:42px;margin-bottom:8px">💸</div><p style="color:#64748B;font-size:13px;margin:0">עוד אין הכנסות. כשתשלים שיעורים הם יופיעו כאן.</p></div>`:`
+    <h4 style="font-size:14px;font-weight:800;margin:0 0 10px;color:#0F1A1F">תשלומים אחרונים</h4>
+    ${done.slice(0,15).map(b=>`
+      <div style="background:#fff;border-radius:16px;padding:13px 15px;margin-bottom:8px;box-shadow:0 2px 10px rgba(0,0,0,0.06);display:flex;align-items:center;justify-content:space-between">
+        <div style="text-align:left"><div style="font-weight:900;font-size:15px;color:#10B981">+₪${b.netToTeacher||Math.round((b.grossAmount||b.price||0)*0.85)}</div><div style="font-size:10px;color:#94A3B8;margin-top:2px">ממחיר ₪${b.grossAmount||b.price||0}</div></div>
+        <div style="text-align:right"><div style="font-weight:700;font-size:13px;color:#0F1A1F">${escapeHtml(b.studentName||'תלמיד')}</div><div style="font-size:11px;color:#64748B">${b.day||''} ${b.time||''}</div></div>
+      </div>`).join('')}
+    `}`;
+  }
+
   if(tab==="ach"){const achArr=isTeacher?ACHIEVEMENTS:STUDENT_ACHIEVEMENTS;content=`
     <p style="color:${C.muted};font-size:14px;margin:0 0 16px;line-height:1.7">הישגים שצברת:</p>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
@@ -7900,7 +7986,7 @@ function Profile(){
   }
 
   const tabItems=isTeacher&&myCats.length
-    ?[...myCats.map(cid=>{const c=CATS.find(x=>x.id===cid)||{em:'🎓',lbl:cid};return [cid,c.em+' '+c.lbl];}),...[['bookings','📅 הזמנות'+(teacherPendingBookings.length>0?` (${teacherPendingBookings.length})`:'')],['ach','🏆 הישגים'],['about','👤 אודות']]]
+    ?[...myCats.map(cid=>{const c=CATS.find(x=>x.id===cid)||{em:'🎓',lbl:cid};return [cid,c.em+' '+c.lbl];}),...[['bookings','📅 הזמנות'+(teacherPendingBookings.length>0?` (${teacherPendingBookings.length})`:'')],['wallet','💰 ארנק'],['ach','🏆 הישגים'],['about','👤 אודות']]]
     :[['lessons','📅 שיעורים'],['ach','🏆 הישגים'],['about','👤 אודות']];
 
   // ─── STUDENT PROFILE (dedicated design) ─────────────────────────────────────
@@ -7951,7 +8037,7 @@ function Profile(){
   return `<div class="screen" style="background:linear-gradient(165deg,#CCFBF1 0%,#A5F3FC 50%,#7DD3FC 100%);padding-bottom:100px">
     <div style="background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);padding:32px 20px 40px;border-radius:0 0 32px 32px;text-align:center;color:#fff;position:relative;overflow:hidden">
       <div style="position:absolute;top:-50px;right:-50px;width:140px;height:140px;border-radius:50%;background:rgba(255,255,255,.06)"></div>
-      <button onclick="shareApp()" style="position:absolute;top:20px;left:20px;background:rgba(255,255,255,.2);border:none;color:#fff;font-size:18px;cursor:pointer;border-radius:50%;width:40px;height:40px;display:flex;align-items:center;justify-content:center;z-index:2"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg></button>
+      <button onclick="${isTeacher&&myT?'shareTeacher(TEACHERS.find(x=>x.id===currentUser.uid))':'shareApp()'}" style="position:absolute;top:20px;left:20px;background:rgba(255,255,255,.2);border:none;color:#fff;font-size:18px;cursor:pointer;border-radius:50%;width:40px;height:40px;display:flex;align-items:center;justify-content:center;z-index:2" title="${isTeacher?'שתף פרופיל שלי':'שתף אפליקציה'}"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg></button>
       <button onclick="refreshApp()" style="position:absolute;top:68px;left:20px;background:rgba(255,255,255,.18);border:none;color:#fff;font-size:16px;cursor:pointer;border-radius:50%;width:40px;height:40px;display:flex;align-items:center;justify-content:center;z-index:2" title="רענן"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button>
       ${currentUser?`<button onclick="confirmLogout()" style="position:absolute;top:20px;right:20px;background:rgba(231,76,60,0.92);border:none;color:#fff;font-size:13px;font-weight:800;cursor:pointer;border-radius:50px;padding:9px 16px;display:flex;align-items:center;gap:6px;z-index:2;box-shadow:0 4px 14px rgba(231,76,60,0.45)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg> יציאה</button>`:`<button onclick="go('login')" style="position:absolute;top:20px;right:20px;background:rgba(255,255,255,0.25);border:none;color:#fff;font-size:13px;font-weight:800;cursor:pointer;border-radius:50px;padding:9px 16px;z-index:2;backdrop-filter:blur(10px)">🔑 התחבר</button>`}
       <label for="profilePhotoInput" style="width:84px;height:84px;border-radius:26px;margin:0 auto;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:42px;position:relative;z-index:1;cursor:pointer;overflow:hidden">${currentUserData?.photo?`<img src="${currentUserData.photo}" style="width:100%;height:100%;object-fit:cover" alt="">`:'🎸'}<div style="position:absolute;bottom:-2px;right:-2px;background:#A855F7;border:2px solid #fff;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff">📷</div></label>
@@ -9671,6 +9757,10 @@ function render(){
   });
   if(S.screen==="chat"){const el=document.getElementById("chatMsgs");if(el)setTimeout(()=>el.scrollTop=el.scrollHeight,50);}
   if(S.screen==="profile"&&isAdmin())setTimeout(_checkAdminBadge,200);
+  if(S.screen==='teacher'&&S.teacher?.id&&currentUser?.uid!==S.teacher.id&&db){
+    const _vk='_pv_'+S.teacher.id;
+    if(!sessionStorage.getItem(_vk)){sessionStorage.setItem(_vk,'1');db.ref('teachers/'+S.teacher.id+'/views').transaction(v=>(v||0)+1).catch(()=>{});}
+  }
 }
 
 initDarkMode();
@@ -9679,10 +9769,12 @@ render();
 // בדיקת parentView token ב-URL (לפורטל הורים ללא התחברות)
 (function(){
   const pvToken=new URLSearchParams(window.location.search).get('parentView');
-  if(pvToken){
-    S.parentViewToken=pvToken;
-    go('parentPortal');
-    setTimeout(()=>_loadParentPortalData(pvToken),200);
+  if(pvToken){S.parentViewToken=pvToken;go('parentPortal');setTimeout(()=>_loadParentPortalData(pvToken),200);}
+  // deep link לפרופיל מורה: ?t=teacherId
+  const _tid=new URLSearchParams(window.location.search).get('t');
+  if(_tid){
+    const _tryNav=()=>{const t=TEACHERS.find(x=>x.id===_tid);if(t){go('teacher',{teacher:t});}else setTimeout(_tryNav,700);};
+    setTimeout(_tryNav,900);
   }
 })();
 
