@@ -1747,17 +1747,21 @@ function toggleGPSSetup(){
 async function uploadSetupPhoto(input){
   if(!currentUser||!input?.files?.[0])return;
   const file=input.files[0];
-  showCropDialog(URL.createObjectURL(file),async(croppedUrl)=>{
-    try{
-      showFireToast('⏳ מעלה תמונה...');
-      const photoUrl=await uploadBase64ToStorage(croppedUrl,`photos/${currentUser.uid}/profile`);
-      await db.ref('users/'+currentUser.uid+'/photo').set(photoUrl);
-      if(currentUserData)currentUserData.photo=photoUrl;
-      const circle=document.getElementById('tSetupPhotoCircle');
-      if(circle)circle.innerHTML=`<img src="${photoUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%" alt=""><div style="position:absolute;bottom:0;right:0;background:#14B8A6;border:2px solid #fff;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:13px">📷</div>`;
-      showFireToast('✅ תמונה הועלתה!');
-    }catch(e){showFireToast('❌ '+e.message);}
-  },1,1);
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    showCropDialog(ev.target.result,async(croppedUrl)=>{
+      try{
+        showFireToast('⏳ מעלה תמונה...');
+        const photoUrl=await uploadBase64ToStorage(croppedUrl,`photos/${currentUser.uid}/profile`);
+        await db.ref('users/'+currentUser.uid+'/photo').set(photoUrl);
+        if(currentUserData)currentUserData.photo=photoUrl;
+        const circle=document.getElementById('tSetupPhotoCircle');
+        if(circle)circle.innerHTML=`<img src="${photoUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%" alt=""><div style="position:absolute;bottom:0;right:0;background:#14B8A6;border:2px solid #fff;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:13px">📷</div>`;
+        showFireToast('✅ תמונה הועלתה!');
+      }catch(e){showFireToast('❌ '+e.message);}
+    },1,1);
+  };
+  reader.readAsDataURL(file);
 }
 
 async function saveTeacherProfile(){
@@ -2696,8 +2700,10 @@ function showCropDialog(srcUrl,callback,aw=1,ah=1){
   img.onerror=()=>{_cleanup();showFireToast('❌ שגיאה בטעינת התמונה');ov.remove();};
   // force-reload after append so onload fires with correct layout dimensions
   if(img.complete&&img.naturalWidth){const s=img.src;img.src='';img.src=s;}
-  // decode() fallback for browsers that skip onload on fast data/blob URLs
-  img.decode?.().then(_doInit).catch(()=>{});
+  // decode() fallback — guard against browsers without decode() support
+  if(img.decode)img.decode().then(_doInit).catch(()=>{});
+  // safety net: if onload never fires (rare Android quirk), init after 800ms
+  setTimeout(()=>{if(!_inited&&img.naturalWidth)_doInit();},800);
 
   document.getElementById('_cropZoomIn').onclick=()=>doZoom(1.18);
   document.getElementById('_cropZoomOut').onclick=()=>doZoom(0.85);
@@ -2834,21 +2840,25 @@ async function uploadProfilePhoto(){
   const input=document.getElementById('profilePhotoInput');
   const file=input?.files?.[0];
   if(!file){showFireToast('❌ בחר תמונה');return;}
-  showCropDialog(URL.createObjectURL(file),async(croppedUrl)=>{
-    try{
-      showFireToast('⏳ מעלה תמונה...');
-      const photoUrl=await uploadBase64ToStorage(croppedUrl,`photos/${currentUser.uid}/profile`);
-      await db.ref('users/'+currentUser.uid+'/photo').set(photoUrl);
-      if(currentUserData)currentUserData.photo=photoUrl;
-      if(currentUserData?.role==='teacher'){
-        await db.ref('teachers/'+currentUser.uid+'/photo').set(photoUrl);
-        const t=TEACHERS.find(x=>x.id===currentUser.uid);
-        if(t)t.photo=photoUrl;
-      }
-      showFireToast('✅ התמונה הועלתה!');
-      render();
-    }catch(e){showFireToast('❌ '+e.message);}
-  },1,1);
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    showCropDialog(ev.target.result,async(croppedUrl)=>{
+      try{
+        showFireToast('⏳ מעלה תמונה...');
+        const photoUrl=await uploadBase64ToStorage(croppedUrl,`photos/${currentUser.uid}/profile`);
+        await db.ref('users/'+currentUser.uid+'/photo').set(photoUrl);
+        if(currentUserData)currentUserData.photo=photoUrl;
+        if(currentUserData?.role==='teacher'){
+          await db.ref('teachers/'+currentUser.uid+'/photo').set(photoUrl);
+          const t=TEACHERS.find(x=>x.id===currentUser.uid);
+          if(t)t.photo=photoUrl;
+        }
+        showFireToast('✅ התמונה הועלתה!');
+        render();
+      }catch(e){showFireToast('❌ '+e.message);}
+    },1,1);
+  };
+  reader.readAsDataURL(file);
 }
 
 function avatarHTML(user,size=44){
@@ -4589,15 +4599,19 @@ function _vidCheckReady(){
 
 function _onThumbFile(f){
   if(!f)return;
-  showCropDialog(URL.createObjectURL(f),cropped=>{
-    window._selectedThumbFile=f;
-    window._vidThumbDataUrl=cropped;
-    const p=document.getElementById('_thumbPreview');
-    const w=document.getElementById('_thumbPreviewWrap');
-    if(p)p.src=cropped;
-    if(w)w.style.display='block';
-    document.querySelectorAll('._frameThumb').forEach(el=>el.style.outline='none');
-  },16,9);
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    showCropDialog(ev.target.result,cropped=>{
+      window._selectedThumbFile=f;
+      window._vidThumbDataUrl=cropped;
+      const p=document.getElementById('_thumbPreview');
+      const w=document.getElementById('_thumbPreviewWrap');
+      if(p)p.src=cropped;
+      if(w)w.style.display='block';
+      document.querySelectorAll('._frameThumb').forEach(el=>el.style.outline='none');
+    },16,9);
+  };
+  reader.readAsDataURL(f);
 }
 
 async function captureVideoFrames(videoEl){
