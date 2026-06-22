@@ -90,17 +90,16 @@ input,textarea,select{font-family:inherit;-webkit-appearance:none;appearance:non
 
 /* NAV */
 .bnav{position:fixed;bottom:0;left:0;right:0;
-  background:rgba(255,255,255,0.92);
-  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
-  border-top:1px solid rgba(0,0,0,.06);
+  background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);
+  border-top:1px solid rgba(255,255,255,.1);
   display:flex;padding:8px 0 max(14px,env(safe-area-inset-bottom));
-  box-shadow:0 -2px 20px rgba(0,0,0,.08);z-index:90}
-.bnav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:4px 0;color:rgba(0,0,0,.3);background:none;border:none;transition:color .2s}
-.nb-icon{font-size:22px;position:relative;line-height:1}
-.nb-lbl{font-size:10px;font-weight:700;color:rgba(0,0,0,.3);transition:color .2s;white-space:nowrap}
-.bnav button.active{color:#14B8A6}
-.bnav button.active .nb-lbl{color:#14B8A6}
-.nb-dot{width:5px;height:5px;border-radius:50%;background:#14B8A6;margin-top:1px}
+  box-shadow:0 -4px 30px rgba(0,0,0,.25);z-index:90}
+.bnav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:2px 0;color:rgba(255,255,255,.5);background:none;border:none;transition:color .2s}
+.nb-icon{font-size:20px;position:relative;line-height:1}
+.nb-lbl{font-size:9px;font-weight:700;color:rgba(255,255,255,.5);transition:color .2s;white-space:nowrap}
+.bnav button.active{color:#fff}
+.bnav button.active .nb-lbl{color:#fff}
+.nb-dot{width:4px;height:4px;border-radius:50%;background:var(--p);margin-top:1px}
 .nb-badge{position:absolute;top:-4px;right:-7px;background:#E74C3C;color:#fff;font-size:8px;font-weight:900;border-radius:50%;width:15px;height:15px;display:flex;align-items:center;justify-content:center}
 
 /* REFRESH BTN */
@@ -523,7 +522,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.17';
+const APP_VERSION='4.9.18';
 const APP_BUILD='22-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -7022,7 +7021,8 @@ function Nearby(){
             <span style="font-size:13px;font-weight:800;color:#0F1A1F">🎯 טווח חיפוש</span>
           </div>
           <input type="range" class="slider" min="0.5" max="20" step="0.5" value="${r}"
-            oninput="S.nearbyR=parseFloat(this.value);render()">
+            style="background:linear-gradient(to right,rgba(20,184,166,.15) ${(100-((r-0.5)/(20-0.5)*100)).toFixed(1)}%,#14B8A6 ${(100-((r-0.5)/(20-0.5)*100)).toFixed(1)}%)"
+            oninput="S.nearbyR=parseFloat(this.value);this.style.background='linear-gradient(to right,rgba(20,184,166,.15) '+(100-(this.value-0.5)/(20-0.5)*100).toFixed(1)+'%,#14B8A6 '+(100-(this.value-0.5)/(20-0.5)*100).toFixed(1)+'%)';S.nearbyR=parseFloat(this.value);render()">
           <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:11px;color:#94A3B8;font-weight:600"><span>20 ק"מ</span><span>0.5 ק"מ</span></div>
         </div>
       </div>
