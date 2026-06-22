@@ -2682,7 +2682,6 @@ function showCropDialog(srcUrl,callback,aw=1,ah=1){
   }
   function applyT(){img.style.transform=`translate(${ox}px,${oy}px) scale(${sc})`;}
   function initImg(){
-    updateFrame();
     const sw=stage.clientWidth,sh=stage.clientHeight;
     const fw=parseFloat(frame.style.width),fh=parseFloat(frame.style.height);
     sc=Math.max(fw/img.naturalWidth,fh/img.naturalHeight)*1.05;
@@ -2694,16 +2693,9 @@ function showCropDialog(srcUrl,callback,aw=1,ah=1){
     ox=(ox-cx)*f+cx;oy=(oy-cy)*f+cy;sc*=f;applyT();
   }
   const _cleanup=()=>{if(srcUrl.startsWith('blob:'))URL.revokeObjectURL(srcUrl);};
-  let _inited=false;
-  const _doInit=()=>{if(_inited)return;_inited=true;initImg();};
-  img.onload=_doInit;
+  img.onload=()=>{updateFrame();initImg();};
   img.onerror=()=>{_cleanup();showFireToast('❌ שגיאה בטעינת התמונה');ov.remove();};
-  // force-reload after append so onload fires with correct layout dimensions
-  if(img.complete&&img.naturalWidth){const s=img.src;img.src='';img.src=s;}
-  // decode() fallback — guard against browsers without decode() support
-  if(img.decode)img.decode().then(_doInit).catch(()=>{});
-  // safety net: if onload never fires (rare Android quirk), init after 800ms
-  setTimeout(()=>{if(!_inited&&img.naturalWidth)_doInit();},800);
+  if(img.complete&&img.naturalWidth)setTimeout(()=>{updateFrame();initImg();},30);
 
   document.getElementById('_cropZoomIn').onclick=()=>doZoom(1.18);
   document.getElementById('_cropZoomOut').onclick=()=>doZoom(0.85);
