@@ -522,7 +522,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.24';
+const APP_VERSION='4.9.25';
 const APP_BUILD='22-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -6783,8 +6783,8 @@ function Home(){
       <div style="background:rgba(255,255,255,.94);border:1px solid rgba(255,255,255,.5);border-radius:50px;padding:12px 18px;display:flex;align-items:center;gap:10px;position:relative;z-index:1;box-shadow:0 6px 20px rgba(0,0,0,.12)">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#0F1A1F" stroke-opacity=".55" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
         <input id="homeSearch" value="${S.search||''}" oninput="_hs(this)" placeholder="חפש מורה, נושא, עיר..." style="border:none;outline:none;flex:1;font-size:15px;direction:rtl;background:transparent;color:#0F1A1F;font-family:inherit">
-        <button id="_hsX" onclick="S.search='';document.getElementById('homeSearch').value='';_hs({value:''})" style="background:rgba(15,26,31,0.08);border:none;color:#0F1A1F;cursor:pointer;border-radius:50%;width:24px;height:24px;font-size:12px;display:${S.search?'flex':'none'};align-items:center;justify-content:center">✕</button>
-        <span id="_hsIcon" style="color:rgba(15,26,31,.4);font-size:14px;display:${S.search?'none':''}">⌨</span>
+        <button id="_hsX" onclick="S.search='';document.getElementById('homeSearch').value='';_hs({value:''})" style="background:rgba(15,26,31,0.08);border:none;color:#0F1A1F;cursor:pointer;border-radius:50%;width:24px;height:24px;font-size:12px;display:flex;align-items:center;justify-content:center;visibility:${S.search?'visible':'hidden'};pointer-events:${S.search?'auto':'none'}">✕</button>
+        <span id="_hsIcon" style="color:rgba(15,26,31,.4);font-size:14px;visibility:${S.search?'hidden':'visible'}">⌨</span>
       </div>
     </div>
 
@@ -9632,8 +9632,8 @@ function _hs(inp){
   S.search=inp.value;
   const x=document.getElementById('_hsX');
   const ic=document.getElementById('_hsIcon');
-  if(x)x.style.display=S.search?'flex':'none';
-  if(ic)ic.style.display=S.search?'none':'';
+  if(x){x.style.visibility=S.search?'visible':'hidden';x.style.pointerEvents=S.search?'auto':'none';}
+  if(ic)ic.style.visibility=S.search?'hidden':'visible';
   const el=document.getElementById('_hsr');
   if(!el){render();return;}
   if(!S.search.trim()){el.innerHTML='';return;}
@@ -9658,6 +9658,7 @@ function _hs(inp){
         </div>
       </div>
     </button>`).join('')+'<div style="height:14px"></div>';
+  requestAnimationFrame(()=>{const si=document.getElementById('homeSearch');if(si)si.focus({preventScroll:true});});
 }
 
 function render(){
