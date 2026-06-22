@@ -522,7 +522,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.23';
+const APP_VERSION='4.9.24';
 const APP_BUILD='22-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -6782,8 +6782,9 @@ function Home(){
       <h2 style="color:#fff;font-size:20px;font-weight:900;margin:0 0 16px;position:relative;z-index:1">מה תרצה ללמוד היום?</h2>
       <div style="background:rgba(255,255,255,.94);border:1px solid rgba(255,255,255,.5);border-radius:50px;padding:12px 18px;display:flex;align-items:center;gap:10px;position:relative;z-index:1;box-shadow:0 6px 20px rgba(0,0,0,.12)">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#0F1A1F" stroke-opacity=".55" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-        <input id="homeSearch" value="${S.search||''}" oninput="S.search=this.value;clearTimeout(S._st);S._st=setTimeout(render,280)" placeholder="חפש מורה, נושא, עיר..." style="border:none;outline:none;flex:1;font-size:15px;direction:rtl;background:transparent;color:#0F1A1F;font-family:inherit">
-        ${S.search?`<button onclick="S.search='';render()" style="background:rgba(15,26,31,0.08);border:none;color:#0F1A1F;cursor:pointer;border-radius:50%;width:24px;height:24px;font-size:12px">✕</button>`:`<span style="color:rgba(15,26,31,.4);font-size:14px">⌨</span>`}
+        <input id="homeSearch" value="${S.search||''}" oninput="_hs(this)" placeholder="חפש מורה, נושא, עיר..." style="border:none;outline:none;flex:1;font-size:15px;direction:rtl;background:transparent;color:#0F1A1F;font-family:inherit">
+        <button id="_hsX" onclick="S.search='';document.getElementById('homeSearch').value='';_hs({value:''})" style="background:rgba(15,26,31,0.08);border:none;color:#0F1A1F;cursor:pointer;border-radius:50%;width:24px;height:24px;font-size:12px;display:${S.search?'flex':'none'};align-items:center;justify-content:center">✕</button>
+        <span id="_hsIcon" style="color:rgba(15,26,31,.4);font-size:14px;display:${S.search?'none':''}">⌨</span>
       </div>
     </div>
 
@@ -6895,7 +6896,7 @@ function Home(){
         `;
       })():`
 
-      ${S.search&&S.search.trim()?`
+      <div id="_hsr">${S.search&&S.search.trim()?`
         <h3 style="font-size:16px;font-weight:800;margin:0 0 14px">🔍 תוצאות חיפוש "${S.search}"</h3>
         ${(()=>{const r=smartSearch(S.search);return r.length===0?`<div style="background:rgba(255,255,255,0.7);backdrop-filter:blur(10px);border-radius:18px;padding:24px;text-align:center;margin-bottom:14px"><div style="font-size:42px;margin-bottom:8px">😕</div><p style="color:#64748B;font-size:13px;margin:0">לא נמצאו תוצאות עבור "${S.search}"</p></div>`:r.slice(0,10).map(t=>`
           <button class="tc" onclick="go('teacher',{teacher:TEACHERS.find(x=>x.id==='${t.id}')})">
@@ -6917,6 +6918,7 @@ function Home(){
           </button>`).join("");})()}
         <div style="height:14px"></div>
       `:''}
+      </div>
 
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px">
         <h3 style="font-size:17px;font-weight:900;margin:0;color:#0F1A1F">📂 כל הנושאים</h3>
@@ -9625,6 +9627,38 @@ function EmailVerify(){
 }
 
 const SCREENS={splash:Splash,safety:Safety,parentReg:ParentReg,register:Register,login:Login,regSuccess:RegSuccess,emailVerify:EmailVerify,teacherSetup:TeacherSetup,teacherPending:TeacherPending,studentPending:StudentPending,home:Home,nearby:Nearby,teacher:Teacher,booking:Booking,messages:Messages,chat:Chat,profile:Profile,community:Community,leaderboard:Leaderboard,about:About,parentPortal:ParentPortal,weeklySchedule:WeeklySchedule};
+
+function _hs(inp){
+  S.search=inp.value;
+  const x=document.getElementById('_hsX');
+  const ic=document.getElementById('_hsIcon');
+  if(x)x.style.display=S.search?'flex':'none';
+  if(ic)ic.style.display=S.search?'none':'';
+  const el=document.getElementById('_hsr');
+  if(!el){render();return;}
+  if(!S.search.trim()){el.innerHTML='';return;}
+  const r=smartSearch(S.search);
+  el.innerHTML=r.length===0
+    ?`<div style="background:rgba(255,255,255,0.7);backdrop-filter:blur(10px);border-radius:18px;padding:24px;text-align:center;margin-bottom:14px"><div style="font-size:42px;margin-bottom:8px">😕</div><p style="color:#64748B;font-size:13px;margin:0">לא נמצאו תוצאות עבור "${escapeHtml(S.search)}"</p></div>`
+    :'<h3 style="font-size:16px;font-weight:800;margin:0 0 14px">🔍 תוצאות חיפוש "'+escapeHtml(S.search)+'"</h3>'
+    +r.slice(0,10).map(t=>`<button class="tc" onclick="go('teacher',{teacher:TEACHERS.find(x=>x.id==='${t.id}')})">
+      <div class="tc-av" style="background:${t.col}20;overflow:hidden;padding:0">${t.photo?avatarHtml(t.photo,t.name,52,'16px'):t.av}${t.online?'<div class="online-dot"></div>':''}</div>
+      <div style="flex:1">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <span style="color:#FFD23F;font-weight:700;font-size:12px">${t.rating>0?stars(t.rating):'חדש 🆕'}</span>
+          <span style="font-weight:800;font-size:14px">${escapeHtml(t.name||'')}</span>
+        </div>
+        <div style="font-size:12px;color:#94A3B8;margin-top:2px">${catById(t.cat).lbl||''} • ${escapeHtml(t.city||'')}</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
+          <span style="font-weight:900;font-size:14px;color:var(--p)">₪${t.price}/שיעור</span>
+          <span style="display:flex;gap:4px;align-items:center">
+            ${t.ageVerified?'<span style="background:rgba(99,102,241,0.15);color:#6366F1;font-size:10px;font-weight:700;padding:2px 7px;border-radius:50px">✓ גיל מאומת</span>':''}
+            ${gTag(t.badge)}
+          </span>
+        </div>
+      </div>
+    </button>`).join('')+'<div style="height:14px"></div>';
+}
 
 function render(){
   const fn=SCREENS[S.screen]||Home;
