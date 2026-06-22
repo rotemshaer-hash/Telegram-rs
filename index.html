@@ -738,10 +738,15 @@ function showOnboarding(){
 async function uploadBase64ToStorage(base64DataUrl, path){
   if(!base64DataUrl||!base64DataUrl.startsWith('data:'))return base64DataUrl||null;
   try{
-    const res=await fetch(base64DataUrl);
-    const blob=await res.blob();
+    // Convert data URL → Blob without fetch() — fetch(data:) hangs in PWA service-worker context
+    const [header,b64]=base64DataUrl.split(',');
+    const mime=(header.match(/:(.*?);/)||[])[1]||'image/jpeg';
+    const binary=atob(b64);
+    const bytes=new Uint8Array(binary.length);
+    for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
+    const blob=new Blob([bytes],{type:mime});
     const ref=storage.ref(path);
-    const snap=await ref.put(blob,{contentType:blob.type||'image/jpeg'});
+    const snap=await ref.put(blob,{contentType:mime});
     return await snap.ref.getDownloadURL();
   }catch(e){
     console.warn('[Storage] upload failed, fallback to base64:',e.message);
@@ -1748,8 +1753,8 @@ async function uploadSetupPhoto(input){
   if(!currentUser||!input?.files?.[0])return;
   showFireToast('⏳ מעלה תמונה...');
   try{
-    const dataUrl=await _resizeProfilePhoto(input.files[0],600);
-    const photoUrl=await uploadBase64ToStorage(dataUrl,`photos/${currentUser.uid}/profile`);
+    const blob=await _resizeProfilePhoto(input.files[0],600);
+    const photoUrl=await _uploadPhotoBlob(blob,currentUser.uid);
     await db.ref('users/'+currentUser.uid+'/photo').set(photoUrl);
     if(currentUserData)currentUserData.photo=photoUrl;
     const circle=document.getElementById('tSetupPhotoCircle');
@@ -2821,7 +2826,7 @@ function previewParentIdPhoto(){
   reader.readAsDataURL(file);
 }
 
-// Loads a File, center-crops it to a square, resizes to `size`px — returns data URL
+// Center-crops File to square, resizes to `size`px — returns a JPEG Blob (no base64)
 function _resizeProfilePhoto(file, size){
   return new Promise((resolve, reject)=>{
     const url=URL.createObjectURL(file);
@@ -2833,11 +2838,20 @@ function _resizeProfilePhoto(file, size){
       const cv=document.createElement('canvas');
       cv.width=size; cv.height=size;
       cv.getContext('2d').drawImage(img,sx,sy,sq,sq,0,0,size,size);
-      resolve(cv.toDataURL('image/jpeg',0.88));
+      cv.toBlob(blob=>{
+        if(blob)resolve(blob);
+        else reject(new Error('שגיאה ביצירת התמונה'));
+      },'image/jpeg',0.88);
     };
-    img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error('שגיאה בעיבוד התמונה'));};
+    img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error('שגיאה בטעינת התמונה'));};
     img.src=url;
   });
+}
+
+async function _uploadPhotoBlob(blob, uid){
+  const ref=storage.ref('photos/'+uid+'/profile.jpg');
+  const snap=await ref.put(blob,{contentType:'image/jpeg'});
+  return snap.ref.getDownloadURL();
 }
 
 async function uploadProfilePhoto(){
@@ -2847,8 +2861,8 @@ async function uploadProfilePhoto(){
   if(!file){showFireToast('❌ בחר תמונה');return;}
   showFireToast('⏳ מעלה תמונה...');
   try{
-    const dataUrl=await _resizeProfilePhoto(file,600);
-    const photoUrl=await uploadBase64ToStorage(dataUrl,`photos/${currentUser.uid}/profile`);
+    const blob=await _resizeProfilePhoto(file,600);
+    const photoUrl=await _uploadPhotoBlob(blob,currentUser.uid);
     await db.ref('users/'+currentUser.uid+'/photo').set(photoUrl);
     if(currentUserData)currentUserData.photo=photoUrl;
     if(currentUserData?.role==='teacher'){
