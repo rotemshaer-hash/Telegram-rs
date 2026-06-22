@@ -522,7 +522,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.20';
+const APP_VERSION='4.9.21';
 const APP_BUILD='22-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -1985,7 +1985,7 @@ async function approveBooking(bookingId){
     showFireToast('⏳ מאשר...');
     if(currentUserData?.verified!==true){showFireToast('❌ החשבון שלך טרם אושר על ידי הצוות');return;}
     if(!currentUserData?.jitsiUrl){
-      if(!confirm('⚠️ לא הגדרת קישור לשיעור (Zoom/Jitsi/Meet) בפרופיל שלך.\nהתלמיד לא יוכל להצטרף!\n\nלאשר בכל זאת?')) return;
+      if(!await _confirm('⚠️ לא הגדרת קישור לשיעור (Zoom/Jitsi/Meet) בפרופיל שלך.\nהתלמיד לא יוכל להצטרף!\n\nלאשר בכל זאת?',{confirmText:'אשר בכל זאת',cancelText:'ביטול'})) return;
     }
     const snap=await db.ref('bookings/'+bookingId).get();
     if(!snap.exists()){showFireToast('❌ הזמנה לא נמצאה');return;}
@@ -2039,7 +2039,7 @@ async function approveBooking(bookingId){
 
 // המורה מבטל שיעור שאושר
 async function cancelBookingAsTeacher(bookingId){
-  if(!confirm('לבטל את השיעור? התלמיד יקבל הודעה.'))return;
+  if(!await _confirm('לבטל את השיעור?\nהתלמיד יקבל הודעה.',{confirmText:'בטל שיעור',cancelText:'חזרה',destructive:true}))return;
   try{
     showFireToast('⏳ מבטל...');
     const snap=await db.ref('bookings/'+bookingId).get();
@@ -2047,11 +2047,10 @@ async function cancelBookingAsTeacher(bookingId){
     const b=snap.val();
     if(b.teacherId!==currentUser?.uid){showFireToast('❌ אין הרשאה');return;}
     if(b.status!=='approved'){showFireToast('❌ ניתן לבטל רק שיעורים מאושרים');return;}
-    // בדיקת מדיניות ביטול — אזהרה אם פחות מ-24 שעות
     if(b.lessonTimestamp){
       const hoursUntil=(b.lessonTimestamp-Date.now())/3600000;
       if(hoursUntil<24&&hoursUntil>0){
-        if(!confirm('⚠️ ביטול פחות מ-24 שעות לפני השיעור — ייתכן שלא תקבל החזר כסף. להמשיך?'))return;
+        if(!await _confirm('⚠️ ביטול פחות מ-24 שעות לפני השיעור\nייתכן שלא תקבל החזר כסף. להמשיך?',{confirmText:'כן, בטל',cancelText:'חזרה',destructive:true}))return;
       }
     }
     const cancelledAt=Date.now();
@@ -2080,7 +2079,7 @@ async function cancelBookingAsTeacher(bookingId){
 
 // המורה דוחה הזמנה
 async function rejectBooking(bookingId){
-  if(!confirm('האם לדחות את ההזמנה?'))return;
+  if(!await _confirm('לדחות את ההזמנה?',{confirmText:'דחה',cancelText:'חזרה',destructive:true}))return;
   try{
     showFireToast('⏳ דוחה...');
     const snap=await db.ref('bookings/'+bookingId).get();
@@ -2117,7 +2116,7 @@ async function rejectBooking(bookingId){
 
 // מחיקת הזמנה ישנה מרשימת המורה (הושלמה/נדחתה)
 async function deleteBooking(bookingId){
-  if(!confirm('למחוק הזמנה זו מהרשימה?'))return;
+  if(!await _confirm('למחוק הזמנה זו מהרשימה?',{confirmText:'מחק',cancelText:'חזרה',destructive:true}))return;
   try{
     const localB=teacherAllBookings.find(b=>(b.id||b.bookingId)===bookingId)||teacherPendingBookings.find(b=>(b.id||b.bookingId)===bookingId);
     teacherAllBookings=teacherAllBookings.filter(b=>(b.id||b.bookingId)!==bookingId);
@@ -2130,13 +2129,13 @@ async function deleteBooking(bookingId){
   }catch(e){showFireToast('❌ '+e.message);}
 }
 async function deleteStudentBooking(bookingId){
-  if(!confirm('למחוק הזמנה זו מהרשימה?'))return;
+  if(!await _confirm('למחוק הזמנה זו מהרשימה?',{confirmText:'מחק',cancelText:'חזרה',destructive:true}))return;
   try{
     const b=studentBookings.find(x=>(x.bookingId||x.id)===bookingId);
     if(b&&b.lessonTimestamp){
       const hoursUntil=(b.lessonTimestamp-Date.now())/3600000;
       if(hoursUntil>=0&&hoursUntil<24){
-        if(!confirm('⚠️ ביטול פחות מ-24 שעות לפני השיעור. להמשיך?'))return;
+        if(!await _confirm('⚠️ ביטול פחות מ-24 שעות לפני השיעור. להמשיך?',{confirmText:'כן, בטל',cancelText:'חזרה',destructive:true}))return;
       }
     }
     studentBookings=studentBookings.filter(x=>(x.bookingId||x.id)!==bookingId);
@@ -2743,10 +2742,8 @@ async function sha256hex(text){
 // ─── ACCOUNT DELETION (GDPR) ──────────────────────────────────────────────────
 async function deleteMyAccount(){
   if(!currentUser){showFireToast('❌ לא מחובר');return;}
-  const confirmed=confirm('האם אתה בטוח שברצונך למחוק את חשבונך לצמיתות?\n\nכל הנתונים שלך יימחקו ולא ניתן יהיה לשחזרם.');
-  if(!confirmed)return;
-  const confirmed2=confirm('אישור אחרון — מחיקת חשבון היא בלתי הפיכה.\nלחץ אישור כדי למחוק.');
-  if(!confirmed2)return;
+  if(!await _confirm('האם אתה בטוח שברצונך למחוק את חשבונך לצמיתות?\n\nכל הנתונים שלך יימחקו ולא ניתן יהיה לשחזרם.',{confirmText:'מחק חשבון',cancelText:'ביטול',destructive:true}))return;
+  if(!await _confirm('אישור אחרון — מחיקת חשבון היא בלתי הפיכה.',{confirmText:'כן, מחק לצמיתות',cancelText:'חזרה',destructive:true}))return;
   try{
     showFireToast('⏳ מוחק חשבון...');
     const uid=currentUser.uid;
@@ -3679,7 +3676,7 @@ async function adminConfirmPayment(bookingId){
 }
 
 async function adminCancelPayment(bookingId){
-  if(!confirm('לבטל את ההזמנה? הפעולה אינה ניתנת לביטול.'))return;
+  if(!await _confirm('לבטל את ההזמנה?\nהפעולה אינה ניתנת לביטול.',{confirmText:'בטל הזמנה',cancelText:'חזרה',destructive:true}))return;
   try{
     showFireToast('⏳ מבטל הזמנה...');
     const payAlert=adminAlertPayments.find(p=>p.id===bookingId||p.bookingId===bookingId);
@@ -3777,7 +3774,7 @@ async function adminAddCommunityOrphan(uid,name){
 
 // מחק את כל הפוסטים של משתמש "עצמות קהילה"
 async function adminRemoveCommunityOrphanPosts(uid){
-  if(!confirm('למחוק את כל הפוסטים של משתמש זה מהקהילה?'))return;
+  if(!await _confirm('למחוק את כל הפוסטים של משתמש זה מהקהילה?',{confirmText:'מחק',cancelText:'ביטול',destructive:true}))return;
   try{
     const snap=await db.ref('communityPosts').get();
     const deletes=[];
@@ -3791,7 +3788,7 @@ async function adminRemoveCommunityOrphanPosts(uid){
 }
 
 async function adminRejectStudent(uid){
-  if(!confirm('לדחות את הבקשה?\n\nהתלמיד יקבל הודעת "לא אושר" ויראה את פרטי יצירת הקשר עם המנהל.'))return;
+  if(!await _confirm('לדחות את הבקשה?\nהתלמיד יקבל הודעת "לא אושר".',{confirmText:'דחה',cancelText:'ביטול',destructive:true}))return;
   try{
     await Promise.allSettled([
       db.ref('users/'+uid+'/rejected').set(true),
@@ -3803,7 +3800,7 @@ async function adminRejectStudent(uid){
   }catch(e){showFireToast('❌ '+e.message);}
 }
 async function approveStudent(uid, name){
-  if(!confirm('לאשר את התלמיד/ה '+name+'?'))return;
+  if(!await _confirm('לאשר את התלמיד/ה '+name+'?',{confirmText:'אשר',cancelText:'ביטול'}))return;
   try{
     showFireToast('⏳ מאשר...');
     await db.ref('users/'+uid+'/verified').set(true);
@@ -3818,7 +3815,7 @@ async function approveStudent(uid, name){
   }catch(e){showFireToast('❌ '+e.message);}
 }
 async function rejectStudent(uid, name){
-  if(!confirm('לדחות את התלמיד/ה '+name+'?'))return;
+  if(!await _confirm('לדחות את התלמיד/ה '+name+'?',{confirmText:'דחה',cancelText:'ביטול',destructive:true}))return;
   try{
     await db.ref('users/'+uid+'/rejected').set(true);
     await db.ref('adminAlerts/students/'+uid).remove();
@@ -3856,7 +3853,7 @@ async function adminVerifyAge(uid){
 }
 
 async function adminRejectTeacher(uid){
-  if(!confirm('לדחות את המורה?\n\nהמורה יקבל הודעת "לא אושר" ויראה את פרטי יצירת הקשר עם המנהל.'))return;
+  if(!await _confirm('לדחות את המורה?\nהמורה יקבל הודעת "לא אושר".',{confirmText:'דחה',cancelText:'ביטול',destructive:true}))return;
   try{
     await Promise.allSettled([
       db.ref('users/'+uid+'/rejected').set(true),
@@ -3869,7 +3866,7 @@ async function adminRejectTeacher(uid){
 }
 
 async function adminDeleteTeacherFull(uid){
-  if(!confirm('למחוק לחלוטין מהמערכת?'))return;
+  if(!await _confirm('למחוק לחלוטין מהמערכת?',{confirmText:'מחק',cancelText:'ביטול',destructive:true}))return;
   try{
     await db.ref('teachers/'+uid).remove();
     await db.ref('users/'+uid).remove();
@@ -3882,7 +3879,7 @@ async function adminDeleteTeacherFull(uid){
 }
 
 async function adminBlockUser(uid){
-  if(!confirm('לחסום משתמש זה?'))return;
+  if(!await _confirm('לחסום משתמש זה?',{confirmText:'חסום',cancelText:'ביטול',destructive:true}))return;
   try{
     await db.ref('users/'+uid+'/blocked').set(true);
     showFireToast('🚫 המשתמש נחסם');
@@ -3921,7 +3918,7 @@ function adminSendSetupReminder(uid,teacherName,parentEmail,parentName){
 }
 
 async function cancelApprovedBooking(bookingId){
-  if(!confirm('❌ ביטול שיעור מאושר\n\n⚠️ מדיניות ביטול: ביטול תוך 24 שעות מהשיעור עלול לגרור חיוב מלא.\n\nלבטל את השיעור?'))return;
+  if(!await _confirm('ביטול שיעור מאושר\n\n⚠️ ביטול תוך 24 שעות עלול לגרור חיוב מלא.',{confirmText:'בטל שיעור',cancelText:'חזרה',destructive:true}))return;
   try{
     const snap=await db.ref('bookings/'+bookingId).get();
     if(!snap.exists()){showFireToast('❌ הזמנה לא נמצאה');return;}
@@ -4042,7 +4039,7 @@ async function adminSendWeeklyReports(){
 
 async function adminDeleteUser(uid,name,role){
   if(!isAdmin()){showFireToast('❌ אין הרשאה');return;}
-  if(!confirm(`למחוק את ${name||'המשתמש'} לצמיתות?\n\nפעולה זו תמחק:\n• פרופיל, הזמנות, ביקורות, מועדפים\n• פוסטים בקהילה, הודעות, התראות\n\n⚠️ לא ניתן לבטל!`))return;
+  if(!await _confirm(`למחוק את ${name||'המשתמש'} לצמיתות?\n\nפרופיל, הזמנות, ביקורות, הודעות — הכל יימחק.\n⚠️ לא ניתן לבטל!`,{confirmText:'מחק לצמיתות',cancelText:'ביטול',destructive:true}))return;
   try{
     showFireToast('⏳ מוחק...');
     await db.ref('users/'+uid).remove();
@@ -4216,7 +4213,7 @@ async function adminDeleteGhostRecords(){
 
 async function adminDeleteAllStudents(){
   if(!isAdmin()){showFireToast('❌ אין הרשאה');return;}
-  if(!confirm('מחיקת כל התלמידים?\n\nפעולה זו תמחק:\n• כל המשתמשים עם role=student\n• כל הרשומות ב-adminAlerts/students\n\n⚠️ לא ניתן לבטל!'))return;
+  if(!await _confirm('מחיקת כל התלמידים?\n\nכל המשתמשים עם role=student יימחקו.\n⚠️ לא ניתן לבטל!',{confirmText:'מחק הכל',cancelText:'ביטול',destructive:true}))return;
   try{
     showFireToast('⏳ מנקה...');
     const usersSnap=await db.ref('users').get();
@@ -4296,7 +4293,7 @@ async function adminRejectVideo(teacherId,videoId){
 }
 
 async function adminDeleteVideo(teacherId,videoId){
-  if(!confirm('למחוק את הסרטון?'))return;
+  if(!await _confirm('למחוק את הסרטון?',{confirmText:'מחק',cancelText:'ביטול',destructive:true}))return;
   try{
     await db.ref('videos/'+teacherId+'/'+videoId).remove();
     showFireToast('🗑 הסרטון נמחק');
@@ -4348,7 +4345,7 @@ async function adminApproveAllPosts(){
   }catch(e){showFireToast('❌ '+e.message);}
 }
 async function adminRejectPost(postId){
-  if(!confirm('למחוק את הפוסט?'))return;
+  if(!await _confirm('למחוק את הפוסט?',{confirmText:'מחק',cancelText:'ביטול',destructive:true}))return;
   try{
     await db.ref('communityPosts/'+postId).remove();
     await db.ref('adminAlerts/posts/'+postId).remove().catch(()=>{});
@@ -4358,7 +4355,7 @@ async function adminRejectPost(postId){
   }catch(e){showFireToast('❌ '+e.message);}
 }
 async function adminDeleteAllPosts(){
-  if(!confirm('למחוק את כל הפוסטים בקהילה לצמיתות?\n\nפעולה זו תמחק את כל הפוסטים — ממתינים ומאושרים.\n\n⚠️ לא ניתן לבטל!'))return;
+  if(!await _confirm('למחוק את כל הפוסטים בקהילה לצמיתות?\n\nממתינים + מאושרים — הכל יימחק.\n⚠️ לא ניתן לבטל!',{confirmText:'מחק הכל',cancelText:'ביטול',destructive:true}))return;
   try{
     await db.ref('communityPosts').remove();
     await db.ref('adminAlerts/posts').remove().catch(()=>{});
@@ -4378,7 +4375,7 @@ async function adminCloseReport(id){
 }
 
 async function adminDeleteReport(id){
-  if(!confirm('למחוק את הדיווח?'))return;
+  if(!await _confirm('למחוק את הדיווח?',{confirmText:'מחק',cancelText:'ביטול',destructive:true}))return;
   try{
     await db.ref('reports/'+id).remove();
     showFireToast('🗑 נמחק');
@@ -4861,7 +4858,7 @@ async function assignVideoCategory(videoId,catId){
 }
 
 async function deleteMyVideo(videoId){
-  if(!confirm('למחוק את הסרטון?'))return;
+  if(!await _confirm('למחוק את הסרטון?',{confirmText:'מחק',cancelText:'ביטול',destructive:true}))return;
   try{
     await db.ref('videos/'+currentUser.uid+'/'+videoId).remove();
     showFireToast('🗑 הסרטון נמחק');
@@ -5249,7 +5246,7 @@ async function shareMyLocation(){
 
 async function removeMyLocation(){
   if(!currentUser)return;
-  if(!confirm('להסיר את המיקום שלך?'))return;
+  if(!await _confirm('להסיר את המיקום שלך?',{confirmText:'הסר',cancelText:'ביטול',destructive:true}))return;
   try{
     await db.ref('teachers/'+currentUser.uid+'/gps').remove();
     const t=TEACHERS.find(x=>x.id===currentUser.uid);
@@ -5626,7 +5623,7 @@ async function adminApproveReview(reviewId,teacherId){
 
 async function adminRejectReview(reviewId,teacherId){
   if(!isAdmin())return;
-  if(!confirm('למחוק את הביקורת?'))return;
+  if(!await _confirm('למחוק את הביקורת?',{confirmText:'מחק',cancelText:'ביטול',destructive:true}))return;
   try{
     await db.ref('reviews/'+teacherId+'/'+reviewId).remove();
     // clean matching entry in pendingReviews backup queue
@@ -8357,7 +8354,7 @@ async function loadCommunityPosts(){
 }
 
 async function deleteMyPost(id){
-  if(!confirm('למחוק את הפוסט?'))return;
+  if(!await _confirm('למחוק את הפוסט?',{confirmText:'מחק',cancelText:'ביטול',destructive:true}))return;
   try{
     await db.ref('communityPosts/'+id).remove();
     S.posts=S.posts.filter(p=>p.id!==id);
@@ -8744,7 +8741,7 @@ function StudentPending(){
               </div>
               <div style="display:flex;align-items:center;gap:8px">
                 <div style="width:22px;height:22px;border-radius:50%;background:#06B6D4;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;flex-shrink:0">2</div>
-                <span style="color:rgba(255,255,255,0.7);font-size:12px">מנהל Kidemy יצור קשר עם ההורה לאימות</span>
+                <span style="color:rgba(255,255,255,0.7);font-size:12px">מנהל Kidemy יצור קשר עם ההורה לאימות — בדרך כלל תוך 24 שעות</span>
               </div>
               <div style="display:flex;align-items:center;gap:8px">
                 <div style="width:22px;height:22px;border-radius:50%;background:#A855F7;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;flex-shrink:0">3</div>
@@ -10552,6 +10549,25 @@ function showFireToast(msg){
   const t=document.createElement('div');t.id='_ft';
   t.style.cssText='position:fixed;bottom:110px;left:50%;transform:translateX(-50%);background:#1A1A2E;color:#fff;padding:13px 22px;border-radius:50px;font-size:14px;font-weight:700;z-index:9999;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,.35);direction:rtl;max-width:92vw';
   t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),3500);
+}
+
+function _confirm(msg,{confirmText='אישור',cancelText='ביטול',destructive=false}={}){
+  return new Promise(resolve=>{
+    const ov=document.createElement('div');
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99999;display:flex;align-items:center;justify-content:center;padding:24px';
+    ov.innerHTML=`<div style="background:#fff;border-radius:22px;padding:26px 20px 20px;max-width:340px;width:100%;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,.35);direction:rtl">
+      <p style="font-size:15px;font-weight:600;color:#0F1A1F;margin:0 0 22px;line-height:1.6;white-space:pre-line">${msg}</p>
+      <div style="display:flex;gap:10px">
+        <button id="_cnfNo" style="flex:1;background:#F1F5F9;border:none;border-radius:14px;padding:13px;font-weight:700;font-size:14px;cursor:pointer;color:#64748B">${cancelText}</button>
+        <button id="_cnfYes" style="flex:2;background:${destructive?'#EF4444':'linear-gradient(135deg,#14B8A6,#A855F7)'};border:none;border-radius:14px;padding:13px;font-weight:900;font-size:14px;cursor:pointer;color:#fff">${confirmText}</button>
+      </div>
+    </div>`;
+    document.body.appendChild(ov);
+    const cleanup=(v)=>{ov.remove();resolve(v);};
+    ov.querySelector('#_cnfYes').onclick=()=>cleanup(true);
+    ov.querySelector('#_cnfNo').onclick=()=>cleanup(false);
+    ov.onclick=e=>{if(e.target===ov)cleanup(false);};
+  });
 }
 
 // ── HOME SCREEN INSTALL ───────────────────────────────────────────────────
