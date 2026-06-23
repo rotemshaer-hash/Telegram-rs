@@ -50,7 +50,7 @@ try{auth=firebase.auth();db=firebase.database();storage=firebase.storage();}catc
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&family=Rubik:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
-html,body{height:100%;background:#0F1A1F;font-family:'Rubik','Heebo',-apple-system,sans-serif;overflow-x:hidden;overscroll-behavior:none;-webkit-overflow-scrolling:touch;letter-spacing:-0.02em}
+html,body{height:100%;background:#CCFBF1;font-family:'Rubik','Heebo',-apple-system,sans-serif;overflow-x:hidden;overscroll-behavior:none;-webkit-overflow-scrolling:touch;letter-spacing:-0.02em}
 ::-webkit-scrollbar{display:none}
 
 h1,h2,h3,h4{letter-spacing:-0.025em;font-family:'Rubik','Heebo',sans-serif}
@@ -90,15 +90,15 @@ input,textarea,select{font-family:inherit;-webkit-appearance:none;appearance:non
 
 /* NAV */
 .bnav{position:fixed;bottom:0;left:0;right:0;
-  background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);
-  border-top:1px solid rgba(255,255,255,.1);
+  background:#fff;
+  border-top:1.5px solid rgba(20,184,166,.2);
   display:flex;padding:8px 0 max(14px,env(safe-area-inset-bottom));
-  box-shadow:0 -4px 30px rgba(0,0,0,.25);z-index:90}
-.bnav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:2px 0;color:rgba(255,255,255,.5);background:none;border:none;transition:color .2s}
+  box-shadow:0 -4px 24px rgba(20,184,166,.12);z-index:90}
+.bnav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:2px 0;color:#94A3B8;background:none;border:none;transition:color .2s}
 .nb-icon{font-size:20px;position:relative;line-height:1}
-.nb-lbl{font-size:9px;font-weight:700;color:rgba(255,255,255,.5);transition:color .2s;white-space:nowrap}
-.bnav button.active{color:#fff}
-.bnav button.active .nb-lbl{color:#fff}
+.nb-lbl{font-size:9px;font-weight:700;color:#94A3B8;transition:color .2s;white-space:nowrap}
+.bnav button.active{color:#14B8A6}
+.bnav button.active .nb-lbl{color:#14B8A6}
 .nb-dot{width:4px;height:4px;border-radius:50%;background:var(--p);margin-top:1px}
 .nb-badge{position:absolute;top:-4px;right:-7px;background:#E74C3C;color:#fff;font-size:8px;font-weight:900;border-radius:50%;width:15px;height:15px;display:flex;align-items:center;justify-content:center}
 
@@ -238,7 +238,7 @@ input,textarea,select{font-family:inherit;-webkit-appearance:none;appearance:non
 .sh-tw{background:#000;color:#fff}
 .sh-tg{background:#2CA5E0;color:#fff}
 .sh-copy{background:rgba(20,184,166,.08);color:var(--s);border:1.5px solid rgba(20,184,166,.18)}
-.sh-native{background:linear-gradient(135deg,#0F1A1F,#242438);color:#fff}
+.sh-native{background:linear-gradient(135deg,#14B8A6,#06B6D4);color:#fff}
 
 /* MODAL */
 .modal-ov{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:180;display:flex;align-items:flex-end;backdrop-filter:blur(4px)}
@@ -276,23 +276,27 @@ body.dark .p-acts button{color:#94A3B8 !important}
 body.dark .otp input{background:rgba(255,255,255,.05) !important;color:#E2E8F0 !important;border-color:rgba(255,255,255,.1) !important}
 body.dark .kcb-row{border-color:rgba(255,255,255,.1) !important;background:rgba(255,255,255,.03) !important}
 body.dark .kcb-row.light{border-color:rgba(20,184,166,.25) !important;background:rgba(20,184,166,.06) !important}
-body.dark .bnav{background:rgba(8,10,18,.98) !important}
+body.dark .bnav{background:rgba(13,17,23,.97) !important;border-top-color:rgba(255,255,255,.08) !important}
+body.dark .bnav button{color:rgba(255,255,255,.5) !important}
+body.dark .bnav button.active{color:#14B8A6 !important}
+body.dark .bnav button.active .nb-lbl{color:#14B8A6 !important}
+body.dark .nb-lbl{color:rgba(255,255,255,.5) !important}
 body.dark .online-dot{border-color:#0D1117 !important}
 </style>
 </head>
 <body>
 <!-- Mobile-only notice for desktop users -->
-<div id="_desktopWarn" style="display:none;position:fixed;inset:0;background:linear-gradient(135deg,#0F1A1F,#1A2530);z-index:99999;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:40px;color:#fff">
+<div id="_desktopWarn" style="display:none;position:fixed;inset:0;background:linear-gradient(165deg,#CCFBF1 0%,#A5F3FC 50%,#7DD3FC 100%);z-index:99999;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:40px;color:#0F1A1F">
   <div style="font-size:80px;margin-bottom:20px">📱</div>
   <h1 style="font-size:28px;font-weight:900;margin:0 0 12px">Kidemy</h1>
-  <p style="font-size:16px;color:rgba(255,255,255,0.7);margin:0 0 8px">ילדים מלמדים ילדים</p>
-  <div style="background:rgba(255,255,255,0.08);border:1.5px solid rgba(255,255,255,0.15);border-radius:20px;padding:24px 32px;max-width:360px;margin-top:24px">
+  <p style="font-size:16px;color:#0F1A1F;margin:0 0 8px">ילדים מלמדים ילדים</p>
+  <div style="background:rgba(255,255,255,0.7);border:1.5px solid rgba(20,184,166,0.25);border-radius:20px;padding:24px 32px;max-width:360px;margin-top:24px">
     <div style="font-size:32px;margin-bottom:12px">🚫💻</div>
-    <p style="font-size:15px;font-weight:700;margin:0 0 10px">האפליקציה מיועדת לשימוש בסלולרי בלבד</p>
-    <p style="font-size:13px;color:rgba(255,255,255,0.6);margin:0 0 18px;line-height:1.6">סרוק את הקוד עם הטלפון שלך<br>או גש לאפליקציה ישירות מהדפדפן הנייד</p>
+    <p style="font-size:15px;font-weight:700;margin:0 0 10px;color:#0F1A1F">האפליקציה מיועדת לשימוש בסלולרי בלבד</p>
+    <p style="font-size:13px;color:#64748B;margin:0 0 18px;line-height:1.6">סרוק את הקוד עם הטלפון שלך<br>או גש לאפליקציה ישירות מהדפדפן הנייד</p>
     <canvas id="_qrCanvas" style="border-radius:12px;background:#fff;padding:8px"></canvas>
   </div>
-  <button onclick="document.getElementById('_desktopWarn').style.display='none'" style="margin-top:16px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.5);border-radius:50px;padding:8px 20px;font-size:12px;cursor:pointer">כניסת מנהל 🔑</button>
+  <button onclick="document.getElementById('_desktopWarn').style.display='none'" style="margin-top:16px;background:rgba(20,184,166,0.12);border:1px solid rgba(20,184,166,0.3);color:#0e7a72;border-radius:50px;padding:8px 20px;font-size:12px;cursor:pointer">כניסת מנהל 🔑</button>
 </div>
 <script>
 (function(){
@@ -522,7 +526,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.33';
+const APP_VERSION='4.9.34';
 const APP_BUILD='23-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -711,15 +715,15 @@ function showOnboarding(){
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:999999;display:flex;align-items:center;justify-content:center;direction:rtl;backdrop-filter:blur(20px)';
   function _draw(){
     const s=steps[step];
-    const dots=steps.map((_,i)=>`<div style="width:${i===step?24:8}px;height:8px;border-radius:4px;background:${i===step?'#14B8A6':'rgba(255,255,255,.2)'};transition:all .3s"></div>`).join('');
+    const dots=steps.map((_,i)=>`<div style="width:${i===step?24:8}px;height:8px;border-radius:4px;background:${i===step?'#14B8A6':'rgba(20,184,166,.2)'};transition:all .3s"></div>`).join('');
     ov.innerHTML=`
-      <div style="background:linear-gradient(135deg,#0F1A1F,#1E1B4B);border-radius:28px;padding:40px 28px;width:88%;max-width:360px;text-align:center;color:#fff">
+      <div style="background:#fff;border-radius:28px;padding:40px 28px;width:88%;max-width:360px;text-align:center;box-shadow:0 20px 60px rgba(20,184,166,0.2)">
         <div style="font-size:72px;margin-bottom:20px">${s.em}</div>
-        <h2 style="font-weight:900;font-size:24px;margin:0 0 12px">${s.title}</h2>
-        <p style="color:rgba(255,255,255,.7);font-size:15px;margin:0 0 28px;line-height:1.7">${s.desc}</p>
+        <h2 style="font-weight:900;font-size:24px;margin:0 0 12px;color:#0F1A1F">${s.title}</h2>
+        <p style="color:#64748B;font-size:15px;margin:0 0 28px;line-height:1.7">${s.desc}</p>
         <div style="display:flex;gap:8px;justify-content:center;margin-bottom:28px">${dots}</div>
         <button id="_obNext" style="width:100%;background:linear-gradient(135deg,#14B8A6,#A855F7);border:none;color:#fff;border-radius:50px;padding:16px;font-size:16px;font-weight:900;cursor:pointer">${step<steps.length-1?'הבא →':'התחל !'}</button>
-        ${step>0?`<button id="_obBack" style="width:100%;background:none;border:none;color:rgba(255,255,255,.4);padding:12px;font-size:14px;cursor:pointer;margin-top:6px">← חזור</button>`:''}
+        ${step>0?`<button id="_obBack" style="width:100%;background:none;border:none;color:#94A3B8;padding:12px;font-size:14px;cursor:pointer;margin-top:6px">← חזור</button>`:''}
       </div>`;
     ov.querySelector('#_obNext').onclick=()=>{
       if(step<steps.length-1){step++;_draw();}
@@ -4921,8 +4925,8 @@ function _showVideoUploadProgress(title){
   if(existing)existing.remove();
   const el=document.createElement('div');
   el.id='_vidUploadProgress';
-  el.style.cssText='position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#0F1A1F,#1A2530);color:#fff;border-radius:18px;padding:14px 20px;z-index:99999;min-width:260px;max-width:90vw;box-shadow:0 8px 32px rgba(0,0,0,0.4);direction:rtl;display:flex;gap:12px;align-items:center;animation:fadeUp 0.3s ease';
-  el.innerHTML=`<div style="font-size:24px">📤</div><div style="flex:1"><div style="font-weight:800;font-size:13px;margin-bottom:6px">${title||'סרטון'} – מועלה...</div><div style="height:6px;background:rgba(255,255,255,.15);border-radius:50px;overflow:hidden"><div id="_vidProgressBar" style="height:100%;width:5%;background:linear-gradient(90deg,#14B8A6,#A855F7);border-radius:50px;transition:width 0.4s ease"></div></div><div id="_vidProgressPct" style="font-size:10px;color:rgba(255,255,255,.6);margin-top:4px">0%</div></div>`;
+  el.style.cssText='position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#fff;color:#0F1A1F;border-radius:18px;padding:14px 20px;z-index:99999;min-width:260px;max-width:90vw;box-shadow:0 8px 32px rgba(20,184,166,0.25);direction:rtl;display:flex;gap:12px;align-items:center;animation:fadeUp 0.3s ease;border:1.5px solid rgba(20,184,166,0.2)';
+  el.innerHTML=`<div style="font-size:24px">📤</div><div style="flex:1"><div style="font-weight:800;font-size:13px;margin-bottom:6px">${title||'סרטון'} – מועלה...</div><div style="height:6px;background:rgba(20,184,166,.15);border-radius:50px;overflow:hidden"><div id="_vidProgressBar" style="height:100%;width:5%;background:linear-gradient(90deg,#14B8A6,#A855F7);border-radius:50px;transition:width 0.4s ease"></div></div><div id="_vidProgressPct" style="font-size:10px;color:#64748B;margin-top:4px">0%</div></div>`;
   document.body.appendChild(el);
 }
 function _updateVideoUploadProgress(pct){
@@ -5626,14 +5630,14 @@ async function _verifyAdminPin(onSuccess){
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:99999;display:flex;align-items:center;justify-content:center;direction:rtl;backdrop-filter:blur(10px)';
   const isFirstTime=!storedHash;
   ov.innerHTML=`
-    <div style="background:#0F1A1F;border:1px solid rgba(239,68,68,0.3);border-radius:24px;padding:32px 28px;width:90%;max-width:360px;text-align:center">
+    <div style="background:#fff;border:1px solid rgba(239,68,68,0.2);border-radius:24px;padding:32px 28px;width:90%;max-width:360px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.15)">
       <div style="font-size:48px;margin-bottom:12px">${isFirstTime?'🔐':'🔑'}</div>
-      <h3 style="color:#fff;font-weight:900;font-size:20px;margin:0 0 8px">${isFirstTime?'הגדר קוד PIN למנהל':'קוד PIN מנהל'}</h3>
-      <p style="color:rgba(255,255,255,0.5);font-size:13px;margin:0 0 20px">${isFirstTime?'בחר קוד 4–8 ספרות לאבטחה נוספת':'הזן קוד PIN כדי להמשיך'}</p>
-      <input id="_adminPinInput" type="password" inputmode="numeric" maxlength="8" placeholder="••••" style="width:100%;box-sizing:border-box;text-align:center;letter-spacing:8px;font-size:24px;font-weight:900;padding:14px;background:rgba(255,255,255,0.05);border:1.5px solid rgba(239,68,68,0.3);border-radius:14px;color:#fff;outline:none;margin-bottom:${isFirstTime?'12px':'20px'}">
-      ${isFirstTime?`<input id="_adminPinInput2" type="password" inputmode="numeric" maxlength="8" placeholder="אמת קוד" style="width:100%;box-sizing:border-box;text-align:center;letter-spacing:8px;font-size:24px;font-weight:900;padding:14px;background:rgba(255,255,255,0.05);border:1.5px solid rgba(239,68,68,0.3);border-radius:14px;color:#fff;outline:none;margin-bottom:20px">`:''}
+      <h3 style="color:#0F1A1F;font-weight:900;font-size:20px;margin:0 0 8px">${isFirstTime?'הגדר קוד PIN למנהל':'קוד PIN מנהל'}</h3>
+      <p style="color:#64748B;font-size:13px;margin:0 0 20px">${isFirstTime?'בחר קוד 4–8 ספרות לאבטחה נוספת':'הזן קוד PIN כדי להמשיך'}</p>
+      <input id="_adminPinInput" type="password" inputmode="numeric" maxlength="8" placeholder="••••" style="width:100%;box-sizing:border-box;text-align:center;letter-spacing:8px;font-size:24px;font-weight:900;padding:14px;background:#F8FAFC;border:1.5px solid rgba(239,68,68,0.3);border-radius:14px;color:#0F1A1F;outline:none;margin-bottom:${isFirstTime?'12px':'20px'}">
+      ${isFirstTime?`<input id="_adminPinInput2" type="password" inputmode="numeric" maxlength="8" placeholder="אמת קוד" style="width:100%;box-sizing:border-box;text-align:center;letter-spacing:8px;font-size:24px;font-weight:900;padding:14px;background:#F8FAFC;border:1.5px solid rgba(239,68,68,0.3);border-radius:14px;color:#0F1A1F;outline:none;margin-bottom:20px">`:''}
       <div style="display:flex;gap:10px">
-        <button id="_adminPinCancel" style="flex:1;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.6);border-radius:50px;padding:12px;font-size:14px;font-weight:700;cursor:pointer">ביטול</button>
+        <button id="_adminPinCancel" style="flex:1;background:#F1F5F9;border:1px solid #E2E8F0;color:#64748B;border-radius:50px;padding:12px;font-size:14px;font-weight:700;cursor:pointer">ביטול</button>
         <button id="_adminPinSubmit" style="flex:2;background:linear-gradient(135deg,#EF4444,#DC2626);border:none;color:#fff;border-radius:50px;padding:12px;font-size:14px;font-weight:800;cursor:pointer">${isFirstTime?'הגדר PIN':'כניסה'}</button>
       </div>
     </div>`;
@@ -5900,9 +5904,9 @@ function renderAdminTab(){
 
       <!-- סיכום פיננסי -->
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px">
-        <div style="background:linear-gradient(135deg,#0F1A1F,#1E293B);border-radius:16px;padding:14px;color:#fff;text-align:center">
-          <div style="font-size:20px;font-weight:900;color:#14B8A6">₪${totalGross.toLocaleString()}</div>
-          <div style="font-size:10px;opacity:0.8;margin-top:3px">סה"כ הכנסות</div>
+        <div style="background:linear-gradient(135deg,#0D9488,#14B8A6);border-radius:16px;padding:14px;color:#fff;text-align:center">
+          <div style="font-size:20px;font-weight:900">₪${totalGross.toLocaleString()}</div>
+          <div style="font-size:10px;opacity:0.9;margin-top:3px">סה"כ הכנסות</div>
         </div>
         <div style="background:linear-gradient(135deg,#7E22CE,#A855F7);border-radius:16px;padding:14px;color:#fff;text-align:center">
           <div style="font-size:20px;font-weight:900">₪${totalCommission.toLocaleString()}</div>
@@ -6463,15 +6467,15 @@ function renderAdminTab(){
             </div>
           </div>`
       }
-      <div style="background:linear-gradient(135deg,#0F1A1F,#1E1B4B);border-radius:20px;padding:18px;color:#fff;margin-bottom:14px">
-        <h4 style="margin:0 0 14px;font-weight:900;font-size:16px;color:#5EEAD4">📊 סקירה כללית</h4>
+      <div style="background:#fff;border:1.5px solid rgba(20,184,166,0.15);border-radius:20px;padding:18px;margin-bottom:14px;box-shadow:0 4px 16px rgba(20,184,166,0.1)">
+        <h4 style="margin:0 0 14px;font-weight:900;font-size:16px;color:#14B8A6">📊 סקירה כללית</h4>
         <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">
-          <div><div style="font-size:11px;opacity:0.7">תלמידים</div><div style="font-size:22px;font-weight:900;color:#06B6D4">${studentCount}</div></div>
-          <div><div style="font-size:11px;opacity:0.7">מורים</div><div style="font-size:22px;font-weight:900;color:#A855F7">${teacherCount}</div></div>
-          <div><div style="font-size:11px;opacity:0.7">מאושרים</div><div style="font-size:22px;font-weight:900;color:#10B981">${verifiedTeachers}</div></div>
-          <div><div style="font-size:11px;opacity:0.7">חסומים</div><div style="font-size:22px;font-weight:900;color:#EF4444">${blockedUsers}</div></div>
-          <div><div style="font-size:11px;opacity:0.7">סרטונים</div><div style="font-size:22px;font-weight:900;color:#FBBF24">${totalVideos}</div></div>
-          <div><div style="font-size:11px;opacity:0.7">מאושרים</div><div style="font-size:22px;font-weight:900;color:#5EEAD4">${approvedVideos}</div></div>
+          <div><div style="font-size:11px;color:#64748B">תלמידים</div><div style="font-size:22px;font-weight:900;color:#06B6D4">${studentCount}</div></div>
+          <div><div style="font-size:11px;color:#64748B">מורים</div><div style="font-size:22px;font-weight:900;color:#A855F7">${teacherCount}</div></div>
+          <div><div style="font-size:11px;color:#64748B">מאושרים</div><div style="font-size:22px;font-weight:900;color:#10B981">${verifiedTeachers}</div></div>
+          <div><div style="font-size:11px;color:#64748B">חסומים</div><div style="font-size:22px;font-weight:900;color:#EF4444">${blockedUsers}</div></div>
+          <div><div style="font-size:11px;color:#64748B">סרטונים</div><div style="font-size:22px;font-weight:900;color:#FBBF24">${totalVideos}</div></div>
+          <div><div style="font-size:11px;color:#64748B">מאושרים</div><div style="font-size:22px;font-weight:900;color:#14B8A6">${approvedVideos}</div></div>
         </div>
       </div>
       ${topCats.length>0?`
@@ -7077,8 +7081,8 @@ function Home(){
         const _streak=_teacherStreak();
         const _views=teacherAnalytics?.profileViews||0;
         if(!_earn.total&&!_streak&&!_views)return '';
-        return `<div style="background:linear-gradient(135deg,#0F1A1F,#1A2530);border-radius:24px;padding:16px 18px;margin-bottom:18px;color:#fff">
-          <div style="font-weight:900;font-size:14px;opacity:.7;margin-bottom:12px;text-align:right">📊 הסטטיסטיקות שלי</div>
+        return `<div style="background:#fff;border-radius:24px;padding:16px 18px;margin-bottom:18px;box-shadow:0 4px 20px rgba(20,184,166,0.12);border:1px solid rgba(20,184,166,0.1)">
+          <div style="font-weight:900;font-size:14px;color:#64748B;margin-bottom:12px;text-align:right">📊 הסטטיסטיקות שלי</div>
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
             <div onclick="S.pTab='wallet';go('profile')" style="background:rgba(16,185,129,0.18);border-radius:16px;padding:12px 8px;text-align:center;cursor:pointer">
               <div style="font-size:20px;font-weight:900;color:#34D399">₪${_earn.monthly.toLocaleString()}</div>
@@ -7097,14 +7101,13 @@ function Home(){
       })():''}
 
       <!-- Nearby CTA -->
-      <button onclick="go('nearby')" style="width:100%;background:linear-gradient(135deg,#0F1A1F,#1A2530);border:none;border-radius:var(--radius);padding:18px 20px;margin-bottom:22px;display:flex;align-items:center;gap:14px;cursor:pointer;text-align:right;position:relative;overflow:hidden">
-        <div style="position:absolute;inset:0;background:linear-gradient(135deg,rgba(20,184,166,.2),rgba(20,184,166,.1))"></div>
-        <div style="width:50px;height:50px;border-radius:16px;background:rgba(20,184,166,.2);border:1.5px solid rgba(20,184,166,.35);display:flex;align-items:center;justify-content:center;flex-shrink:0;position:relative;z-index:1"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></div>
-        <div style="position:relative;z-index:1;flex:1">
+      <button onclick="go('nearby')" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;border-radius:var(--radius);padding:18px 20px;margin-bottom:22px;display:flex;align-items:center;gap:14px;cursor:pointer;text-align:right;position:relative;overflow:hidden">
+        <div style="width:50px;height:50px;border-radius:16px;background:rgba(255,255,255,.25);border:1.5px solid rgba(255,255,255,.35);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></div>
+        <div style="flex:1">
           <div style="font-weight:900;font-size:15px;color:#fff">מצא מורה קרוב אליך</div>
-          <div style="font-size:12px;color:rgba(255,255,255,.45);margin-top:2px">חיפוש לפי GPS עד 1 ק"מ</div>
+          <div style="font-size:12px;color:rgba(255,255,255,.75);margin-top:2px">חיפוש לפי GPS עד 1 ק"מ</div>
         </div>
-        <div style="position:relative;z-index:1"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg></div>
+        <div><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.6)" stroke-width="2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg></div>
       </button>
 
       ${S.catFilter?(()=>{
@@ -7438,13 +7441,13 @@ function Teacher(){
       </div>
 
       <!-- Pricing -->
-      <div style="background:linear-gradient(135deg,#0F1A1F,#1A2530);border-radius:var(--radius);padding:20px;margin-bottom:16px">
+      <div style="background:#fff;border-radius:var(--radius);padding:20px;margin-bottom:16px;box-shadow:0 4px 20px rgba(20,184,166,0.12);border:1px solid rgba(20,184,166,0.1)">
         <div style="display:flex;justify-content:space-between;align-items:center">
-          <div style="text-align:center"><div style="color:rgba(255,255,255,.5);font-size:12px">חבילה 5 שיעורים</div><div style="color:#14B8A6;font-size:22px;font-weight:900">₪${t.price*5-20}</div><div style="color:rgba(255,255,255,.35);font-size:11px">חיסכון ₪20</div></div>
-          <div style="width:1px;height:50px;background:rgba(255,255,255,.1)"></div>
-          <div style="text-align:center"><div style="color:rgba(255,255,255,.5);font-size:12px">שיעור בודד</div><div style="color:#FFD23F;font-size:28px;font-weight:900">₪${t.price}</div></div>
-          <div style="width:1px;height:50px;background:rgba(255,255,255,.1)"></div>
-          <div style="text-align:center"><div style="color:rgba(255,255,255,.5);font-size:12px">ממוצע דירוג</div><div style="color:#FFD23F;font-size:22px;font-weight:900">${t.rating>0?'⭐'+t.rating:'חדש'}</div></div>
+          <div style="text-align:center"><div style="color:#64748B;font-size:12px">חבילה 5 שיעורים</div><div style="color:#14B8A6;font-size:22px;font-weight:900">₪${t.price*5-20}</div><div style="color:#94A3B8;font-size:11px">חיסכון ₪20</div></div>
+          <div style="width:1px;height:50px;background:rgba(20,184,166,.15)"></div>
+          <div style="text-align:center"><div style="color:#64748B;font-size:12px">שיעור בודד</div><div style="color:#F59E0B;font-size:28px;font-weight:900">₪${t.price}</div></div>
+          <div style="width:1px;height:50px;background:rgba(20,184,166,.15)"></div>
+          <div style="text-align:center"><div style="color:#64748B;font-size:12px">ממוצע דירוג</div><div style="color:#F59E0B;font-size:22px;font-weight:900">${t.rating>0?'⭐'+t.rating:'חדש'}</div></div>
         </div>
       </div>
 
@@ -7633,20 +7636,20 @@ function Booking(){
 
   if(step===2) body=`
     <!-- הסבר מודל התשלום -->
-    <div style="background:linear-gradient(135deg,#0F1A1F,#1E1B4B);border-radius:20px;padding:18px;color:#fff;margin-bottom:16px">
+    <div style="background:#fff;border-radius:20px;padding:18px;margin-bottom:16px;box-shadow:0 4px 16px rgba(20,184,166,0.1);border:1px solid rgba(20,184,166,0.15)">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-        <div style="width:40px;height:40px;border-radius:12px;background:rgba(20,184,166,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+        <div style="width:40px;height:40px;border-radius:12px;background:rgba(20,184,166,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
         <div>
           <div style="font-weight:900;font-size:16px;color:#14B8A6">תשלום מאובטח דרך Kidemy</div>
-          <div style="font-size:12px;color:rgba(255,255,255,0.7);margin-top:2px">הכסף אצלנו עד שהשיעור הושלם</div>
+          <div style="font-size:12px;color:#64748B;margin-top:2px">הכסף אצלנו עד שהשיעור הושלם</div>
         </div>
       </div>
       <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-        <div style="background:rgba(20,184,166,0.2);border-radius:50px;padding:5px 12px;font-size:11px;font-weight:700;color:#5EEAD4">1️⃣ אתה משלם ל-Kidemy</div>
-        <span style="color:rgba(255,255,255,0.4)">→</span>
-        <div style="background:rgba(168,85,247,0.2);border-radius:50px;padding:5px 12px;font-size:11px;font-weight:700;color:#C4B5FD">2️⃣ השיעור מתקיים</div>
-        <span style="color:rgba(255,255,255,0.4)">→</span>
-        <div style="background:rgba(251,191,36,0.2);border-radius:50px;padding:5px 12px;font-size:11px;font-weight:700;color:#FDE68A">3️⃣ Kidemy מעביר למורה</div>
+        <div style="background:rgba(20,184,166,0.1);border-radius:50px;padding:5px 12px;font-size:11px;font-weight:700;color:#0D9488">1️⃣ אתה משלם ל-Kidemy</div>
+        <span style="color:#94A3B8">→</span>
+        <div style="background:rgba(168,85,247,0.1);border-radius:50px;padding:5px 12px;font-size:11px;font-weight:700;color:#7C3AED">2️⃣ השיעור מתקיים</div>
+        <span style="color:#94A3B8">→</span>
+        <div style="background:rgba(251,191,36,0.1);border-radius:50px;padding:5px 12px;font-size:11px;font-weight:700;color:#D97706">3️⃣ Kidemy מעביר למורה</div>
       </div>
     </div>
 
@@ -7716,11 +7719,11 @@ function Booking(){
       <p style="font-size:13px;color:#64748B;margin:0 0 18px;line-height:1.6">ממתינה לאימות תשלום ע"י צוות Kidemy</p>
 
       <!-- קוד הפניה -->
-      <div style="background:linear-gradient(135deg,#0F1A1F,#1E293B);border-radius:20px;padding:20px;margin-bottom:18px;color:#fff">
-        <div style="font-size:11px;color:rgba(255,255,255,0.6);margin-bottom:6px;display:flex;align-items:center;gap:6px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>קוד הפניה שלך</div>
+      <div style="background:linear-gradient(135deg,#E0FDF4,#CCFBF1);border:1.5px solid rgba(20,184,166,0.25);border-radius:20px;padding:20px;margin-bottom:18px">
+        <div style="font-size:11px;color:#64748B;margin-bottom:6px;display:flex;align-items:center;gap:6px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>קוד הפניה שלך</div>
         <div style="font-size:30px;font-weight:900;letter-spacing:3px;color:#14B8A6;font-family:monospace">${S.lastPayRef||''}</div>
-        <div style="font-size:11px;color:rgba(255,255,255,0.5);margin-top:6px">שמור קוד זה — הוא מקשר את התשלום שלך להזמנה</div>
-        <button onclick="if(navigator.clipboard)navigator.clipboard.writeText('${S.lastPayRef||''}').then(()=>showFireToast('📋 הקוד הועתק!'))" style="margin-top:12px;background:rgba(20,184,166,0.2);border:1px solid rgba(20,184,166,0.4);color:#14B8A6;border-radius:50px;padding:7px 18px;font-size:12px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>העתק קוד</button>
+        <div style="font-size:11px;color:#64748B;margin-top:6px">שמור קוד זה — הוא מקשר את התשלום שלך להזמנה</div>
+        <button onclick="if(navigator.clipboard)navigator.clipboard.writeText('${S.lastPayRef||''}').then(()=>showFireToast('📋 הקוד הועתק!'))" style="margin-top:12px;background:rgba(20,184,166,0.15);border:1px solid rgba(20,184,166,0.35);color:#0D9488;border-radius:50px;padding:7px 18px;font-size:12px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0D9488" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>העתק קוד</button>
       </div>
 
       <!-- פרטי ההזמנה -->
@@ -7747,7 +7750,7 @@ function Booking(){
     </div>`;}
 
   return `<div class="screen" style="background:linear-gradient(165deg,#CCFBF1 0%,#A5F3FC 50%,#7DD3FC 100%)">
-    <div style="background:linear-gradient(135deg,#0F1A1F,#1A2530);padding:20px 20px 28px;color:#fff">
+    <div style="background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);padding:20px 20px 28px;color:#fff;border-radius:0 0 28px 28px">
       <button onclick="${step===1?"back()":"S.bookStep--;render()"}" style="background:rgba(255,255,255,.1);border:none;color:#fff;font-size:14px;cursor:pointer;border-radius:50px;padding:8px 16px;font-weight:700">← חזור</button>
       <h2 style="font-size:18px;font-weight:900;margin:10px 0 4px;display:flex;align-items:center;gap:8px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>קביעת שיעור עם ${t.name}</h2>
       <div class="steps" style="margin-top:12px">${[1,2,3].map(i=>`<span class="${i<=step?"on":""}"></span>`).join("")}</div>
@@ -8107,10 +8110,10 @@ function Profile(){
     const done=teacherAllBookings.filter(b=>b.status==='completed').sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
     const myUid=currentUser?.uid;
     content=`
-    <div style="background:linear-gradient(135deg,#0F1A1F,#1a2a1a);border-radius:22px;padding:20px;margin-bottom:14px;color:#fff">
-      <div style="font-size:12px;opacity:.7;margin-bottom:4px">סה"כ הרווחת</div>
-      <div style="font-size:36px;font-weight:900;color:#34D399">₪${earn.total.toLocaleString()}</div>
-      <div style="font-size:12px;opacity:.6;margin-top:2px">${earn.count} שיעורים הושלמו</div>
+    <div style="background:linear-gradient(135deg,#ECFDF5,#D1FAE5);border:1.5px solid rgba(16,185,129,0.2);border-radius:22px;padding:20px;margin-bottom:14px">
+      <div style="font-size:12px;color:#64748B;margin-bottom:4px">סה"כ הרווחת</div>
+      <div style="font-size:36px;font-weight:900;color:#059669">₪${earn.total.toLocaleString()}</div>
+      <div style="font-size:12px;color:#64748B;margin-top:2px">${earn.count} שיעורים הושלמו</div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
       <div style="background:#fff;border-radius:18px;padding:14px;text-align:center;box-shadow:0 2px 10px rgba(0,0,0,0.07)">
@@ -8394,9 +8397,9 @@ function Parent(){
         `:''}
       `}
 
-      <div style="background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);border-radius:24px;padding:20px;color:#fff;margin-top:14px">
-        <h4 style="margin:0 0 8px;font-weight:900;font-size:16px;display:flex;align-items:center;gap:7px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> אבטחת ילדים</h4>
-        <p style="margin:0;font-size:13px;line-height:1.7;opacity:.95">כל שיעור פרונטלי מחייב אישור הורה. שיעורי אונליין מתבצעים בקישור מאובטח (Zoom / Google Meet) של המורה. הורים מקבלים דוח אחרי כל שיעור.</p>
+      <div style="background:linear-gradient(135deg,#E0FDF4,#CCFBF1);border:1.5px solid rgba(20,184,166,0.25);border-radius:24px;padding:20px;margin-top:14px">
+        <h4 style="margin:0 0 8px;font-weight:900;font-size:16px;color:#0D9488;display:flex;align-items:center;gap:7px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0D9488" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> אבטחת ילדים</h4>
+        <p style="margin:0;font-size:13px;line-height:1.7;color:#0F1A1F">כל שיעור פרונטלי מחייב אישור הורה. שיעורי אונליין מתבצעים בקישור מאובטח (Zoom / Google Meet) של המורה. הורים מקבלים דוח אחרי כל שיעור.</p>
       </div>
     </div>
     ${BNav("parent")}
