@@ -522,8 +522,8 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.29';
-const APP_BUILD='22-06-2026';
+const APP_VERSION='4.9.30';
+const APP_BUILD='23-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
 let S={
@@ -1954,14 +1954,21 @@ async function processPayment(payMethod,totalAmount){
 let teacherPendingBookings=[];
 let teacherAllBookings=[];
 let STORIES=[];
+let MY_PENDING_STORIES=[];
 
 function loadStories(){
   if(!db)return;
   db.ref('stories').on('value',snap=>{
     const now=Date.now();
     STORIES=[];
-    if(snap.exists())snap.forEach(c=>{const s={id:c.key,...c.val()};if(s.status==='approved'&&s.expiresAt>now)STORIES.push(s);});
+    MY_PENDING_STORIES=[];
+    if(snap.exists())snap.forEach(c=>{
+      const s={id:c.key,...c.val()};
+      if(s.status==='approved'&&s.expiresAt>now){STORIES.push(s);}
+      else if(s.status==='pending'&&currentUser&&s.uid===currentUser.uid){MY_PENDING_STORIES.push(s);}
+    });
     STORIES.sort((a,b)=>b.createdAt-a.createdAt);
+    MY_PENDING_STORIES.sort((a,b)=>b.createdAt-a.createdAt);
     if(S.screen==='home')render();
   });
 }
@@ -2006,6 +2013,35 @@ function openStoryViewer(teacherUid){
     setTimeout(()=>{const p=document.getElementById('_sp'+idx);if(p)p.style.width='100%';},30);
   }
   show();
+}
+
+function openPendingStoryPreview(storyId){
+  const s=MY_PENDING_STORIES.find(x=>x.id===storyId);
+  if(!s)return;
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:#000;z-index:99999;direction:ltr';
+  document.body.appendChild(ov);
+  const ago=Math.round((Date.now()-s.createdAt)/60000);
+  const agoTxt=ago<1?'עכשיו':ago<60?ago+' דק\'':Math.floor(ago/60)+' שע\'';
+  ov.innerHTML=`
+    <div style="position:absolute;top:0;left:0;right:0;padding:10px 10px 0;z-index:2">
+      <div style="height:3px;border-radius:2px;background:rgba(255,208,0,0.4)"><div style="height:100%;background:#FFD000;width:100%"></div></div>
+    </div>
+    <div style="position:absolute;top:22px;left:0;right:0;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;z-index:2;direction:rtl">
+      <div style="display:flex;align-items:center;gap:8px">
+        <img src="${escapeHtml(s.teacherPhoto||'')}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:2.5px solid #FFD000" onerror="this.style.display='none'">
+        <div>
+          <div style="color:#fff;font-weight:900;font-size:14px;text-shadow:0 1px 4px rgba(0,0,0,0.5)">${escapeHtml(s.teacherName||'')}</div>
+          <div style="color:rgba(255,255,255,0.6);font-size:11px">לפני ${agoTxt}</div>
+        </div>
+      </div>
+      <button onclick="this.closest('[style*=z-index]')&&document.body.removeChild(this.closest('div[style*=fixed]'))" style="background:rgba(0,0,0,0.4);border:none;color:#fff;font-size:18px;cursor:pointer;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center">✕</button>
+    </div>
+    <div style="position:absolute;top:12px;right:60px;z-index:3;background:rgba(255,208,0,0.9);color:#000;font-size:11px;font-weight:900;padding:3px 10px;border-radius:50px;direction:rtl">⏳ ממתין לאישור מנהל</div>
+    <img src="${escapeHtml(s.mediaUrl||'')}" style="width:100%;height:100%;object-fit:cover" onerror="this.style.background='#1a1a2e'">
+    ${s.text?`<div style="position:absolute;bottom:50px;left:0;right:0;padding:20px 20px 16px;background:linear-gradient(transparent,rgba(0,0,0,0.8));color:#fff;font-size:17px;font-weight:700;text-align:center;direction:rtl;line-height:1.4">${escapeHtml(s.text)}</div>`:''}
+  `;
+  ov.querySelector('button').onclick=()=>ov.remove();
 }
 
 async function uploadStory(){
@@ -5763,7 +5799,7 @@ function renderAdminPanel(){
   const pendingVideos=adminAllVideos.filter(v=>!v.approved);
   const ov=document.createElement('div');
   ov.id='_adminPanel';
-  ov.style.cssText='position:fixed;inset:0;background:#f4f7fa;z-index:9999;direction:rtl;overflow-y:auto';
+  ov.style.cssText='position:fixed;inset:0;background:linear-gradient(165deg,#CCFBF1 0%,#A5F3FC 50%,#7DD3FC 100%);z-index:9999;direction:rtl;overflow-y:auto';
   ov.innerHTML=`
     <div style="background:linear-gradient(135deg,#0F1A1F 0%,#0e4a44 50%,#3b1070 100%);padding:20px;color:#fff;position:sticky;top:0;z-index:2;box-shadow:0 4px 20px rgba(0,0,0,0.3);position:relative;overflow:hidden">
       <div style="position:absolute;top:-40px;right:-50px;width:180px;height:180px;border-radius:50%;background:rgba(168,85,247,.25);filter:blur(45px);pointer-events:none"></div>
@@ -5800,7 +5836,7 @@ function renderAdminPanel(){
       <div style="font-size:12px;color:#64748B;margin-bottom:10px">אתה לא מופיע ברשימת המורים. לחץ להגדרת פרופיל מורה.</div>
       <button onclick="document.getElementById('_adminPanel').remove();go('teacherSetup')" style="width:100%;background:linear-gradient(135deg,#F59E0B,#EF4444);border:none;color:#fff;border-radius:50px;padding:11px;font-weight:900;font-size:13px;cursor:pointer">🎓 הגדר פרופיל מורה עכשיו</button>
     </div>`:''}
-    <div style="background:#f4f7fa;padding:16px 16px 8px">
+    <div style="background:transparent;padding:16px 16px 8px">
       <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">
         ${[['teachers','מורים','#14B8A6','<path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/>',adminAllTeachers.length,totalPending],
            ['students','תלמידים','#A855F7','<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>',realStats.students,Math.max(adminAlertStudents.length,adminAllUsers.filter(u=>u.role!=='teacher'&&u.verified===false).length)],
@@ -5827,7 +5863,7 @@ function renderAdminPanel(){
           </div>`).join('')}
       </div>
     </div>
-    <div style="padding:16px;background:#f4f7fa;min-height:calc(100vh - 280px)">${renderAdminTab()}</div>`;
+    <div style="padding:16px;background:transparent;min-height:calc(100vh - 280px)">${renderAdminTab()}</div>`;
   document.body.appendChild(ov);
 }
 
@@ -6951,18 +6987,30 @@ function Home(){
       </div>
 
       ${(()=>{
-        if(!currentUser||!STORIES.length)return '';
+        const hasPending=currentUser&&currentUserData?.role==='teacher'&&MY_PENDING_STORIES.length>0;
+        if(!currentUser||(!STORIES.length&&!hasPending))return '';
         const seen=JSON.parse(localStorage.getItem('_storySeen')||'{}');
         const byTeacher={};
         STORIES.forEach(s=>{if(!byTeacher[s.uid]||s.createdAt>byTeacher[s.uid].createdAt)byTeacher[s.uid]=s;});
         const teachers=Object.values(byTeacher);
-        if(!teachers.length)return '';
+        if(!teachers.length&&!hasPending)return '';
+        const pendingItems=hasPending?MY_PENDING_STORIES.slice(0,1).map(s=>`
+          <div onclick="openPendingStoryPreview('${s.id}')" style="display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;flex-shrink:0;position:relative">
+            <div style="width:62px;height:62px;border-radius:50%;padding:2.5px;background:linear-gradient(135deg,#FFD000,#FFA030)">
+              <div style="width:100%;height:100%;border-radius:50%;background:#fff;padding:2px;box-sizing:border-box">
+                <img src="${escapeHtml(s.teacherPhoto||'')}" style="width:100%;height:100%;border-radius:50%;object-fit:cover" onerror="this.parentElement.innerHTML='<div style=width:100%;height:100%;border-radius:50%;background:linear-gradient(135deg,#FFD000,#FFA030);display:flex;align-items:center;justify-content:center;font-size:22px>🎓</div>'">
+              </div>
+            </div>
+            <div style="position:absolute;top:-4px;left:50%;transform:translateX(-50%);background:#FFD000;color:#000;font-size:8px;font-weight:900;padding:1px 5px;border-radius:50px;white-space:nowrap">⏳ ממתין</div>
+            <div style="font-size:10px;font-weight:700;color:#0F1A1F;max-width:64px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center">הסטורי שלי</div>
+          </div>`).join(''):'';
         return `<div style="margin-bottom:20px">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
             <div style="width:28px;height:28px;border-radius:9px;background:linear-gradient(135deg,#EC4899,#A855F7);display:flex;align-items:center;justify-content:center;font-size:14px">📸</div>
             <span style="font-weight:900;font-size:15px;color:#0F1A1F">סטוריז מורים</span>
           </div>
           <div style="display:flex;gap:14px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;-webkit-overflow-scrolling:touch">
+            ${pendingItems}
             ${teachers.map(s=>{
               const isSeen=!!seen[s.uid];
               return `<div onclick="openStoryViewer(${JSON.stringify(s.uid)})" style="display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;flex-shrink:0">
@@ -8841,113 +8889,99 @@ function TeacherPending(){
   const createdAt=t.createdAt?new Date(t.createdAt).toLocaleDateString('he-IL'):'היום';
   const rejected=currentUserData?.rejected===true;
 
-  return `<div class="screen" style="background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);min-height:100dvh;padding:0;direction:rtl">
-    
+  return `<div class="screen" style="background:linear-gradient(165deg,#CCFBF1 0%,#A5F3FC 50%,#7DD3FC 100%);min-height:100dvh;padding:0;direction:rtl">
+
     <!-- Header -->
-    <div style="padding:24px 20px 20px;text-align:center;border-bottom:1px solid rgba(255,255,255,0.08)">
+    <div style="background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);padding:24px 20px 20px;text-align:center;border-radius:0 0 28px 28px">
       <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:4px">
         <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#5EEAD4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
         <span style="color:#fff;font-size:24px;font-weight:900;letter-spacing:-0.02em">Kidemy</span>
       </div>
-      <p style="color:rgba(255,255,255,0.5);font-size:12px;margin:0">פלטפורמת שיעורים פרטיים</p>
-    </div>
-
-    <!-- Tabs -->
-    <div style="display:flex;padding:12px 16px;gap:8px">
-      <div style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border-radius:50px;padding:8px 20px;font-size:13px;font-weight:800;color:#fff">פעילים</div>
-      <div style="background:rgba(255,255,255,0.08);border-radius:50px;padding:8px 20px;font-size:13px;font-weight:700;color:rgba(255,255,255,0.5)">הסתיימו</div>
+      <p style="color:rgba(255,255,255,0.7);font-size:12px;margin:0">פלטפורמת שיעורים פרטיים</p>
     </div>
 
     <!-- Teacher Pending Card -->
     <div style="padding:16px">
-      <div style="background:rgba(255,255,255,0.06);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.1);border-radius:20px;overflow:hidden">
-        
-        <!-- Card Header with pulsing status -->
+      <div style="background:#fff;border:1.5px solid ${rejected?'rgba(239,68,68,0.3)':'rgba(20,184,166,0.25)'};border-radius:20px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08)">
+
         <div style="padding:16px 16px 0;display:flex;justify-content:space-between;align-items:start">
-          <div style="background:${rejected?'rgba(239,68,68,0.15)':'rgba(245,158,11,0.15)'};border:1px solid ${rejected?'rgba(239,68,68,0.4)':'rgba(245,158,11,0.3)'};border-radius:50px;padding:4px 12px;font-size:11px;font-weight:700;color:${rejected?'#EF4444':'#FBBF24'};display:flex;align-items:center;gap:5px">
-            <span style="width:7px;height:7px;border-radius:50%;background:${rejected?'#EF4444':'#FBBF24'};display:inline-block"></span>
+          <div style="background:${rejected?'rgba(239,68,68,0.1)':'rgba(245,158,11,0.1)'};border:1px solid ${rejected?'rgba(239,68,68,0.35)':'rgba(245,158,11,0.35)'};border-radius:50px;padding:4px 12px;font-size:11px;font-weight:700;color:${rejected?'#EF4444':'#B45309'};display:flex;align-items:center;gap:5px">
+            <span style="width:7px;height:7px;border-radius:50%;background:${rejected?'#EF4444':'#F59E0B'};display:inline-block"></span>
             ${rejected?'לא אושר':'ממתין לאישור'}
           </div>
-          <div style="text-align:left">
-            <p style="color:rgba(255,255,255,0.4);font-size:11px;margin:0">נרשם: ${createdAt}</p>
-          </div>
+          <p style="color:#94A3B8;font-size:11px;margin:0">נרשם: ${createdAt}</p>
         </div>
 
         <div style="padding:16px">
-          <!-- Teacher Info -->
           <div style="display:flex;gap:14px;align-items:center;margin-bottom:16px">
             <div style="width:52px;height:52px;border-radius:16px;background:linear-gradient(135deg,#14B8A6,#A855F7);display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0">${cat.em}</div>
             <div>
-              <h3 style="color:#fff;font-weight:900;font-size:17px;margin:0 0 4px">${name}</h3>
+              <h3 style="color:#0F1A1F;font-weight:900;font-size:17px;margin:0 0 4px">${name}</h3>
               <p style="color:#14B8A6;font-size:13px;font-weight:700;margin:0">${cat.lbl} • ${t.city||''}</p>
             </div>
           </div>
 
-          <!-- Details -->
           <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
             <div style="display:flex;align-items:center;gap:8px">
               <span style="font-size:16px">💰</span>
-              <span style="color:rgba(255,255,255,0.7);font-size:13px">₪${t.price||0} לשיעור</span>
+              <span style="color:#475569;font-size:13px">₪${t.price||0} לשיעור</span>
             </div>
             <div style="display:flex;align-items:center;gap:8px">
               <span style="font-size:16px">📧</span>
-              <span style="color:rgba(255,255,255,0.7);font-size:13px;direction:ltr">${displayEmail(currentUser?.email)||''}</span>
+              <span style="color:#475569;font-size:13px;direction:ltr">${displayEmail(currentUser?.email)||''}</span>
             </div>
             ${t.mode?`<div style="display:flex;align-items:center;gap:8px">
               <span style="font-size:16px">🖥</span>
-              <span style="color:rgba(255,255,255,0.7);font-size:13px">${t.mode}</span>
+              <span style="color:#475569;font-size:13px">${t.mode}</span>
             </div>`:''}
           </div>
 
           ${rejected?`
-          <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:14px;padding:16px;margin-bottom:14px;text-align:center">
+          <div style="background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.25);border-radius:14px;padding:16px;margin-bottom:14px;text-align:center">
             <div style="font-size:36px;margin-bottom:8px">❌</div>
             <h4 style="color:#EF4444;font-size:14px;font-weight:800;margin:0 0 8px">הפרופיל לא אושר</h4>
-            <p style="color:rgba(255,255,255,0.7);font-size:13px;margin:0 0 12px;line-height:1.6">לצורך פרטים נוספים, פנה למנהל האפליקציה:</p>
-            <div style="background:rgba(255,255,255,0.06);border-radius:10px;padding:10px">
+            <p style="color:#64748B;font-size:13px;margin:0 0 12px;line-height:1.6">לצורך פרטים נוספים, פנה למנהל האפליקציה:</p>
+            <div style="background:#F1F5F9;border-radius:10px;padding:10px">
               <div style="color:#14B8A6;font-size:13px;font-weight:700">${ADMIN_EMAIL}</div>
             </div>
           </div>
           `:`
-          <!-- Status message -->
-          <div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.25);border-radius:14px;padding:14px;margin-bottom:14px">
-            <p style="color:#FBBF24;font-size:13px;font-weight:700;margin:0 0 6px;text-align:right;display:flex;align-items:center;justify-content:flex-end;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FBBF24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> ממתין לאישור המנהל</p>
-            <p style="color:rgba(255,255,255,0.6);font-size:12px;margin:0;line-height:1.6;text-align:right">הפרופיל שלך נשלח לבדיקה. תוך 24 שעות תקבל אישור ותוכל להתחיל ללמד!</p>
+          <div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);border-radius:14px;padding:14px;margin-bottom:14px">
+            <p style="color:#B45309;font-size:13px;font-weight:700;margin:0 0 6px;text-align:right;display:flex;align-items:center;justify-content:flex-end;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#B45309" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> ממתין לאישור המנהל</p>
+            <p style="color:#64748B;font-size:12px;margin:0;line-height:1.6;text-align:right">הפרופיל שלך נשלח לבדיקה. תוך 24 שעות תקבל אישור ותוכל להתחיל ללמד!</p>
           </div>
 
-          <!-- What happens next -->
           <div style="background:rgba(20,184,166,0.08);border:1px solid rgba(20,184,166,0.2);border-radius:14px;padding:14px;margin-bottom:16px">
-            <p style="color:#14B8A6;font-size:12px;font-weight:800;margin:0 0 10px;text-align:right">🔜 מה קורה עכשיו?</p>
+            <p style="color:#0F766E;font-size:12px;font-weight:800;margin:0 0 10px;text-align:right">🔜 מה קורה עכשיו?</p>
             <div style="display:flex;flex-direction:column;gap:8px">
               <div style="display:flex;gap:8px;align-items:center">
                 <div style="width:22px;height:22px;border-radius:50%;background:#14B8A6;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;flex-shrink:0">1</div>
-                <span style="color:rgba(255,255,255,0.7);font-size:12px">המנהל בודק את הפרופיל שלך</span>
+                <span style="color:#475569;font-size:12px">המנהל בודק את הפרופיל שלך</span>
               </div>
               <div style="display:flex;gap:8px;align-items:center">
                 <div style="width:22px;height:22px;border-radius:50%;background:#06B6D4;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;flex-shrink:0">2</div>
-                <span style="color:rgba(255,255,255,0.7);font-size:12px">תקבל הודעה לאחר האישור</span>
+                <span style="color:#475569;font-size:12px">תקבל הודעה לאחר האישור</span>
               </div>
               <div style="display:flex;gap:8px;align-items:center">
                 <div style="width:22px;height:22px;border-radius:50%;background:#A855F7;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;flex-shrink:0">3</div>
-                <span style="color:rgba(255,255,255,0.7);font-size:12px">הפרופיל מופיע לתלמידים!</span>
+                <span style="color:#475569;font-size:12px">הפרופיל מופיע לתלמידים!</span>
               </div>
             </div>
           </div>
           `}
 
-          <!-- Actions -->
           <div style="display:flex;gap:10px">
             ${!rejected?`<button onclick="showWhatsAppDialog('',WA_TEMPLATES.inviteFriend(),'שתף חברים')" style="flex:1;background:linear-gradient(135deg,#25D366,#128C7E);border:none;color:#fff;border-radius:50px;padding:12px;font-size:13px;font-weight:800;cursor:pointer">📱 שתף חברים</button>`:''}
-            <button onclick="auth.signOut();go('login')" style="flex:1;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.6);border-radius:50px;padding:12px;font-size:13px;font-weight:700;cursor:pointer">יציאה</button>
+            <button onclick="auth.signOut();go('login')" style="flex:1;background:#F1F5F9;border:1px solid #E2E8F0;color:#64748B;border-radius:50px;padding:12px;font-size:13px;font-weight:700;cursor:pointer">יציאה</button>
           </div>
           <div style="display:flex;gap:10px;margin-top:10px">
-            <button onclick="toggleDarkMode()" style="flex:1;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.7);border-radius:50px;padding:11px;font-size:13px;font-weight:700;cursor:pointer">${darkMode?'☀️ מצב יום':'🌙 מצב לילה'}</button>
-            <button onclick="deleteMyAccount()" style="flex:1;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);color:#EF4444;border-radius:50px;padding:11px;font-size:12px;font-weight:700;cursor:pointer">🗑 מחק חשבון</button>
+            <button onclick="toggleDarkMode()" style="flex:1;background:#F1F5F9;border:1px solid #E2E8F0;color:#475569;border-radius:50px;padding:11px;font-size:13px;font-weight:700;cursor:pointer">${darkMode?'☀️ מצב יום':'🌙 מצב לילה'}</button>
+            <button onclick="deleteMyAccount()" style="flex:1;background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.25);color:#EF4444;border-radius:50px;padding:11px;font-size:12px;font-weight:700;cursor:pointer">🗑 מחק חשבון</button>
           </div>
         </div>
       </div>
 
-      ${!rejected?'<p style="text-align:center;color:rgba(255,255,255,0.3);font-size:11px;margin-top:14px">הדף מתרענן אוטומטית כשהפרופיל מאושר 🔄</p>':''}
+      ${!rejected?'<p style="text-align:center;color:#64748B;font-size:11px;margin-top:14px">הדף מתרענן אוטומטית כשהפרופיל מאושר 🔄</p>':''}
     </div>
   </div>`;
 }
@@ -8958,8 +8992,8 @@ function StudentPending(){
   const parentPhone=currentUserData?.parentPhone||'';
   const createdAt=currentUserData?.createdAt?new Date(currentUserData.createdAt).toLocaleDateString('he-IL'):'היום';
   const rejected=currentUserData?.rejected===true;
-  return `<div class="screen" style="background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);min-height:100dvh;padding:0;direction:rtl">
-    <div style="padding:24px 20px 20px;text-align:center;border-bottom:1px solid rgba(255,255,255,0.08)">
+  return `<div class="screen" style="background:linear-gradient(165deg,#CCFBF1 0%,#A5F3FC 50%,#7DD3FC 100%);min-height:100dvh;padding:0;direction:rtl">
+    <div style="padding:24px 20px 20px;text-align:center;background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);border-radius:0 0 28px 28px">
       <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:4px">
         <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#5EEAD4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
         <span style="color:#fff;font-size:24px;font-weight:900;letter-spacing:-0.02em">Kidemy</span>
@@ -8967,19 +9001,19 @@ function StudentPending(){
       <p style="color:rgba(255,255,255,0.5);font-size:12px;margin:0">פלטפורמת שיעורים פרטיים</p>
     </div>
     <div style="padding:20px 16px">
-      <div style="background:rgba(255,255,255,0.06);backdrop-filter:blur(12px);border:1px solid ${rejected?'rgba(239,68,68,0.4)':'rgba(255,255,255,0.1)'};border-radius:20px;overflow:hidden">
+      <div style="background:#fff;box-shadow:0 4px 24px rgba(0,0,0,0.08);border:1px solid ${rejected?'rgba(239,68,68,0.3)':'#E2E8F0'};border-radius:20px;overflow:hidden">
         <div style="padding:16px 16px 0;display:flex;justify-content:space-between;align-items:start">
-          <div style="background:${rejected?'rgba(239,68,68,0.15)':'rgba(245,158,11,0.15)'};border:1px solid ${rejected?'rgba(239,68,68,0.4)':'rgba(245,158,11,0.3)'};border-radius:50px;padding:4px 12px;font-size:11px;font-weight:700;color:${rejected?'#EF4444':'#FBBF24'};display:flex;align-items:center;gap:5px">
-            <span style="width:7px;height:7px;border-radius:50%;background:${rejected?'#EF4444':'#FBBF24'};display:inline-block"></span>
+          <div style="background:${rejected?'rgba(239,68,68,0.1)':'rgba(245,158,11,0.1)'};border:1px solid ${rejected?'rgba(239,68,68,0.3)':'rgba(245,158,11,0.3)'};border-radius:50px;padding:4px 12px;font-size:11px;font-weight:700;color:${rejected?'#EF4444':'#B45309'};display:flex;align-items:center;gap:5px">
+            <span style="width:7px;height:7px;border-radius:50%;background:${rejected?'#EF4444':'#F59E0B'};display:inline-block"></span>
             ${rejected?'לא אושר':'ממתין לאישור מנהל'}
           </div>
-          <p style="color:rgba(255,255,255,0.4);font-size:11px;margin:0">נרשם: ${createdAt}</p>
+          <p style="color:#94A3B8;font-size:11px;margin:0">נרשם: ${createdAt}</p>
         </div>
         <div style="padding:18px">
           <div style="display:flex;gap:14px;align-items:center;margin-bottom:18px">
             <div style="width:52px;height:52px;border-radius:16px;background:linear-gradient(135deg,#06B6D4,#A855F7);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg></div>
             <div>
-              <h3 style="color:#fff;font-weight:900;font-size:17px;margin:0 0 4px">${name}</h3>
+              <h3 style="color:#0F1A1F;font-weight:900;font-size:17px;margin:0 0 4px">${name}</h3>
               <p style="color:#06B6D4;font-size:13px;font-weight:700;margin:0">תלמיד • גיל ${currentUserData?.age||'?'}</p>
             </div>
           </div>
@@ -8987,7 +9021,7 @@ function StudentPending(){
           <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:14px;padding:16px;margin-bottom:16px;text-align:center">
             <div style="font-size:36px;margin-bottom:8px">❌</div>
             <h4 style="color:#EF4444;font-size:14px;font-weight:800;margin:0 0 8px">הבקשה לא אושרה</h4>
-            <p style="color:rgba(255,255,255,0.7);font-size:13px;margin:0 0 12px;line-height:1.6">לצורך פרטים נוספים, פנה למנהל האפליקציה:</p>
+            <p style="color:#475569;font-size:13px;margin:0 0 12px;line-height:1.6">לצורך פרטים נוספים, פנה למנהל האפליקציה:</p>
             <div style="background:rgba(255,255,255,0.06);border-radius:10px;padding:10px">
               <div style="color:#14B8A6;font-size:13px;font-weight:700">${ADMIN_EMAIL}</div>
             </div>
@@ -8998,29 +9032,29 @@ function StudentPending(){
             <div style="display:flex;flex-direction:column;gap:8px">
               <div style="display:flex;align-items:center;gap:8px">
                 <div style="width:22px;height:22px;border-radius:50%;background:#F59E0B;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;flex-shrink:0">1</div>
-                <span style="color:rgba(255,255,255,0.7);font-size:12px">ההרשמה התקבלה בהצלחה</span>
+                <span style="color:#475569;font-size:12px">ההרשמה התקבלה בהצלחה</span>
               </div>
               <div style="display:flex;align-items:center;gap:8px">
                 <div style="width:22px;height:22px;border-radius:50%;background:#06B6D4;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;flex-shrink:0">2</div>
-                <span style="color:rgba(255,255,255,0.7);font-size:12px">מנהל Kidemy יצור קשר עם ההורה לאימות — בדרך כלל תוך 24 שעות</span>
+                <span style="color:#475569;font-size:12px">מנהל Kidemy יצור קשר עם ההורה לאימות — בדרך כלל תוך 24 שעות</span>
               </div>
               <div style="display:flex;align-items:center;gap:8px">
                 <div style="width:22px;height:22px;border-radius:50%;background:#A855F7;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;flex-shrink:0">3</div>
-                <span style="color:rgba(255,255,255,0.7);font-size:12px">לאחר אישור — גישה מלאה לאפליקציה!</span>
+                <span style="color:#475569;font-size:12px">לאחר אישור — גישה מלאה לאפליקציה!</span>
               </div>
             </div>
           </div>
           `}
           ${parentName&&!rejected?`<div style="background:rgba(168,85,247,0.08);border-radius:12px;padding:10px 14px;margin-bottom:14px">
             <div style="font-size:11px;color:#A855F7;font-weight:800;margin-bottom:4px">👨‍👩‍👧 הורה אחראי</div>
-            <div style="color:#fff;font-size:13px;font-weight:700">${parentName}</div>
-            ${parentPhone?`<div style="color:rgba(255,255,255,0.6);font-size:12px;direction:ltr;text-align:right">📱 ${parentPhone}</div>`:''}
+            <div style="color:#0F1A1F;font-size:13px;font-weight:700">${parentName}</div>
+            ${parentPhone?`<div style="color:#64748B;font-size:12px;direction:ltr;text-align:right">📱 ${parentPhone}</div>`:''}
           </div>`:''}
-          <button onclick="auth.signOut().then(()=>go('login'))" style="width:100%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.7);border-radius:50px;padding:12px;font-size:13px;font-weight:700;cursor:pointer">← התנתק</button>
+          <button onclick="auth.signOut().then(()=>go('login'))" style="width:100%;background:#F1F5F9;border:1px solid #E2E8F0;color:#64748B;border-radius:50px;padding:12px;font-size:13px;font-weight:700;cursor:pointer">← התנתק</button>
           <button onclick="deleteMyAccount()" style="margin-top:8px;width:100%;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);color:#EF4444;border-radius:50px;padding:11px;font-size:12px;font-weight:700;cursor:pointer">🗑 מחק חשבון</button>
         </div>
       </div>
-      ${!rejected?'<p style="text-align:center;color:rgba(255,255,255,0.3);font-size:11px;margin-top:14px">הדף מתרענן אוטומטית כשהחשבון מאושר 🔄</p>':''}
+      ${!rejected?'<p style="text-align:center;color:#64748B;font-size:11px;margin-top:14px">הדף מתרענן אוטומטית כשהחשבון מאושר 🔄</p>':''}
     </div>
   </div>`;
 }
@@ -9730,8 +9764,8 @@ function WeeklySchedule(){
   const groups={};
   upcoming.forEach(b=>{const k=b.day||'—';if(!groups[k])groups[k]=[];groups[k].push(b);});
   const entries=Object.entries(groups);
-  return `<div class="screen" style="background:#0F1A1F;min-height:100vh">
-    <div style="background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);padding:24px 20px 28px;color:#fff">
+  return `<div class="screen" style="background:linear-gradient(165deg,#CCFBF1 0%,#A5F3FC 50%,#7DD3FC 100%);min-height:100vh">
+    <div style="background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);padding:24px 20px 28px;color:#fff;border-radius:0 0 28px 28px">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:4px">
         <button onclick="back()" style="background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:50%;width:36px;height:36px;font-size:18px;cursor:pointer">←</button>
         <div>
@@ -9749,20 +9783,20 @@ function WeeklySchedule(){
           <button onclick="go('${isTeacher?'profile':'home'}')" style="background:linear-gradient(135deg,#6366F1,#A855F7);border:none;color:#fff;border-radius:50px;padding:12px 24px;font-weight:800;font-size:14px;cursor:pointer">${isTeacher?'👤 עמוד הפרופיל':'🔍 מצא מורה'}</button>
         </div>
       `:entries.map(([day,bkgs])=>`
-        <div style="margin-bottom:16px;border-radius:18px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.25)">
+        <div style="margin-bottom:16px;border-radius:18px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08)">
           <div style="background:linear-gradient(135deg,#4F46E5,#7C3AED);padding:12px 16px;display:flex;align-items:center;justify-content:space-between">
             <span style="background:rgba(255,255,255,0.2);color:#fff;border-radius:50px;padding:3px 10px;font-size:11px;font-weight:800">${bkgs.length} שיעורים</span>
             <span style="font-size:15px;font-weight:900;color:#fff;display:flex;align-items:center;gap:6px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> יום ${escapeHtml(day)}</span>
           </div>
           ${bkgs.map((b,i)=>`
-            <div style="background:#1E2D35;${i<bkgs.length-1?'border-bottom:1px solid rgba(255,255,255,0.06)':'border-radius:0 0 18px 18px'};padding:14px 16px">
+            <div style="background:#fff;${i<bkgs.length-1?'border-bottom:1px solid #F1F5F9':'border-radius:0 0 18px 18px'};padding:14px 16px">
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:${b.status==='approved'?'10':'0'}px">
                 <div style="display:flex;align-items:center;gap:8px">
-                  <span style="background:${b.status==='approved'?'rgba(16,185,129,0.2)':'rgba(245,158,11,0.2)'};color:${b.status==='approved'?'#10B981':'#F59E0B'};padding:3px 9px;border-radius:50px;font-size:11px;font-weight:800">${b.status==='approved'?'✅ מאושר':'⏳ ממתין'}</span>
-                  <span style="font-size:12px;color:#94A3B8;font-weight:700">🕐 ${escapeHtml(b.time||'')}</span>
+                  <span style="background:${b.status==='approved'?'rgba(16,185,129,0.12)':'rgba(245,158,11,0.12)'};color:${b.status==='approved'?'#10B981':'#B45309'};padding:3px 9px;border-radius:50px;font-size:11px;font-weight:800">${b.status==='approved'?'✅ מאושר':'⏳ ממתין'}</span>
+                  <span style="font-size:12px;color:#64748B;font-weight:700">🕐 ${escapeHtml(b.time||'')}</span>
                 </div>
                 <div style="text-align:right">
-                  <div style="font-size:15px;font-weight:900;color:#fff">${escapeHtml(isTeacher?(b.studentName||''):(b.teacherName||''))}</div>
+                  <div style="font-size:15px;font-weight:900;color:#0F1A1F">${escapeHtml(isTeacher?(b.studentName||''):(b.teacherName||''))}</div>
                   <div style="font-size:11px;color:#64748B;margin-top:1px">₪${b.price||0} · ${escapeHtml(b.teacherCat||'')}</div>
                 </div>
               </div>
