@@ -193,7 +193,7 @@ input,textarea,select{font-family:inherit;-webkit-appearance:none;appearance:non
 .p-acts button{background:none;border:none;font-weight:700;font-size:14px;color:var(--muted);cursor:pointer;display:flex;align-items:center;gap:5px}
 
 /* CHAT */
-.chat-wrap{min-height:100dvh;display:flex;flex-direction:column;background:#EEEEFC;direction:rtl}
+.chat-wrap{min-height:100dvh;display:flex;flex-direction:column;background:linear-gradient(165deg,#CCFBF1 0%,#A5F3FC 50%,#7DD3FC 100%);direction:rtl}
 .chat-hdr{background:rgba(255,255,255,.96);backdrop-filter:blur(20px);padding:14px 18px;border-bottom:1px solid rgba(0,0,0,.06);display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:10}
 .chat-msgs{flex:1;overflow-y:auto;padding:14px 14px 10px;-webkit-overflow-scrolling:touch}
 .bbl{max-width:76%;padding:11px 15px;font-size:14px;line-height:1.5;box-shadow:0 2px 8px rgba(0,0,0,.07)}
@@ -526,7 +526,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.34';
+const APP_VERSION='4.9.35';
 const APP_BUILD='23-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -8470,13 +8470,11 @@ function Community(){
   const memberCount=S.posts.filter(p=>p.authUid).reduce((acc,p)=>{if(p.authUid)acc.add(p.authUid);return acc;},new Set()).size||0;
   const postCount=vis.length||S.posts.length||0;
   return `<div class="screen">
-    <div style="background:linear-gradient(135deg,#4C1D95 0%,#7C3AED 50%,#A855F7 100%);padding:22px 20px 24px;border-radius:0 0 32px 32px;color:#fff;position:relative;overflow:hidden">
-      <div style="position:absolute;top:-40px;right:-50px;width:180px;height:180px;border-radius:50%;background:rgba(139,92,246,.3);filter:blur(45px);pointer-events:none"></div>
-      <div style="position:absolute;bottom:-30px;left:-40px;width:150px;height:150px;border-radius:50%;background:rgba(20,184,166,.2);filter:blur(45px);pointer-events:none"></div>
+    <div style="background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);padding:22px 20px 24px;border-radius:0 0 32px 32px;color:#fff;position:relative;overflow:hidden">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;position:relative;z-index:1">
         <div style="display:flex;gap:8px;align-items:center">
-          <button onclick="back()" style="background:rgba(255,255,255,.2);border:none;color:#fff;font-size:14px;cursor:pointer;border-radius:50px;padding:8px 14px;font-weight:700">← חזור</button>
-          <button onclick="S.showCompose=true;render()" style="background:rgba(255,255,255,.2);border:none;color:#fff;font-weight:800;font-size:13px;cursor:pointer;border-radius:50px;padding:9px 16px;display:flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> שאל/שתף</button>
+          <button onclick="back()" style="background:rgba(255,255,255,.15);border:none;color:#fff;font-size:14px;cursor:pointer;border-radius:50px;padding:8px 14px;font-weight:700">← חזור</button>
+          <button onclick="S.showCompose=true;render()" style="background:rgba(255,255,255,.15);border:none;color:#fff;font-weight:800;font-size:13px;cursor:pointer;border-radius:50px;padding:9px 16px;display:flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> שאל/שתף</button>
         </div>
         <div style="text-align:right;position:relative;z-index:1">
           <h2 style="font-size:22px;font-weight:900;margin:0">קהילה</h2>
@@ -8484,28 +8482,28 @@ function Community(){
         </div>
       </div>
       <div style="display:flex;gap:10px;position:relative;z-index:1;margin-bottom:14px">
-        <div style="background:rgba(255,255,255,.15);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.2);border-radius:14px;padding:8px 14px;display:flex;align-items:center;gap:8px">
+        <div style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);border-radius:14px;padding:8px 14px;display:flex;align-items:center;gap:8px">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.8)" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           <span style="font-size:12px;color:#fff;font-weight:700">${memberCount||S.posts.length||0} חברים</span>
         </div>
-        <div style="background:rgba(255,255,255,.15);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.2);border-radius:14px;padding:8px 14px;display:flex;align-items:center;gap:8px">
+        <div style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);border-radius:14px;padding:8px 14px;display:flex;align-items:center;gap:8px">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.8)" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
           <span style="font-size:12px;color:#fff;font-weight:700">${postCount} פוסטים</span>
         </div>
       </div>
       ${S.comTab!=='groups'?`<div style="overflow-x:auto;display:flex;gap:8px;padding-bottom:2px;position:relative;z-index:1">
-        ${CC.map(c=>`<button onclick="S.comFilter='${c.id}';render()" style="flex-shrink:0;padding:7px 13px;border-radius:50px;border:none;font-weight:700;font-size:12px;cursor:pointer;background:${S.comFilter===c.id?"#fff":"rgba(255,255,255,.18)"};color:${S.comFilter===c.id?"#7C3AED":"#fff"};transition:all .2s">${c.e} ${c.l}</button>`).join("")}
+        ${CC.map(c=>`<button onclick="S.comFilter='${c.id}';render()" style="flex-shrink:0;padding:7px 13px;border-radius:50px;border:none;font-weight:700;font-size:12px;cursor:pointer;background:${S.comFilter===c.id?"#fff":"rgba(255,255,255,.15)"};color:${S.comFilter===c.id?"#0e7a72":"#fff"};transition:all .2s">${c.e} ${c.l}</button>`).join("")}
       </div>`:''}
       ${S.comTab!=='groups'&&myArea?`
         <div style="margin-top:10px;position:relative;z-index:1">
-          <button onclick="S.areaOnly=!S.areaOnly;render()" style="background:${S.areaOnly?'#fff':'rgba(255,255,255,.22)'};color:${S.areaOnly?'#7C3AED':'#fff'};border:none;border-radius:50px;padding:7px 14px;font-weight:800;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:6px">
+          <button onclick="S.areaOnly=!S.areaOnly;render()" style="background:${S.areaOnly?'#fff':'rgba(255,255,255,.18)'};color:${S.areaOnly?'#0e7a72':'#fff'};border:none;border-radius:50px;padding:7px 14px;font-weight:800;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:6px">
             📍 ${S.areaOnly?'מציג רק '+myArea:'הצג רק '+myArea}
           </button>
         </div>
       `:''}
-      <div style="display:flex;gap:4px;background:rgba(255,255,255,0.15);border-radius:12px;padding:3px;margin-top:12px;position:relative;z-index:1">
-        <button onclick="S.comTab='posts';render()" style="flex:1;padding:8px;border:none;border-radius:10px;font-weight:800;font-size:13px;cursor:pointer;transition:all .2s;background:${S.comTab!=='groups'?'rgba(255,255,255,0.9)':'transparent'};color:${S.comTab!=='groups'?'#7C3AED':'rgba(255,255,255,0.85)'}">פוסטים</button>
-        <button onclick="S.comTab='groups';render()" style="flex:1;padding:8px;border:none;border-radius:10px;font-weight:800;font-size:13px;cursor:pointer;transition:all .2s;background:${S.comTab==='groups'?'rgba(255,255,255,0.9)':'transparent'};color:${S.comTab==='groups'?'#7C3AED':'rgba(255,255,255,0.85)'}">קבוצות${communityGroups.length?' ('+communityGroups.length+')':''}</button>
+      <div style="display:flex;gap:4px;background:rgba(255,255,255,0.12);border-radius:12px;padding:3px;margin-top:12px;position:relative;z-index:1">
+        <button onclick="S.comTab='posts';render()" style="flex:1;padding:8px;border:none;border-radius:10px;font-weight:800;font-size:13px;cursor:pointer;transition:all .2s;background:${S.comTab!=='groups'?'rgba(255,255,255,0.9)':'transparent'};color:${S.comTab!=='groups'?'#0F1A1F':'rgba(255,255,255,0.85)'}">פוסטים</button>
+        <button onclick="S.comTab='groups';render()" style="flex:1;padding:8px;border:none;border-radius:10px;font-weight:800;font-size:13px;cursor:pointer;transition:all .2s;background:${S.comTab==='groups'?'rgba(255,255,255,0.9)':'transparent'};color:${S.comTab==='groups'?'#0F1A1F':'rgba(255,255,255,0.85)'}">קבוצות${communityGroups.length?' ('+communityGroups.length+')':''}</button>
       </div>
     </div>
     ${currentUser&&S.comTab!=='groups'?`
@@ -8525,8 +8523,8 @@ function Community(){
     </div>`:''}
     <div style="padding:15px 16px 100px">${S.comTab==='groups'?_groupsHtml:S.posts.length===0?`<div style="text-align:center;padding:60px 20px">
     <div style="font-size:48px;margin-bottom:16px">💬</div>
-    <h3 style="color:#fff;font-weight:800;margin:0 0 8px">עדיין אין פוסטים</h3>
-    <p style="color:rgba(255,255,255,0.6);font-size:14px;margin:0 0 20px">היה הראשון לשתף משהו עם הקהילה!</p>
+    <h3 style="color:#0F1A1F;font-weight:800;margin:0 0 8px">עדיין אין פוסטים</h3>
+    <p style="color:#64748B;font-size:14px;margin:0 0 20px">היה הראשון לשתף משהו עם הקהילה!</p>
   </div>`:vis.length===0?`
       <div style="background:rgba(255,255,255,0.7);backdrop-filter:blur(12px);border-radius:24px;padding:40px 24px;text-align:center;margin-top:30px">
         <div style="font-size:64px;margin-bottom:14px">💬</div>
@@ -9786,7 +9784,7 @@ function WeeklySchedule(){
         </div>
       `:entries.map(([day,bkgs])=>`
         <div style="margin-bottom:16px;border-radius:18px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08)">
-          <div style="background:linear-gradient(135deg,#4F46E5,#7C3AED);padding:12px 16px;display:flex;align-items:center;justify-content:space-between">
+          <div style="background:linear-gradient(135deg,#0D9488,#14B8A6);padding:12px 16px;display:flex;align-items:center;justify-content:space-between">
             <span style="background:rgba(255,255,255,0.2);color:#fff;border-radius:50px;padding:3px 10px;font-size:11px;font-weight:800">${bkgs.length} שיעורים</span>
             <span style="font-size:15px;font-weight:900;color:#fff;display:flex;align-items:center;gap:6px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> יום ${escapeHtml(day)}</span>
           </div>
