@@ -148,6 +148,12 @@
     },
     "contactMessages": { ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'", ".write": "auth != null" },
     "pendingCategories": { ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'", ".write": "auth != null" },
+    "stories": {
+      ".read": "auth != null",
+      "$storyId": {
+        ".write": "auth != null && (!data.exists() && newData.child('uid').val() == auth.uid || data.child('uid').val() == auth.uid || auth.token.email == 'rotemshaer@gmail.com')"
+      }
+    },
     "adminConfig": {
       ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'",
       ".write": "auth != null && auth.token.email == 'rotemshaer@gmail.com'"
