@@ -1954,14 +1954,21 @@ async function processPayment(payMethod,totalAmount){
 let teacherPendingBookings=[];
 let teacherAllBookings=[];
 let STORIES=[];
+let MY_PENDING_STORIES=[];
 
 function loadStories(){
   if(!db)return;
   db.ref('stories').on('value',snap=>{
     const now=Date.now();
     STORIES=[];
-    if(snap.exists())snap.forEach(c=>{const s={id:c.key,...c.val()};if(s.status==='approved'&&s.expiresAt>now)STORIES.push(s);});
+    MY_PENDING_STORIES=[];
+    if(snap.exists())snap.forEach(c=>{
+      const s={id:c.key,...c.val()};
+      if(s.status==='approved'&&s.expiresAt>now){STORIES.push(s);}
+      else if(s.status==='pending'&&currentUser&&s.uid===currentUser.uid){MY_PENDING_STORIES.push(s);}
+    });
     STORIES.sort((a,b)=>b.createdAt-a.createdAt);
+    MY_PENDING_STORIES.sort((a,b)=>b.createdAt-a.createdAt);
     if(S.screen==='home')render();
   });
 }
@@ -2006,6 +2013,35 @@ function openStoryViewer(teacherUid){
     setTimeout(()=>{const p=document.getElementById('_sp'+idx);if(p)p.style.width='100%';},30);
   }
   show();
+}
+
+function openPendingStoryPreview(storyId){
+  const s=MY_PENDING_STORIES.find(x=>x.id===storyId);
+  if(!s)return;
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:#000;z-index:99999;direction:ltr';
+  document.body.appendChild(ov);
+  const ago=Math.round((Date.now()-s.createdAt)/60000);
+  const agoTxt=ago<1?'עכשיו':ago<60?ago+' דק\'':Math.floor(ago/60)+' שע\'';
+  ov.innerHTML=`
+    <div style="position:absolute;top:0;left:0;right:0;padding:10px 10px 0;z-index:2">
+      <div style="height:3px;border-radius:2px;background:rgba(255,208,0,0.4)"><div style="height:100%;background:#FFD000;width:100%"></div></div>
+    </div>
+    <div style="position:absolute;top:22px;left:0;right:0;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;z-index:2;direction:rtl">
+      <div style="display:flex;align-items:center;gap:8px">
+        <img src="${escapeHtml(s.teacherPhoto||'')}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:2.5px solid #FFD000" onerror="this.style.display='none'">
+        <div>
+          <div style="color:#fff;font-weight:900;font-size:14px;text-shadow:0 1px 4px rgba(0,0,0,0.5)">${escapeHtml(s.teacherName||'')}</div>
+          <div style="color:rgba(255,255,255,0.6);font-size:11px">לפני ${agoTxt}</div>
+        </div>
+      </div>
+      <button onclick="this.closest('[style*=z-index]')&&document.body.removeChild(this.closest('div[style*=fixed]'))" style="background:rgba(0,0,0,0.4);border:none;color:#fff;font-size:18px;cursor:pointer;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center">✕</button>
+    </div>
+    <div style="position:absolute;top:12px;right:60px;z-index:3;background:rgba(255,208,0,0.9);color:#000;font-size:11px;font-weight:900;padding:3px 10px;border-radius:50px;direction:rtl">⏳ ממתין לאישור מנהל</div>
+    <img src="${escapeHtml(s.mediaUrl||'')}" style="width:100%;height:100%;object-fit:cover" onerror="this.style.background='#1a1a2e'">
+    ${s.text?`<div style="position:absolute;bottom:50px;left:0;right:0;padding:20px 20px 16px;background:linear-gradient(transparent,rgba(0,0,0,0.8));color:#fff;font-size:17px;font-weight:700;text-align:center;direction:rtl;line-height:1.4">${escapeHtml(s.text)}</div>`:''}
+  `;
+  ov.querySelector('button').onclick=()=>ov.remove();
 }
 
 async function uploadStory(){
@@ -6951,18 +6987,30 @@ function Home(){
       </div>
 
       ${(()=>{
-        if(!currentUser||!STORIES.length)return '';
+        const hasPending=currentUser&&currentUserData?.role==='teacher'&&MY_PENDING_STORIES.length>0;
+        if(!currentUser||(!STORIES.length&&!hasPending))return '';
         const seen=JSON.parse(localStorage.getItem('_storySeen')||'{}');
         const byTeacher={};
         STORIES.forEach(s=>{if(!byTeacher[s.uid]||s.createdAt>byTeacher[s.uid].createdAt)byTeacher[s.uid]=s;});
         const teachers=Object.values(byTeacher);
-        if(!teachers.length)return '';
+        if(!teachers.length&&!hasPending)return '';
+        const pendingItems=hasPending?MY_PENDING_STORIES.slice(0,1).map(s=>`
+          <div onclick="openPendingStoryPreview('${s.id}')" style="display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;flex-shrink:0;position:relative">
+            <div style="width:62px;height:62px;border-radius:50%;padding:2.5px;background:linear-gradient(135deg,#FFD000,#FFA030)">
+              <div style="width:100%;height:100%;border-radius:50%;background:#fff;padding:2px;box-sizing:border-box">
+                <img src="${escapeHtml(s.teacherPhoto||'')}" style="width:100%;height:100%;border-radius:50%;object-fit:cover" onerror="this.parentElement.innerHTML='<div style=width:100%;height:100%;border-radius:50%;background:linear-gradient(135deg,#FFD000,#FFA030);display:flex;align-items:center;justify-content:center;font-size:22px>🎓</div>'">
+              </div>
+            </div>
+            <div style="position:absolute;top:-4px;left:50%;transform:translateX(-50%);background:#FFD000;color:#000;font-size:8px;font-weight:900;padding:1px 5px;border-radius:50px;white-space:nowrap">⏳ ממתין</div>
+            <div style="font-size:10px;font-weight:700;color:#0F1A1F;max-width:64px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center">הסטורי שלי</div>
+          </div>`).join(''):'';
         return `<div style="margin-bottom:20px">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
             <div style="width:28px;height:28px;border-radius:9px;background:linear-gradient(135deg,#EC4899,#A855F7);display:flex;align-items:center;justify-content:center;font-size:14px">📸</div>
             <span style="font-weight:900;font-size:15px;color:#0F1A1F">סטוריז מורים</span>
           </div>
           <div style="display:flex;gap:14px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;-webkit-overflow-scrolling:touch">
+            ${pendingItems}
             ${teachers.map(s=>{
               const isSeen=!!seen[s.uid];
               return `<div onclick="openStoryViewer(${JSON.stringify(s.uid)})" style="display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;flex-shrink:0">
