@@ -522,7 +522,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.32';
+const APP_VERSION='4.9.33';
 const APP_BUILD='23-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -964,28 +964,27 @@ function SharePanel(){
 
 // ─── SPLASH ───────────────────────────────────────────────────────────────────
 function Splash(){
-  return `<div style="min-height:100dvh;background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:36px 28px;text-align:center;position:relative;overflow:hidden">
-    <div style="position:absolute;top:-120px;right:-100px;width:380px;height:380px;border-radius:50%;background:radial-gradient(circle,rgba(20,184,166,0.35),transparent 70%);filter:blur(20px)"></div>
-    <div style="position:absolute;bottom:-100px;left:-100px;width:340px;height:340px;border-radius:50%;background:radial-gradient(circle,rgba(168,85,247,0.30),transparent 70%);filter:blur(20px)"></div>
-    <div style="position:absolute;top:30%;left:10%;width:160px;height:160px;border-radius:50%;background:radial-gradient(circle,rgba(6,182,212,0.20),transparent);filter:blur(30px)"></div>
-    <div style="margin-bottom:14px;filter:drop-shadow(0 0 40px rgba(20,184,166,0.7));position:relative;z-index:1"><svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#5EEAD4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg></div>
-    <h1 style="font-size:62px;font-weight:900;background:linear-gradient(135deg,#5EEAD4 0%,#22D3EE 35%,#A855F7 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin:0;line-height:1;letter-spacing:-0.05em;position:relative;z-index:1">Kidemy</h1>
-    <p style="font-size:14px;color:rgba(94,234,212,0.7);margin-top:14px;max-width:300px;line-height:1.7;position:relative;z-index:1">מוזיקה, ספורט, לימודים, יצירה ועוד</p>
+  return `<div style="min-height:100dvh;background:linear-gradient(165deg,#CCFBF1 0%,#A5F3FC 50%,#7DD3FC 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:36px 28px;text-align:center;position:relative;overflow:hidden">
+    <div style="position:absolute;top:-120px;right:-100px;width:380px;height:380px;border-radius:50%;background:radial-gradient(circle,rgba(20,184,166,0.2),transparent 70%);filter:blur(20px)"></div>
+    <div style="position:absolute;bottom:-100px;left:-100px;width:340px;height:340px;border-radius:50%;background:radial-gradient(circle,rgba(168,85,247,0.15),transparent 70%);filter:blur(20px)"></div>
+    <div style="margin-bottom:14px;filter:drop-shadow(0 0 30px rgba(13,148,136,0.4));position:relative;z-index:1"><svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#0D9488" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg></div>
+    <h1 style="font-size:62px;font-weight:900;background:linear-gradient(135deg,#0D9488 0%,#0891B2 35%,#7C3AED 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin:0;line-height:1;letter-spacing:-0.05em;position:relative;z-index:1">Kidemy</h1>
+    <p style="font-size:14px;color:#0F766E;margin-top:14px;max-width:300px;line-height:1.7;position:relative;z-index:1">מוזיקה, ספורט, לימודים, יצירה ועוד</p>
     <div style="display:flex;gap:12px;margin-top:26px;justify-content:center;position:relative;z-index:1">
-      ${[[realStats.teachers,"מורים"],[realStats.categories,"נושאים"],[realStats.cities,"ערים"]].map(([v,l])=>`<div style="background:rgba(20,184,166,0.12);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(94,234,212,0.25);border-radius:18px;padding:12px 20px;text-align:center"><div style="font-weight:900;font-size:22px;color:#5EEAD4">${v}</div><div style="font-size:11px;color:rgba(255,255,255,0.6);font-weight:600">${l}</div></div>`).join("")}
+      ${[[realStats.teachers,"מורים"],[realStats.categories,"נושאים"],[realStats.cities,"ערים"]].map(([v,l])=>`<div style="background:#fff;border:1px solid #E2E8F0;border-radius:18px;padding:12px 20px;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,0.06)"><div style="font-weight:900;font-size:22px;color:#0D9488">${v}</div><div style="font-size:11px;color:#64748B;font-weight:600">${l}</div></div>`).join("")}
     </div>
     <div style="margin-top:42px;display:flex;flex-direction:column;gap:12px;width:100%;max-width:300px;position:relative;z-index:1">
       <button class="btn bp" onclick="go('safety')">✨ הצטרף עכשיו – חינם!</button>
       <button class="btn bd" onclick="go('login')">🔑 כבר רשום? התחבר</button>
     </div>
-    <p style="color:rgba(255,255,255,.3);font-size:11px;margin-top:24px;position:relative;z-index:1">מיועד לילדים 8–18 בליווי הורים</p>
-    <p style="color:rgba(94,234,212,0.35);font-size:10px;margin-top:6px;position:relative;z-index:1">v${APP_VERSION} · ${APP_BUILD}</p>
+    <p style="color:#64748B;font-size:11px;margin-top:24px;position:relative;z-index:1">מיועד לילדים 8–18 בליווי הורים</p>
+    <p style="color:#94A3B8;font-size:10px;margin-top:6px;position:relative;z-index:1">v${APP_VERSION} · ${APP_BUILD}</p>
   </div>`;
 }
 
 // ─── REGISTER (5 STEPS) ───────────────────────────────────────────────────────
 function Safety(){
-  return `<div class="screen" style="background:linear-gradient(165deg,#0F172A 0%,#0D2234 60%,#0C1A2E 100%);min-height:100dvh;display:flex;flex-direction:column;align-items:center;padding:0 0 40px;overflow-y:auto;color:#fff">
+  return `<div class="screen" style="background:linear-gradient(165deg,#CCFBF1 0%,#A5F3FC 50%,#7DD3FC 100%);min-height:100dvh;display:flex;flex-direction:column;align-items:center;padding:0 0 40px;overflow-y:auto">
 
     <!-- Header -->
     <div style="width:100%;background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);padding:28px 20px 24px;text-align:center;position:relative">
@@ -1009,7 +1008,7 @@ function Safety(){
       </div>
 
       <!-- Section 1 -->
-      <div style="background:rgba(255,255,255,.04);border:1.5px solid rgba(20,184,166,.25);border-radius:20px;padding:18px;backdrop-filter:blur(8px)">
+      <div style="background:#fff;border:1.5px solid rgba(20,184,166,.25);border-radius:20px;padding:18px;box-shadow:0 2px 12px rgba(0,0,0,0.06)">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
           <div style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border-radius:12px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
           <div><div style="font-weight:900;font-size:15px">פיקוח הורים – חובה מוחלטת</div><div style="font-size:11px;color:#94A3B8;margin-top:2px">אין הרשמה ללא הורה</div></div>
@@ -1019,11 +1018,11 @@ function Safety(){
           ['ההורה מקבל מייל על כל הזמנת שיעור, אישור שיעור, ופעילות חשובה באפליקציה.',false],
           ['להורה יש גישה לכל השיחות של הילד – ניתן לקרוא כל הודעה בכל עת.',false],
           ['ניתן לבטל חשבון בכל עת דרך פנייה למנהל האפליקציה.',false],
-        ].map(([t])=>`<div style="display:flex;gap:9px;margin-bottom:10px;align-items:flex-start"><span style="color:#14B8A6;font-size:16px;flex-shrink:0;margin-top:1px">✓</span><span style="font-size:13px;line-height:1.6;color:#CBD5E1">${t}</span></div>`).join('')}
+        ].map(([t])=>`<div style="display:flex;gap:9px;margin-bottom:10px;align-items:flex-start"><span style="color:#14B8A6;font-size:16px;flex-shrink:0;margin-top:1px">✓</span><span style="font-size:13px;line-height:1.6;color:#475569">${t}</span></div>`).join('')}
       </div>
 
       <!-- Section 2 -->
-      <div style="background:rgba(255,255,255,.04);border:1.5px solid rgba(168,85,247,.25);border-radius:20px;padding:18px;backdrop-filter:blur(8px)">
+      <div style="background:#fff;border:1.5px solid rgba(168,85,247,.25);border-radius:20px;padding:18px;box-shadow:0 2px 12px rgba(0,0,0,0.06)">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
           <div style="background:linear-gradient(135deg,#A855F7,#EC4899);border-radius:12px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg></div>
           <div><div style="font-weight:900;font-size:15px">אימות מורים אוטומטי</div><div style="font-size:11px;color:#94A3B8;margin-top:2px">כל מורה עובר בדיקה</div></div>
@@ -1033,11 +1032,11 @@ function Safety(){
           'צוות Kidemy מאמת את פרטי הגיל והזהות של כל מורה בנפרד.',
           'מנהל האפליקציה יכול להשעות או למחוק מורה בכל רגע אם מתקבל דיווח.',
           'כל ביקורת שתלמיד כותב על מורה נשמרת ומוצגת בשקיפות מלאה.',
-        ].map(t=>`<div style="display:flex;gap:9px;margin-bottom:10px;align-items:flex-start"><span style="color:#A855F7;font-size:16px;flex-shrink:0;margin-top:1px">✓</span><span style="font-size:13px;line-height:1.6;color:#CBD5E1">${t}</span></div>`).join('')}
+        ].map(t=>`<div style="display:flex;gap:9px;margin-bottom:10px;align-items:flex-start"><span style="color:#A855F7;font-size:16px;flex-shrink:0;margin-top:1px">✓</span><span style="font-size:13px;line-height:1.6;color:#475569">${t}</span></div>`).join('')}
       </div>
 
       <!-- Section 3 -->
-      <div style="background:rgba(255,255,255,.04);border:1.5px solid rgba(6,182,212,.25);border-radius:20px;padding:18px;backdrop-filter:blur(8px)">
+      <div style="background:#fff;border:1.5px solid rgba(6,182,212,.25);border-radius:20px;padding:18px;box-shadow:0 2px 12px rgba(0,0,0,0.06)">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
           <div style="background:linear-gradient(135deg,#06B6D4,#3B82F6);border-radius:12px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg></div>
           <div><div style="font-weight:900;font-size:15px">שיעורים אונליין מאובטחים</div><div style="font-size:11px;color:#94A3B8;margin-top:2px">טכנולוגיה מוכחת ובטוחה</div></div>
@@ -1047,11 +1046,11 @@ function Safety(){
           'לכל שיעור יש קישור אישי וייחודי שהמורה מגדיר. אורחים לא מוזמנים לא יכולים להיכנס.',
           'שיעורים פרונטליים (פנים-אל-פנים) מחייבים אישור הורה מפורש לפני האישור הסופי.',
           'שיעורי אונליין פתוחים לכל המשתתפים המוזמנים – ללא הגבלת מספר.',
-        ].map(t=>`<div style="display:flex;gap:9px;margin-bottom:10px;align-items:flex-start"><span style="color:#06B6D4;font-size:16px;flex-shrink:0;margin-top:1px">✓</span><span style="font-size:13px;line-height:1.6;color:#CBD5E1">${t}</span></div>`).join('')}
+        ].map(t=>`<div style="display:flex;gap:9px;margin-bottom:10px;align-items:flex-start"><span style="color:#06B6D4;font-size:16px;flex-shrink:0;margin-top:1px">✓</span><span style="font-size:13px;line-height:1.6;color:#475569">${t}</span></div>`).join('')}
       </div>
 
       <!-- Section 4 -->
-      <div style="background:rgba(255,255,255,.04);border:1.5px solid rgba(239,68,68,.25);border-radius:20px;padding:18px;backdrop-filter:blur(8px)">
+      <div style="background:#fff;border:1.5px solid rgba(239,68,68,.25);border-radius:20px;padding:18px;box-shadow:0 2px 12px rgba(0,0,0,0.06)">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
           <div style="background:linear-gradient(135deg,#EF4444,#F97316);border-radius:12px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg></div>
           <div><div style="font-weight:900;font-size:15px">מערכת דיווח ואכיפה</div><div style="font-size:11px;color:#94A3B8;margin-top:2px">אפס סבלנות לתוכן פוגעני</div></div>
@@ -1061,11 +1060,11 @@ function Safety(){
           'דיווחים מגיעים ישירות למנהל האפליקציה שמטפל בהם בתוך 24 שעות.',
           'משתמש שדיווח עליו יחסם מיד עד לבירור, גם אם הדיווח עדיין בבחינה.',
           'תוכן לא הולם, שפה פוגענית או ניסיון ליצור קשר מחוץ לאפליקציה – מוביל למחיקת חשבון.',
-        ].map(t=>`<div style="display:flex;gap:9px;margin-bottom:10px;align-items:flex-start"><span style="color:#EF4444;font-size:16px;flex-shrink:0;margin-top:1px">✓</span><span style="font-size:13px;line-height:1.6;color:#CBD5E1">${t}</span></div>`).join('')}
+        ].map(t=>`<div style="display:flex;gap:9px;margin-bottom:10px;align-items:flex-start"><span style="color:#EF4444;font-size:16px;flex-shrink:0;margin-top:1px">✓</span><span style="font-size:13px;line-height:1.6;color:#475569">${t}</span></div>`).join('')}
       </div>
 
       <!-- Section 5 -->
-      <div style="background:rgba(255,255,255,.04);border:1.5px solid rgba(16,185,129,.25);border-radius:20px;padding:18px;backdrop-filter:blur(8px)">
+      <div style="background:#fff;border:1.5px solid rgba(16,185,129,.25);border-radius:20px;padding:18px;box-shadow:0 2px 12px rgba(0,0,0,0.06)">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
           <div style="background:linear-gradient(135deg,#10B981,#14B8A6);border-radius:12px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
           <div><div style="font-weight:900;font-size:15px">הגנת מידע ופרטיות</div><div style="font-size:11px;color:#94A3B8;margin-top:2px">המידע שלך שמור ולא נמכר</div></div>
@@ -1076,18 +1075,18 @@ function Safety(){
           'הילד בוחר שם תצוגה – השם המלא לא חייב להיות גלוי לכולם.',
           'מיקום גיאוגרפי מוצג רק ברמת עיר/אזור, ורק אם הילד בחר לשתף אותו.',
           'Kidemy לא מוכרת, לא משתפת ולא מעבירה מידע אישי לצד שלישי לעולם.',
-        ].map(t=>`<div style="display:flex;gap:9px;margin-bottom:10px;align-items:flex-start"><span style="color:#10B981;font-size:16px;flex-shrink:0;margin-top:1px">✓</span><span style="font-size:13px;line-height:1.6;color:#CBD5E1">${t}</span></div>`).join('')}
+        ].map(t=>`<div style="display:flex;gap:9px;margin-bottom:10px;align-items:flex-start"><span style="color:#10B981;font-size:16px;flex-shrink:0;margin-top:1px">✓</span><span style="font-size:13px;line-height:1.6;color:#475569">${t}</span></div>`).join('')}
       </div>
 
       <!-- Confirm card -->
-      <div style="background:linear-gradient(135deg,rgba(20,184,166,.12),rgba(168,85,247,.08));border:2px solid rgba(20,184,166,.4);border-radius:20px;padding:18px">
-        <p style="font-size:13px;color:#E2E8F0;line-height:1.7;margin:0 0 14px;text-align:center">
-          <strong style="color:#5EEAD4">חשוב:</strong> ב-Kidemy אנחנו רואים בבטיחות הילדים את הדבר החשוב ביותר.<br>
+      <div style="background:#fff;border:2px solid rgba(20,184,166,.4);border-radius:20px;padding:18px;box-shadow:0 2px 12px rgba(0,0,0,0.06)">
+        <p style="font-size:13px;color:#475569;line-height:1.7;margin:0 0 14px;text-align:center">
+          <strong style="color:#0F766E">חשוב:</strong> ב-Kidemy אנחנו רואים בבטיחות הילדים את הדבר החשוב ביותר.<br>
           על ידי המשך ההרשמה, ההורה ואתה מסכימים לכללים אלה.
         </p>
         <div id="safetyCheckbox" class="kcb-row" data-checked="false" onclick="kcbToggle(this)">
           <div class="kcb-box">✓</div>
-          <span style="font-size:13px;line-height:1.7;color:#E2E8F0"><strong style="color:#fff">קראתי את כל הכללים והגנות הבטיחות</strong> והנני מאשר שהוריי יודעים על ההרשמה ומסכימים לה.</span>
+          <span style="font-size:13px;line-height:1.7;color:#475569"><strong style="color:#0F1A1F">קראתי את כל הכללים והגנות הבטיחות</strong> והנני מאשר שהוריי יודעים על ההרשמה ומסכימים לה.</span>
         </div>
       </div>
 
@@ -1103,10 +1102,10 @@ function Safety(){
 }
 
 function ParentReg(){
-  return `<div class="screen" style="background:linear-gradient(165deg,#1E293B 0%,#0F2027 60%,#0D1B2A 100%);min-height:100dvh;display:flex;flex-direction:column;align-items:center;padding:0 0 40px;overflow-y:auto;color:#fff">
+  return `<div class="screen" style="background:linear-gradient(165deg,#CCFBF1 0%,#A5F3FC 50%,#7DD3FC 100%);min-height:100dvh;display:flex;flex-direction:column;align-items:center;padding:0 0 40px;overflow-y:auto">
 
     <!-- progress bar -->
-    <div style="width:100%;background:rgba(255,255,255,.06);height:4px"><div style="width:50%;height:4px;background:linear-gradient(90deg,#14B8A6,#A855F7);border-radius:2px"></div></div>
+    <div style="width:100%;background:rgba(15,26,31,0.08);height:4px"><div style="width:50%;height:4px;background:linear-gradient(90deg,#14B8A6,#A855F7);border-radius:2px"></div></div>
 
     <!-- header -->
     <div style="width:100%;background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);padding:26px 20px 22px;text-align:center">
@@ -1128,7 +1127,7 @@ function ParentReg(){
       <div style="background:rgba(20,184,166,.08);border:1.5px solid rgba(20,184,166,.25);border-radius:16px;padding:12px 15px">
         <div style="font-size:12px;font-weight:800;color:#5EEAD4;margin-bottom:8px">🛡️ בטיחות Kidemy – בקצרה:</div>
         <div style="display:flex;flex-direction:column;gap:5px">
-          ${[['👨‍👩‍👧','פיקוח הורים מלא – ההורה מאשר כל שיעור'],['🎓','כל מורה עובר בדיקה לפני שמופיע בחיפוש'],['📹','שיעורים אונליין דרך קישור Zoom / Google Meet מאובטח'],['🚨','מערכת דיווח – אפס סבלנות לתוכן פוגעני']].map(([e,t])=>`<div style="display:flex;gap:8px;align-items:center"><span style="font-size:13px">${e}</span><span style="font-size:11px;color:#CBD5E1">${t}</span></div>`).join('')}
+          ${[['👨‍👩‍👧','פיקוח הורים מלא – ההורה מאשר כל שיעור'],['🎓','כל מורה עובר בדיקה לפני שמופיע בחיפוש'],['📹','שיעורים אונליין דרך קישור Zoom / Google Meet מאובטח'],['🚨','מערכת דיווח – אפס סבלנות לתוכן פוגעני']].map(([e,t])=>`<div style="display:flex;gap:8px;align-items:center"><span style="font-size:13px">${e}</span><span style="font-size:11px;color:#475569">${t}</span></div>`).join('')}
         </div>
       </div>
 
@@ -1139,18 +1138,18 @@ function ParentReg(){
       </div>
 
       <!-- form card -->
-      <div style="background:rgba(255,255,255,.04);border:1.5px solid rgba(255,255,255,.1);border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:14px">
+      <div style="background:#fff;border:1.5px solid #E2E8F0;border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:14px;box-shadow:0 2px 12px rgba(0,0,0,0.06)">
 
         <div class="ing" style="margin-bottom:0">
           <label style="color:#94A3B8;font-size:12px;font-weight:700;display:block;margin-bottom:6px">שם מלא של ההורה</label>
           <input id="prName" class="inp" type="text" placeholder="שם פרטי ושם משפחה"
-            style="background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.12);color:#fff;border-radius:14px;padding:13px 15px;font-size:14px">
+            style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0F1A1F;border-radius:14px;padding:13px 15px;font-size:14px">
         </div>
 
         <div class="ing" style="margin-bottom:0">
           <label style="color:#94A3B8;font-size:12px;font-weight:700;display:block;margin-bottom:6px">תעודת זהות (9 ספרות)</label>
           <input id="prId" class="inp" type="tel" maxlength="9" placeholder="000000000" inputmode="numeric"
-            style="background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.12);color:#fff;border-radius:14px;padding:13px 15px;font-size:14px;letter-spacing:3px"
+            style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0F1A1F;border-radius:14px;padding:13px 15px;font-size:14px;letter-spacing:3px"
             oninput="this.value=this.value.replace(/\D/g,'')">
         </div>
 
@@ -1171,19 +1170,19 @@ function ParentReg(){
         <div class="ing" style="margin-bottom:0">
           <label style="color:#94A3B8;font-size:12px;font-weight:700;display:block;margin-bottom:6px">גיל ההורה (מינימום 18)</label>
           <input id="prAge" class="inp" type="number" min="18" max="120" placeholder="גיל"
-            style="background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.12);color:#fff;border-radius:14px;padding:13px 15px;font-size:14px">
+            style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0F1A1F;border-radius:14px;padding:13px 15px;font-size:14px">
         </div>
 
         <div class="ing" style="margin-bottom:0">
           <label style="color:#94A3B8;font-size:12px;font-weight:700;display:block;margin-bottom:6px">כתובת מייל של ההורה</label>
           <input id="prEmail" class="inp" type="email" placeholder="המייל שלך"
-            style="background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.12);color:#fff;border-radius:14px;padding:13px 15px;font-size:14px">
+            style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0F1A1F;border-radius:14px;padding:13px 15px;font-size:14px">
         </div>
 
         <div class="ing" style="margin-bottom:0">
           <label style="color:#94A3B8;font-size:12px;font-weight:700;display:block;margin-bottom:6px">טלפון ההורה</label>
           <input id="prPhone" class="inp" type="tel" placeholder="050-1234567"
-            style="background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.12);color:#fff;border-radius:14px;padding:13px 15px;font-size:14px">
+            style="background:#F8FAFC;border:1.5px solid #E2E8F0;color:#0F1A1F;border-radius:14px;padding:13px 15px;font-size:14px">
         </div>
 
       </div>
@@ -1191,12 +1190,12 @@ function ParentReg(){
       <!-- consent — pre-checked; user can uncheck to disagree -->
       <div id="prConsent" class="kcb-row" data-checked="true" onclick="kcbToggle(this)" style="background:rgba(20,184,166,.08);border:1.5px solid rgba(20,184,166,.3);border-radius:14px;padding:12px 14px">
         <div class="kcb-box" style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border-color:#14B8A6;color:#fff">✓</div>
-        <span style="font-size:12px;line-height:1.7;color:#CBD5E1">אני <strong style="color:#fff">ההורה</strong>, מעל גיל 18, ומאשר/ת את הצטרפות ילדי לאפליקציה Kidemy. ידוע לי שפעילות הילד תהיה גלויה לי בכל עת.</span>
+        <span style="font-size:12px;line-height:1.7;color:#475569">אני <strong style="color:#0F1A1F">ההורה</strong>, מעל גיל 18, ומאשר/ת את הצטרפות ילדי לאפליקציה Kidemy. ידוע לי שפעילות הילד תהיה גלויה לי בכל עת.</span>
       </div>
 
       <!-- Google sign-in shortcut -->
-      <div style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.12);border-radius:16px;padding:12px 14px">
-        <p style="font-size:12px;color:#94A3B8;margin:0 0 10px;text-align:center">מלא פרטים ידנית <strong style="color:#CBD5E1">או</strong> ייבא מ-Google:</p>
+      <div style="background:#fff;border:1.5px solid #E2E8F0;border-radius:16px;padding:12px 14px;box-shadow:0 2px 8px rgba(0,0,0,0.05)">
+        <p style="font-size:12px;color:#64748B;margin:0 0 10px;text-align:center">מלא פרטים ידנית <strong style="color:#475569">או</strong> ייבא מ-Google:</p>
         <button onclick="signInWithGoogleParent()" style="width:100%;background:#fff;border:none;border-radius:14px;padding:12px;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;color:#1A1A2E;box-shadow:0 2px 10px rgba(0,0,0,0.2)">
           <img src="https://www.google.com/favicon.ico" style="width:18px;height:18px" alt="G"> ייבא שם ומייל מ-Google
         </button>
