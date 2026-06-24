@@ -526,7 +526,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.38';
+const APP_VERSION='4.9.39';
 const APP_BUILD='24-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -5360,7 +5360,7 @@ function getUserGPS(forceFresh=false){
         };
         reject(new Error(messages[err.code]||err.message));
       },
-      {enableHighAccuracy:true,timeout:10000,maximumAge:60000}
+      {enableHighAccuracy:false,timeout:15000,maximumAge:300000}
     );
   });
 }
@@ -9942,10 +9942,28 @@ function _hs(inp){
 }
 
 function render(){
+  // Save focused input before destroying DOM
+  const _ae=document.activeElement;
+  const _focId=_ae?.id;
+  const _focTag=_ae?.tagName;
+  const _focSel=(_focTag==='INPUT'||_focTag==='TEXTAREA')?_ae.selectionStart:null;
+
   const fn=SCREENS[S.screen]||Home;
   const noRefreshScreens=['splash','login','register','safety','parentReg','teacherReg','teacherPending','studentPending','regSuccess','parentPortal','weeklySchedule','messages'];
   const showRefresh=!noRefreshScreens.includes(S.screen);
   document.getElementById("app").innerHTML=fn()+SharePanel()+(showRefresh?`<button id="_rfshBtn" class="rfsh-btn" onclick="refreshCurrentScreen()" title="רענן">↻</button>`:'')
+
+  // Restore focus so keyboard stays open
+  if(_focId){
+    requestAnimationFrame(()=>{
+      const el=document.getElementById(_focId);
+      if(el&&(el.tagName==='INPUT'||el.tagName==='TEXTAREA')){
+        el.focus({preventScroll:true});
+        try{if(_focSel!==null)el.setSelectionRange(_focSel,_focSel);}catch(e){}
+      }
+    });
+  }
+
   document.querySelectorAll("[data-tid]").forEach(el=>{
     el.addEventListener("click",()=>{const tid=parseInt(el.dataset.tid);S.teacher=TEACHERS.find(t=>t.id===tid)||TEACHERS[0];go("teacher");});
   });
