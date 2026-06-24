@@ -527,7 +527,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.45';
+const APP_VERSION='4.9.46';
 const APP_BUILD='24-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -10606,12 +10606,15 @@ auth&&auth.onAuthStateChanged(async user=>{
     }catch(e){
       console.warn('Auth/data error:',e.code||e.message,e);
       S._loggingIn=false;S._registering=false;
-      // אם המשתמש מחובר — נווט הביתה גם אם טעינת נתונים נכשלה
       if(auth?.currentUser){
-        if(S.screen==='login'||S.screen==='splash'){go('home');}
-        showFireToast('⚠️ חלק מהנתונים לא נטענו — '+(e?.code||e?.message||'בעיית רשת'));
+        // Force navigate — reset screen first so go('home') always re-renders
+        // (go() sets S.screen='home' before calling render; if render failed before,
+        //  S.screen is already 'home' and the old check wouldn't retry)
+        S.screen='splash';
+        try{go('home');}catch(e2){console.warn('Home render error:',e2.message);}
+        if(e?.code!=='auth/network-request-failed')
+          showFireToast('⚠️ חלק מהנתונים לא נטענו — '+(e?.code||e?.message||'בעיית רשת'));
       } else {
-        // רק אם אין משתמש מחובר כלל — חזור ל-login
         showFireToast('❌ שגיאת כניסה — נסה שוב');
         go('login');
       }
@@ -10989,9 +10992,12 @@ async function firebaseLogin(usernameOrEmail,password){
     const email=usernameOrEmail.includes('@')?usernameOrEmail:usernameOrEmail.toLowerCase()+'@lamdeni.app';
     await auth.signInWithEmailAndPassword(email,password);
     showFireToast('✅ ברוך הבא!');
-    // Safety net: if onAuthStateChanged doesn't navigate within 1.5s, force navigate
+    // Safety net: if onAuthStateChanged doesn't navigate within 2s, force navigate.
+    // Also handles case where S.screen was set to 'home' but render() failed (DOM still shows login)
     setTimeout(async()=>{
-      if((S.screen==='login'||S.screen==='splash')&&auth?.currentUser){
+      const stuckOnLogin=(S.screen==='login'||S.screen==='splash')||
+        (S.screen==='home'&&!document.getElementById('homeSearch'));
+      if(stuckOnLogin&&auth?.currentUser){
         S._loggingIn=false;
         currentUser=auth.currentUser;
         // טעינת נתוני משתמש אם חסרים
@@ -11004,6 +11010,7 @@ async function firebaseLogin(usernameOrEmail,password){
             }
           }catch(_e){}
         }
+        S.screen='splash';
         go('home');
       }
     },1500);
