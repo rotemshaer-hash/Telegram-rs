@@ -527,7 +527,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.46';
+const APP_VERSION='4.9.47';
 const APP_BUILD='24-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -11139,7 +11139,7 @@ if('serviceWorker' in navigator){
       }
     });
   });
-  navigator.serviceWorker.register(currentSwUrl).then(reg=>{
+  navigator.serviceWorker.register(currentSwUrl,{updateViaCache:'none'}).then(reg=>{
     reg.update();
     setInterval(()=>reg.update(),900000);
   });
