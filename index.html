@@ -68,12 +68,12 @@ input,textarea,select{font-family:inherit;-webkit-appearance:none;appearance:non
   --card:rgba(255,255,255,0.97);
   --radius:24px;--radius-sm:16px;
   --shadow:0 10px 40px rgba(20,184,166,0.18);
-  --shadow-lg:0 20px 60px rgba(168,85,247,0.25);
+  --shadow-lg:0 20px 60px rgba(20,184,166,0.25);
   --muted:#64748B;--text:#0F1A1F;
   --gp:0 0 32px rgba(20,184,166,0.45);
-  --gs:0 0 32px rgba(168,85,247,0.45);
+  --gs:0 0 32px rgba(6,182,212,0.45);
   --gg:0 0 32px rgba(16,185,129,0.45);
-  --grad-main:linear-gradient(135deg,#14B8A6 0%,#06B6D4 50%,#A855F7 100%);
+  --grad-main:linear-gradient(135deg,#14B8A6,#06B6D4);
   --grad-soft:linear-gradient(135deg,#5EEAD4 0%,#67E8F9 50%,#C4B5FD 100%);
   --grad-dark:linear-gradient(145deg,#1A0B2E 0%,#0F2A3D 50%,#134E4A 100%);
 }
@@ -112,8 +112,8 @@ input,textarea,select{font-family:inherit;-webkit-appearance:none;appearance:non
 .btn{border:none;cursor:pointer;font-family:inherit;font-weight:800;border-radius:50px;padding:15px 24px;font-size:16px;display:block;width:100%;transition:transform .15s}
 .btn:active{transform:scale(.97)}
 .btn:disabled{background:#CCC!important;box-shadow:none!important;color:#999!important;cursor:not-allowed}
-.bp{background:linear-gradient(135deg,#14B8A6 0%,#06B6D4 50%,#A855F7 100%);color:#fff;box-shadow:var(--gp)}
-.bs{background:linear-gradient(135deg,#14B8A6 0%,#06B6D4 50%,#A855F7 100%);color:#fff;box-shadow:var(--gs)}
+.bp{background:linear-gradient(135deg,#14B8A6,#06B6D4);color:#fff;box-shadow:var(--gp)}
+.bs{background:linear-gradient(135deg,#14B8A6,#06B6D4);color:#fff;box-shadow:var(--gs)}
 .bg{background:linear-gradient(135deg,#14B8A6,#06B6D4);color:#fff;box-shadow:var(--gg)}
 .bw{background:#fff;color:var(--p);box-shadow:0 8px 24px rgba(0,0,0,.15)}
 .bd{background:rgba(255,255,255,.1);color:#fff;border:1.5px solid rgba(255,255,255,.2)}
@@ -125,7 +125,7 @@ input,textarea,select{font-family:inherit;-webkit-appearance:none;appearance:non
 .t-gold{background:linear-gradient(135deg,#FFD23F,#FF9800);color:#1A1A2E;font-size:10px;padding:3px 10px}
 .t-live{background:rgba(20,184,166,.12);color:#00864A}
 .t-live::before{content:'';width:7px;height:7px;border-radius:50%;background:#14B8A6;animation:pulse 1.5s infinite;flex-shrink:0}
-.t-dist{background:linear-gradient(135deg,#14B8A6 0%,#06B6D4 50%,#A855F7 100%);color:#fff}
+.t-dist{background:linear-gradient(135deg,#14B8A6,#06B6D4);color:#fff}
 
 /* INPUTS */
 .inp{display:block;width:100%;padding:14px 16px;border-radius:var(--radius-sm);border:2px solid rgba(20,184,166,.12);font-size:14px;outline:none;direction:rtl;background:rgba(20,184,166,.03);transition:border .2s;color:var(--text);font-family:inherit}
@@ -135,7 +135,7 @@ input,textarea,select{font-family:inherit;-webkit-appearance:none;appearance:non
 .kcb-row{display:flex;align-items:flex-start;gap:12px;cursor:pointer;padding:13px;border-radius:14px;border:2px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);user-select:none;-webkit-user-select:none}
 .kcb-row.light{border-color:rgba(20,184,166,.3);background:rgba(20,184,166,.06)}
 .kcb-box{width:26px;height:26px;min-width:26px;border-radius:7px;border:2.5px solid #94A3B8;background:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:transparent;transition:background .15s,border-color .15s,color .15s;margin-top:1px}
-.kcb-row[data-checked="true"] .kcb-box{background:linear-gradient(135deg,#14B8A6,#A855F7);border-color:transparent;color:#fff}
+.kcb-row[data-checked="true"] .kcb-box{background:linear-gradient(135deg,#14B8A6,#06B6D4);border-color:transparent;color:#fff}
 .kcb-row.light[data-checked="true"] .kcb-box{background:linear-gradient(135deg,#10B981,#14B8A6);border-color:transparent;color:#fff}
 
 /* INFO / WARN */
@@ -159,7 +159,7 @@ input,textarea,select{font-family:inherit;-webkit-appearance:none;appearance:non
 
 /* SLIDER */
 .slider{width:100%;-webkit-appearance:none;height:6px;border-radius:3px;background:rgba(20,184,166,.15);outline:none}
-.slider::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,#14B8A6 0%,#06B6D4 50%,#A855F7 100%);cursor:pointer;box-shadow:0 2px 8px rgba(20,184,166,.4)}
+.slider::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,#14B8A6,#06B6D4);cursor:pointer;box-shadow:0 2px 8px rgba(20,184,166,.4)}
 
 /* ROLE CARD */
 .role-card{background:var(--card);border:3px solid transparent;border-radius:var(--radius);padding:20px;margin-bottom:14px;cursor:pointer;text-align:right;box-shadow:var(--shadow);transition:all .2s}
@@ -178,10 +178,10 @@ input,textarea,select{font-family:inherit;-webkit-appearance:none;appearance:non
 
 /* TIME SLOTS */
 .slot{border-radius:12px;padding:11px 6px;text-align:center;font-size:13px;font-weight:700;cursor:pointer;transition:all .18s;border:2px solid rgba(20,184,166,.1);background:rgba(20,184,166,.05);color:var(--text)}
-.slot.on{background:linear-gradient(135deg,#14B8A6 0%,#06B6D4 50%,#A855F7 100%);color:#fff;border-color:transparent;box-shadow:var(--gs)}
+.slot.on{background:linear-gradient(135deg,#14B8A6,#06B6D4);color:#fff;border-color:transparent;box-shadow:var(--gs)}
 .slot.taken{background:#F5F5F5;color:#CCC;cursor:not-allowed;border-color:transparent}
 .day-btn{flex:1;padding:10px 4px;border:none;cursor:pointer;border-radius:14px;font-weight:700;font-size:13px;background:rgba(20,184,166,.05);color:var(--muted);transition:all .2s;text-align:center}
-.day-btn.on{background:linear-gradient(135deg,#14B8A6 0%,#06B6D4 50%,#A855F7 100%);color:#fff;box-shadow:var(--gs)}
+.day-btn.on{background:linear-gradient(135deg,#14B8A6,#06B6D4);color:#fff;box-shadow:var(--gs)}
 
 /* PAY METHOD */
 .pay-m{background:var(--card);border:2.5px solid transparent;border-radius:var(--radius-sm);padding:14px 16px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:all .2s;margin-bottom:10px}
@@ -248,10 +248,10 @@ input,textarea,select{font-family:inherit;-webkit-appearance:none;appearance:non
 .trial{background:linear-gradient(135deg,rgba(255,210,63,.14),rgba(255,152,0,.08));border:1.5px solid rgba(255,210,63,.4);border-radius:var(--radius-sm);padding:12px 16px;display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
 
 /* GROUP BADGE */
-.gbadge{background:linear-gradient(135deg,#14B8A6 0%,#06B6D4 50%,#A855F7 100%);color:#fff;border-radius:50px;padding:4px 12px;font-size:11px;font-weight:700}
+.gbadge{background:linear-gradient(135deg,#14B8A6,#06B6D4);color:#fff;border-radius:50px;padding:4px 12px;font-size:11px;font-weight:700}
 
 /* REFERRAL */
-.ref-card{background:linear-gradient(135deg,#14B8A6 0%,#06B6D4 50%,#A855F7 100%);border-radius:var(--radius);padding:20px;color:#fff;margin-bottom:14px;box-shadow:var(--gp)}
+.ref-card{background:linear-gradient(135deg,#14B8A6,#06B6D4);border-radius:var(--radius);padding:20px;color:#fff;margin-bottom:14px;box-shadow:var(--gp)}
 /* ─── DARK MODE ──────────────────────────────────────────────────────────── */
 body.dark{background:#0D1117 !important;color:#E2E8F0}
 body.dark .card,body.dark .card-sm,body.dark .tc,body.dark .role-card,body.dark .pay-m,body.dark .post,body.dark .lb-row,body.dark .ach{background:#161B22 !important;color:#E2E8F0 !important;box-shadow:0 4px 20px rgba(0,0,0,.4) !important}
@@ -526,7 +526,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.39';
+const APP_VERSION='4.9.40';
 const APP_BUILD='24-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -580,7 +580,7 @@ function go(scr,extra={}){
   if(scr!=="splash")S.prev=S.screen;
   Object.assign(S,extra,{screen:scr});
   if(scr==='community')loadCommunityPosts();
-  if(scr==='chat'&&currentUser&&(extra.chat||S.chat)?.otherUid){
+  if(scr==='chat'&&currentUser&&db&&(extra.chat||S.chat)?.otherUid){
     const ou=(extra.chat||S.chat).otherUid;
     db.ref('userChats/'+currentUser.uid+'/'+ou+'/unread').set(false).catch(()=>{});
     // Update local array immediately so badge clears before Firebase listener fires
@@ -674,7 +674,7 @@ function showMoodDialog(bookingId,teacherName){
       </div>
       <div style="display:flex;gap:10px">
         <button onclick="document.getElementById('_moodOv').remove()" style="flex:1;background:rgba(100,116,139,0.1);border:none;border-radius:50px;padding:12px;font-size:13px;font-weight:700;color:#64748B;cursor:pointer">דלג</button>
-        <button onclick="_saveMood('${bookingId}')" style="flex:2;background:linear-gradient(135deg,#14B8A6,#A855F7);border:none;color:#fff;border-radius:50px;padding:12px;font-size:14px;font-weight:900;cursor:pointer">שלח 💌</button>
+        <button onclick="_saveMood('${bookingId}')" style="flex:2;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:12px;font-size:14px;font-weight:900;cursor:pointer">שלח 💌</button>
       </div>
     </div>`;
   ov.id='_moodOv';
@@ -722,7 +722,7 @@ function showOnboarding(){
         <h2 style="font-weight:900;font-size:24px;margin:0 0 12px;color:#0F1A1F">${s.title}</h2>
         <p style="color:#64748B;font-size:15px;margin:0 0 28px;line-height:1.7">${s.desc}</p>
         <div style="display:flex;gap:8px;justify-content:center;margin-bottom:28px">${dots}</div>
-        <button id="_obNext" style="width:100%;background:linear-gradient(135deg,#14B8A6,#A855F7);border:none;color:#fff;border-radius:50px;padding:16px;font-size:16px;font-weight:900;cursor:pointer">${step<steps.length-1?'הבא →':'התחל !'}</button>
+        <button id="_obNext" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:16px;font-size:16px;font-weight:900;cursor:pointer">${step<steps.length-1?'הבא →':'התחל !'}</button>
         ${step>0?`<button id="_obBack" style="width:100%;background:none;border:none;color:#94A3B8;padding:12px;font-size:14px;cursor:pointer;margin-top:6px">← חזור</button>`:''}
       </div>`;
     ov.querySelector('#_obNext').onclick=()=>{
@@ -970,9 +970,9 @@ function SharePanel(){
 function Splash(){
   return `<div style="min-height:100dvh;background:linear-gradient(165deg,#CCFBF1 0%,#A5F3FC 50%,#7DD3FC 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:36px 28px;text-align:center;position:relative;overflow:hidden">
     <div style="position:absolute;top:-120px;right:-100px;width:380px;height:380px;border-radius:50%;background:radial-gradient(circle,rgba(20,184,166,0.2),transparent 70%);filter:blur(20px)"></div>
-    <div style="position:absolute;bottom:-100px;left:-100px;width:340px;height:340px;border-radius:50%;background:radial-gradient(circle,rgba(168,85,247,0.15),transparent 70%);filter:blur(20px)"></div>
+    <div style="position:absolute;bottom:-100px;left:-100px;width:340px;height:340px;border-radius:50%;background:radial-gradient(circle,rgba(20,184,166,0.15),transparent 70%);filter:blur(20px)"></div>
     <div style="margin-bottom:14px;filter:drop-shadow(0 0 30px rgba(13,148,136,0.4));position:relative;z-index:1"><svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#0D9488" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg></div>
-    <h1 style="font-size:62px;font-weight:900;background:linear-gradient(135deg,#0D9488 0%,#0891B2 35%,#7C3AED 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin:0;line-height:1;letter-spacing:-0.05em;position:relative;z-index:1">Kidemy</h1>
+    <h1 style="font-size:62px;font-weight:900;background:linear-gradient(135deg,#0D9488 0%,#0891B2 60%,#06B6D4 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin:0;line-height:1;letter-spacing:-0.05em;position:relative;z-index:1">Kidemy</h1>
     <p style="font-size:14px;color:#0F766E;margin-top:14px;max-width:300px;line-height:1.7;position:relative;z-index:1">מוזיקה, ספורט, לימודים, יצירה ועוד</p>
     <div style="display:flex;gap:12px;margin-top:26px;justify-content:center;position:relative;z-index:1">
       ${[[realStats.teachers,"מורים"],[realStats.categories,"נושאים"],[realStats.cities,"ערים"]].map(([v,l])=>`<div style="background:#fff;border:1px solid #E2E8F0;border-radius:18px;padding:12px 20px;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,0.06)"><div style="font-weight:900;font-size:22px;color:#0D9488">${v}</div><div style="font-size:11px;color:#64748B;font-weight:600">${l}</div></div>`).join("")}
@@ -1026,9 +1026,9 @@ function Safety(){
       </div>
 
       <!-- Section 2 -->
-      <div style="background:#fff;border:1.5px solid rgba(168,85,247,.25);border-radius:20px;padding:18px;box-shadow:0 2px 12px rgba(0,0,0,0.06)">
+      <div style="background:#fff;border:1.5px solid rgba(20,184,166,.25);border-radius:20px;padding:18px;box-shadow:0 2px 12px rgba(0,0,0,0.06)">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
-          <div style="background:linear-gradient(135deg,#A855F7,#EC4899);border-radius:12px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg></div>
+          <div style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border-radius:12px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg></div>
           <div><div style="font-weight:900;font-size:15px">אימות מורים אוטומטי</div><div style="font-size:11px;color:#94A3B8;margin-top:2px">כל מורה עובר בדיקה</div></div>
         </div>
         ${[
@@ -1036,7 +1036,7 @@ function Safety(){
           'צוות Kidemy מאמת את פרטי הגיל והזהות של כל מורה בנפרד.',
           'מנהל האפליקציה יכול להשעות או למחוק מורה בכל רגע אם מתקבל דיווח.',
           'כל ביקורת שתלמיד כותב על מורה נשמרת ומוצגת בשקיפות מלאה.',
-        ].map(t=>`<div style="display:flex;gap:9px;margin-bottom:10px;align-items:flex-start"><span style="color:#A855F7;font-size:16px;flex-shrink:0;margin-top:1px">✓</span><span style="font-size:13px;line-height:1.6;color:#475569">${t}</span></div>`).join('')}
+        ].map(t=>`<div style="display:flex;gap:9px;margin-bottom:10px;align-items:flex-start"><span style="color:#14B8A6;font-size:16px;flex-shrink:0;margin-top:1px">✓</span><span style="font-size:13px;line-height:1.6;color:#475569">${t}</span></div>`).join('')}
       </div>
 
       <!-- Section 3 -->
@@ -1109,7 +1109,7 @@ function ParentReg(){
   return `<div class="screen" style="background:linear-gradient(165deg,#CCFBF1 0%,#A5F3FC 50%,#7DD3FC 100%);min-height:100dvh;display:flex;flex-direction:column;align-items:center;padding:0 0 40px;overflow-y:auto">
 
     <!-- progress bar -->
-    <div style="width:100%;background:rgba(15,26,31,0.08);height:4px"><div style="width:50%;height:4px;background:linear-gradient(90deg,#14B8A6,#A855F7);border-radius:2px"></div></div>
+    <div style="width:100%;background:rgba(15,26,31,0.08);height:4px"><div style="width:50%;height:4px;background:linear-gradient(90deg,#14B8A6,#06B6D4);border-radius:2px"></div></div>
 
     <!-- header -->
     <div style="width:100%;background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);padding:26px 20px 22px;text-align:center">
@@ -1136,9 +1136,9 @@ function ParentReg(){
       </div>
 
       <!-- warning banner -->
-      <div style="background:rgba(168,85,247,.12);border:1.5px solid rgba(168,85,247,.35);border-radius:16px;padding:13px 15px;display:flex;gap:10px;align-items:center">
+      <div style="background:rgba(20,184,166,.12);border:1.5px solid rgba(20,184,166,.35);border-radius:16px;padding:13px 15px;display:flex;gap:10px;align-items:center">
         <span style="font-size:22px">🔐</span>
-        <span style="font-size:12px;color:#C4B5FD;line-height:1.6">פרטי ההורה ישמרו בצורה מוצפנת ויהיו גלויים <strong style="color:#E9D5FF">למנהל האפליקציה בלבד</strong>. לא יוצגו לאף ילד או מורה.</span>
+        <span style="font-size:12px;color:#5EEAD4;line-height:1.6">פרטי ההורה ישמרו בצורה מוצפנת ויהיו גלויים <strong style="color:#CCFBF1">למנהל האפליקציה בלבד</strong>. לא יוצגו לאף ילד או מורה.</span>
       </div>
 
       <!-- form card -->
@@ -1158,14 +1158,14 @@ function ParentReg(){
         </div>
 
         <div class="ing" style="margin-bottom:0">
-          <label style="color:#A78BFA;font-size:12px;font-weight:700;display:flex;align-items:center;gap:6px;margin-bottom:8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><circle cx="8" cy="10" r="2"/><path d="M14 9h6M14 13h6M5 17h14"/></svg> צילום תעודת זהות הורה</label>
+          <label style="color:#0891B2;font-size:12px;font-weight:700;display:flex;align-items:center;gap:6px;margin-bottom:8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><circle cx="8" cy="10" r="2"/><path d="M14 9h6M14 13h6M5 17h14"/></svg> צילום תעודת זהות הורה</label>
           <input type="file" id="prIdPhoto" accept="image/*" style="display:none" onchange="previewParentIdPhoto()">
-          <div id="prIdPhotoPreview" style="display:none;margin-bottom:10px;border-radius:14px;overflow:hidden;border:2px solid rgba(168,85,247,0.4)">
+          <div id="prIdPhotoPreview" style="display:none;margin-bottom:10px;border-radius:14px;overflow:hidden;border:2px solid rgba(20,184,166,0.4)">
             <img id="prIdPhotoImg" src="" style="width:100%;max-height:160px;object-fit:cover" alt="צילום תז">
-            <div style="padding:7px;background:rgba(168,85,247,0.1);font-size:11px;color:#A78BFA;font-weight:800;text-align:center;display:flex;align-items:center;justify-content:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> צילום נבחר</div>
+            <div style="padding:7px;background:rgba(20,184,166,0.1);font-size:11px;color:#0891B2;font-weight:800;text-align:center;display:flex;align-items:center;justify-content:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> צילום נבחר</div>
           </div>
           <button type="button" onclick="document.getElementById('prIdPhoto').click()"
-            style="width:100%;background:rgba(168,85,247,0.1);border:2px dashed rgba(168,85,247,0.4);color:#A78BFA;border-radius:14px;padding:13px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
+            style="width:100%;background:rgba(20,184,166,0.1);border:2px dashed rgba(20,184,166,0.4);color:#0891B2;border-radius:14px;padding:13px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg> צלם / העלה צילום תז
           </button>
           <p style="font-size:11px;color:#6B7280;margin:6px 0 0;line-height:1.5">🔒 הצילום נשמר מוצפן ומוצג למנהל בלבד לאימות גיל.</p>
@@ -1206,7 +1206,7 @@ function ParentReg(){
       </div>
 
       <!-- submit -->
-      <button onclick="submitParentReg()" style="width:100%;background:linear-gradient(135deg,#14B8A6 0%,#06B6D4 50%,#A855F7 100%);border:none;color:#fff;border-radius:18px;padding:17px;font-size:16px;font-weight:900;cursor:pointer;box-shadow:0 4px 20px rgba(20,184,166,.3)">
+      <button onclick="submitParentReg()" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:18px;padding:17px;font-size:16px;font-weight:900;cursor:pointer;box-shadow:0 4px 20px rgba(20,184,166,.3)">
         המשך לרישום הילד ←
       </button>
 
@@ -1280,7 +1280,7 @@ function submitParentReg(){
 function Register(){
   return `<div class="screen" style="background:linear-gradient(165deg,#CCFBF1 0%,#A5F3FC 50%,#7DD3FC 100%);min-height:100dvh;display:flex;flex-direction:column;align-items:center;padding:0 0 40px;overflow-y:auto">
     <!-- progress bar -->
-    <div style="width:100%;background:rgba(0,0,0,.08);height:4px"><div style="width:100%;height:4px;background:linear-gradient(90deg,#14B8A6,#A855F7);border-radius:2px"></div></div>
+    <div style="width:100%;background:rgba(0,0,0,.08);height:4px"><div style="width:100%;height:4px;background:linear-gradient(90deg,#14B8A6,#06B6D4);border-radius:2px"></div></div>
 
     <!-- header -->
     <div style="width:100%;background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);padding:24px 20px 22px;text-align:center;color:#fff">
@@ -1292,7 +1292,7 @@ function Register(){
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
         </div>
         <div style="height:2px;background:rgba(255,255,255,.25);width:36px;align-self:center;border-radius:2px"></div>
-        <div style="background:linear-gradient(135deg,#14B8A6,#A855F7);border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:#fff">2</div>
+        <div style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:#fff">2</div>
       </div>
       <h2 style="font-weight:900;font-size:24px;margin-bottom:4px;text-align:center">שלב 2 – רישום הילד</h2>
       <p style="color:#94A3B8;font-size:13px;margin:0;text-align:center">צעד ראשון בדרך להצלחה</p>
@@ -1314,7 +1314,7 @@ function Register(){
       <div style="margin-bottom:14px">
         <p style="font-size:13px;font-weight:800;color:#0F1A1F;margin:0 0 10px;text-align:right">אני רוצה להירשם כ:</p>
         <div style="display:flex;gap:10px;margin-bottom:10px">
-          <button id="roleStudent" onclick="selectRole('student')" style="flex:1;background:linear-gradient(135deg,#14B8A6 0%,#06B6D4 50%,#A855F7 100%);color:#fff;border:none;border-radius:16px;padding:14px;font-weight:800;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg> תלמיד</button>
+          <button id="roleStudent" onclick="selectRole('student')" style="flex:1;background:linear-gradient(135deg,#14B8A6,#06B6D4);color:#fff;border:none;border-radius:16px;padding:14px;font-weight:800;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg> תלמיד</button>
           <button id="roleTeacher" onclick="selectRole('teacher')" style="flex:1;background:rgba(20,184,166,0.08);color:#14B8A6;border:2px solid rgba(20,184,166,0.2);border-radius:16px;padding:14px;font-weight:800;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> מורה</button>
         </div>
         <div style="background:rgba(245,158,11,0.08);border:1.5px solid rgba(245,158,11,0.25);border-radius:14px;padding:11px 14px;font-size:12px;color:#92400E;line-height:1.7;direction:rtl">
@@ -1356,7 +1356,7 @@ function Register(){
       <!-- אישורים -->
       <div id="regTerms" class="kcb-row light" data-checked="false" onclick="kcbToggle(this)" style="margin-bottom:14px">
         <div class="kcb-box">✓</div>
-        <span style="font-size:13px;line-height:1.6;color:#0F1A1F">📜 קראתי ומסכים ל<a href="/terms.html" target="_blank" style="color:#A855F7;font-weight:700;text-decoration:underline">תנאי השימוש</a> ו<a href="/privacy.html" target="_blank" style="color:#14B8A6;font-weight:700;text-decoration:underline">מדיניות הפרטיות</a></span>
+        <span style="font-size:13px;line-height:1.6;color:#0F1A1F">📜 קראתי ומסכים ל<a href="/terms.html" target="_blank" style="color:#0891B2;font-weight:700;text-decoration:underline">תנאי השימוש</a> ו<a href="/privacy.html" target="_blank" style="color:#14B8A6;font-weight:700;text-decoration:underline">מדיניות הפרטיות</a></span>
       </div>
 
       <div id="regMixedOk" class="kcb-row light" data-checked="false" onclick="kcbToggle(this)" style="margin-bottom:14px;background:rgba(20,184,166,0.06);border:1.5px solid rgba(20,184,166,0.2);border-radius:14px;padding:12px 14px">
@@ -1392,10 +1392,10 @@ function selectRole(r){
   const s=document.getElementById('roleStudent');
   const t=document.getElementById('roleTeacher');
   if(r==='student'){
-    if(s){s.style.background='linear-gradient(135deg,#14B8A6 0%,#06B6D4 50%,#A855F7 100%)';s.style.color='#fff';s.style.border='none';}
+    if(s){s.style.background='linear-gradient(135deg,#14B8A6,#06B6D4)';s.style.color='#fff';s.style.border='none';}
     if(t){t.style.background='rgba(20,184,166,0.08)';t.style.color='#14B8A6';t.style.border='2px solid rgba(20,184,166,0.2)';}
   } else {
-    if(t){t.style.background='linear-gradient(135deg,#14B8A6 0%,#06B6D4 50%,#A855F7 100%)';t.style.color='#fff';t.style.border='none';}
+    if(t){t.style.background='linear-gradient(135deg,#14B8A6,#06B6D4)';t.style.color='#fff';t.style.border='none';}
     if(s){s.style.background='rgba(20,184,166,0.08)';s.style.color='#14B8A6';s.style.border='2px solid rgba(20,184,166,0.2)';}
   }
 }
@@ -1516,8 +1516,8 @@ function TeacherSetup(){
       </div>
 
       <!-- אימות גיל וזהות -->
-      <div class="card" style="margin-bottom:18px;background:linear-gradient(135deg,rgba(99,102,241,0.08),rgba(168,85,247,0.05));border:1.5px solid rgba(99,102,241,0.25)">
-        <h3 style="font-weight:900;font-size:16px;margin:0 0 8px;color:#6366F1;display:flex;align-items:center;gap:6px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><circle cx="8" cy="10" r="2"/><path d="M14 9h6M14 13h6M5 17h14"/></svg> אימות גיל וזהות</h3>
+      <div class="card" style="margin-bottom:18px;background:linear-gradient(135deg,rgba(20,184,166,0.08),rgba(6,182,212,0.05));border:1.5px solid rgba(20,184,166,0.25)">
+        <h3 style="font-weight:900;font-size:16px;margin:0 0 8px;color:#0891B2;display:flex;align-items:center;gap:6px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><circle cx="8" cy="10" r="2"/><path d="M14 9h6M14 13h6M5 17h14"/></svg> אימות גיל וזהות</h3>
         <p style="font-size:12px;color:#64748B;margin:0 0 14px;line-height:1.6">נדרש לאישור הפרופיל. המידע גלוי לצוות Kidemy בלבד.</p>
         <div class="ing" style="margin-bottom:12px"><label>גיל (10–18)</label>
           <input type="number" id="tAge" class="inp" placeholder="לדוגמה: 14" min="10" max="18">
@@ -1532,14 +1532,14 @@ function TeacherSetup(){
         </div>
         <!-- העלאת תמונת מסמך -->
         <div style="margin-top:4px">
-          <label style="font-size:13px;font-weight:700;color:#6366F1;display:flex;align-items:center;gap:6px;margin-bottom:8px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg> צילום המסמך</label>
+          <label style="font-size:13px;font-weight:700;color:#0891B2;display:flex;align-items:center;gap:6px;margin-bottom:8px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg> צילום המסמך</label>
           <input type="file" id="tIdPhoto" accept="image/*" style="display:none" onchange="previewIdPhoto()">
-          <div id="tIdPhotoPreview" style="display:none;margin-bottom:10px;border-radius:14px;overflow:hidden;border:2px solid rgba(99,102,241,0.3)">
+          <div id="tIdPhotoPreview" style="display:none;margin-bottom:10px;border-radius:14px;overflow:hidden;border:2px solid rgba(20,184,166,0.3)">
             <img id="tIdPhotoImg" src="" style="width:100%;max-height:180px;object-fit:cover" alt="תמונת מסמך">
-            <div style="padding:8px;background:rgba(99,102,241,0.08);font-size:11px;color:#6366F1;font-weight:700;text-align:center;display:flex;align-items:center;justify-content:center;gap:6px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> תמונה נבחרה</div>
+            <div style="padding:8px;background:rgba(20,184,166,0.08);font-size:11px;color:#0891B2;font-weight:700;text-align:center;display:flex;align-items:center;justify-content:center;gap:6px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> תמונה נבחרה</div>
           </div>
           <button type="button" onclick="document.getElementById('tIdPhoto').click()"
-            style="width:100%;background:rgba(99,102,241,0.1);border:2px dashed rgba(99,102,241,0.4);color:#6366F1;border-radius:14px;padding:14px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
+            style="width:100%;background:rgba(20,184,166,0.1);border:2px dashed rgba(20,184,166,0.4);color:#0891B2;border-radius:14px;padding:14px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg> צלם / העלה תמונה של המסמך
           </button>
           <p style="font-size:11px;color:#94A3B8;margin:8px 0 0;line-height:1.5">🔒 הצילום נשמר מוצפן ומוצג למנהל בלבד לאימות.</p>
@@ -1607,7 +1607,7 @@ function TeacherSetup(){
       <div class="warn" style="margin-bottom:14px"><span>🛡</span><span>הפרופיל יעבור אישור צוות הבטיחות תוך 24 שעות.</span></div>
 
       <!-- הסבר מודל תשלום -->
-      <div style="background:linear-gradient(135deg,rgba(20,184,166,0.1),rgba(168,85,247,0.08));border:1.5px solid rgba(20,184,166,0.3);border-radius:18px;padding:18px;margin-bottom:14px">
+      <div style="background:linear-gradient(135deg,rgba(20,184,166,0.1),rgba(6,182,212,0.08));border:1.5px solid rgba(20,184,166,0.3);border-radius:18px;padding:18px;margin-bottom:14px">
         <h4 style="font-weight:900;font-size:15px;margin:0 0 12px;color:#14B8A6">💰 איך עובד התשלום?</h4>
         <div style="display:flex;flex-direction:column;gap:10px">
           <div style="display:flex;gap:10px;align-items:flex-start">
@@ -1619,7 +1619,7 @@ function TeacherSetup(){
             <div style="font-size:13px;line-height:1.6"><strong>Kidemy מאמת את התשלום</strong> ושולח לך אישור</div>
           </div>
           <div style="display:flex;gap:10px;align-items:flex-start">
-            <div style="width:26px;height:26px;border-radius:50%;background:#A855F7;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;flex-shrink:0">3</div>
+            <div style="width:26px;height:26px;border-radius:50%;background:#0D9488;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;flex-shrink:0">3</div>
             <div style="font-size:13px;line-height:1.6"><strong>השיעור מתקיים</strong> – וידאו דרך הקישור האישי של המורה (Zoom / Google Meet)</div>
           </div>
           <div style="display:flex;gap:10px;align-items:flex-start">
@@ -1671,7 +1671,7 @@ function addCustomCat(){
   const container=document.getElementById('customCats');
   if(container){
     const tag=document.createElement('span');
-    tag.style.cssText='background:rgba(168,85,247,0.15);border:1px solid rgba(168,85,247,0.3);border-radius:50px;padding:5px 12px;font-size:12px;font-weight:700;color:#A855F7;cursor:pointer;display:flex;align-items:center;gap:6px';
+    tag.style.cssText='background:rgba(20,184,166,0.15);border:1px solid rgba(20,184,166,0.3);border-radius:50px;padding:5px 12px;font-size:12px;font-weight:700;color:#0D9488;cursor:pointer;display:flex;align-items:center;gap:6px';
     tag.innerHTML=`✨ ${escapeHtml(val)} <span style="color:#EF4444;font-weight:900">✕</span>`;
     tag.querySelector('span').addEventListener('click',function(){removeCustomCat(val,this);});
     container.appendChild(tag);
@@ -1705,10 +1705,10 @@ function toggleMode(mode){
     _modeFrontal=!_modeFrontal;
     const btn=document.getElementById('btnFrontal');
     if(_modeFrontal){
-      btn.style.background='linear-gradient(135deg,#A855F7,#7E22CE)';
+      btn.style.background='linear-gradient(135deg,#14B8A6,#06B6D4)';
       btn.style.color='#fff';
       btn.style.borderColor='transparent';
-      btn.style.boxShadow='0 4px 14px rgba(168,85,247,0.4)';
+      btn.style.boxShadow='0 4px 14px rgba(20,184,166,0.4)';
       btn.textContent='🤝 פרונטלי ✓';
     } else {
       btn.style.background='rgba(20,184,166,0.06)';
@@ -2576,7 +2576,7 @@ function showNotificationsPanel(){
     notifications.map(n=>{
       const icons={newBooking:'📚',bookingApproved:'✅',bookingRejected:'❌',bookingCancelled:'🚫',newMessage:'💬',newReview:'⭐',newVideo:'📹',newTeacher:'🎓',newReport:'🚨',newUser:'👋',groupJoin:'🙋',groupApproved:'🎉',groupRejected:'😔',rateLesson:'⭐',lessonSummary:'📖',accountApproved:'🎉',teacherApproved:'🎓',adminMessage:'📣',newPost:'📢',lessonCompleted:'✅'};
       const titles={newBooking:'הזמנת שיעור חדשה',bookingApproved:'ההזמנה אושרה!',bookingRejected:'ההזמנה נדחתה',bookingCancelled:'השיעור בוטל',newMessage:'הודעה חדשה',newReview:'דירוג חדש',newVideo:'סרטון חדש לאישור',newTeacher:'מורה חדש נרשם',newReport:'דיווח חדש!',newUser:'משתמש חדש',groupJoin:'בקשת הצטרפות לקבוצה',groupApproved:'התקבלת לקבוצה!',groupRejected:'הבקשה לא אושרה',rateLesson:'דרג את השיעור',lessonSummary:'סיכום שיעור חדש',accountApproved:'החשבון שלך אושר!',teacherApproved:'פרופיל המורה שלך אושר!',adminMessage:'הודעה מהמנהל',newPost:'פוסט חדש בקהילה',lessonCompleted:'השיעור הסתיים'};
-      const cols={newBooking:'#A855F7',bookingApproved:'#10B981',bookingRejected:'#EF4444',bookingCancelled:'#F59E0B',newMessage:'#06B6D4',newReview:'#FBBF24',newVideo:'#EC4899',newTeacher:'#7E22CE',newReport:'#E74C3C',newUser:'#0EA5E9',groupJoin:'#14B8A6',groupApproved:'#10B981',groupRejected:'#EF4444',rateLesson:'#FBBF24',lessonSummary:'#6366F1',accountApproved:'#10B981',teacherApproved:'#7E22CE',adminMessage:'#0891B2',newPost:'#F59E0B',lessonCompleted:'#10B981'};
+      const cols={newBooking:'#14B8A6',bookingApproved:'#10B981',bookingRejected:'#EF4444',bookingCancelled:'#F59E0B',newMessage:'#06B6D4',newReview:'#FBBF24',newVideo:'#0891B2',newTeacher:'#0D9488',newReport:'#E74C3C',newUser:'#0EA5E9',groupJoin:'#14B8A6',groupApproved:'#10B981',groupRejected:'#EF4444',rateLesson:'#FBBF24',lessonSummary:'#0891B2',accountApproved:'#10B981',teacherApproved:'#0D9488',adminMessage:'#0891B2',newPost:'#F59E0B',lessonCompleted:'#10B981'};
       const ico=icons[n.type]||'🔔';
       const ttl=titles[n.type]||'התראה';
       const col=cols[n.type]||'#14B8A6';
@@ -2617,7 +2617,7 @@ function showNotificationsPanel(){
         <button onclick="this.closest('._notifPanel').parentElement.remove()" style="background:rgba(20,184,166,0.1);border:none;color:#14B8A6;font-size:18px;cursor:pointer;border-radius:50%;width:32px;height:32px">✕</button>
         <h3 style="font-weight:900;font-size:18px;margin:0;color:#0F1A1F">🔔 התראות${unreadCount>0?' ('+unreadCount+')':''}</h3>
       </div>
-      ${unreadCount>0?'<button onclick="markAllNotificationsRead();this.closest(\'._notifPanel\').parentElement.remove()" style="width:100%;background:rgba(168,85,247,0.1);border:1px solid rgba(168,85,247,0.25);color:#A855F7;border-radius:10px;padding:8px;font-size:12px;font-weight:700;cursor:pointer;margin-bottom:10px">✓ סמן הכל כנקרא</button>':''}
+      ${unreadCount>0?'<button onclick="markAllNotificationsRead();this.closest(\'._notifPanel\').parentElement.remove()" style="width:100%;background:rgba(20,184,166,0.1);border:1px solid rgba(20,184,166,0.25);color:#0D9488;border-radius:10px;padding:8px;font-size:12px;font-weight:700;cursor:pointer;margin-bottom:10px">✓ סמן הכל כנקרא</button>':''}
       ${items}
     </div>`;
   document.body.appendChild(ov);
@@ -2714,10 +2714,10 @@ function showFiltersPanel(){
       </div>
       ${f.minPrice!==null?`<button onclick="activeFilters.minPrice=null;activeFilters.maxPrice=null;render();this.closest('._filtPanel').parentElement.remove();showFiltersPanel()" style="font-size:11px;color:#EF4444;background:none;border:none;cursor:pointer;margin-bottom:14px">✕ נקה מחיר</button>`:'<div style="margin-bottom:14px"></div>'}
 
-      <h4 style="font-weight:800;font-size:14px;margin:0 0 10px;color:#A855F7">⭐ דירוג מינימלי</h4>
+      <h4 style="font-weight:800;font-size:14px;margin:0 0 10px;color:#14B8A6">⭐ דירוג מינימלי</h4>
       <div style="display:flex;gap:8px;margin-bottom:18px">
         ${[3,4,4.5].map(r=>`
-          <button onclick="activeFilters.minRating=${r};render();this.closest('._filtPanel').parentElement.remove();showFiltersPanel()" style="flex:1;background:${f.minRating===r?'linear-gradient(135deg,#A855F7,#06B6D4)':'rgba(168,85,247,0.08)'};color:${f.minRating===r?'#fff':'#A855F7'};border:1.5px solid ${f.minRating===r?'transparent':'rgba(168,85,247,0.2)'};border-radius:14px;padding:10px;font-size:13px;font-weight:800;cursor:pointer">${r}+ ⭐</button>
+          <button onclick="activeFilters.minRating=${r};render();this.closest('._filtPanel').parentElement.remove();showFiltersPanel()" style="flex:1;background:${f.minRating===r?'linear-gradient(135deg,#14B8A6,#06B6D4)':'rgba(20,184,166,0.08)'};color:${f.minRating===r?'#fff':'#14B8A6'};border:1.5px solid ${f.minRating===r?'transparent':'rgba(20,184,166,0.2)'};border-radius:14px;padding:10px;font-size:13px;font-weight:800;cursor:pointer">${r}+ ⭐</button>
         `).join('')}
       </div>
 
@@ -2736,7 +2736,7 @@ function showFiltersPanel(){
 
       <div style="display:flex;gap:10px">
         <button onclick="clearFilters();this.closest('._filtPanel').parentElement.remove()" style="flex:1;background:rgba(231,76,60,0.1);border:1.5px solid rgba(231,76,60,0.25);color:#E74C3C;border-radius:50px;padding:13px;font-size:13px;font-weight:800;cursor:pointer">🔄 נקה הכל</button>
-        <button onclick="this.closest('._filtPanel').parentElement.remove()" style="flex:2;background:linear-gradient(135deg,#14B8A6,#06B6D4,#A855F7);border:none;color:#fff;border-radius:50px;padding:13px;font-size:14px;font-weight:800;cursor:pointer">✓ הצג ${applyFilters(TEACHERS).length} מורים</button>
+        <button onclick="this.closest('._filtPanel').parentElement.remove()" style="flex:2;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:13px;font-size:14px;font-weight:800;cursor:pointer">✓ הצג ${applyFilters(TEACHERS).length} מורים</button>
       </div>
     </div>`;
   document.body.appendChild(ov);
@@ -3228,6 +3228,7 @@ async function sendChatMessage(otherUid,otherName){
   if(!text || text.trim().length === 0) return;
   if(text.length > 2000){ showFireToast('❌ הודעה ארוכה מדי (מקסימום 2000 תווים)'); return; }
   inp.value='';
+  inp.focus();
   const chatId=getChatId(currentUser.uid,otherUid);
   try{
     await db.ref('messages/'+chatId).push({
@@ -3325,7 +3326,7 @@ function viewLessonSummary(bookingId){
     <h3 style="font-weight:900;font-size:18px;margin:0 0 4px">📊 סיכום שיעור</h3>
     <p style="color:#64748B;font-size:13px;margin:0 0 18px">${escapeHtml(s.teacherName||'')} • ${escapeHtml(s.day||'')}</p>
     <div style="background:rgba(20,184,166,0.07);border-radius:16px;padding:14px;margin-bottom:12px"><div style="font-size:11px;font-weight:800;color:#14B8A6;margin-bottom:4px">📚 נושא</div><div style="font-size:14px;font-weight:700">${escapeHtml(s.topic||'')}</div></div>
-    ${s.notes?`<div style="background:rgba(168,85,247,0.06);border-radius:16px;padding:14px;margin-bottom:12px"><div style="font-size:11px;font-weight:800;color:#A855F7;margin-bottom:4px">📝 הערות</div><div style="font-size:14px">${escapeHtml(s.notes)}</div></div>`:''}
+    ${s.notes?`<div style="background:rgba(20,184,166,0.06);border-radius:16px;padding:14px;margin-bottom:12px"><div style="font-size:11px;font-weight:800;color:#0D9488;margin-bottom:4px">📝 הערות</div><div style="font-size:14px">${escapeHtml(s.notes)}</div></div>`:''}
     ${s.homework?`<div style="background:rgba(245,158,11,0.07);border-radius:16px;padding:14px;margin-bottom:12px"><div style="font-size:11px;font-weight:800;color:#D97706;margin-bottom:4px">📎 שיעורי בית</div><div style="font-size:14px">${escapeHtml(s.homework)}</div></div>`:''}
     ${s.rating?`<div style="text-align:center;font-size:28px;margin-bottom:16px">${'⭐'.repeat(s.rating)}</div>`:''}
     <button onclick="document.getElementById('_lsViewDialog').remove()" style="width:100%;background:none;border:none;color:#64748B;padding:10px;font-size:14px;cursor:pointer;font-weight:700">סגור</button>
@@ -3353,7 +3354,7 @@ function _showLessonSummaryDialog(enc){
     <div style="display:flex;gap:8px;margin-bottom:20px">
       ${[1,2,3,4,5].map(r=>`<button type="button" onclick="document.querySelectorAll('._lsStar').forEach(s=>{s.style.background='rgba(20,184,166,0.08)';s.style.color='#64748B'});this.style.background='#14B8A6';this.style.color='#fff';window._lsRating=${r}" class="_lsStar" style="flex:1;background:rgba(20,184,166,0.08);border:none;border-radius:12px;padding:10px 4px;font-size:15px;cursor:pointer;color:#64748B;font-weight:900;transition:all .15s">${r}★</button>`).join('')}
     </div>
-    <button onclick="_saveLessonSummary('${b.id}','${enc}')" style="width:100%;background:linear-gradient(135deg,#14B8A6,#A855F7);border:none;color:#fff;border-radius:50px;padding:15px;font-size:16px;font-weight:900;cursor:pointer;margin-bottom:10px">💾 שמור סיכום</button>
+    <button onclick="_saveLessonSummary('${b.id}','${enc}')" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:15px;font-size:16px;font-weight:900;cursor:pointer;margin-bottom:10px">💾 שמור סיכום</button>
     <button onclick="document.getElementById('_lsDialog').remove()" style="width:100%;background:none;border:none;color:#64748B;padding:10px;font-size:14px;cursor:pointer;font-weight:700">ביטול</button>
   </div>`;
   document.body.appendChild(d);
@@ -4311,7 +4312,7 @@ async function adminSearchAllFirebase(){
     el.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:99999;display:flex;align-items:flex-end;justify-content:center;direction:rtl';
     el.innerHTML=`
       <div style="background:#fff;border-radius:28px 28px 0 0;width:100%;max-width:520px;max-height:85vh;overflow:hidden;display:flex;flex-direction:column">
-        <div style="background:linear-gradient(135deg,#7E22CE,#A855F7);padding:16px 20px;color:#fff;flex-shrink:0">
+        <div style="background:linear-gradient(135deg,#0F766E,#0891B2);padding:16px 20px;color:#fff;flex-shrink:0">
           <div style="display:flex;justify-content:space-between;align-items:center">
             <button onclick="this.closest('div[style*=fixed]').remove()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;border-radius:50px;padding:7px 14px;font-weight:800;cursor:pointer">✕ סגור</button>
             <h3 style="margin:0;font-weight:900;font-size:17px">🔬 כל רשומות users/ ב-DB</h3>
@@ -4729,7 +4730,7 @@ function selectVidMode(mode){
   const lnkBtn=document.getElementById('_modeLink');
   const base='flex:1;border-radius:16px;padding:14px 8px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;transition:all 0.2s;';
   if(galBtn)galBtn.style.cssText=base+(mode==='gallery'?'border:2px solid #14B8A6;background:rgba(20,184,166,0.14);box-shadow:0 4px 14px rgba(20,184,166,0.25)':'border:2px solid rgba(20,184,166,0.3);background:rgba(20,184,166,0.05)');
-  if(lnkBtn)lnkBtn.style.cssText=base+(mode==='link'?'border:2px solid #A855F7;background:rgba(168,85,247,0.14);box-shadow:0 4px 14px rgba(168,85,247,0.25)':'border:2px solid rgba(168,85,247,0.3);background:rgba(168,85,247,0.04)');
+  if(lnkBtn)lnkBtn.style.cssText=base+(mode==='link'?'border:2px solid #06B6D4;background:rgba(6,182,212,0.14);box-shadow:0 4px 14px rgba(6,182,212,0.25)':'border:2px solid rgba(6,182,212,0.3);background:rgba(6,182,212,0.04)');
 
   document.getElementById('_vidGallerySection').style.display=mode==='gallery'?'block':'none';
   document.getElementById('_vidLinkSection').style.display=mode==='link'?'block':'none';
@@ -4926,7 +4927,7 @@ function _showVideoUploadProgress(title){
   const el=document.createElement('div');
   el.id='_vidUploadProgress';
   el.style.cssText='position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#fff;color:#0F1A1F;border-radius:18px;padding:14px 20px;z-index:99999;min-width:260px;max-width:90vw;box-shadow:0 8px 32px rgba(20,184,166,0.25);direction:rtl;display:flex;gap:12px;align-items:center;animation:fadeUp 0.3s ease;border:1.5px solid rgba(20,184,166,0.2)';
-  el.innerHTML=`<div style="font-size:24px">📤</div><div style="flex:1"><div style="font-weight:800;font-size:13px;margin-bottom:6px">${title||'סרטון'} – מועלה...</div><div style="height:6px;background:rgba(20,184,166,.15);border-radius:50px;overflow:hidden"><div id="_vidProgressBar" style="height:100%;width:5%;background:linear-gradient(90deg,#14B8A6,#A855F7);border-radius:50px;transition:width 0.4s ease"></div></div><div id="_vidProgressPct" style="font-size:10px;color:#64748B;margin-top:4px">0%</div></div>`;
+  el.innerHTML=`<div style="font-size:24px">📤</div><div style="flex:1"><div style="font-weight:800;font-size:13px;margin-bottom:6px">${title||'סרטון'} – מועלה...</div><div style="height:6px;background:rgba(20,184,166,.15);border-radius:50px;overflow:hidden"><div id="_vidProgressBar" style="height:100%;width:5%;background:linear-gradient(90deg,#14B8A6,#06B6D4);border-radius:50px;transition:width 0.4s ease"></div></div><div id="_vidProgressPct" style="font-size:10px;color:#64748B;margin-top:4px">0%</div></div>`;
   document.body.appendChild(el);
 }
 function _updateVideoUploadProgress(pct){
@@ -5182,7 +5183,7 @@ function renderScheduleEditor(){
     const isToday=d===now.getDate()&&month===now.getMonth()&&year===now.getFullYear();
     const isPast=date<new Date(now.getFullYear(),now.getMonth(),now.getDate());
     const isSel=window._schSelDate===dk;
-    calCells+=`<button onclick="window._schSelDate='${dk}';renderScheduleEditor()" style="aspect-ratio:1;border-radius:10px;border:${isSel?'2.5px solid #7C3AED':isToday?'2px solid #14B8A6':'1px solid rgba(20,184,166,0.15)'};background:${isSel?'#7C3AED':hasSlots?'linear-gradient(135deg,#14B8A6,#06B6D4)':isPast?'rgba(0,0,0,0.04)':'rgba(20,184,166,0.06)'};color:${isSel||hasSlots?'#fff':isPast?'#CBD5E1':'#0F1A1F'};font-weight:${isToday||isSel?'900':'700'};font-size:13px;cursor:${isPast?'default':'pointer'};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:4px 2px;${isPast?'opacity:0.4;pointer-events:none':''}">${d}${hasSlots&&!isSel?`<span style="font-size:7px;opacity:0.85">●</span>`:''}</button>`;
+    calCells+=`<button onclick="window._schSelDate='${dk}';renderScheduleEditor()" style="aspect-ratio:1;border-radius:10px;border:${isSel?'2.5px solid #0D9488':isToday?'2px solid #14B8A6':'1px solid rgba(20,184,166,0.15)'};background:${isSel?'#0D9488':hasSlots?'linear-gradient(135deg,#14B8A6,#06B6D4)':isPast?'rgba(0,0,0,0.04)':'rgba(20,184,166,0.06)'};color:${isSel||hasSlots?'#fff':isPast?'#CBD5E1':'#0F1A1F'};font-weight:${isToday||isSel?'900':'700'};font-size:13px;cursor:${isPast?'default':'pointer'};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:4px 2px;${isPast?'opacity:0.4;pointer-events:none':''}">${d}${hasSlots&&!isSel?`<span style="font-size:7px;opacity:0.85">●</span>`:''}</button>`;
   }
   calCells+=`</div>`;
 
@@ -5193,10 +5194,10 @@ function renderScheduleEditor(){
   const selLabel=selDate?`יום ${selDayName} ${selDateObj.getDate()}/${selDateObj.getMonth()+1}/${selDateObj.getFullYear()}`:'';
 
   const dayHoursHtml=selDate?`
-    <div style="margin-top:16px;padding:14px;background:rgba(124,58,237,0.06);border-radius:16px;border:1.5px solid rgba(124,58,237,0.25)">
+    <div style="margin-top:16px;padding:14px;background:rgba(20,184,166,0.06);border-radius:16px;border:1.5px solid rgba(20,184,166,0.25)">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
         <button onclick="clearDaySchedule('${selDate}')" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#EF4444;border-radius:50px;padding:5px 10px;font-size:11px;font-weight:800;cursor:pointer">🗑 נקה יום</button>
-        <div style="font-weight:800;font-size:13px;color:#7C3AED">📌 ${selLabel}</div>
+        <div style="font-weight:800;font-size:13px;color:#0891B2">📌 ${selLabel}</div>
       </div>
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
         ${HOURS.map(h=>{const on=teacherSchedule[selDate+'_'+h];return `<button onclick="toggleSlot('${selDate}','${h}')" style="padding:8px 4px;border-radius:10px;border:none;background:${on?'linear-gradient(135deg,#14B8A6,#06B6D4)':'rgba(20,184,166,0.08)'};color:${on?'#fff':'#0F766E'};font-weight:800;font-size:12px;cursor:pointer">${h}${on?' ✓':''}</button>`;}).join('')}
@@ -5831,7 +5832,7 @@ function renderAdminPanel(){
       ${totalPending>0?`<div onclick="adminTab='teachers';renderAdminPanel()" style="margin-top:10px;background:rgba(239,68,68,0.85);border-radius:12px;padding:10px 14px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:8px;position:relative;z-index:2">🔔 <span>${totalPending} מורים ממתינים לטיפול – לחץ</span></div>`:''}
       ${_adminCommunityOrphans.length>0?`<div onclick="adminTab='students';renderAdminPanel()" style="margin-top:8px;background:rgba(239,68,68,0.75);border-radius:12px;padding:10px 14px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:8px;position:relative;z-index:2">⚠️ <span>${_adminCommunityOrphans.length} משתמשים פרסמו בקהילה ללא אישור — לחץ לטיפול</span></div>`:''}
       ${adminAlertPayments.length>0?`<div onclick="adminSwitchTab('payments')" style="margin-top:8px;background:rgba(245,158,11,0.9);border-radius:12px;padding:10px 14px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:8px;position:relative;z-index:2">💰 <span>${adminAlertPayments.length} תשלומים ממתינים לאימות — לחץ לאישור</span></div>`:''}
-      ${adminContactMessages.filter(m=>!m.read).length>0?`<div onclick="adminSwitchTab('messages')" style="margin-top:8px;background:rgba(168,85,247,0.9);border-radius:12px;padding:10px 14px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:8px;position:relative;z-index:2">💬 <span>${adminContactMessages.filter(m=>!m.read).length} הודעות חדשות מהאפליקציה — לחץ לצפייה</span></div>`:''}
+      ${adminContactMessages.filter(m=>!m.read).length>0?`<div onclick="adminSwitchTab('messages')" style="margin-top:8px;background:rgba(6,182,212,0.9);border-radius:12px;padding:10px 14px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:8px;position:relative;z-index:2">💬 <span>${adminContactMessages.filter(m=>!m.read).length} הודעות חדשות מהאפליקציה — לחץ לצפייה</span></div>`:''}
     </div>
     ${!adminAllTeachers.find(t=>t.uid===currentUser?.uid)?`
     <div style="margin:12px 16px 0;background:linear-gradient(135deg,rgba(245,158,11,0.12),rgba(239,68,68,0.1));border:2px solid rgba(245,158,11,0.5);border-radius:16px;padding:14px">
@@ -5908,7 +5909,7 @@ function renderAdminTab(){
           <div style="font-size:20px;font-weight:900">₪${totalGross.toLocaleString()}</div>
           <div style="font-size:10px;opacity:0.9;margin-top:3px">סה"כ הכנסות</div>
         </div>
-        <div style="background:linear-gradient(135deg,#7E22CE,#A855F7);border-radius:16px;padding:14px;color:#fff;text-align:center">
+        <div style="background:linear-gradient(135deg,#0891B2,#06B6D4);border-radius:16px;padding:14px;color:#fff;text-align:center">
           <div style="font-size:20px;font-weight:900">₪${totalCommission.toLocaleString()}</div>
           <div style="font-size:10px;opacity:0.8;margin-top:3px">עמלות Kidemy</div>
         </div>
@@ -5964,7 +5965,7 @@ function renderAdminTab(){
               <span style="font-size:12px;font-weight:700;color:#0F1A1F">${p.day||''} ${p.time||''}</span>
             </div>
             <div style="display:flex;justify-content:space-between;border-top:1px solid rgba(20,184,166,0.1);padding-top:8px;margin-top:2px">
-              <span style="font-size:11px;color:#A855F7">עמלה: ₪${p.commission||0}</span>
+              <span style="font-size:11px;color:#0891B2">עמלה: ₪${p.commission||0}</span>
               <span style="font-size:11px;color:#10B981">למורה: ₪${p.netToTeacher||0}</span>
             </div>
           </div>
@@ -5991,7 +5992,7 @@ function renderAdminTab(){
             </div>
             <div style="text-align:left">
               <div style="font-size:16px;font-weight:900;color:#10B981">₪${b.grossAmount||b.price||0}</div>
-              <div style="font-size:10px;color:#A855F7">+₪${b.commission||0} עמלה</div>
+              <div style="font-size:10px;color:#0891B2">+₪${b.commission||0} עמלה</div>
             </div>
           </div>
         `).join('')}`;
@@ -6041,13 +6042,13 @@ function renderAdminTab(){
             </div>
             <div style="font-size:12px;color:#64748B;direction:ltr;text-align:right;margin-bottom:4px">📧 ${u.email||''}</div>
             ${u.parentName?`
-              <div style="background:rgba(168,85,247,0.06);border-radius:10px;padding:8px;margin-top:8px">
-                <div style="font-size:11px;color:#A855F7;font-weight:800;margin-bottom:3px">👨‍👩‍👧 הורה אחראי</div>
+              <div style="background:rgba(20,184,166,0.06);border-radius:10px;padding:8px;margin-top:8px">
+                <div style="font-size:11px;color:#0891B2;font-weight:800;margin-bottom:3px">👨‍👩‍👧 הורה אחראי</div>
                 <div style="font-size:12px;color:#0F1A1F;font-weight:700">${u.parentName}</div>
                 ${u.parentId?`<div style="font-size:11px;color:#64748B;margin-top:2px">🪪 ת"ז: ${u.parentId}</div>`:''}
                 <div style="font-size:11px;color:#64748B;direction:ltr;text-align:right;margin-top:2px">📧 ${u.parentEmail||''}</div>
                 ${u.parentPhone?`<div style="font-size:11px;color:#64748B;direction:ltr;text-align:right">📱 ${u.parentPhone}</div>`:''}
-                ${u.parentIdPhoto?`<div style="margin-top:8px"><div style="font-size:10px;color:#A855F7;font-weight:700;margin-bottom:4px">📸 צילום תז</div><img src="${u.parentIdPhoto}" onclick="this.style.maxHeight=this.style.maxHeight==='none'?'120px':'none'" style="width:100%;max-height:120px;object-fit:cover;border-radius:8px;border:1.5px solid rgba(168,85,247,0.3);cursor:zoom-in" alt="תז הורה"></div>`:'<div style="font-size:10px;color:#F59E0B;margin-top:4px">📸 ללא צילום תז</div>'}
+                ${u.parentIdPhoto?`<div style="margin-top:8px"><div style="font-size:10px;color:#0891B2;font-weight:700;margin-bottom:4px">📸 צילום תז</div><img src="${u.parentIdPhoto}" onclick="this.style.maxHeight=this.style.maxHeight==='none'?'120px':'none'" style="width:100%;max-height:120px;object-fit:cover;border-radius:8px;border:1.5px solid rgba(20,184,166,0.3);cursor:zoom-in" alt="תז הורה"></div>`:'<div style="font-size:10px;color:#F59E0B;margin-top:4px">📸 ללא צילום תז</div>'}
               </div>
             `:'<div style="font-size:11px;color:#EF4444;margin-top:4px;font-weight:700">⚠️ אין פרטי הורה</div>'}
             <div style="font-size:10px;color:#94A3B8;margin-top:6px">נרשם: ${u.createdAt?new Date(u.createdAt).toLocaleDateString('he-IL'):''}</div>
@@ -6107,12 +6108,12 @@ function renderAdminTab(){
           <div style="flex:1;min-width:0">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">
               <span style="font-weight:900;font-size:14px;color:${u.name?'#0F1A1F':'#EF4444'}">${u.name||'⚠️ ללא שם'}</span>
-              ${u.role==='teacher'?'<span style="background:rgba(168,85,247,0.15);color:#A855F7;font-size:10px;font-weight:800;padding:2px 8px;border-radius:50px">🎓 מורה</span>':'<span style="background:rgba(6,182,212,0.15);color:#06B6D4;font-size:10px;font-weight:800;padding:2px 8px;border-radius:50px">🎒 תלמיד</span>'}
+              ${u.role==='teacher'?'<span style="background:rgba(20,184,166,0.15);color:#0D9488;font-size:10px;font-weight:800;padding:2px 8px;border-radius:50px">🎓 מורה</span>':'<span style="background:rgba(6,182,212,0.15);color:#06B6D4;font-size:10px;font-weight:800;padding:2px 8px;border-radius:50px">🎒 תלמיד</span>'}
               ${u.age?`<span style="font-size:10px;color:#64748B">גיל ${u.age}</span>`:''}
               ${u.blocked?'<span style="background:rgba(239,68,68,0.15);color:#EF4444;font-size:10px;font-weight:800;padding:2px 8px;border-radius:50px">🚫 חסום</span>':''}
             </div>
             <div style="font-size:12px;color:#64748B;direction:ltr;text-align:right">${u.email||''}</div>
-            ${u.parentName?`<div style="font-size:11px;color:#A855F7;font-weight:700;margin-top:3px">👨‍👩‍👧 ${u.parentName} (${u.parentEmail||''})</div>`:''}
+            ${u.parentName?`<div style="font-size:11px;color:#0891B2;font-weight:700;margin-top:3px">👨‍👩‍👧 ${u.parentName} (${u.parentEmail||''})</div>`:''}
             <div style="font-size:10px;color:#94A3B8;margin-top:3px">${u.createdAt?new Date(u.createdAt).toLocaleDateString('he-IL'):''}</div>
           </div>
           <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
@@ -6157,14 +6158,14 @@ function renderAdminTab(){
               <div style="font-size:11px;color:#94A3B8;margin-top:2px">${CATS.find(c=>c.id===t.cat)?.lbl||t.cat||'?'} · ${t.city||'?'} · ₪${t.price||'?'}/שיעור</div>
               ${t.email?`<div style="font-size:11px;color:#64748B;margin-top:2px">📧 ${t.email}</div>`:''}
               ${t.phone?`<div style="font-size:11px;color:#64748B;margin-top:1px">📞 ${t.phone}</div>`:''}
-              ${t.parentName?`<div style="font-size:11px;color:#A855F7;margin-top:2px">👨‍👩‍👧 הורה: ${t.parentName}${t.parentPhone?' · '+t.parentPhone:''}${t.parentEmail?' · '+t.parentEmail:''}</div>`:''}
+              ${t.parentName?`<div style="font-size:11px;color:#0891B2;margin-top:2px">👨‍👩‍👧 הורה: ${t.parentName}${t.parentPhone?' · '+t.parentPhone:''}${t.parentEmail?' · '+t.parentEmail:''}</div>`:''}
             </div>
             <div style="font-size:10px;color:#CBD5E1;font-weight:700">${t.createdAt?new Date(t.createdAt).toLocaleDateString('he-IL'):''}</div>
           </div>
-          ${t.ageVerification?.age?`<div style="padding:0 16px 4px;font-size:11px;color:#6366F1;font-weight:700">🪪 גיל ${t.ageVerification.age} • ${t.ageVerification.idType==='id'?'ת.ז.':t.ageVerification.idType==='passport'?'דרכון':'אישור הורה'} • ${t.ageVerification.status==='verified'?'✅ מאומת':'⏳ ממתין לאימות גיל'}</div>`:'<div style="padding:0 16px 4px;font-size:11px;color:#EF4444;font-weight:700">⚠️ לא הוגשו פרטי גיל/זהות</div>'}
-          ${t.ageVerification?.idPhoto?`<div style="padding:0 16px 10px"><img src="${t.ageVerification.idPhoto}" style="width:100%;max-height:120px;object-fit:cover;border-radius:10px;border:1.5px solid rgba(99,102,241,0.3)" alt="מסמך זהות" onclick="this.style.maxHeight=this.style.maxHeight==='none'?'120px':'none'"></div>`:''}
+          ${t.ageVerification?.age?`<div style="padding:0 16px 4px;font-size:11px;color:#0891B2;font-weight:700">🪪 גיל ${t.ageVerification.age} • ${t.ageVerification.idType==='id'?'ת.ז.':t.ageVerification.idType==='passport'?'דרכון':'אישור הורה'} • ${t.ageVerification.status==='verified'?'✅ מאומת':'⏳ ממתין לאימות גיל'}</div>`:'<div style="padding:0 16px 4px;font-size:11px;color:#EF4444;font-weight:700">⚠️ לא הוגשו פרטי גיל/זהות</div>'}
+          ${t.ageVerification?.idPhoto?`<div style="padding:0 16px 10px"><img src="${t.ageVerification.idPhoto}" style="width:100%;max-height:120px;object-fit:cover;border-radius:10px;border:1.5px solid rgba(20,184,166,0.3)" alt="מסמך זהות" onclick="this.style.maxHeight=this.style.maxHeight==='none'?'120px':'none'"></div>`:''}
           ${t.desc?`<div style="padding:0 16px 10px;font-size:12px;color:#64748B;line-height:1.5">"${t.desc.substring(0,120)}${t.desc.length>120?'...':''}"</div>`:''}
-          ${t.ageVerification?.age&&t.ageVerification?.status!=='verified'?`<div style="padding:0 16px 10px"><button onclick="adminVerifyAge('${t.uid}')" style="width:100%;background:linear-gradient(135deg,#6366F1,#A855F7);border:none;color:#fff;border-radius:12px;padding:8px;font-weight:800;font-size:12px;cursor:pointer">🪪 אמת גיל וזהות</button></div>`:''}
+          ${t.ageVerification?.age&&t.ageVerification?.status!=='verified'?`<div style="padding:0 16px 10px"><button onclick="adminVerifyAge('${t.uid}')" style="width:100%;background:linear-gradient(135deg,#0891B2,#14B8A6);border:none;color:#fff;border-radius:12px;padding:8px;font-weight:800;font-size:12px;cursor:pointer">🪪 אמת גיל וזהות</button></div>`:''}
           <div style="display:flex;border-top:1px solid #f1f5f9">
             <button onclick="adminApproveTeacher('${t.uid}')" style="flex:1;padding:11px;border:none;background:transparent;color:#10B981;font-weight:800;font-size:12px;cursor:pointer;border-left:1px solid #f1f5f9;display:flex;align-items:center;justify-content:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg> אישור</button>
             <button onclick="adminRejectTeacher('${t.uid}')" style="flex:1;padding:11px;border:none;background:transparent;color:#EF4444;font-weight:800;font-size:12px;cursor:pointer;border-left:1px solid #f1f5f9;display:flex;align-items:center;justify-content:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> דחייה</button>
@@ -6225,18 +6226,18 @@ function renderAdminTab(){
       html+=pending.map(v=>`
         <div style="background:#fff;border-radius:18px;margin-bottom:10px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,0.06)">
           <div style="padding:14px 16px 10px;display:flex;align-items:center;gap:12px">
-            <div style="width:44px;height:44px;border-radius:14px;background:rgba(168,85,247,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#A855F7" stroke-width="2" stroke-linecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+            <div style="width:44px;height:44px;border-radius:14px;background:rgba(20,184,166,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2" stroke-linecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
             </div>
             <div style="flex:1">
               <div style="font-size:13px;font-weight:900;color:#0F1A1F">${escapeHtml(v.title||'סרטון ללא שם')}</div>
-              <div style="font-size:11px;color:#A855F7;font-weight:700;margin-top:2px">מאת: ${escapeHtml(v.teacherName||'?')}</div>
+              <div style="font-size:11px;color:#0891B2;font-weight:700;margin-top:2px">מאת: ${escapeHtml(v.teacherName||'?')}</div>
             </div>
           </div>
           ${v.desc?`<div style="padding:0 16px 10px;font-size:12px;color:#64748B;line-height:1.5">${v.desc}</div>`:''}
           <div style="margin:0 16px 12px;background:#f4f7fa;border-radius:12px;height:70px;display:flex;align-items:center;justify-content:center;cursor:pointer" onclick="(function(u){if(u&&(u.startsWith('http://')||u.startsWith('https://')))window.open(u,'_blank');else showFireToast('❌ קישור לא תקין')})('${(v.url||'').replace(/'/g,'')}')"  >
-            <div style="width:36px;height:36px;border-radius:50%;background:rgba(168,85,247,.15);border:2px solid rgba(168,85,247,.3);display:flex;align-items:center;justify-content:center">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="#A855F7"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            <div style="width:36px;height:36px;border-radius:50%;background:rgba(20,184,166,.15);border:2px solid rgba(20,184,166,.3);display:flex;align-items:center;justify-content:center">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="#14B8A6"><polygon points="5 3 19 12 5 21 5 3"/></svg>
             </div>
           </div>
           <div style="display:flex;border-top:1px solid #f1f5f9">
@@ -6271,8 +6272,8 @@ function renderAdminTab(){
       html+=pendingPosts.map(p=>`
         <div style="background:#fff;border-radius:18px;margin-bottom:10px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,0.06)">
           <div style="padding:14px 16px 10px;display:flex;align-items:center;gap:12px">
-            <div style="width:44px;height:44px;border-radius:14px;background:rgba(168,85,247,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#A855F7" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <div style="width:44px;height:44px;border-radius:14px;background:rgba(20,184,166,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
             </div>
             <div style="flex:1">
               <div style="font-size:13px;font-weight:900;color:#0F1A1F">${escapeHtml(p.author||'?')} <span style="font-size:10px;color:#94A3B8;font-weight:400">${escapeHtml(p.role||'')}</span></div>
@@ -6354,7 +6355,7 @@ function renderAdminTab(){
           ${s.text?`<div style="background:#F8FAFC;border-radius:10px;padding:10px;font-size:13px;color:#0F1A1F;margin-bottom:10px;direction:rtl">"${escapeHtml(s.text)}"</div>`:''}
           <div style="display:flex;gap:8px">
             <button onclick="adminRejectStory('${s.id}')" style="flex:1;background:rgba(239,68,68,0.1);border:1.5px solid rgba(239,68,68,0.3);color:#EF4444;border-radius:12px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">✗ דחה</button>
-            <button onclick="adminApproveStory('${s.id}')" style="flex:2;background:linear-gradient(135deg,#EC4899,#A855F7);border:none;color:#fff;border-radius:12px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">✓ אשר ופרסם</button>
+            <button onclick="adminApproveStory('${s.id}')" style="flex:2;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:12px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">✓ אשר ופרסם</button>
           </div>
         </div>
       </div>`).join('');
@@ -6394,10 +6395,10 @@ function renderAdminTab(){
     const read=adminContactMessages.filter(m=>m.read);
     const fmtDate=ts=>ts?new Date(ts).toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
     const renderMsg=(m,isUnread)=>`
-      <div style="background:#fff;border:${isUnread?'2px solid rgba(168,85,247,0.4)':'1.5px solid rgba(20,184,166,0.15)'};border-radius:18px;padding:16px;margin-bottom:12px;box-shadow:${isUnread?'0 4px 16px rgba(168,85,247,0.1)':'none'}">
+      <div style="background:#fff;border:${isUnread?'2px solid rgba(20,184,166,0.4)':'1.5px solid rgba(20,184,166,0.15)'};border-radius:18px;padding:16px;margin-bottom:12px;box-shadow:${isUnread?'0 4px 16px rgba(20,184,166,0.1)':'none'}">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
           <div>
-            ${isUnread?`<span style="background:rgba(168,85,247,0.15);color:#A855F7;font-size:10px;font-weight:800;padding:2px 8px;border-radius:50px;display:inline-block;margin-bottom:4px">● חדש</span><br>`:''}
+            ${isUnread?`<span style="background:rgba(20,184,166,0.15);color:#0D9488;font-size:10px;font-weight:800;padding:2px 8px;border-radius:50px;display:inline-block;margin-bottom:4px">● חדש</span><br>`:''}
             <div style="font-weight:800;font-size:14px;color:#0F172A">${escapeHtml(m.from||'משתמש')}</div>
             <div style="font-size:11px;color:#64748B">${escapeHtml(m.email||'')}</div>
           </div>
@@ -6408,16 +6409,16 @@ function renderAdminTab(){
         </div>
         <div style="background:rgba(248,250,252,1);border-radius:12px;padding:12px;font-size:13px;color:#374151;line-height:1.7;white-space:pre-wrap;direction:rtl">${escapeHtml(m.message||'')}</div>
         <div style="margin-top:10px">
-          <a href="mailto:${m.email||''}?subject=תגובה מ-Kidemy&body=שלום ${m.from||''},%0A%0A" style="display:block;background:linear-gradient(135deg,#A855F7,#7E22CE);color:#fff;border-radius:50px;padding:9px;font-size:12px;font-weight:800;text-decoration:none;text-align:center">📧 השב במייל</a>
+          <a href="mailto:${m.email||''}?subject=תגובה מ-Kidemy&body=שלום ${m.from||''},%0A%0A" style="display:block;background:linear-gradient(135deg,#14B8A6,#0891B2);color:#fff;border-radius:50px;padding:9px;font-size:12px;font-weight:800;text-decoration:none;text-align:center">📧 השב במייל</a>
         </div>
       </div>`;
     return `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-        <button onclick="loadAdminData().then(()=>renderAdminPanel())" style="background:rgba(168,85,247,0.1);border:1px solid rgba(168,85,247,0.3);color:#A855F7;border-radius:50px;padding:7px 14px;font-size:12px;font-weight:800;cursor:pointer">🔄 רענן</button>
+        <button onclick="loadAdminData().then(()=>renderAdminPanel())" style="background:rgba(20,184,166,0.1);border:1px solid rgba(20,184,166,0.3);color:#0D9488;border-radius:50px;padding:7px 14px;font-size:12px;font-weight:800;cursor:pointer">🔄 רענן</button>
         <h4 style="font-weight:900;font-size:16px;margin:0;color:#0F1A1F">💬 הודעות ישירות</h4>
       </div>
       ${unread.length===0&&read.length===0?`<div style="text-align:center;padding:48px;color:#64748B"><div style="font-size:48px;margin-bottom:10px">💬</div><div style="font-size:15px;font-weight:700">אין הודעות עדיין</div></div>`:''}
-      ${unread.length>0?`<h4 style="font-weight:900;font-size:14px;margin:0 0 10px;color:#A855F7">📬 חדשות (${unread.length})</h4>${unread.map(m=>renderMsg(m,true)).join('')}`:''}
+      ${unread.length>0?`<h4 style="font-weight:900;font-size:14px;margin:0 0 10px;color:#0D9488">📬 חדשות (${unread.length})</h4>${unread.map(m=>renderMsg(m,true)).join('')}`:''}
       ${read.length>0?`<h4 style="font-weight:900;font-size:14px;margin:${unread.length>0?'16px':'0'} 0 10px;color:#64748B">📂 נקראו (${read.length})</h4>${read.map(m=>renderMsg(m,false)).join('')}`:''}`;
   }
   if(adminTab==='stats'){
@@ -6445,9 +6446,9 @@ function renderAdminTab(){
         <button onclick="_adminPinVerified=false;_verifyAdminPin(()=>{showFireToast('✅ PIN עודכן');_adminPinVerified=true;})" style="width:100%;background:linear-gradient(135deg,#EF4444,#DC2626);border:none;color:#fff;border-radius:50px;padding:11px;font-weight:800;font-size:13px;cursor:pointer">🔑 שנה PIN מנהל</button>
       </div>
       ${EMAILJS_SERVICE_ID&&EMAILJS_TEMPLATE_ID&&EMAILJS_PUBLIC_KEY
-        ?`<div style="background:rgba(168,85,247,0.07);border:1.5px solid rgba(168,85,247,0.3);border-radius:16px;padding:14px;margin-bottom:14px">
-            <h4 style="margin:0 0 6px;font-weight:900;font-size:14px;color:#A855F7">📧 מיילים ✅ מוגדר</h4>
-            <button onclick="adminSendTestEmail()" style="width:100%;background:linear-gradient(135deg,#A855F7,#7E22CE);border:none;color:#fff;border-radius:50px;padding:11px;font-weight:800;font-size:13px;cursor:pointer;margin-bottom:8px">📤 שלח מייל בדיקה</button>
+        ?`<div style="background:rgba(20,184,166,0.07);border:1.5px solid rgba(20,184,166,0.3);border-radius:16px;padding:14px;margin-bottom:14px">
+            <h4 style="margin:0 0 6px;font-weight:900;font-size:14px;color:#0D9488">📧 מיילים ✅ מוגדר</h4>
+            <button onclick="adminSendTestEmail()" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:11px;font-weight:800;font-size:13px;cursor:pointer;margin-bottom:8px">📤 שלח מייל בדיקה</button>
             <button onclick="adminSendWeeklyReports()" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:11px;font-weight:800;font-size:13px;cursor:pointer">📊 שלח דוחות שבועיים להורים</button>
           </div>`
         :`<div style="background:rgba(239,68,68,0.05);border:2px solid rgba(239,68,68,0.3);border-radius:16px;padding:14px;margin-bottom:14px">
@@ -6471,7 +6472,7 @@ function renderAdminTab(){
         <h4 style="margin:0 0 14px;font-weight:900;font-size:16px;color:#14B8A6">📊 סקירה כללית</h4>
         <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">
           <div><div style="font-size:11px;color:#64748B">תלמידים</div><div style="font-size:22px;font-weight:900;color:#06B6D4">${studentCount}</div></div>
-          <div><div style="font-size:11px;color:#64748B">מורים</div><div style="font-size:22px;font-weight:900;color:#A855F7">${teacherCount}</div></div>
+          <div><div style="font-size:11px;color:#64748B">מורים</div><div style="font-size:22px;font-weight:900;color:#0D9488">${teacherCount}</div></div>
           <div><div style="font-size:11px;color:#64748B">מאושרים</div><div style="font-size:22px;font-weight:900;color:#10B981">${verifiedTeachers}</div></div>
           <div><div style="font-size:11px;color:#64748B">חסומים</div><div style="font-size:22px;font-weight:900;color:#EF4444">${blockedUsers}</div></div>
           <div><div style="font-size:11px;color:#64748B">סרטונים</div><div style="font-size:22px;font-weight:900;color:#FBBF24">${totalVideos}</div></div>
@@ -6484,7 +6485,7 @@ function renderAdminTab(){
         ${topCats.map(([cId,count])=>{
           const cat=CATS.find(c=>c.id===cId);
           const pct=Math.round((count/adminAllTeachers.length)*100);
-          return `<div style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;margin-bottom:3px"><span style="color:#64748B">${count} מורים</span><span style="color:#0F1A1F">${cat?.em||''} ${cat?.lbl||cId}</span></div><div style="height:8px;background:rgba(20,184,166,0.1);border-radius:50px;overflow:hidden"><div style="width:${pct}%;height:100%;background:linear-gradient(90deg,#14B8A6,#06B6D4,#A855F7);border-radius:50px"></div></div></div>`;
+          return `<div style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;margin-bottom:3px"><span style="color:#64748B">${count} מורים</span><span style="color:#0F1A1F">${cat?.em||''} ${cat?.lbl||cId}</span></div><div style="height:8px;background:rgba(20,184,166,0.1);border-radius:50px;overflow:hidden"><div style="width:${pct}%;height:100%;background:linear-gradient(90deg,#14B8A6,#06B6D4);border-radius:50px"></div></div></div>`;
         }).join('')}
       </div>`:''}
       <div style="background:rgba(239,68,68,0.05);border:1.5px solid rgba(239,68,68,0.2);border-radius:16px;padding:14px;margin-bottom:14px">
@@ -6750,7 +6751,7 @@ function showAnalyticsPanel(){
           }).join('')}
         </div>
 
-        <h4 style="font-weight:800;font-size:14px;margin:18px 0 10px;color:#A855F7">📅 הזמנות לפי יום בשבוע</h4>
+        <h4 style="font-weight:800;font-size:14px;margin:18px 0 10px;color:#0D9488">📅 הזמנות לפי יום בשבוע</h4>
         <div style="background:rgba(255,255,255,0.7);backdrop-filter:blur(10px);border-radius:18px;padding:14px;margin-bottom:14px">
           ${[0,1,2,3,4,5].map(d=>{
             const cnt=a.bookingsByDay[d]||0;
@@ -6758,7 +6759,7 @@ function showAnalyticsPanel(){
             const pct=Math.round((cnt/max)*100);
             return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:7px">
               <div style="width:25px;font-size:13px;font-weight:800;color:#0F1A1F">${days[d]}</div>
-              <div style="flex:1;height:22px;background:rgba(168,85,247,0.1);border-radius:50px;overflow:hidden"><div style="width:${pct}%;height:100%;background:linear-gradient(90deg,#A855F7,#06B6D4);border-radius:50px;display:flex;align-items:center;justify-content:flex-end;padding-left:8px;color:#fff;font-size:11px;font-weight:800;min-width:24px">${cnt>0?cnt:''}</div></div>
+              <div style="flex:1;height:22px;background:rgba(20,184,166,0.1);border-radius:50px;overflow:hidden"><div style="width:${pct}%;height:100%;background:linear-gradient(90deg,#14B8A6,#06B6D4);border-radius:50px;display:flex;align-items:center;justify-content:flex-end;padding-left:8px;color:#fff;font-size:11px;font-weight:800;min-width:24px">${cnt>0?cnt:''}</div></div>
             </div>`;
           }).join('')}
         </div>
@@ -6799,7 +6800,7 @@ function showCertificate(type='completion'){
     <div style="width:100%;max-width:400px">
       <div id="_certCard" style="background:linear-gradient(135deg,#0F1A1F 0%,#134E4A 50%,#1E1B4B 100%);border-radius:24px;padding:32px 24px;color:#fff;text-align:center;position:relative;overflow:hidden;border:3px solid #FBBF24;box-shadow:0 20px 60px rgba(251,191,36,0.4)">
         <div style="position:absolute;top:-80px;right:-80px;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,rgba(20,184,166,0.4),transparent)"></div>
-        <div style="position:absolute;bottom:-80px;left:-80px;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,rgba(168,85,247,0.4),transparent)"></div>
+        <div style="position:absolute;bottom:-80px;left:-80px;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,rgba(20,184,166,0.4),transparent)"></div>
         
         <div style="font-size:64px;margin-bottom:8px;position:relative;z-index:1;filter:drop-shadow(0 0 20px rgba(251,191,36,0.6))">${rank.icon}</div>
         <div style="background:${rank.grad};color:#fff;font-weight:900;padding:6px 18px;border-radius:50px;font-size:13px;display:inline-block;margin-bottom:14px;position:relative;z-index:1">${rank.name.toUpperCase()}</div>
@@ -6819,12 +6820,12 @@ function showCertificate(type='completion'){
             <div style="font-size:10px;color:rgba(255,255,255,0.7);font-weight:600">שיעורים</div>
           </div>
           ${isStudent?`
-          <div style="flex:1;background:rgba(99,102,241,0.15);border-radius:14px;padding:12px;border:1px solid rgba(99,102,241,0.3)">
-            <div style="font-size:24px;font-weight:900;color:#6366F1">${rank.icon}</div>
+          <div style="flex:1;background:rgba(20,184,166,0.15);border-radius:14px;padding:12px;border:1px solid rgba(20,184,166,0.3)">
+            <div style="font-size:24px;font-weight:900;color:#14B8A6">${rank.icon}</div>
             <div style="font-size:10px;color:rgba(255,255,255,0.7);font-weight:600">דרגה: ${rank.name}</div>
           </div>`:`
-          <div style="flex:1;background:rgba(168,85,247,0.15);border-radius:14px;padding:12px;border:1px solid rgba(168,85,247,0.3)">
-            <div style="font-size:24px;font-weight:900;color:#A855F7">${rating}⭐</div>
+          <div style="flex:1;background:rgba(6,182,212,0.15);border-radius:14px;padding:12px;border:1px solid rgba(6,182,212,0.3)">
+            <div style="font-size:24px;font-weight:900;color:#06B6D4">${rating}⭐</div>
             <div style="font-size:10px;color:rgba(255,255,255,0.7);font-weight:600">דירוג ממוצע</div>
           </div>`}
         </div>
@@ -6832,7 +6833,7 @@ function showCertificate(type='completion'){
         <div style="font-size:11px;color:rgba(255,255,255,0.6);font-weight:600;letter-spacing:1px;position:relative;z-index:1">${date}</div>
         <div style="margin-top:14px;display:flex;align-items:center;justify-content:center;gap:8px;position:relative;z-index:1">
           <div style="font-size:24px">🎓</div>
-          <div style="font-size:18px;font-weight:900;background:linear-gradient(135deg,#5EEAD4,#A855F7);-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:-0.02em">Kidemy</div>
+          <div style="font-size:18px;font-weight:900;background:linear-gradient(135deg,#5EEAD4,#06B6D4);-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:-0.02em">Kidemy</div>
         </div>
       </div>
 
@@ -6966,7 +6967,7 @@ function Home(){
         </div>
         <div style="display:flex;gap:6px">
           <button onclick="shareApp()" style="background:rgba(255,255,255,.2);border:none;color:#fff;cursor:pointer;border-radius:50%;width:38px;height:38px;display:flex;align-items:center;justify-content:center" title="שתף את Kidemy"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
-          <button onclick="showFiltersPanel()" style="position:relative;background:rgba(255,255,255,.2);border:none;color:#fff;cursor:pointer;border-radius:50%;width:38px;height:38px;display:flex;align-items:center;justify-content:center">${activeFiltersCount()>0?`<span style="position:absolute;top:-4px;left:-4px;background:#A855F7;color:#fff;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900">${activeFiltersCount()}</span>`:''}<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg></button>
+          <button onclick="showFiltersPanel()" style="position:relative;background:rgba(255,255,255,.2);border:none;color:#fff;cursor:pointer;border-radius:50%;width:38px;height:38px;display:flex;align-items:center;justify-content:center">${activeFiltersCount()>0?`<span style="position:absolute;top:-4px;left:-4px;background:#14B8A6;color:#fff;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900">${activeFiltersCount()}</span>`:''}<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg></button>
           ${currentUser?`<button onclick="showNotificationsPanel()" style="position:relative;background:rgba(255,255,255,.2);border:none;color:#fff;cursor:pointer;border-radius:50%;width:38px;height:38px;display:flex;align-items:center;justify-content:center">${unreadCount>0?`<span style="position:absolute;top:-4px;left:-4px;background:#EF4444;color:#fff;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900">${unreadCount}</span>`:''}<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>`:''}
         </div>
       </div>
@@ -7062,7 +7063,7 @@ function Home(){
           <div style="background:rgba(255,255,255,0.15);backdrop-filter:blur(10px);border-radius:16px;padding:14px;margin-bottom:8px">
             <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:10px">
               <div>
-                <div style="font-weight:800;font-size:15px">${b.studentName}</div>
+                <div style="font-weight:800;font-size:15px">${escapeHtml(b.studentName)}</div>
                 <div style="font-size:12px;opacity:0.85;margin-top:3px">📅 יום ${b.day} בשעה ${b.time}</div>
                 <div style="font-size:12px;opacity:0.85;margin-top:2px">💰 ₪${b.price} • ${b.payMethod}</div>
               </div>
@@ -7092,8 +7093,8 @@ function Home(){
               <div style="font-size:20px;font-weight:900;color:#FB923C">${_streak}${_streak>0?'🔥':''}</div>
               <div style="font-size:10px;opacity:.75;margin-top:3px">ימים ברצף</div>
             </div>
-            <div style="background:rgba(99,102,241,0.18);border-radius:16px;padding:12px 8px;text-align:center">
-              <div style="font-size:20px;font-weight:900;color:#818CF8">👁 ${_views}</div>
+            <div style="background:rgba(20,184,166,0.12);border-radius:16px;padding:12px 8px;text-align:center">
+              <div style="font-size:20px;font-weight:900;color:#0D9488">👁 ${_views}</div>
               <div style="font-size:10px;opacity:.75;margin-top:3px">צפיות בפרופיל</div>
             </div>
           </div>
@@ -7144,7 +7145,7 @@ function Home(){
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
                   <span style="font-weight:900;font-size:14px;color:var(--p)">₪${t.price}/שיעור</span>
                   ${t.freeTrial?`<span style="background:linear-gradient(135deg,#FBBF24,#F59E0B);color:#fff;font-weight:800;font-size:10px;padding:2px 8px;border-radius:50px">🎁 ניסיון חינם</span>`:''}
-                  ${t.ageVerified?`<span style="background:rgba(99,102,241,0.15);color:#6366F1;font-size:10px;font-weight:700;padding:2px 7px;border-radius:50px">✓ גיל מאומת</span>`:''}
+                  ${t.ageVerified?`<span style="background:rgba(20,184,166,0.15);color:#0D9488;font-size:10px;font-weight:700;padding:2px 7px;border-radius:50px">✓ גיל מאומת</span>`:''}
                 </div>
               </div>
             </button>`).join("")}
@@ -7165,7 +7166,7 @@ function Home(){
               <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
                 <span style="font-weight:900;font-size:14px;color:var(--p)">₪${t.price}/שיעור</span>
                 <span style="display:flex;gap:4px;align-items:center">
-                  ${t.ageVerified?`<span style="background:rgba(99,102,241,0.15);color:#6366F1;font-size:10px;font-weight:700;padding:2px 7px;border-radius:50px">✓ גיל מאומת</span>`:''}
+                  ${t.ageVerified?`<span style="background:rgba(20,184,166,0.15);color:#0D9488;font-size:10px;font-weight:700;padding:2px 7px;border-radius:50px">✓ גיל מאומת</span>`:''}
                   ${gTag(t.badge)}
                 </span>
               </div>
@@ -7205,7 +7206,7 @@ function Home(){
       ${(()=>{
         const catChips=[['all','הכל'],...CATS.map(c=>[c.id,c.lbl])].map(([val,label])=>`
           <button onclick="S.filterCat=${val==='all'?'null':`'${val}'`};render()" style="
-            background:${(S.filterCat||null)===(val==='all'?null:val)?'linear-gradient(135deg,#14B8A6,#A855F7)':'rgba(255,255,255,0.1)'};
+            background:${(S.filterCat||null)===(val==='all'?null:val)?'linear-gradient(135deg,#14B8A6,#06B6D4)':'rgba(255,255,255,0.1)'};
             border:1.5px solid ${(S.filterCat||null)===(val==='all'?null:val)?'transparent':'rgba(255,255,255,0.2)'};
             color:#fff;border-radius:50px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap
           ">${label}</button>
@@ -7214,7 +7215,7 @@ function Home(){
       })()}
       <h3 style="font-size:16px;font-weight:800;margin:6px 0 14px">⭐ ${TEACHERS.length>0?(S.filterCat?'מורים בנושא זה':activeFiltersCount()>0?'מורים לפי הפילטרים שלך':'מורים מובילים השבוע'):'מורים אצלך באזור'}</h3>
       ${TEACHERS.length===0?`
-        <div style="background:linear-gradient(135deg,rgba(20,184,166,0.12),rgba(168,85,247,0.10));backdrop-filter:blur(20px);border:1.5px dashed rgba(20,184,166,0.4);border-radius:24px;padding:32px 24px;text-align:center;margin-bottom:14px">
+        <div style="background:linear-gradient(135deg,rgba(20,184,166,0.12),rgba(6,182,212,0.10));backdrop-filter:blur(20px);border:1.5px dashed rgba(20,184,166,0.4);border-radius:24px;padding:32px 24px;text-align:center;margin-bottom:14px">
           <div style="font-size:56px;margin-bottom:14px">🌱</div>
           <h3 style="font-weight:900;font-size:18px;margin:0 0 8px;color:#0F1A1F">היה הראשון להצטרף!</h3>
           <p style="color:#64748B;font-size:13px;line-height:1.7;margin:0 0 18px">עוד אין מורים רשומים בפלטפורמה.<br>הירשם כמורה ותהיה הראשון להופיע כאן!</p>
@@ -7268,7 +7269,7 @@ function Nearby(){
   } else {
     content=`
       <div style="padding:16px 20px 0">
-        <div style="background:linear-gradient(135deg,#14B8A6,#06B6D4,#A855F7);border-radius:24px;padding:18px;color:#fff;margin-bottom:14px;position:relative;overflow:hidden">
+        <div style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border-radius:24px;padding:18px;color:#fff;margin-bottom:14px;position:relative;overflow:hidden">
           <div style="position:absolute;top:-30px;left:-30px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,0.1)"></div>
           <div style="position:absolute;bottom:-20px;right:-20px;width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,0.08)"></div>
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;position:relative;z-index:1">
@@ -7424,10 +7425,10 @@ function Teacher(){
         ${tags.length?`<div class="card"><h4 style="margin:0 0 12px;font-weight:800">🏷 מה אני מלמד/ת${cat?' ב'+cat.lbl:''}</h4>
           <div style="display:flex;gap:8px;flex-wrap:wrap">${tags.map(tg=>`<span style="background:${t.col}18;color:${t.col};padding:7px 16px;border-radius:50px;font-size:13px;font-weight:700">${escapeHtml(tg)}</span>`).join("")}</div></div>`:''}
         ${(t.whyTeach||t.proudOf||t.typicalLesson)?`
-        <div class="card" style="background:linear-gradient(135deg,rgba(20,184,166,0.05),rgba(168,85,247,0.04));border:1.5px solid rgba(20,184,166,0.15)">
+        <div class="card" style="background:linear-gradient(135deg,rgba(20,184,166,0.05),rgba(6,182,212,0.04));border:1.5px solid rgba(20,184,166,0.15)">
           <h4 style="margin:0 0 14px;font-weight:900;font-size:15px">💬 כרטיס היכרות</h4>
           ${t.whyTeach?`<div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid rgba(20,184,166,0.1)"><div style="font-size:11px;font-weight:800;color:#14B8A6;margin-bottom:4px">❓ למה אני מלמד?</div><div style="font-size:14px;line-height:1.6;color:var(--text)">${escapeHtml(t.whyTeach)}</div></div>`:''}
-          ${t.proudOf?`<div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid rgba(168,85,247,0.1)"><div style="font-size:11px;font-weight:800;color:#A855F7;margin-bottom:4px">🏆 הצלחה שגאה בי</div><div style="font-size:14px;line-height:1.6;color:var(--text)">${escapeHtml(t.proudOf)}</div></div>`:''}
+          ${t.proudOf?`<div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid rgba(20,184,166,0.1)"><div style="font-size:11px;font-weight:800;color:#0D9488;margin-bottom:4px">🏆 הצלחה שגאה בי</div><div style="font-size:14px;line-height:1.6;color:var(--text)">${escapeHtml(t.proudOf)}</div></div>`:''}
           ${t.typicalLesson?`<div><div style="font-size:11px;font-weight:800;color:#F59E0B;margin-bottom:4px">🎯 שיעור טיפוסי</div><div style="font-size:14px;line-height:1.6;color:var(--text)">${escapeHtml(t.typicalLesson)}</div></div>`:''}
         </div>`:''}
         ${(()=>{const ms=matchScore(t);return ms&&currentUser&&t.id!==currentUser.uid?`<div style="background:rgba(16,185,129,0.08);border:1.5px solid rgba(16,185,129,0.2);border-radius:14px;padding:10px 16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between"><span style="font-size:13px;font-weight:700;color:#059669">התאמה לפרופיל שלך</span><span style="font-size:20px;font-weight:900;color:#10B981">${ms}%</span></div>`:'';})()}`;
@@ -7459,7 +7460,7 @@ function Teacher(){
         return `<div class="card" style="padding:16px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
           <h4 style="margin:0;font-weight:900;font-size:16px;color:#0F1A1F">📹 סרטוני הדגמה${S.teacherCat?(()=>{const c=CATS.find(x=>x.id===S.teacherCat);return c?' – '+c.em+' '+c.lbl:'';})():''}${S.teacherCat&&_strictMatch.length===0&&filtPubVids.length>0?' (ללא קטגוריה)':''}</h4>
-          <span style="background:rgba(168,85,247,0.12);color:#A855F7;font-size:11px;font-weight:800;padding:4px 10px;border-radius:50px">${filtPubVids.length} סרטונים</span>
+          <span style="background:rgba(20,184,166,0.12);color:#0D9488;font-size:11px;font-weight:800;padding:4px 10px;border-radius:50px">${filtPubVids.length} סרטונים</span>
         </div>
         ${filtPubVids.slice(0,5).map(v=>{
           const ytId=v.platform==='youtube'?(v.url||'').match(/(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/)([^&?\s]+)/)?.[1]:null;
@@ -7468,7 +7469,7 @@ function Teacher(){
           const catObj=v.cat?CATS.find(c=>c.id===v.cat):null;
           const _vUrl=safeUrl(v.url||'');
           return `<div style="border-radius:18px;overflow:hidden;margin-bottom:14px;box-shadow:0 4px 18px rgba(0,0,0,0.10);cursor:pointer;background:#fff" onclick="${_vUrl?`window.open(${JSON.stringify(_vUrl)},'_blank')`:''}">
-            <div style="aspect-ratio:16/9;background:${thumb?'url('+thumb+') center/cover no-repeat,':''} linear-gradient(135deg,#14B8A6,#A855F7);position:relative">
+            <div style="aspect-ratio:16/9;background:${thumb?'url('+thumb+') center/cover no-repeat,':''} linear-gradient(135deg,#14B8A6,#06B6D4);position:relative">
               <div style="position:absolute;inset:0;background:linear-gradient(to bottom,transparent 40%,rgba(0,0,0,0.55));display:flex;align-items:center;justify-content:center">
                 <div style="background:rgba(255,255,255,0.22);backdrop-filter:blur(6px);border:2px solid rgba(255,255,255,0.6);width:58px;height:58px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:0 6px 20px rgba(0,0,0,0.3)">▶️</div>
               </div>
@@ -7619,7 +7620,7 @@ function Booking(){
     <h3 style="font-weight:900;font-size:18px;margin-bottom:12px;display:flex;align-items:center;gap:8px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>סוג שיעור</h3>
     <div style="display:flex;gap:9px;margin-bottom:20px">
       ${[["single","שיעור בודד","₪"+(t.price||0)],["package","חבילה x5","₪"+((t.price||0)*5-20)],["trial","ניסיון","₪"+Math.round((t.price||0)/2)]].map(([id,lbl,pr])=>`
-        <button onclick="S.bookType='${id}';render()" style="flex:1;background:${S.bookType===id?"linear-gradient(135deg,#14B8A6,#06B6D4,#A855F7)":"rgba(20,184,166,.06)"};border:2px solid ${S.bookType===id?"transparent":"rgba(20,184,166,.1)"};border-radius:16px;padding:12px 4px;cursor:pointer;text-align:center">
+        <button onclick="S.bookType='${id}';render()" style="flex:1;background:${S.bookType===id?"linear-gradient(135deg,#14B8A6,#06B6D4)":"rgba(20,184,166,.06)"};border:2px solid ${S.bookType===id?"transparent":"rgba(20,184,166,.1)"};border-radius:16px;padding:12px 4px;cursor:pointer;text-align:center">
           <div style="font-weight:800;font-size:13px;color:${S.bookType===id?"#fff":"#1A1A2E"}">${lbl}</div>
           <div style="font-size:12px;color:${S.bookType===id?"rgba(255,255,255,.8)":C.muted};margin-top:4px">${pr}</div>
         </button>`).join("")}
@@ -7785,7 +7786,7 @@ function Messages(){
     <div style="padding:16px 20px 100px">
 
       ${approved.length>0?(()=>{const next=approved[0];return `
-        <div style="background:linear-gradient(135deg,rgba(20,184,166,0.15),rgba(99,102,241,0.10));border:1.5px solid rgba(20,184,166,0.35);border-radius:20px;padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px">
+        <div style="background:rgba(20,184,166,0.08);border:1.5px solid rgba(20,184,166,0.35);border-radius:20px;padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px">
           <div style="width:48px;height:48px;border-radius:14px;background:#0e7a7215;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0F766E" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
           <div style="flex:1">
             <div style="font-weight:800;font-size:13px;color:#0F766E">השיעור הבא שלך:</div>
@@ -7826,7 +7827,7 @@ function Messages(){
           <div style="background:rgba(255,255,255,0.9);border-radius:20px;padding:16px;margin-bottom:12px;border:2px dashed rgba(245,158,11,0.5);box-shadow:0 2px 12px rgba(245,158,11,0.1)">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
               <div style="flex:1">
-                <div style="font-weight:900;font-size:15px;color:#0F1A1F">${b.teacherName}</div>
+                <div style="font-weight:900;font-size:15px;color:#0F1A1F">${escapeHtml(b.teacherName)}</div>
                 <div style="font-size:12px;color:#D97706;font-weight:700;margin-top:3px">📅 יום ${b.day} • ⏰ ${b.time}</div>
                 <div style="font-size:11px;color:#64748B;margin-top:3px">💰 ₪${b.grossAmount||b.price||0} • ${b.payMethod||''}</div>
               </div>
@@ -7900,7 +7901,7 @@ function Messages(){
           <div style="background:rgba(255,255,255,0.7);backdrop-filter:blur(10px);border-radius:20px;padding:16px;margin-bottom:12px;border:1.5px dashed rgba(245,158,11,0.4)">
             <div style="display:flex;justify-content:space-between;align-items:start">
               <div style="flex:1">
-                <div style="font-weight:800;font-size:15px;color:#0F1A1F">${b.teacherName}</div>
+                <div style="font-weight:800;font-size:15px;color:#0F1A1F">${escapeHtml(b.teacherName)}</div>
                 <div style="font-size:12px;color:#F59E0B;font-weight:700;margin-top:3px">📅 יום ${b.day} • ⏰ ${b.time}</div>
                 <div style="font-size:11px;color:#64748B;margin-top:3px">המורה יאשר תוך 24 שעות</div>
               </div>
@@ -7933,19 +7934,19 @@ function Messages(){
       `:''}
 
       ${!isTeacherRole&&lessonSummaries.length>0?`
-        <h3 style="font-size:14px;font-weight:800;margin:18px 0 12px;color:#6366F1">📊 סיכומי שיעורים (${lessonSummaries.length})</h3>
+        <h3 style="font-size:14px;font-weight:800;margin:18px 0 12px;color:#0D9488">📊 סיכומי שיעורים (${lessonSummaries.length})</h3>
         ${lessonSummaries.slice(0,5).map(s=>`
-          <div style="background:#fff;border-radius:18px;padding:14px;margin-bottom:10px;box-shadow:0 4px 14px rgba(99,102,241,0.1);border:1.5px solid rgba(99,102,241,0.15)">
+          <div style="background:#fff;border-radius:18px;padding:14px;margin-bottom:10px;box-shadow:0 4px 14px rgba(20,184,166,0.1);border:1.5px solid rgba(20,184,166,0.15)">
             <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px">
               <div style="font-size:11px;color:#94A3B8">${s.createdAt?new Date(s.createdAt).toLocaleDateString('he-IL'):''}</div>
               <div style="text-align:right">
                 <div style="font-weight:800;font-size:14px;color:#0F1A1F">${s.teacherName||'מורה'}</div>
-                ${s.topic?`<div style="font-size:12px;color:#6366F1;font-weight:700">${s.topic}</div>`:''}
+                ${s.topic?`<div style="font-size:12px;color:#0891B2;font-weight:700">${s.topic}</div>`:''}
               </div>
             </div>
             ${s.rating?`<div style="font-size:14px;margin-bottom:6px">${'⭐'.repeat(Math.min(5,s.rating))}</div>`:''}
-            ${s.notes?`<div style="font-size:12px;color:#475569;background:rgba(99,102,241,0.06);border-radius:10px;padding:8px;line-height:1.5;margin-bottom:6px">${s.notes}</div>`:''}
-            ${s.homework?`<div style="font-size:12px;color:#A855F7;font-weight:700">📝 שיעורי בית: ${s.homework}</div>`:''}
+            ${s.notes?`<div style="font-size:12px;color:#475569;background:rgba(20,184,166,0.06);border-radius:10px;padding:8px;line-height:1.5;margin-bottom:6px">${s.notes}</div>`:''}
+            ${s.homework?`<div style="font-size:12px;color:#0D9488;font-weight:700">📝 שיעורי בית: ${s.homework}</div>`:''}
           </div>
         `).join('')}
       `:''}
@@ -8000,7 +8001,7 @@ function Chat(){
       ${_isRecording?`<span id="_voiceTimer" style="font-size:12px;color:#EF4444;font-weight:800;flex-shrink:0">🔴 0s</span>`:''}
       <input id="chatInputBox" placeholder="כתוב הודעה..." ${_isRecording?'disabled':''} onkeydown="if(event.key==='Enter')sendChatMessage('${c.otherUid}','${(c.otherName||'').replace(/'/g,'')}')">
       <button id="_micBtn" onclick="startVoiceRecording('${c.otherUid}','${(c.otherName||'').replace(/'/g,"\\'")}');render()" style="background:${_isRecording?'#EF4444':'rgba(20,184,166,0.1)'};border:${_isRecording?'none':'1.5px solid rgba(20,184,166,0.3)'};border-radius:50%;width:44px;height:44px;color:${_isRecording?'#fff':'#14B8A6'};cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center">${_isRecording?'<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>':'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>'}</button>
-      <button onclick="sendChatMessage('${c.otherUid}','${(c.otherName||'').replace(/'/g,'')}')" style="background:linear-gradient(135deg,#14B8A6 0%,#06B6D4 50%,#A855F7 100%);border:none;border-radius:50%;width:44px;height:44px;font-size:20px;color:#fff;cursor:pointer;flex-shrink:0;box-shadow:var(--gp)">↑</button>
+      <button onclick="sendChatMessage('${c.otherUid}','${(c.otherName||'').replace(/'/g,'')}')" style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;border-radius:50%;width:44px;height:44px;font-size:20px;color:#fff;cursor:pointer;flex-shrink:0;box-shadow:var(--gp)">↑</button>
     </div>
   </div>`;
 }
@@ -8029,7 +8030,7 @@ function Profile(){
     ${catProfile?.tags?.length?`<div class="card"><h4 style="margin:0 0 10px;font-weight:800">🏷 נושאים</h4><div style="display:flex;gap:8px;flex-wrap:wrap">${catProfile.tags.map(tg=>`<span style="background:${catObj.col}18;color:${catObj.col};padding:6px 14px;border-radius:50px;font-size:13px;font-weight:700">${tg}</span>`).join('')}</div></div>`:''}
     <div style="display:flex;justify-content:space-between;align-items:center;margin:14px 0 10px">
       <p style="font-weight:800;font-size:15px;margin:0">📹 סרטונים (${catVids.length})</p>
-      <button onclick="showVideoUploadDialog('${tab}')" style="background:linear-gradient(135deg,${catObj.col},#A855F7);border:none;color:#fff;border-radius:50px;padding:8px 16px;font-size:12px;font-weight:800;cursor:pointer">+ הוסף סרטון</button>
+      <button onclick="showVideoUploadDialog('${tab}')" style="background:linear-gradient(135deg,${catObj.col},#06B6D4);border:none;color:#fff;border-radius:50px;padding:8px 16px;font-size:12px;font-weight:800;cursor:pointer">+ הוסף סרטון</button>
     </div>
     ${(()=>{
       const uncat=teacherVideos.filter(v=>!v.cat);
@@ -8039,7 +8040,7 @@ function Profile(){
       return warning+showVids.map(v=>{
         const ytId=v.platform==='youtube'?(v.url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/)([^&?\s]+)/)?.[1]):null;
         const thumb=ytId?`https://img.youtube.com/vi/${ytId}/hqdefault.jpg`:null;
-        return `<div class="card" style="padding:0;overflow:hidden"><div style="aspect-ratio:16/9;background:${thumb?'url('+thumb+') center/cover,':''}linear-gradient(135deg,#14B8A6,#A855F7);position:relative;cursor:pointer" onclick="window.open('${v.url}','_blank')"><div style="position:absolute;inset:0;background:rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center"><div style="background:rgba(255,255,255,0.95);width:54px;height:54px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px">▶️</div></div>${v.approved===true?`<div style="position:absolute;top:10px;right:10px;background:rgba(16,185,129,0.95);color:#fff;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:800">✓ פורסם</div>`:v.approved==='rejected'?`<div style="position:absolute;top:10px;right:10px;background:rgba(239,68,68,0.95);color:#fff;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:800">✗ לא מאושר</div>`:`<div style="position:absolute;top:10px;right:10px;background:rgba(245,158,11,0.95);color:#fff;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:800">⏳ מחכה לאישור</div>`}</div><div style="padding:13px 15px"><p style="margin:0 0 5px;font-weight:800;font-size:14px">${v.title}</p>${v.desc?`<p style="margin:0 0 7px;font-size:12px;color:#64748B;line-height:1.5">${v.desc}</p>`:''}<div style="display:flex;gap:8px;align-items:center;justify-content:space-between">${!v.cat?`<button onclick="assignVideoCategory('${v.id}','${tab}')" style="background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.4);color:#B45309;border-radius:50px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer">🏷 שייך ל${catObj.lbl}</button>`:`<div></div>`}<div style="display:flex;gap:8px"><button onclick="deleteMyVideo('${v.id}')" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#EF4444;border-radius:50px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer">🗑</button><span style="font-size:12px;color:${C.muted};align-self:center">👁 ${v.views||0}</span></div></div></div></div>`;
+        return `<div class="card" style="padding:0;overflow:hidden"><div style="aspect-ratio:16/9;background:${thumb?'url('+thumb+') center/cover,':''}linear-gradient(135deg,#14B8A6,#06B6D4);position:relative;cursor:pointer" onclick="window.open('${v.url}','_blank')"><div style="position:absolute;inset:0;background:rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center"><div style="background:rgba(255,255,255,0.95);width:54px;height:54px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px">▶️</div></div>${v.approved===true?`<div style="position:absolute;top:10px;right:10px;background:rgba(16,185,129,0.95);color:#fff;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:800">✓ פורסם</div>`:v.approved==='rejected'?`<div style="position:absolute;top:10px;right:10px;background:rgba(239,68,68,0.95);color:#fff;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:800">✗ לא מאושר</div>`:`<div style="position:absolute;top:10px;right:10px;background:rgba(245,158,11,0.95);color:#fff;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:800">⏳ מחכה לאישור</div>`}</div><div style="padding:13px 15px"><p style="margin:0 0 5px;font-weight:800;font-size:14px">${v.title}</p>${v.desc?`<p style="margin:0 0 7px;font-size:12px;color:#64748B;line-height:1.5">${v.desc}</p>`:''}<div style="display:flex;gap:8px;align-items:center;justify-content:space-between">${!v.cat?`<button onclick="assignVideoCategory('${v.id}','${tab}')" style="background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.4);color:#B45309;border-radius:50px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer">🏷 שייך ל${catObj.lbl}</button>`:`<div></div>`}<div style="display:flex;gap:8px"><button onclick="deleteMyVideo('${v.id}')" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#EF4444;border-radius:50px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer">🗑</button><span style="font-size:12px;color:${C.muted};align-self:center">👁 ${v.views||0}</span></div></div></div></div>`;
       }).join('');
     })()}`;
   }
@@ -8047,11 +8048,11 @@ function Profile(){
   if(!isTeacher&&tab==='lessons'){
     const _sb={upcoming:studentBookings.filter(b=>b.status==='approved'),pending:studentBookings.filter(b=>b.status==='pending'),completed:studentBookings.filter(b=>b.status==='completed'),rejected:studentBookings.filter(b=>b.status==='rejected')};
     if(studentBookings.length===0){
-      content=`<div style="background:rgba(255,255,255,0.85);backdrop-filter:blur(12px);border-radius:22px;padding:36px 20px;text-align:center;margin-top:10px"><div style="font-size:64px;margin-bottom:12px">📚</div><h3 style="font-weight:900;font-size:17px;margin:0 0 8px;color:#1E1B4B">עוד לא הזמנת שיעור</h3><p style="color:#64748B;font-size:14px;margin:0 0 20px;line-height:1.6">מצא מורה מדהים ותתחיל ללמוד משהו חדש!</p><button onclick="go('home')" style="background:linear-gradient(135deg,#14B8A6,#A855F7);border:none;color:#fff;border-radius:50px;padding:13px 28px;font-weight:900;font-size:14px;cursor:pointer;box-shadow:0 6px 20px rgba(168,85,247,0.35)">🔍 חפש מורה עכשיו</button></div>`;
+      content=`<div style="background:rgba(255,255,255,0.85);backdrop-filter:blur(12px);border-radius:22px;padding:36px 20px;text-align:center;margin-top:10px"><div style="font-size:64px;margin-bottom:12px">📚</div><h3 style="font-weight:900;font-size:17px;margin:0 0 8px;color:#0F1A1F">עוד לא הזמנת שיעור</h3><p style="color:#64748B;font-size:14px;margin:0 0 20px;line-height:1.6">מצא מורה מדהים ותתחיל ללמוד משהו חדש!</p><button onclick="go('home')" style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:13px 28px;font-weight:900;font-size:14px;cursor:pointer;box-shadow:0 6px 20px rgba(20,184,166,0.35)">🔍 חפש מורה עכשיו</button></div>`;
     } else {
       content=['approved','pending','completed','rejected'].map(status=>{
         const list=_sb[status]||[];if(!list.length)return '';
-        const cfg={approved:['#10B981','✅ שיעורים קרובים'],pending:['#F59E0B','⏳ ממתינים לאישור'],completed:['#6366F1','🎓 שיעורים שהושלמו'],rejected:['#EF4444','✗ שיעורים שנדחו']};
+        const cfg={approved:['#10B981','✅ שיעורים קרובים'],pending:['#F59E0B','⏳ ממתינים לאישור'],completed:['#0891B2','🎓 שיעורים שהושלמו'],rejected:['#EF4444','✗ שיעורים שנדחו']};
         const[col,label]=cfg[status];
         return `<div style="margin-bottom:14px"><h4 style="font-size:13px;font-weight:800;color:${col};margin:0 0 8px">${label} (${list.length})</h4>${list.map(b=>`<div style="background:#fff;border-radius:18px;padding:14px 16px;margin-bottom:8px;box-shadow:0 3px 14px rgba(0,0,0,0.06);border-right:4px solid ${col}"><div style="display:flex;justify-content:space-between;align-items:center"><div style="display:flex;gap:8px">${status==='approved'?`<button onclick="S.chat={otherUid:'${b.teacherId||''}',otherName:'${(b.teacherName||'').replace(/'/g,"\\'")}'}; go('chat')" style="background:rgba(6,182,212,0.1);border:1.5px solid rgba(6,182,212,0.3);color:#06B6D4;border-radius:50px;padding:7px 13px;font-size:11px;font-weight:800;cursor:pointer">💬</button>`:''} ${status==='completed'?`<button onclick="S.ratingT='${b.teacherId||''}';S.ratingDone=false;S.ratingStars=0;render()" style="background:rgba(251,191,36,0.1);border:1.5px solid rgba(251,191,36,0.4);color:#B45309;border-radius:50px;padding:7px 13px;font-size:11px;font-weight:800;cursor:pointer">⭐ דרג</button>`:''}</div><div style="text-align:right"><div style="font-weight:900;font-size:14px;color:#0F1A1F">${b.teacherName||'מורה'}</div><div style="font-size:12px;color:#64748B">📅 ${b.day||''} • ⏰ ${b.time||''}</div><div style="font-size:12px;color:#64748B">💰 ₪${b.price||0}</div></div></div></div>`).join('')}</div>`;
       }).join('');
@@ -8081,7 +8082,7 @@ function Profile(){
       const thumb=ytId?`https://img.youtube.com/vi/${ytId}/hqdefault.jpg`:null;
       const catObj=v.cat?CATS.find(c=>c.id===v.cat):null;
       return `<div class="card" style="padding:0;overflow:hidden;position:relative">
-        <div style="aspect-ratio:16/9;background:${thumb?'url('+thumb+') center/cover,':''}linear-gradient(135deg,#14B8A6,#A855F7);position:relative;cursor:pointer" onclick="window.open('${v.url}','_blank')">
+        <div style="aspect-ratio:16/9;background:${thumb?'url('+thumb+') center/cover,':''}linear-gradient(135deg,#14B8A6,#0891B2);position:relative;cursor:pointer" onclick="window.open('${v.url}','_blank')">
           <div style="position:absolute;inset:0;background:rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center"><div style="background:rgba(255,255,255,0.95);width:54px;height:54px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px">▶️</div></div>
           ${v.approved===true?`<div style="position:absolute;top:10px;right:10px;background:rgba(16,185,129,0.95);color:#fff;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:800">✓ פורסם</div>`:v.approved==='rejected'?`<div style="position:absolute;top:10px;right:10px;background:rgba(239,68,68,0.95);color:#fff;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:800">✗ לא מאושר</div>`:`<div style="position:absolute;top:10px;right:10px;background:rgba(245,158,11,0.95);color:#fff;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:800">⏳ מחכה לאישור</div>`}
           <div style="position:absolute;bottom:8px;left:10px;display:flex;gap:5px">
@@ -8129,11 +8130,11 @@ function Profile(){
         <div style="font-size:11px;color:#64748B;margin-top:3px">ימי לימוד ברצף</div>
       </div>
       <div style="background:#fff;border-radius:18px;padding:14px;text-align:center;box-shadow:0 2px 10px rgba(0,0,0,0.07)">
-        <div style="font-size:22px;font-weight:900;color:#6366F1">👁 ${views}</div>
+        <div style="font-size:22px;font-weight:900;color:#0891B2">👁 ${views}</div>
         <div style="font-size:11px;color:#64748B;margin-top:3px">צפיות בפרופיל</div>
       </div>
     </div>
-    <button onclick="shareTeacher(TEACHERS.find(x=>x.id==='${myUid}'))" style="width:100%;background:linear-gradient(135deg,#14B8A6,#A855F7);border:none;border-radius:16px;padding:13px;font-weight:900;font-size:14px;color:#fff;cursor:pointer;margin-bottom:14px">📤 שתף פרופיל שלי — קבל יותר הזמנות</button>
+    <button onclick="shareTeacher(TEACHERS.find(x=>x.id==='${myUid}'))" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;border-radius:16px;padding:13px;font-weight:900;font-size:14px;color:#fff;cursor:pointer;margin-bottom:14px">📤 שתף פרופיל שלי — קבל יותר הזמנות</button>
     ${done.length===0?`<div style="background:rgba(255,255,255,0.7);border-radius:18px;padding:28px;text-align:center"><div style="font-size:42px;margin-bottom:8px">💸</div><p style="color:#64748B;font-size:13px;margin:0">עוד אין הכנסות. כשתשלים שיעורים הם יופיעו כאן.</p></div>`:`
     <h4 style="font-size:14px;font-weight:800;margin:0 0 10px;color:#0F1A1F">תשלומים אחרונים</h4>
     ${done.slice(0,15).map(b=>`
@@ -8172,7 +8173,7 @@ function Profile(){
     `:['pending','approved','completed','rejected'].map(status=>{
       const list=teacherAllBookings.filter(b=>b.status===status);
       if(!list.length)return '';
-      const statusColors={pending:['#F59E0B','rgba(245,158,11,0.15)','⏳ ממתין'],approved:['#10B981','rgba(16,185,129,0.15)','✅ מאושר'],completed:['#6366F1','rgba(99,102,241,0.15)','🎓 הושלם'],rejected:['#EF4444','rgba(239,68,68,0.12)','✗ נדחה']};
+      const statusColors={pending:['#F59E0B','rgba(245,158,11,0.15)','⏳ ממתין'],approved:['#10B981','rgba(16,185,129,0.15)','✅ מאושר'],completed:['#0891B2','rgba(6,182,212,0.15)','🎓 הושלם'],rejected:['#EF4444','rgba(239,68,68,0.12)','✗ נדחה']};
       const [col,bg,label]=statusColors[status]||['#64748B','rgba(100,116,139,0.1)','?'];
       return `<div style="margin-bottom:14px">
         <h4 style="font-size:13px;font-weight:800;color:${col};margin:0 0 8px">${label} (${list.length})</h4>
@@ -8204,9 +8205,9 @@ function Profile(){
     const _rank=getStudentRank(studentBookings.filter(b=>b.status==='completed').length);
     const _nextLesson=studentBookings.find(b=>b.status==='approved');
     const _achCount=(currentUserData?.achievements||[]).length;
-    return `<div class="screen" style="background:linear-gradient(165deg,#EDE9FE 0%,#CCFBF1 50%,#BAE6FD 100%);padding-bottom:100px">
+    return `<div class="screen" style="background:linear-gradient(165deg,#CCFBF1 0%,#A5F3FC 50%,#7DD3FC 100%);padding-bottom:100px">
       <div style="background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);padding:36px 20px 52px;border-radius:0 0 40px 40px;text-align:center;color:#fff;position:relative;overflow:hidden">
-        <div style="position:absolute;top:-70px;left:-50px;width:200px;height:200px;border-radius:50%;background:rgba(168,85,247,0.18);filter:blur(10px)"></div>
+        <div style="position:absolute;top:-70px;left:-50px;width:200px;height:200px;border-radius:50%;background:rgba(20,184,166,0.15);filter:blur(10px)"></div>
         <div style="position:absolute;bottom:-50px;right:-40px;width:160px;height:160px;border-radius:50%;background:rgba(20,184,166,0.2);filter:blur(10px)"></div>
         <button onclick="confirmLogout()" style="position:absolute;top:18px;left:16px;background:rgba(231,76,60,0.88);border:none;color:#fff;font-size:12px;font-weight:800;cursor:pointer;border-radius:50px;padding:8px 14px;z-index:2;display:flex;align-items:center;gap:5px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg> יציאה</button>
         <button onclick="shareApp()" style="position:absolute;top:18px;right:16px;background:rgba(255,255,255,0.18);border:none;color:#fff;font-size:17px;cursor:pointer;border-radius:50%;width:38px;height:38px;display:flex;align-items:center;justify-content:center;z-index:2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg></button>
@@ -8219,17 +8220,17 @@ function Profile(){
 
       <div style="padding:0 14px">
         ${studentBookings.length===0?`
-        <div style="background:linear-gradient(135deg,rgba(99,102,241,0.12),rgba(20,184,166,0.12));border:1.5px dashed rgba(99,102,241,0.35);border-radius:22px;padding:20px 16px;text-align:center;margin:-22px 0 16px;position:relative;z-index:2">
+        <div style="background:linear-gradient(135deg,rgba(20,184,166,0.12),rgba(6,182,212,0.12));border:1.5px dashed rgba(20,184,166,0.35);border-radius:22px;padding:20px 16px;text-align:center;margin:-22px 0 16px;position:relative;z-index:2">
           <div style="font-size:38px;margin-bottom:8px">🚀</div>
-          <div style="font-weight:900;font-size:15px;color:#1E1B4B;margin-bottom:4px">מוכן להתחיל?</div>
+          <div style="font-weight:900;font-size:15px;color:#0F1A1F;margin-bottom:4px">מוכן להתחיל?</div>
           <div style="font-size:12px;color:#64748B;margin-bottom:12px">הזמן את השיעור הראשון שלך עכשיו!</div>
-          <button onclick="go('home')" style="background:linear-gradient(135deg,#6366F1,#14B8A6);border:none;color:#fff;border-radius:50px;padding:10px 24px;font-weight:900;font-size:13px;cursor:pointer;box-shadow:0 4px 14px rgba(99,102,241,0.4)">🔍 חפש מורה</button>
+          <button onclick="go('home')" style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:10px 24px;font-weight:900;font-size:13px;cursor:pointer;box-shadow:0 4px 14px rgba(20,184,166,0.4)">🔍 חפש מורה</button>
         </div>`:`
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:-26px 0 16px;position:relative;z-index:2">
-          ${[['<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>','#0e7a72',studentBookings.filter(b=>b.status==='completed').length,'הושלמו'],['<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>','#06B6D4',studentBookings.filter(b=>b.status==='approved').length,'קרובים'],['<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M17 5h3a2 2 0 0 1 0 4h-1M7 5H4a2 2 0 0 0 0 4h1"/>','#A855F7',_achCount,'הישגים'],['<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>','#F59E0B',studentBookings.filter(b=>b.status==='pending').length,'ממתינים']].map(([icon,col,v,l])=>`<div style="background:rgba(255,255,255,0.94);backdrop-filter:blur(16px);border-radius:18px;padding:13px 6px;text-align:center;box-shadow:0 6px 20px rgba(0,0,0,0.1)"><div style="width:28px;height:28px;border-radius:9px;background:${col}15;display:flex;align-items:center;justify-content:center;margin:0 auto 4px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${col}" stroke-width="2" stroke-linecap="round">${icon}</svg></div><div style="font-weight:900;font-size:19px;color:#1E1B4B;line-height:1">${v}</div><div style="font-size:9px;color:#64748B;font-weight:700;margin-top:2px">${l}</div></div>`).join('')}
+          ${[['<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>','#0e7a72',studentBookings.filter(b=>b.status==='completed').length,'הושלמו'],['<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>','#06B6D4',studentBookings.filter(b=>b.status==='approved').length,'קרובים'],['<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M17 5h3a2 2 0 0 1 0 4h-1M7 5H4a2 2 0 0 0 0 4h1"/>','#14B8A6',_achCount,'הישגים'],['<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>','#F59E0B',studentBookings.filter(b=>b.status==='pending').length,'ממתינים']].map(([icon,col,v,l])=>`<div style="background:rgba(255,255,255,0.94);backdrop-filter:blur(16px);border-radius:18px;padding:13px 6px;text-align:center;box-shadow:0 6px 20px rgba(0,0,0,0.1)"><div style="width:28px;height:28px;border-radius:9px;background:${col}15;display:flex;align-items:center;justify-content:center;margin:0 auto 4px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${col}" stroke-width="2" stroke-linecap="round">${icon}</svg></div><div style="font-weight:900;font-size:19px;color:#0F1A1F;line-height:1">${v}</div><div style="font-size:9px;color:#64748B;font-weight:700;margin-top:2px">${l}</div></div>`).join('')}
         </div>`}
 
-        ${_nextLesson?`<div style="background:linear-gradient(135deg,rgba(20,184,166,0.1),rgba(99,102,241,0.1));border:1.5px solid rgba(20,184,166,0.4);border-radius:20px;padding:14px 16px;margin-bottom:14px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span style="background:linear-gradient(135deg,#14B8A6,#06B6D4);color:#fff;padding:4px 12px;border-radius:50px;font-size:11px;font-weight:800">⏰ הבא</span><span style="font-weight:900;font-size:14px;color:#1E1B4B">📅 השיעור הבא שלי</span></div><div style="display:flex;justify-content:space-between;align-items:center"><button onclick="S.chat={otherUid:'${_nextLesson.teacherId||''}',otherName:'${((_nextLesson.teacherName||'').replace(/'/g,"\\'"))}'}; go('chat')" style="background:rgba(6,182,212,0.1);border:1.5px solid rgba(6,182,212,0.35);color:#06B6D4;border-radius:50px;padding:8px 15px;font-weight:800;font-size:12px;cursor:pointer">💬 הודעה</button><div style="text-align:right"><div style="font-weight:900;font-size:14px;color:#0F1A1F">${_nextLesson.teacherName||'מורה'}</div><div style="font-size:12px;color:#64748B">📅 ${_nextLesson.day||''} • ⏰ ${_nextLesson.time||''}</div></div></div></div>`:''}
+        ${_nextLesson?`<div style="background:rgba(20,184,166,0.06);border:1.5px solid rgba(20,184,166,0.4);border-radius:20px;padding:14px 16px;margin-bottom:14px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span style="background:linear-gradient(135deg,#14B8A6,#06B6D4);color:#fff;padding:4px 12px;border-radius:50px;font-size:11px;font-weight:800">⏰ הבא</span><span style="font-weight:900;font-size:14px;color:#1E1B4B">📅 השיעור הבא שלי</span></div><div style="display:flex;justify-content:space-between;align-items:center"><button onclick="S.chat={otherUid:'${_nextLesson.teacherId||''}',otherName:'${((_nextLesson.teacherName||'').replace(/'/g,"\\'"))}'}; go('chat')" style="background:rgba(6,182,212,0.1);border:1.5px solid rgba(6,182,212,0.35);color:#06B6D4;border-radius:50px;padding:8px 15px;font-weight:800;font-size:12px;cursor:pointer">💬 הודעה</button><div style="text-align:right"><div style="font-weight:900;font-size:14px;color:#0F1A1F">${_nextLesson.teacherName||'מורה'}</div><div style="font-size:12px;color:#64748B">📅 ${_nextLesson.day||''} • ⏰ ${_nextLesson.time||''}</div></div></div></div>`:''}
 
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px">
           <button onclick="go('home')" style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:18px;padding:14px 6px;font-weight:900;font-size:12px;cursor:pointer;box-shadow:0 5px 16px rgba(20,184,166,0.38);display:flex;flex-direction:column;align-items:center;gap:6px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>הזמן שיעור</button>
@@ -8250,7 +8251,7 @@ function Profile(){
       <button onclick="${isTeacher&&myT?'shareTeacher(TEACHERS.find(x=>x.id===currentUser.uid))':'shareApp()'}" style="position:absolute;top:20px;left:20px;background:rgba(255,255,255,.2);border:none;color:#fff;font-size:18px;cursor:pointer;border-radius:50%;width:40px;height:40px;display:flex;align-items:center;justify-content:center;z-index:2" title="${isTeacher?'שתף פרופיל שלי':'שתף אפליקציה'}"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg></button>
       <button onclick="refreshApp()" style="position:absolute;top:68px;left:20px;background:rgba(255,255,255,.18);border:none;color:#fff;font-size:16px;cursor:pointer;border-radius:50%;width:40px;height:40px;display:flex;align-items:center;justify-content:center;z-index:2" title="רענן"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button>
       ${currentUser?`<button onclick="confirmLogout()" style="position:absolute;top:20px;right:20px;background:rgba(231,76,60,0.92);border:none;color:#fff;font-size:13px;font-weight:800;cursor:pointer;border-radius:50px;padding:9px 16px;display:flex;align-items:center;gap:6px;z-index:2;box-shadow:0 4px 14px rgba(231,76,60,0.45)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg> יציאה</button>`:`<button onclick="go('login')" style="position:absolute;top:20px;right:20px;background:rgba(255,255,255,0.25);border:none;color:#fff;font-size:13px;font-weight:800;cursor:pointer;border-radius:50px;padding:9px 16px;z-index:2;backdrop-filter:blur(10px)">🔑 התחבר</button>`}
-      <label for="profilePhotoInput" style="width:84px;height:84px;border-radius:26px;margin:0 auto;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:42px;position:relative;z-index:1;cursor:pointer;overflow:hidden">${currentUserData?.photo?`<img src="${currentUserData.photo}" style="width:100%;height:100%;object-fit:cover" alt="">`:'🎸'}<div style="position:absolute;bottom:-2px;right:-2px;background:#A855F7;border:2px solid #fff;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff">📷</div></label>
+      <label for="profilePhotoInput" style="width:84px;height:84px;border-radius:26px;margin:0 auto;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:42px;position:relative;z-index:1;cursor:pointer;overflow:hidden">${currentUserData?.photo?`<img src="${currentUserData.photo}" style="width:100%;height:100%;object-fit:cover" alt="">`:'🎸'}<div style="position:absolute;bottom:-2px;right:-2px;background:#14B8A6;border:2px solid #fff;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff">📷</div></label>
       <input type="file" id="profilePhotoInput" accept="image/*" style="display:none" onchange="uploadProfilePhoto()">
       <h2 style="font-size:22px;font-weight:900;margin:14px 0 4px;position:relative;z-index:1">${currentUser?(currentUserData?.name||currentUser.email.split('@')[0]):'אורח'}</h2>
       <p style="font-size:14px;opacity:.85;margin:0;position:relative;z-index:1">${currentUser?(displayEmail(currentUser.email)||''):'לא מחובר'}</p>
@@ -8328,7 +8329,7 @@ function Parent(){
     <div style="padding:18px 20px 90px">
       ${parentChildren.length===0?`
         <div style="background:rgba(255,255,255,0.85);backdrop-filter:blur(12px);border-radius:24px;padding:32px 24px;text-align:center;margin-bottom:18px">
-          <div style="width:64px;height:64px;border-radius:18px;background:#8b2fc915;display:flex;align-items:center;justify-content:center;margin:0 auto 14px"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#8b2fc9" stroke-width="2" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></div>
+          <div style="width:64px;height:64px;border-radius:18px;background:rgba(20,184,166,0.08);display:flex;align-items:center;justify-content:center;margin:0 auto 14px"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></div>
           <h3 style="font-weight:900;font-size:18px;margin:0 0 10px;color:#0F1A1F">קשר את הילדים שלך</h3>
           <p style="color:#64748B;font-size:13px;line-height:1.7;margin:0 0 20px">הכנס את המייל של הילד כדי לראות את הפעילות שלו (שיעורים, הוצאות, התראות)</p>
           <div style="display:flex;gap:8px;margin-bottom:12px">
@@ -8422,8 +8423,8 @@ function Community(){
       <div style="padding:15px 15px 11px;display:flex;gap:11px;align-items:center">
         <div style="width:46px;height:46px;border-radius:14px;flex-shrink:0;background:${p.col||'#14B8A6'}20;display:flex;align-items:center;justify-content:center;font-size:24px;overflow:hidden">${p.photo?`<img src="${p.photo}" style="width:100%;height:100%;object-fit:cover" alt="">`:p.av||'😊'}</div>
         <div style="flex:1">
-          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="font-weight:800;font-size:15px">${p.author||'משתמש'}</span>${isMine?'<span style="background:rgba(20,184,166,0.15);color:#14B8A6;font-size:9px;font-weight:800;padding:2px 6px;border-radius:50px">אני</span>':''}${p.status==='pending'?'<span style="background:rgba(245,158,11,0.15);color:#F59E0B;font-size:9px;font-weight:800;padding:2px 6px;border-radius:50px">⏳ בבדיקה</span>':''}</div>
-          <div style="font-size:11px;color:${p.col||'#14B8A6'};font-weight:700">${p.role||''}${p.area?' • 📍 '+p.area:''}</div>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="font-weight:800;font-size:15px">${escapeHtml(p.author||'משתמש')}</span>${isMine?'<span style="background:rgba(20,184,166,0.15);color:#14B8A6;font-size:9px;font-weight:800;padding:2px 6px;border-radius:50px">אני</span>':''}${p.status==='pending'?'<span style="background:rgba(245,158,11,0.15);color:#F59E0B;font-size:9px;font-weight:800;padding:2px 6px;border-radius:50px">⏳ בבדיקה</span>':''}</div>
+          <div style="font-size:11px;color:${p.col||'#14B8A6'};font-weight:700">${escapeHtml(p.role||'')}${p.area?' • 📍 '+escapeHtml(p.area):''}</div>
         </div>
         <div style="text-align:left">
           <div style="font-size:11px;color:${C.muted};margin-bottom:4px">${p.time||''}</div>
@@ -8457,7 +8458,7 @@ function Community(){
         <button onclick="S.showCompose=false;render()" style="background:rgba(20,184,166,.08);border:none;border-radius:50px;padding:8px 13px;cursor:pointer;font-weight:700">✕</button>
       </div>
       <div style="display:flex;gap:8px;margin-bottom:13px;overflow-x:auto;padding-bottom:4px">
-        ${CC.filter(c=>c.id!=="all").map(c=>`<button onclick="S.newPostCat='${c.id}';document.querySelectorAll('.cc').forEach(b=>{b.style.background='rgba(20,184,166,.06)';b.style.color='#1A1A2E'});this.style.background='linear-gradient(135deg,#14B8A6 0%,#06B6D4 50%,#A855F7 100%)';this.style.color='#fff'"
+        ${CC.filter(c=>c.id!=="all").map(c=>`<button onclick="S.newPostCat='${c.id}';document.querySelectorAll('.cc').forEach(b=>{b.style.background='rgba(20,184,166,.06)';b.style.color='#1A1A2E'});this.style.background='linear-gradient(135deg,#14B8A6,#06B6D4)';this.style.color='#fff'"
           class="cc" style="flex-shrink:0;padding:7px 13px;border-radius:50px;border:none;font-weight:700;font-size:12px;cursor:pointer;background:rgba(20,184,166,.06)">${c.e} ${c.l}</button>`).join("")}
       </div>
       <textarea id="ptxt" class="inp" placeholder="שאל שאלה, שתף טיפ, הצע שיעור חינם..." maxlength="5000" style="min-height:110px;resize:none;border-radius:16px"></textarea>
@@ -8465,7 +8466,7 @@ function Community(){
     </div>
   </div>`:"";
   const _isTeacherU=currentUserData?.role==='teacher';
-  const _groupsHtml=(()=>{const openG=communityGroups.filter(g=>g.status==='open'&&(!S.groupSubj||g.subject===S.groupSubj));const hdr=_isTeacherU?`<div style="display:flex;gap:8px;margin-bottom:16px"><button onclick="showCreateGroupDialog()" style="flex:1;background:linear-gradient(135deg,#14B8A6,#A855F7);border:none;color:#fff;border-radius:14px;padding:12px;font-weight:800;font-size:13px;cursor:pointer">+ צור קבוצה</button><button onclick="showTeacherGroupsPanel()" style="flex:1;background:rgba(20,184,166,0.1);border:1.5px solid rgba(20,184,166,0.3);color:#14B8A6;border-radius:14px;padding:12px;font-weight:800;font-size:13px;cursor:pointer">👥 הקבוצות שלי</button></div>`:currentUser?`<div style="margin-bottom:14px"><button onclick="showStudentGroupsPanel()" style="width:100%;background:rgba(20,184,166,0.08);border:1.5px solid rgba(20,184,166,0.25);color:#14B8A6;border-radius:14px;padding:11px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">👥 הקבוצות שלי${Object.keys(myGroupStatuses).length?' ('+Object.keys(myGroupStatuses).length+')':''}</button></div>`:'';const allSubjs=[...new Set(communityGroups.filter(g=>g.status==='open'&&g.subject).map(g=>g.subject))];const subjFilter=allSubjs.length>1?'<div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px">'+['<button onclick="S.groupSubj=null;render()" style="flex-shrink:0;padding:6px 14px;border-radius:50px;font-size:12px;font-weight:800;cursor:pointer;border:none;background:'+(S.groupSubj?'rgba(100,116,139,0.1)':'linear-gradient(135deg,#14B8A6,#A855F7)')+';color:'+(S.groupSubj?'#64748B':'#fff')+'">הכל</button>',...allSubjs.map(sid=>{const c=CATS.find(x=>x.id===sid)||{em:'🎓',lbl:sid,col:'#14B8A6'};const on=S.groupSubj===sid;return '<button onclick="S.groupSubj=\''+sid+'\';render()" style="flex-shrink:0;padding:6px 14px;border-radius:50px;font-size:12px;font-weight:800;cursor:pointer;border:none;background:'+(on?c.col:'rgba(100,116,139,0.1)')+';color:'+(on?'#fff':'#64748B')+'">'+c.em+' '+c.lbl+'</button>';})].join('')+'</div>':'';if(!openG.length)return hdr+subjFilter+`<div style="text-align:center;padding:40px 20px"><div style="font-size:64px;margin-bottom:14px">🏘️</div><h3 style="font-weight:900;font-size:18px;margin:0 0 8px">אין קבוצות פעילות</h3><p style="color:#64748B;font-size:13px">${S.groupSubj?'נסה לשנות את הסינון':_isTeacherU?'היה הראשון ליצור קבוצה!':'בקרוב יהיו קבוצות זמינות...'}</p></div>`;return hdr+subjFilter+openG.map(g=>{const cat=CATS.find(c=>c.id===g.subject)||{em:'🎓',lbl:g.subject||'כללי',col:'#14B8A6'};const spots=Math.max(0,(g.maxStudents||0)-(g.membersCount||0));const spotsHtml=(g.maxStudents||0)>0?spots>0?`<div style="text-align:center;background:rgba(16,185,129,0.1);border-radius:12px;padding:8px 12px;flex-shrink:0"><div style="font-weight:900;font-size:16px;color:#10B981">${spots}</div><div style="font-size:10px;color:#64748B">מקומות</div></div>`:`<div style="background:rgba(239,68,68,0.1);border-radius:12px;padding:8px 12px;flex-shrink:0"><div style="font-size:11px;font-weight:800;color:#EF4444">מלא</div></div>`:'';return `<div class="card" onclick="showGroupDetail('${g.id}')" style="cursor:pointer;margin-bottom:12px;padding:16px 18px"><div style="display:flex;gap:12px;align-items:center"><div style="width:48px;height:48px;border-radius:14px;background:${cat.col}18;display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0">${cat.em}</div><div style="flex:1;min-width:0"><div style="font-weight:900;font-size:15px;margin-bottom:3px">${g.title}</div><div style="font-size:12px;color:${cat.col};font-weight:700">${cat.lbl}${g.isMixed?' · 🌈 מעורבת':''}</div></div>${spotsHtml}</div>${g.desc?`<p style="margin:10px 0 0;font-size:13px;color:#64748B;line-height:1.5">${g.desc.substring(0,100)}${g.desc.length>100?'...':''}</p>`:''}<div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">${g.day?`<span style="background:rgba(20,184,166,0.1);color:#14B8A6;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">📅 ${g.day}</span>`:''}${g.time?` <span style="background:rgba(20,184,166,0.1);color:#14B8A6;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">⏰ ${g.time}</span>`:''}${g.location?` <span style="background:rgba(20,184,166,0.1);color:#14B8A6;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">📍 ${g.location}</span>`:''}${g.price?`<span style="background:rgba(168,85,247,0.1);color:#A855F7;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">₪${g.price}</span>`:`<span style="background:rgba(16,185,129,0.1);color:#10B981;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">חינם!</span>`}</div></div>`;}).join('');})();
+  const _groupsHtml=(()=>{const openG=communityGroups.filter(g=>g.status==='open'&&(!S.groupSubj||g.subject===S.groupSubj));const hdr=_isTeacherU?`<div style="display:flex;gap:8px;margin-bottom:16px"><button onclick="showCreateGroupDialog()" style="flex:1;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:14px;padding:12px;font-weight:800;font-size:13px;cursor:pointer">+ צור קבוצה</button><button onclick="showTeacherGroupsPanel()" style="flex:1;background:rgba(20,184,166,0.1);border:1.5px solid rgba(20,184,166,0.3);color:#14B8A6;border-radius:14px;padding:12px;font-weight:800;font-size:13px;cursor:pointer">👥 הקבוצות שלי</button></div>`:currentUser?`<div style="margin-bottom:14px"><button onclick="showStudentGroupsPanel()" style="width:100%;background:rgba(20,184,166,0.08);border:1.5px solid rgba(20,184,166,0.25);color:#14B8A6;border-radius:14px;padding:11px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">👥 הקבוצות שלי${Object.keys(myGroupStatuses).length?' ('+Object.keys(myGroupStatuses).length+')':''}</button></div>`:'';const allSubjs=[...new Set(communityGroups.filter(g=>g.status==='open'&&g.subject).map(g=>g.subject))];const subjFilter=allSubjs.length>1?'<div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px">'+['<button onclick="S.groupSubj=null;render()" style="flex-shrink:0;padding:6px 14px;border-radius:50px;font-size:12px;font-weight:800;cursor:pointer;border:none;background:'+(S.groupSubj?'rgba(100,116,139,0.1)':'linear-gradient(135deg,#14B8A6,#06B6D4)')+';color:'+(S.groupSubj?'#64748B':'#fff')+'">הכל</button>',...allSubjs.map(sid=>{const c=CATS.find(x=>x.id===sid)||{em:'🎓',lbl:sid,col:'#14B8A6'};const on=S.groupSubj===sid;return '<button onclick="S.groupSubj=\''+sid+'\';render()" style="flex-shrink:0;padding:6px 14px;border-radius:50px;font-size:12px;font-weight:800;cursor:pointer;border:none;background:'+(on?c.col:'rgba(100,116,139,0.1)')+';color:'+(on?'#fff':'#64748B')+'">'+c.em+' '+c.lbl+'</button>';})].join('')+'</div>':'';if(!openG.length)return hdr+subjFilter+`<div style="text-align:center;padding:40px 20px"><div style="font-size:64px;margin-bottom:14px">🏘️</div><h3 style="font-weight:900;font-size:18px;margin:0 0 8px">אין קבוצות פעילות</h3><p style="color:#64748B;font-size:13px">${S.groupSubj?'נסה לשנות את הסינון':_isTeacherU?'היה הראשון ליצור קבוצה!':'בקרוב יהיו קבוצות זמינות...'}</p></div>`;return hdr+subjFilter+openG.map(g=>{const cat=CATS.find(c=>c.id===g.subject)||{em:'🎓',lbl:g.subject||'כללי',col:'#14B8A6'};const spots=Math.max(0,(g.maxStudents||0)-(g.membersCount||0));const spotsHtml=(g.maxStudents||0)>0?spots>0?`<div style="text-align:center;background:rgba(16,185,129,0.1);border-radius:12px;padding:8px 12px;flex-shrink:0"><div style="font-weight:900;font-size:16px;color:#10B981">${spots}</div><div style="font-size:10px;color:#64748B">מקומות</div></div>`:`<div style="background:rgba(239,68,68,0.1);border-radius:12px;padding:8px 12px;flex-shrink:0"><div style="font-size:11px;font-weight:800;color:#EF4444">מלא</div></div>`:'';return `<div class="card" onclick="showGroupDetail('${g.id}')" style="cursor:pointer;margin-bottom:12px;padding:16px 18px"><div style="display:flex;gap:12px;align-items:center"><div style="width:48px;height:48px;border-radius:14px;background:${cat.col}18;display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0">${cat.em}</div><div style="flex:1;min-width:0"><div style="font-weight:900;font-size:15px;margin-bottom:3px">${g.title}</div><div style="font-size:12px;color:${cat.col};font-weight:700">${cat.lbl}${g.isMixed?' · 🌈 מעורבת':''}</div></div>${spotsHtml}</div>${g.desc?`<p style="margin:10px 0 0;font-size:13px;color:#64748B;line-height:1.5">${g.desc.substring(0,100)}${g.desc.length>100?'...':''}</p>`:''}<div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">${g.day?`<span style="background:rgba(20,184,166,0.1);color:#14B8A6;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">📅 ${g.day}</span>`:''}${g.time?` <span style="background:rgba(20,184,166,0.1);color:#14B8A6;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">⏰ ${g.time}</span>`:''}${g.location?` <span style="background:rgba(20,184,166,0.1);color:#14B8A6;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">📍 ${g.location}</span>`:''}${g.price?`<span style="background:rgba(20,184,166,0.1);color:#0D9488;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">₪${g.price}</span>`:`<span style="background:rgba(16,185,129,0.1);color:#10B981;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">חינם!</span>`}</div></div>`;}).join('');})();
 
   const memberCount=S.posts.filter(p=>p.authUid).reduce((acc,p)=>{if(p.authUid)acc.add(p.authUid);return acc;},new Set()).size||0;
   const postCount=vis.length||S.posts.length||0;
@@ -8723,7 +8724,7 @@ function About(){
       ${[["💸","חיסכון להורים","חוגים ושיעורים במחיר שפוי"],["🎓","ילדים מלמדים","כישרון ילדים מגיע לכל ילד"],["🤝","קהילה תומכת","לומדים ומלמדים יחד"],["💰","עצמאות כלכלית","הילד המורה מרוויח ולומד לנהל"]].map(([e,t,d])=>`<div class="card" style="text-align:center;padding:16px"><div style="font-size:30px;margin-bottom:8px">${e}</div><div style="font-weight:800;font-size:13px">${t}</div><div style="font-size:11px;color:${C.muted};margin-top:4px;line-height:1.4">${d}</div></div>`).join("")}
     </div>
 
-    <div style="background:linear-gradient(135deg,#14B8A6 0%,#06B6D4 50%,#A855F7 100%);border-radius:var(--radius);padding:22px;text-align:center;box-shadow:var(--gp);margin-bottom:18px">
+    <div style="background:linear-gradient(135deg,#14B8A6,#0891B2);border-radius:var(--radius);padding:22px;text-align:center;box-shadow:var(--gp);margin-bottom:18px">
       <div style="font-size:34px;margin-bottom:10px">🚀</div>
       <h3 style="color:#fff;margin:0 0 8px;font-weight:900;font-size:17px">רוצה להצטרף לקהילה?</h3>
       <p style="color:rgba(255,255,255,.88);font-size:13px;margin:0 0 14px;line-height:1.6">הצטרף כמורה וגלה שאתה יכול ללמד — ולהרוויח.</p>
@@ -8838,7 +8839,7 @@ function About(){
       ${content}
       <div style="text-align:center;padding:12px 0 4px;font-size:11px;color:#94A3B8">גרסה ${APP_VERSION} · ${APP_BUILD}</div>
       <div style="text-align:center;padding:0 0 16px;display:flex;justify-content:center;gap:16px">
-        <a href="/terms.html" target="_blank" style="font-size:11px;color:#A855F7;text-decoration:none;font-weight:700">תנאי שימוש</a>
+        <a href="/terms.html" target="_blank" style="font-size:11px;color:#14B8A6;text-decoration:none;font-weight:700">תנאי שימוש</a>
         <span style="color:#CBD5E1;font-size:11px">·</span>
         <a href="/privacy.html" target="_blank" style="font-size:11px;color:#14B8A6;text-decoration:none;font-weight:700">מדיניות פרטיות</a>
       </div>
@@ -8914,7 +8915,7 @@ function TeacherPending(){
 
         <div style="padding:16px">
           <div style="display:flex;gap:14px;align-items:center;margin-bottom:16px">
-            <div style="width:52px;height:52px;border-radius:16px;background:linear-gradient(135deg,#14B8A6,#A855F7);display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0">${cat.em}</div>
+            <div style="width:52px;height:52px;border-radius:16px;background:linear-gradient(135deg,#14B8A6,#06B6D4);display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0">${cat.em}</div>
             <div>
               <h3 style="color:#0F1A1F;font-weight:900;font-size:17px;margin:0 0 4px">${name}</h3>
               <p style="color:#14B8A6;font-size:13px;font-weight:700;margin:0">${cat.lbl} • ${t.city||''}</p>
@@ -9011,7 +9012,7 @@ function StudentPending(){
         </div>
         <div style="padding:18px">
           <div style="display:flex;gap:14px;align-items:center;margin-bottom:18px">
-            <div style="width:52px;height:52px;border-radius:16px;background:linear-gradient(135deg,#06B6D4,#A855F7);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg></div>
+            <div style="width:52px;height:52px;border-radius:16px;background:linear-gradient(135deg,#14B8A6,#06B6D4);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg></div>
             <div>
               <h3 style="color:#0F1A1F;font-weight:900;font-size:17px;margin:0 0 4px">${name}</h3>
               <p style="color:#06B6D4;font-size:13px;font-weight:700;margin:0">תלמיד • גיל ${currentUserData?.age||'?'}</p>
@@ -9232,7 +9233,7 @@ function showEditTeacherProfileDialog(){
             <button type="button" onclick="addEtCustomCat()" style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:12px;padding:10px 14px;font-weight:800;cursor:pointer;white-space:nowrap">הוסף</button>
           </div>
           <div id="_etCustomList" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">
-            ${window._etCustomCats.map(cc=>`<span style="background:rgba(168,85,247,0.15);border:1px solid rgba(168,85,247,0.3);border-radius:50px;padding:5px 12px;font-size:12px;font-weight:700;color:#A855F7;display:inline-flex;align-items:center;gap:6px">✨ ${escapeHtml(cc)} <span onclick="removeEtCustomCat(${JSON.stringify(cc)},this)" style="color:#EF4444;font-weight:900;cursor:pointer">✕</span></span>`).join('')}
+            ${window._etCustomCats.map(cc=>`<span style="background:rgba(20,184,166,0.1);border:1px solid rgba(20,184,166,0.3);border-radius:50px;padding:5px 12px;font-size:12px;font-weight:700;color:#0D9488;display:inline-flex;align-items:center;gap:6px">✨ ${escapeHtml(cc)} <span onclick="removeEtCustomCat(${JSON.stringify(cc)},this)" style="color:#EF4444;font-weight:900;cursor:pointer">✕</span></span>`).join('')}
           </div>
         </div>
       </div>
@@ -9255,8 +9256,8 @@ function showEditTeacherProfileDialog(){
         <input id="_etMeetingLink" class="inp" type="url" value="${(t.meetingLink||'').replace(/"/g,'&quot;')}" placeholder="https://zoom.us/j/... או https://meet.google.com/...">
         <p style="font-size:10px;color:#94A3B8;margin:4px 0 0">⚠️ ללא קישור, תלמידים לא יוכלו להצטרף לשיעור</p>
       </div>
-      <div style="background:rgba(168,85,247,0.04);border:1.5px solid rgba(168,85,247,0.15);border-radius:18px;padding:16px;margin-bottom:16px">
-        <h3 style="font-weight:900;font-size:15px;margin:0 0 12px;color:#A855F7">📱 רשתות חברתיות</h3>
+      <div style="background:rgba(20,184,166,0.04);border:1.5px solid rgba(20,184,166,0.15);border-radius:18px;padding:16px;margin-bottom:16px">
+        <h3 style="font-weight:900;font-size:15px;margin:0 0 12px;color:#0D9488">📱 רשתות חברתיות</h3>
         <div style="margin-bottom:11px">
           <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">📸 Instagram</label>
           <input id="_etInsta" class="inp" value="${(t.instagram||'').replace(/"/g,'&quot;')}" placeholder="https://instagram.com/...">
@@ -9334,7 +9335,7 @@ function addEtCustomCat(){
   const container=document.getElementById('_etCustomList');
   if(container){
     const tag=document.createElement('span');
-    tag.style.cssText='background:rgba(168,85,247,0.15);border:1px solid rgba(168,85,247,0.3);border-radius:50px;padding:5px 12px;font-size:12px;font-weight:700;color:#A855F7;display:inline-flex;align-items:center;gap:6px';
+    tag.style.cssText='background:rgba(20,184,166,0.1);border:1px solid rgba(20,184,166,0.3);border-radius:50px;padding:5px 12px;font-size:12px;font-weight:700;color:#0D9488;display:inline-flex;align-items:center;gap:6px';
     tag.innerHTML=`✨ ${escapeHtml(val)} <span onclick="removeEtCustomCat(${JSON.stringify(val)},this)" style="color:#EF4444;font-weight:900;cursor:pointer">✕</span>`;
     container.appendChild(tag);
   }
@@ -9450,7 +9451,7 @@ function showEditSubjectDialog(catId){
       <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">📝 תיאור</label>
       <textarea id="_esDesc" rows="3" style="width:100%;background:rgba(20,184,166,0.06);border:1.5px solid rgba(20,184,166,0.25);border-radius:12px;padding:11px;font-size:13px;font-family:inherit;direction:rtl;outline:none;box-sizing:border-box;resize:none;margin-bottom:12px">${cp.desc||''}</textarea>
       <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">🏷 נושאים (מופרדים בפסיק)</label>
-      <input id="_esTags" value="${(cp.tags||[]).join(', ')}" style="width:100%;background:rgba(168,85,247,0.06);border:1.5px solid rgba(168,85,247,0.25);border-radius:12px;padding:11px;font-size:13px;font-family:inherit;direction:rtl;outline:none;box-sizing:border-box;margin-bottom:12px">
+      <input id="_esTags" value="${(cp.tags||[]).join(', ')}" style="width:100%;background:rgba(20,184,166,0.06);border:1.5px solid rgba(20,184,166,0.25);border-radius:12px;padding:11px;font-size:13px;font-family:inherit;direction:rtl;outline:none;box-sizing:border-box;margin-bottom:12px">
       <div style="display:flex;gap:10px;margin-bottom:16px">
         <div style="flex:1">
           <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">💰 מחיר לשעה (₪)</label>
@@ -9463,10 +9464,10 @@ function showEditSubjectDialog(catId){
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
         <p style="font-weight:800;font-size:14px;margin:0">📹 סרטונים (${catVids.length})</p>
-        <button onclick="showVideoUploadDialog('${catId}')" style="background:linear-gradient(135deg,${catObj.col},#A855F7);border:none;color:#fff;border-radius:50px;padding:7px 14px;font-size:12px;font-weight:800;cursor:pointer">+ הוסף סרטון</button>
+        <button onclick="showVideoUploadDialog('${catId}')" style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:7px 14px;font-size:12px;font-weight:800;cursor:pointer">+ הוסף סרטון</button>
       </div>
       ${catVids.length===0?'<p style="text-align:center;color:#94A3B8;font-size:13px;padding:12px 0">אין סרטונים למקצוע זה עדיין</p>':catVids.map(v=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:rgba(100,116,139,0.06);border-radius:12px;margin-bottom:7px"><span style="font-size:13px;font-weight:700;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${v.title}</span><button onclick="deleteMyVideo('${v.id}')" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#EF4444;border-radius:50px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0;margin-right:8px">🗑</button></div>`).join('')}
-      <button onclick="_saveSubjectEdit('${catId}')" style="width:100%;background:linear-gradient(135deg,${catObj.col},#A855F7);border:none;color:#fff;border-radius:50px;padding:13px;font-weight:800;font-size:15px;cursor:pointer;margin-top:14px;box-shadow:0 4px 14px ${catObj.col}44">💾 שמור</button>
+      <button onclick="_saveSubjectEdit('${catId}')" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:13px;font-weight:800;font-size:15px;cursor:pointer;margin-top:14px;box-shadow:0 4px 14px rgba(20,184,166,0.3)">💾 שמור</button>
     </div>`;
   document.body.appendChild(ov);
 }
@@ -9587,7 +9588,7 @@ function showGroupDetail(groupId){
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
       <div style="background:rgba(20,184,166,0.08);border-radius:14px;padding:12px;text-align:center"><div style="font-size:20px">📅</div><div style="font-weight:800;font-size:13px;margin-top:4px">${g.day}</div><div style="font-size:11px;color:#64748B">שעה ${g.time}</div></div>
-      <div style="background:rgba(168,85,247,0.08);border-radius:14px;padding:12px;text-align:center"><div style="font-size:20px">📍</div><div style="font-weight:800;font-size:13px;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${g.location}</div><div style="font-size:11px;color:#64748B">מיקום</div></div>
+      <div style="background:rgba(20,184,166,0.08);border-radius:14px;padding:12px;text-align:center"><div style="font-size:20px">📍</div><div style="font-weight:800;font-size:13px;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${g.location}</div><div style="font-size:11px;color:#64748B">מיקום</div></div>
       <div style="background:rgba(16,185,129,0.08);border-radius:14px;padding:12px;text-align:center"><div style="font-size:20px">👥</div><div style="font-weight:800;font-size:13px;margin-top:4px">${g.membersCount||0}/${g.maxStudents}</div><div style="font-size:11px;color:${spotsLeft>0?'#10B981':'#EF4444'}">${spotsLeft>0?spotsLeft+' מקומות פנויים':'מלא'}</div></div>
       <div style="background:rgba(245,158,11,0.08);border-radius:14px;padding:12px;text-align:center"><div style="font-size:20px">💰</div><div style="font-weight:800;font-size:13px;margin-top:4px">₪${g.price} לילד</div><div style="font-size:11px;color:#64748B">לפגישה</div></div>
     </div>
@@ -9595,7 +9596,7 @@ function showGroupDetail(groupId){
       <div style="width:42px;height:42px;border-radius:14px;background:#14B8A620;display:flex;align-items:center;justify-content:center;font-size:22px;overflow:hidden;flex-shrink:0">${g.teacherPhoto?`<img src="${g.teacherPhoto}" style="width:100%;height:100%;object-fit:cover" alt="">`:catObj.em}</div>
       <div><div style="font-weight:800;font-size:14px">${g.teacherName}</div><div style="font-size:12px;color:#64748B">מוביל הקבוצה</div></div>
     </div>
-    ${g.isMixed?`<div style="background:linear-gradient(135deg,rgba(168,85,247,0.08),rgba(20,184,166,0.08));border:1.5px solid rgba(168,85,247,0.2);border-radius:14px;padding:12px;margin-bottom:14px;display:flex;gap:10px;align-items:center"><span style="font-size:22px">🌈</span><div><div style="font-weight:800;font-size:13px">קבוצה מעורבת</div><div style="font-size:12px;color:#64748B">פתוח לילדים מכל רקע ואוכלוסייה. מצטרפים מקבלים תג קהילה מיוחד!</div></div></div>`:''}
+    ${g.isMixed?`<div style="background:rgba(20,184,166,0.06);border:1.5px solid rgba(20,184,166,0.2);border-radius:14px;padding:12px;margin-bottom:14px;display:flex;gap:10px;align-items:center"><span style="font-size:22px">🌈</span><div><div style="font-weight:800;font-size:13px">קבוצה מעורבת</div><div style="font-size:12px;color:#64748B">פתוח לילדים מכל רקע ואוכלוסייה. מצטרפים מקבלים תג קהילה מיוחד!</div></div></div>`:''}
     ${isOwner
       ?`<button onclick="showTeacherGroupsPanel();document.getElementById('_gdOv')?.remove()" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:14px;font-weight:900;font-size:15px;cursor:pointer;margin-bottom:8px">👥 נהל קבוצה</button>`
       :myStatus==='pending'
@@ -9605,7 +9606,7 @@ function showGroupDetail(groupId){
           :myStatus==='rejected'
             ?`<div style="text-align:center;padding:14px;background:rgba(239,68,68,0.08);border-radius:14px;color:#EF4444;font-weight:800;margin-bottom:8px">😔 הבקשה לא אושרה</div>`
             :spotsLeft>0&&g.status==='open'
-              ?`<button onclick="joinGroup('${g.id}');document.getElementById('_gdOv')?.remove()" style="width:100%;background:linear-gradient(135deg,#14B8A6,#A855F7);border:none;color:#fff;border-radius:50px;padding:14px;font-weight:900;font-size:15px;cursor:pointer;margin-bottom:8px;box-shadow:0 6px 20px rgba(20,184,166,0.3)">🙋 הצטרף לקבוצה</button>`
+              ?`<button onclick="joinGroup('${g.id}');document.getElementById('_gdOv')?.remove()" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:14px;font-weight:900;font-size:15px;cursor:pointer;margin-bottom:8px;box-shadow:0 6px 20px rgba(20,184,166,0.3)">🙋 הצטרף לקבוצה</button>`
               :`<div style="text-align:center;padding:14px;background:rgba(239,68,68,0.08);border-radius:14px;color:#EF4444;font-weight:800;margin-bottom:8px">❌ הקבוצה מלאה</div>`}
     <button onclick="document.getElementById('_gdOv')?.remove()" style="width:100%;background:rgba(100,116,139,0.1);border:none;border-radius:50px;padding:12px;font-weight:700;font-size:14px;cursor:pointer;color:#64748B">סגור</button>
   </div>`;
@@ -9713,7 +9714,7 @@ async function showTeacherGroupsPanel(){
       <h3 style="font-weight:900;font-size:18px;margin:0">🏘️ הקבוצות שלי (${myGroups.length})</h3>
     </div>
     ${myGroups.length===0?'<p style="text-align:center;color:#94A3B8;padding:32px 0;font-size:14px">עדיין לא יצרת קבוצות</p>':membersHtml}
-    <button onclick="document.getElementById('_tgOv')?.remove();showCreateGroupDialog()" style="width:100%;background:linear-gradient(135deg,#14B8A6,#A855F7);border:none;color:#fff;border-radius:50px;padding:13px;font-weight:800;font-size:14px;cursor:pointer;margin-top:4px">+ צור קבוצה חדשה</button>
+    <button onclick="document.getElementById('_tgOv')?.remove();showCreateGroupDialog()" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:13px;font-weight:800;font-size:14px;cursor:pointer;margin-top:4px">+ צור קבוצה חדשה</button>
   </div>`;
   document.body.appendChild(ov);
 }
@@ -9866,7 +9867,7 @@ async function _loadParentPortalData(token){
             <div style="font-size:15px;font-weight:800;color:#0F1A1F;margin-bottom:6px;display:flex;align-items:center;gap:6px;justify-content:flex-end"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg> ${escapeHtml(l.topic||'—')}</div>
             <div style="font-size:12px;color:#64748B;margin-bottom:4px">👨‍🏫 ${escapeHtml(l.teacherName||'')} · 📅 ${escapeHtml(l.day||'')}</div>
             ${l.homework?`<div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);border-radius:10px;padding:8px;margin-top:8px;font-size:12px;color:#B45309">📎 שיעורי בית: ${escapeHtml(l.homework)}</div>`:''}
-            ${l.notes?`<div style="background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.2);border-radius:10px;padding:8px;margin-top:6px;font-size:12px;color:#4F46E5">💬 ${escapeHtml(l.notes)}</div>`:''}
+            ${l.notes?`<div style="background:rgba(20,184,166,0.06);border:1px solid rgba(20,184,166,0.2);border-radius:10px;padding:8px;margin-top:6px;font-size:12px;color:#0F766E">💬 ${escapeHtml(l.notes)}</div>`:''}
             ${l.rating?`<div style="font-size:13px;color:#F59E0B;margin-top:8px;font-weight:700">${'★'.repeat(Math.floor(l.rating))}${'☆'.repeat(5-Math.floor(l.rating))} ${l.rating}/5</div>`:''}
           </div>`).join('')}
       `:`<div style="background:#fff;border-radius:16px;padding:24px;text-align:center;margin-bottom:16px;box-shadow:0 2px 12px rgba(0,0,0,0.06)">
@@ -9874,7 +9875,7 @@ async function _loadParentPortalData(token){
           <p style="color:#64748B;font-size:14px;margin:0">לא היו שיעורים השבוע</p>
         </div>`}
       ${lessons.length>weekLessons.length?`
-        <h3 style="font-size:15px;font-weight:800;color:#6366F1;margin:20px 0 12px;text-align:right;display:flex;align-items:center;gap:6px;justify-content:flex-end"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg> היסטוריה (${lessons.length} שיעורים)</h3>
+        <h3 style="font-size:15px;font-weight:800;color:#0891B2;margin:20px 0 12px;text-align:right;display:flex;align-items:center;gap:6px;justify-content:flex-end"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg> היסטוריה (${lessons.length} שיעורים)</h3>
         ${lessons.map(l=>`
           <div style="background:#fff;border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 1px 8px rgba(0,0,0,0.05)">
             <div style="text-align:right">
@@ -9885,7 +9886,7 @@ async function _loadParentPortalData(token){
           </div>`).join('')}
       `:''}
       <div style="margin-top:28px;padding:16px;background:#fff;border-radius:14px;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,0.06)">
-        <div style="width:40px;height:40px;border-radius:12px;background:rgba(139,47,201,0.1);display:flex;align-items:center;justify-content:center;margin:0 auto 6px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8b2fc9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg></div>
+        <div style="width:40px;height:40px;border-radius:12px;background:rgba(20,184,166,0.08);display:flex;align-items:center;justify-content:center;margin:0 auto 6px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg></div>
         <p style="color:#64748B;font-size:12px;margin:0;line-height:1.6">פורטל הורים של Kidemy<br>קישור זה תקף ל-30 יום מקבלת המייל</p>
       </div>`;
   }catch(e){
@@ -9932,7 +9933,7 @@ function _hs(inp){
         <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
           <span style="font-weight:900;font-size:14px;color:var(--p)">₪${t.price}/שיעור</span>
           <span style="display:flex;gap:4px;align-items:center">
-            ${t.ageVerified?'<span style="background:rgba(99,102,241,0.15);color:#6366F1;font-size:10px;font-weight:700;padding:2px 7px;border-radius:50px">✓ גיל מאומת</span>':''}
+            ${t.ageVerified?'<span style="background:rgba(20,184,166,0.15);color:#0D9488;font-size:10px;font-weight:700;padding:2px 7px;border-radius:50px">✓ גיל מאומת</span>':''}
             ${gTag(t.badge)}
           </span>
         </div>
@@ -9985,7 +9986,7 @@ render();
   // deep link לפרופיל מורה: ?t=teacherId
   const _tid=new URLSearchParams(window.location.search).get('t');
   if(_tid){
-    const _tryNav=()=>{const t=TEACHERS.find(x=>x.id===_tid);if(t){go('teacher',{teacher:t});}else setTimeout(_tryNav,700);};
+    let _navRetries=0;const _tryNav=()=>{const t=TEACHERS.find(x=>x.id===_tid);if(t){go('teacher',{teacher:t});}else if(_navRetries++<10)setTimeout(_tryNav,700);};
     setTimeout(_tryNav,900);
   }
 })();
@@ -10112,7 +10113,7 @@ function showInstallBanner(){
   if(document.getElementById('_pwaBanner')||isPWAInstalled())return;
   const banner=document.createElement('div');
   banner.id='_pwaBanner';
-  banner.style.cssText='position:fixed;bottom:90px;left:14px;right:14px;background:linear-gradient(135deg,#14B8A6,#06B6D4,#A855F7);border-radius:20px;padding:14px;display:flex;align-items:center;gap:11px;z-index:9998;box-shadow:0 10px 40px rgba(20,184,166,0.5);direction:rtl;animation:fadeUp 0.5s ease';
+  banner.style.cssText='position:fixed;bottom:90px;left:14px;right:14px;background:linear-gradient(135deg,#14B8A6,#0891B2);border-radius:20px;padding:14px;display:flex;align-items:center;gap:11px;z-index:9998;box-shadow:0 10px 40px rgba(20,184,166,0.5);direction:rtl;animation:fadeUp 0.5s ease';
   banner.innerHTML=`
     <div style="font-size:32px">📱</div>
     <div style="flex:1;color:#fff">
@@ -10146,11 +10147,11 @@ function showIOSInstallGuide(){
           <div style="flex:1;font-size:13px;line-height:1.6">בחר <strong>"הוסף למסך הבית"</strong> ➕</div>
         </div>
         <div style="display:flex;gap:10px;align-items:center">
-          <div style="width:30px;height:30px;border-radius:50%;background:#A855F7;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;flex-shrink:0">3</div>
+          <div style="width:30px;height:30px;border-radius:50%;background:#0891B2;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;flex-shrink:0">3</div>
           <div style="flex:1;font-size:13px;line-height:1.6">לחץ <strong>"הוסף"</strong> וזהו! 🎉</div>
         </div>
       </div>
-      <button onclick="this.closest('div[style*=fixed]').remove()" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4,#A855F7);border:none;color:#fff;border-radius:50px;padding:13px;font-weight:800;font-size:14px;cursor:pointer">הבנתי 👍</button>
+      <button onclick="this.closest('div[style*=fixed]').remove()" style="width:100%;background:linear-gradient(135deg,#14B8A6,#0891B2);border:none;color:#fff;border-radius:50px;padding:13px;font-weight:800;font-size:14px;cursor:pointer">הבנתי 👍</button>
     </div>`;
   document.body.appendChild(ov);
   ov.onclick=e=>{if(e.target===ov)ov.remove();};
@@ -10654,7 +10655,7 @@ function RegSuccess(){
     </div>
 
     <!-- פרטי כניסה -->
-    <div style="background:linear-gradient(135deg,rgba(20,184,166,0.08),rgba(168,85,247,0.06));border:1.5px solid rgba(20,184,166,0.25);border-radius:24px;padding:18px;margin-bottom:18px">
+    <div style="background:rgba(20,184,166,0.06);border:1.5px solid rgba(20,184,166,0.25);border-radius:24px;padding:18px;margin-bottom:18px">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
         <div style="width:32px;height:32px;border-radius:10px;background:#14B8A615;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="5.5"/><path d="M21 2l-9.6 9.6"/><path d="M15.5 7.5 18 5"/><path d="M17.5 9.5 20 7"/></svg></div>
         <h3 style="font-weight:900;font-size:15px;margin:0;color:#14B8A6">פרטי הכניסה שלך</h3>
@@ -10666,7 +10667,7 @@ function RegSuccess(){
       </div>
       <p style="font-size:13px;color:#0F766E;line-height:1.7;margin:10px 0 0">
       <div style="background:rgba(255,255,255,0.7);border-radius:12px;padding:11px;margin-bottom:10px">
-        <p style="margin:0;font-size:11px;line-height:1.6;color:#475569"><strong>📌 חשוב:</strong> אם המייל לא הגיע תוך דקה – בדוק בתיקיית <strong style="color:#A855F7">ספאם</strong> או <strong style="color:#A855F7">קידום מכירות</strong>! המייל מגיע מ-noreply@kidemy-83a17.firebaseapp.com</p>
+        <p style="margin:0;font-size:11px;line-height:1.6;color:#475569"><strong>📌 חשוב:</strong> אם המייל לא הגיע תוך דקה – בדוק בתיקיית <strong style="color:#0D9488">ספאם</strong> או <strong style="color:#0D9488">קידום מכירות</strong>! המייל מגיע מ-noreply@kidemy-83a17.firebaseapp.com</p>
       </div>
     </div>
 
@@ -10679,7 +10680,7 @@ function RegSuccess(){
     <!-- כפתורי פעולה -->
     <div style="display:flex;gap:10px;margin-bottom:14px">
       <button onclick="resendVerification()" style="flex:1;background:rgba(255,255,255,0.85);border:1.5px solid rgba(20,184,166,0.3);border-radius:50px;padding:14px;font-size:13px;font-weight:800;color:#14B8A6;cursor:pointer">🔄 שלח שוב</button>
-      <button style="flex:2;background:linear-gradient(135deg,#14B8A6,#06B6D4,#A855F7);border:none;color:#fff;border-radius:50px;padding:14px;font-size:14px;font-weight:900;cursor:pointer;box-shadow:0 6px 20px rgba(20,184,166,0.4)" onclick="${currentUserData?.role==='teacher'?"go('teacherSetup')":"go('home')"}">בוא נתחיל! 🚀</button>
+      <button style="flex:2;background:linear-gradient(135deg,#14B8A6,#0891B2);border:none;color:#fff;border-radius:50px;padding:14px;font-size:14px;font-weight:900;cursor:pointer;box-shadow:0 6px 20px rgba(20,184,166,0.4)" onclick="${currentUserData?.role==='teacher'?"go('teacherSetup')":"go('home')"}">בוא נתחיל! 🚀</button>
     </div>
 
     <p style="text-align:center;font-size:12px;color:rgba(15,118,110,0.7);margin:0;line-height:1.6">
@@ -10728,9 +10729,9 @@ async function sendResetEmail(){
           <button onclick="sendResetToParentEmail('${parentEmail}','${fakeEmail}',this)" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;border-radius:50px;padding:13px;font-size:14px;font-weight:800;color:#fff;cursor:pointer;margin-bottom:10px">📧 שלח בקשה למנהל</button>
         `:`
           <p style="color:#64748B;font-size:13px;margin:0 0 14px;line-height:1.7">לאיפוס סיסמה, שלח בקשה למנהל:</p>
-          <button onclick="notifyAdminPasswordReset('${fakeEmail}',this)" style="width:100%;background:linear-gradient(135deg,#A855F7,#7E22CE);border:none;border-radius:50px;padding:13px;font-size:14px;font-weight:800;color:#fff;cursor:pointer;margin-bottom:10px">📨 בקש מהמנהל לאפס</button>
+          <button onclick="notifyAdminPasswordReset('${fakeEmail}',this)" style="width:100%;background:linear-gradient(135deg,#14B8A6,#0891B2);border:none;border-radius:50px;padding:13px;font-size:14px;font-weight:800;color:#fff;cursor:pointer;margin-bottom:10px">📨 בקש מהמנהל לאפס</button>
         `}
-        <a href="mailto:${ADMIN_EMAIL}?subject=איפוס%20סיסמה&body=שם%20משתמש:%20${encodeURIComponent(raw)}" style="display:block;background:rgba(168,85,247,0.1);border:1.5px solid rgba(168,85,247,0.3);color:#7E22CE;border-radius:50px;padding:11px;font-size:13px;font-weight:800;text-decoration:none;margin-bottom:10px">✉️ פנה למנהל</a>
+        <a href="mailto:${ADMIN_EMAIL}?subject=איפוס%20סיסמה&body=שם%20משתמש:%20${encodeURIComponent(raw)}" style="display:block;background:rgba(20,184,166,0.08);border:1.5px solid rgba(20,184,166,0.3);color:#0D9488;border-radius:50px;padding:11px;font-size:13px;font-weight:800;text-decoration:none;margin-bottom:10px">✉️ פנה למנהל</a>
         <button onclick="this.closest('div[style*=fixed]').remove()" style="width:100%;background:#F1F5F9;border:none;border-radius:50px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;color:#64748B">סגור</button>
       </div>`;
     document.body.appendChild(ov);
@@ -10750,10 +10751,10 @@ async function sendResetEmail(){
           <div style="font-size:54px;margin-bottom:12px">📧</div>
           <h3 style="font-weight:900;font-size:20px;margin:0 0 10px;color:#0F1A1F">מייל איפוס נשלח!</h3>
           <p style="color:#64748B;font-size:13px;margin:0 0 18px;line-height:1.7">שלחנו מייל ל:<br><strong style="color:#14B8A6;font-size:15px">${raw}</strong></p>
-          <div style="background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);border-radius:14px;padding:12px;text-align:right;margin-bottom:16px">
-            <p style="margin:0;font-size:12px;color:#7E22CE;font-weight:600;line-height:1.7">⚠️ אם לא הגיע תוך דקה:<br>1. בדוק תיקיית <strong>ספאם / קידום מכירות</strong><br>2. ודא שהמייל נכון<br>3. נסה שוב בעוד 60 שניות</p>
+          <div style="background:rgba(20,184,166,0.06);border:1px solid rgba(20,184,166,0.2);border-radius:14px;padding:12px;text-align:right;margin-bottom:16px">
+            <p style="margin:0;font-size:12px;color:#0F766E;font-weight:600;line-height:1.7">⚠️ אם לא הגיע תוך דקה:<br>1. בדוק תיקיית <strong>ספאם / קידום מכירות</strong><br>2. ודא שהמייל נכון<br>3. נסה שוב בעוד 60 שניות</p>
           </div>
-          <button onclick="this.closest('div[style*=fixed]').remove()" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4,#A855F7);border:none;border-radius:50px;padding:13px;font-size:14px;font-weight:800;color:#fff;cursor:pointer">הבנתי 👍</button>
+          <button onclick="this.closest('div[style*=fixed]').remove()" style="width:100%;background:linear-gradient(135deg,#14B8A6,#0891B2);border:none;border-radius:50px;padding:13px;font-size:14px;font-weight:800;color:#fff;cursor:pointer">הבנתי 👍</button>
         </div>`;
       document.body.appendChild(ov);
       ov.onclick=ev=>{if(ev.target===ov)ov.remove();};
@@ -10797,7 +10798,7 @@ async function sendResetToParentEmail(parentEmail,fakeEmail,btn){
     setTimeout(()=>{
       const ov=document.createElement('div');
       ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px);padding:24px;direction:rtl';
-      ov.innerHTML=`<div style="background:#fff;border-radius:24px;padding:28px 24px;width:100%;max-width:340px;text-align:center"><div style="font-size:54px;margin-bottom:12px">✅</div><h3 style="font-weight:900;font-size:18px;margin:0 0 10px">הבקשה נשלחה!</h3><p style="color:#64748B;font-size:13px;margin:0 0 16px;line-height:1.7">שלחנו בקשה למנהל ומייל לאבא/אמא:<br><strong style="color:#14B8A6">${escapeHtml(parentEmail)}</strong><br><br>המנהל יצור קשר בהקדם לאיפוס הסיסמה.</p><button onclick="this.closest('div[style*=fixed]').remove()" style="width:100%;background:linear-gradient(135deg,#14B8A6,#A855F7);border:none;border-radius:50px;padding:13px;font-size:14px;font-weight:800;color:#fff;cursor:pointer">הבנתי 👍</button></div>`;
+      ov.innerHTML=`<div style="background:#fff;border-radius:24px;padding:28px 24px;width:100%;max-width:340px;text-align:center"><div style="font-size:54px;margin-bottom:12px">✅</div><h3 style="font-weight:900;font-size:18px;margin:0 0 10px">הבקשה נשלחה!</h3><p style="color:#64748B;font-size:13px;margin:0 0 16px;line-height:1.7">שלחנו בקשה למנהל ומייל לאבא/אמא:<br><strong style="color:#14B8A6">${escapeHtml(parentEmail)}</strong><br><br>המנהל יצור קשר בהקדם לאיפוס הסיסמה.</p><button onclick="this.closest('div[style*=fixed]').remove()" style="width:100%;background:linear-gradient(135deg,#14B8A6,#0891B2);border:none;border-radius:50px;padding:13px;font-size:14px;font-weight:800;color:#fff;cursor:pointer">הבנתי 👍</button></div>`;
       document.body.appendChild(ov);
       ov.onclick=ev=>{if(ev.target===ov)ov.remove();};
     },200);
@@ -10918,7 +10919,7 @@ function _confirm(msg,{confirmText='אישור',cancelText='ביטול',destruct
       <p style="font-size:15px;font-weight:600;color:#0F1A1F;margin:0 0 22px;line-height:1.6;white-space:pre-line">${msg}</p>
       <div style="display:flex;gap:10px">
         <button id="_cnfNo" style="flex:1;background:#F1F5F9;border:none;border-radius:14px;padding:13px;font-weight:700;font-size:14px;cursor:pointer;color:#64748B">${cancelText}</button>
-        <button id="_cnfYes" style="flex:2;background:${destructive?'#EF4444':'linear-gradient(135deg,#14B8A6,#A855F7)'};border:none;border-radius:14px;padding:13px;font-weight:900;font-size:14px;cursor:pointer;color:#fff">${confirmText}</button>
+        <button id="_cnfYes" style="flex:2;background:${destructive?'#EF4444':'linear-gradient(135deg,#14B8A6,#06B6D4)'};border:none;border-radius:14px;padding:13px;font-weight:900;font-size:14px;cursor:pointer;color:#fff">${confirmText}</button>
       </div>
     </div>`;
     document.body.appendChild(ov);
@@ -10938,7 +10939,7 @@ function _prompt(msg,defaultVal=''){
       <input id="_prmptInp" value="${escapeHtml(defaultVal)}" style="width:100%;border:1.5px solid #E2E8F0;border-radius:14px;padding:12px 14px;font-size:14px;direction:rtl;font-family:inherit;box-sizing:border-box;margin-bottom:16px;outline:none">
       <div style="display:flex;gap:10px">
         <button id="_prmptNo" style="flex:1;background:#F1F5F9;border:none;border-radius:14px;padding:13px;font-weight:700;font-size:14px;cursor:pointer;color:#64748B">ביטול</button>
-        <button id="_prmptYes" style="flex:2;background:linear-gradient(135deg,#14B8A6,#A855F7);border:none;border-radius:14px;padding:13px;font-weight:900;font-size:14px;cursor:pointer;color:#fff">אישור</button>
+        <button id="_prmptYes" style="flex:2;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;border-radius:14px;padding:13px;font-weight:900;font-size:14px;cursor:pointer;color:#fff">אישור</button>
       </div>
     </div>`;
     document.body.appendChild(ov);
@@ -10974,7 +10975,7 @@ if('serviceWorker' in navigator){
   });
   navigator.serviceWorker.register(currentSwUrl).then(reg=>{
     reg.update();
-    setInterval(()=>reg.update(),60000);
+    setInterval(()=>reg.update(),900000);
   });
   let _swReloading=false;
   navigator.serviceWorker.addEventListener('controllerchange',()=>{
@@ -10985,7 +10986,7 @@ if('serviceWorker' in navigator){
 </script>
 
 <!-- INSTALL BANNER -->
-<div id="ib" style="display:none;position:fixed;bottom:80px;left:12px;right:12px;background:linear-gradient(135deg,#14B8A6 0%,#06B6D4 50%,#A855F7 100%);color:#fff;border-radius:20px;padding:16px 18px;z-index:999;box-shadow:0 8px 32px rgba(20,184,166,0.5);align-items:center;gap:14px;direction:rtl">
+<div id="ib" style="display:none;position:fixed;bottom:80px;left:12px;right:12px;background:linear-gradient(135deg,#14B8A6,#0891B2);color:#fff;border-radius:20px;padding:16px 18px;z-index:999;box-shadow:0 8px 32px rgba(20,184,166,0.5);align-items:center;gap:14px;direction:rtl">
   <div style="font-size:32px">🎓</div>
   <div style="flex:1">
     <div style="font-weight:900;font-size:15px">הוסף Kidemy למסך הבית!</div>
@@ -11003,11 +11004,11 @@ if('serviceWorker' in navigator){
     <h3 style="font-weight:900;font-size:18px;margin:0 0 20px;text-align:center">📲 הוסף למסך הבית</h3>
     <div style="display:flex;flex-direction:column;gap:14px">
       <div style="display:flex;gap:14px;align-items:flex-start">
-        <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#14B8A6 0%,#06B6D4 50%,#A855F7 100%);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;flex-shrink:0">1</div>
+        <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#14B8A6,#0891B2);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;flex-shrink:0">1</div>
         <div><div style="font-weight:800;font-size:15px">פתח בדפדפן Chrome</div><div style="font-size:13px;color:#8A94A6;margin-top:3px">ודא שאתה ב-Chrome (לא Samsung Browser)</div></div>
       </div>
       <div style="display:flex;gap:14px;align-items:flex-start">
-        <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#14B8A6 0%,#06B6D4 50%,#A855F7 100%);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;flex-shrink:0">2</div>
+        <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#14B8A6,#0891B2);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;flex-shrink:0">2</div>
         <div><div style="font-weight:800;font-size:15px">לחץ על ⋮ (שלוש נקודות)</div><div style="font-size:13px;color:#8A94A6;margin-top:3px">בפינה הימנית העליונה של Chrome</div></div>
       </div>
       <div style="display:flex;gap:14px;align-items:flex-start">
