@@ -1,4 +1,4 @@
-// Kidemy Service Worker — auto-update on every deploy
+// Lamdeni Service Worker — auto-update on every deploy
 const VERSION = '3.0.0';
 
 // Activate immediately without waiting for old tabs to close
