@@ -2054,16 +2054,37 @@ async function uploadStory(){
   if(!currentUser||currentUserData?.role!=='teacher'){showFireToast('🎓 רק מורים יכולים להוסיף סטורי');return;}
   const inp=document.createElement('input');
   inp.type='file';inp.accept='image/*';
-  inp.click(); // חייב להיות sync עם gesture — לפני כל await
+  inp.style.cssText='position:fixed;top:-9999px;opacity:0';
+  document.body.appendChild(inp);
+  inp.click();
   inp.onchange=async()=>{
-    const file=inp.files[0];if(!file)return;
-    if(file.size>5*1024*1024){showFireToast('❌ תמונה גדולה מדי (מקסימום 5MB)');return;}
+    const file=inp.files[0];
+    document.body.removeChild(inp);
+    if(!file)return;
+    if(file.size>10*1024*1024){showFireToast('❌ תמונה גדולה מדי (מקסימום 10MB)');return;}
     const text=await _prompt('✏️ הוסף כיתוב לסטורי (אופציונלי):','');
     showFireToast('⏳ מעלה סטורי...');
     try{
-      const ref=firebase.storage().ref('stories/'+currentUser.uid+'/'+Date.now()+'_'+file.name.replace(/[^a-zA-Z0-9.]/g,'_'));
-      await ref.put(file);
-      const url=await ref.getDownloadURL();
+      const base64=await new Promise((res,rej)=>{
+        const reader=new FileReader();
+        reader.onload=e=>{
+          const img=new Image();
+          img.onload=()=>{
+            const MAX=1080;
+            const scale=Math.min(1,MAX/Math.max(img.width,img.height));
+            const c=document.createElement('canvas');
+            c.width=Math.round(img.width*scale);
+            c.height=Math.round(img.height*scale);
+            c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+            res(c.toDataURL('image/jpeg',0.82));
+          };
+          img.onerror=rej;
+          img.src=e.target.result;
+        };
+        reader.onerror=rej;
+        reader.readAsDataURL(file);
+      });
+      const url=await uploadBase64ToStorage(base64,'stories/'+currentUser.uid+'/'+Date.now());
       await db.ref('stories').push({
         uid:currentUser.uid,
         teacherName:currentUserData.name||'',
@@ -2077,7 +2098,7 @@ async function uploadStory(){
       });
       notifyAdmin({type:'newStory',teacherName:currentUserData.name||'',teacherId:currentUser.uid}).catch(()=>{});
       showFireToast('✅ הסטורי נשלח לאישור מנהל!');
-    }catch(e){showFireToast('❌ שגיאה בהעלאה: '+e.message);}
+    }catch(e){console.error('[uploadStory]',e);showFireToast('❌ שגיאה: '+e.message);}
   };
 }
 
