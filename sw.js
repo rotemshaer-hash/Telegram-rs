@@ -1,5 +1,5 @@
-// Lamdeni Service Worker — v4.9.51
-const VERSION = '4.9.51';
+// Lamdeni Service Worker — v4.9.52
+const VERSION = '4.9.52';
 
 // Clear all caches + activate immediately
 self.addEventListener('install', e => {
