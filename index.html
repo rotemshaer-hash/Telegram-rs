@@ -527,7 +527,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.50';
+const APP_VERSION='4.9.51';
 const APP_BUILD='25-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -10988,9 +10988,16 @@ async function firebaseLogin(usernameOrEmail,password){
   try{
     showFireToast('⏳ מתחבר...');
     S._loggingIn=true; // מסמן שזו כניסה ידנית — לא לנתק ב-onAuthStateChanged
-    // אם הוזן שם משתמש בלבד (לא מייל), הוסף @lamdeni.app
-    const email=usernameOrEmail.includes('@')?usernameOrEmail:usernameOrEmail.toLowerCase()+'@lamdeni.app';
-    await auth.signInWithEmailAndPassword(email,password);
+    const isFullEmail=usernameOrEmail.includes('@');
+    const email=isFullEmail?usernameOrEmail:usernameOrEmail.toLowerCase()+'@lamdeni.app';
+    try{
+      await auth.signInWithEmailAndPassword(email,password);
+    }catch(e1){
+      // fallback: account may have been created under old @kidemy.app domain
+      if(!isFullEmail&&(e1.code==='auth/user-not-found'||e1.code==='auth/invalid-credential')){
+        await auth.signInWithEmailAndPassword(usernameOrEmail.toLowerCase()+'@kidemy.app',password);
+      }else{throw e1;}
+    }
     showFireToast('✅ ברוך הבא!');
     // Navigate immediately (original behavior) — don't wait for onAuthStateChanged
     currentUser=auth.currentUser;
