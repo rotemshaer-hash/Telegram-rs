@@ -527,8 +527,8 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.47';
-const APP_BUILD='24-06-2026';
+const APP_VERSION='4.9.48';
+const APP_BUILD='25-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
 let S={
@@ -11149,6 +11149,17 @@ if('serviceWorker' in navigator){
     if(!_swReloading&&!S._loggingIn&&!S._registering){_swReloading=true;location.reload();}
   });
 }
+
+// BFCache buster — page restored from frozen tab must reload to get fresh SW
+window.addEventListener('pageshow',e=>{if(e.persisted)location.reload();});
+
+// Version mismatch check — if sw.js on server has a newer VERSION than APP_VERSION, reload
+setTimeout(()=>{
+  fetch('/sw.js?_cb='+Date.now(),{cache:'no-store'})
+    .then(r=>r.text())
+    .then(t=>{const m=t.match(/VERSION = '([^']+)'/);if(m&&m[1]!==APP_VERSION)location.reload(true);})
+    .catch(()=>{});
+},5000);
 </script>
 
 <!-- INSTALL BANNER -->
