@@ -527,7 +527,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.49';
+const APP_VERSION='4.9.50';
 const APP_BUILD='25-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -10992,15 +10992,16 @@ async function firebaseLogin(usernameOrEmail,password){
     const email=usernameOrEmail.includes('@')?usernameOrEmail:usernameOrEmail.toLowerCase()+'@lamdeni.app';
     await auth.signInWithEmailAndPassword(email,password);
     showFireToast('✅ ברוך הבא!');
-    // Safety net: if onAuthStateChanged doesn't navigate within 2s, force navigate.
-    // Also handles case where S.screen was set to 'home' but render() failed (DOM still shows login)
+    // Navigate immediately (original behavior) — don't wait for onAuthStateChanged
+    currentUser=auth.currentUser;
+    go('home');
+    // Safety net: if Home render failed (DOM missing), force re-render after 800ms
     setTimeout(async()=>{
       const stuckOnLogin=(S.screen==='login'||S.screen==='splash')||
         (S.screen==='home'&&!document.getElementById('homeSearch'));
       if(stuckOnLogin&&auth?.currentUser){
         S._loggingIn=false;
         currentUser=auth.currentUser;
-        // טעינת נתוני משתמש אם חסרים
         if(!currentUserData&&db){
           try{
             const _s=await db.ref('users/'+currentUser.uid).get();
@@ -11013,7 +11014,7 @@ async function firebaseLogin(usernameOrEmail,password){
         S.screen='splash';
         go('home');
       }
-    },500);
+    },800);
   }catch(e){
     S._loggingIn=false;
     const m={
