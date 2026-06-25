@@ -527,7 +527,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.52';
+const APP_VERSION='4.9.53';
 const APP_BUILD='25-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -10367,7 +10367,7 @@ auth&&auth.onAuthStateChanged(async user=>{
       }catch(e2){}
       // האזן לניתוק כפוי (admin מחק בזמן שמשתמש מחובר)
       db.ref('forceSignout/'+user.uid).on('value',async snap=>{
-        if(snap.exists()&&snap.val()?.ts&&!ADMIN_EMAILS.includes(user.email?.toLowerCase())){
+        if(snap.exists()&&snap.val()?.ts){
           db.ref('forceSignout/'+user.uid).off('value');
           try{await auth.currentUser?.delete();}catch(e2){}
           await auth.signOut().catch(()=>{});
@@ -10607,15 +10607,12 @@ auth&&auth.onAuthStateChanged(async user=>{
     }catch(e){
       console.warn('Auth/data error:',e.code||e.message,e);
       S._loggingIn=false;S._registering=false;
+      // אם המשתמש מחובר — נווט הביתה גם אם טעינת נתונים נכשלה
       if(auth?.currentUser){
-        // Force navigate — reset screen first so go('home') always re-renders
-        // (go() sets S.screen='home' before calling render; if render failed before,
-        //  S.screen is already 'home' and the old check wouldn't retry)
-        S.screen='splash';
-        try{go('home');}catch(e2){console.warn('Home render error:',e2.message);}
-        if(e?.code!=='auth/network-request-failed')
-          showFireToast('⚠️ חלק מהנתונים לא נטענו — '+(e?.code||e?.message||'בעיית רשת'));
+        if(S.screen==='login'||S.screen==='splash'){go('home');}
+        showFireToast('⚠️ חלק מהנתונים לא נטענו — '+(e?.code||e?.message||'בעיית רשת'));
       } else {
+        // רק אם אין משתמש מחובר כלל — חזור ל-login
         showFireToast('❌ שגיאת כניסה — נסה שוב');
         go('login');
       }
@@ -10989,27 +10986,16 @@ async function firebaseLogin(usernameOrEmail,password){
   try{
     showFireToast('⏳ מתחבר...');
     S._loggingIn=true; // מסמן שזו כניסה ידנית — לא לנתק ב-onAuthStateChanged
-    const isFullEmail=usernameOrEmail.includes('@');
-    const email=isFullEmail?usernameOrEmail:usernameOrEmail.toLowerCase()+'@lamdeni.app';
-    try{
-      await auth.signInWithEmailAndPassword(email,password);
-    }catch(e1){
-      // fallback: account may have been created under old @kidemy.app domain
-      if(!isFullEmail&&(e1.code==='auth/user-not-found'||e1.code==='auth/invalid-credential')){
-        await auth.signInWithEmailAndPassword(usernameOrEmail.toLowerCase()+'@kidemy.app',password);
-      }else{throw e1;}
-    }
+    // אם הוזן שם משתמש בלבד (לא מייל), הוסף @lamdeni.app
+    const email=usernameOrEmail.includes('@')?usernameOrEmail:usernameOrEmail.toLowerCase()+'@lamdeni.app';
+    await auth.signInWithEmailAndPassword(email,password);
     showFireToast('✅ ברוך הבא!');
-    // Navigate immediately (original behavior) — don't wait for onAuthStateChanged
-    currentUser=auth.currentUser;
-    go('home');
-    // Safety net: if Home render failed (DOM missing), force re-render after 800ms
+    // Safety net: if onAuthStateChanged doesn't navigate within 1.5s, force navigate
     setTimeout(async()=>{
-      const stuckOnLogin=(S.screen==='login'||S.screen==='splash')||
-        (S.screen==='home'&&!document.getElementById('homeSearch'));
-      if(stuckOnLogin&&auth?.currentUser){
+      if((S.screen==='login'||S.screen==='splash')&&auth?.currentUser){
         S._loggingIn=false;
         currentUser=auth.currentUser;
+        // טעינת נתוני משתמש אם חסרים
         if(!currentUserData&&db){
           try{
             const _s=await db.ref('users/'+currentUser.uid).get();
@@ -11019,10 +11005,9 @@ async function firebaseLogin(usernameOrEmail,password){
             }
           }catch(_e){}
         }
-        S.screen='splash';
         go('home');
       }
-    },800);
+    },1500);
   }catch(e){
     S._loggingIn=false;
     const m={
@@ -11148,7 +11133,7 @@ if('serviceWorker' in navigator){
       }
     });
   });
-  navigator.serviceWorker.register(currentSwUrl,{updateViaCache:'none'}).then(reg=>{
+  navigator.serviceWorker.register(currentSwUrl).then(reg=>{
     reg.update();
     setInterval(()=>reg.update(),900000);
   });
@@ -11158,17 +11143,6 @@ if('serviceWorker' in navigator){
     if(!_swReloading&&!S._loggingIn&&!S._registering){_swReloading=true;location.reload();}
   });
 }
-
-// BFCache buster — page restored from frozen tab must reload to get fresh SW
-window.addEventListener('pageshow',e=>{if(e.persisted)location.reload();});
-
-// Version mismatch check — if sw.js on server has a newer VERSION than APP_VERSION, reload
-setTimeout(()=>{
-  fetch('/sw.js?_cb='+Date.now(),{cache:'no-store'})
-    .then(r=>r.text())
-    .then(t=>{const m=t.match(/VERSION = '([^']+)'/);if(m&&m[1]!==APP_VERSION)location.reload(true);})
-    .catch(()=>{});
-},5000);
 </script>
 
 <!-- INSTALL BANNER -->
