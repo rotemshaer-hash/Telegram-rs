@@ -2042,13 +2042,17 @@ function openPendingStoryPreview(storyId){
     </div>
     <div style="position:absolute;top:12px;right:60px;z-index:3;background:rgba(255,208,0,0.9);color:#000;font-size:11px;font-weight:900;padding:3px 10px;border-radius:50px;direction:rtl">⏳ ממתין לאישור מנהל</div>
     <img src="${escapeHtml(s.mediaUrl||'')}" style="width:100%;height:100%;object-fit:cover" onerror="this.style.background='#1a1a2e'">
-    ${s.text?`<div style="position:absolute;bottom:50px;left:0;right:0;padding:20px 20px 16px;background:linear-gradient(transparent,rgba(0,0,0,0.8));color:#fff;font-size:17px;font-weight:700;text-align:center;direction:rtl;line-height:1.4">${escapeHtml(s.text)}</div>`:''}
+    ${s.text?`<div style="position:absolute;bottom:90px;left:0;right:0;padding:20px 20px 16px;background:linear-gradient(transparent,rgba(0,0,0,0.8));color:#fff;font-size:17px;font-weight:700;text-align:center;direction:rtl;line-height:1.4">${escapeHtml(s.text)}</div>`:''}
+    <div style="position:absolute;bottom:20px;left:0;right:0;z-index:3;padding:0 20px">
+      <button onclick="deleteMyStory('${s.id}')" style="width:100%;background:rgba(239,68,68,0.85);border:none;color:#fff;border-radius:14px;padding:13px;font-weight:800;font-size:14px;cursor:pointer;backdrop-filter:blur(8px)">🗑 מחק סטורי</button>
+    </div>
   `;
   ov.querySelector('button').onclick=()=>ov.remove();
 }
 
 async function uploadStory(){
   if(!currentUser||currentUserData?.role!=='teacher'){showFireToast('🎓 רק מורים יכולים להוסיף סטורי');return;}
+  const text=await _prompt('✏️ הוסף כיתוב לסטורי (אופציונלי):','');
   const inp=document.createElement('input');
   inp.type='file';inp.accept='image/*';inp.click();
   inp.onchange=async()=>{
@@ -2059,7 +2063,6 @@ async function uploadStory(){
       const ref=firebase.storage().ref('stories/'+currentUser.uid+'/'+Date.now()+'_'+file.name.replace(/[^a-zA-Z0-9.]/g,'_'));
       await ref.put(file);
       const url=await ref.getDownloadURL();
-      const text=await _prompt('הוסף כיתוב לסטורי (אופציונלי):','');
       await db.ref('stories').push({
         uid:currentUser.uid,
         teacherName:currentUserData.name||'',
@@ -2071,9 +2074,19 @@ async function uploadStory(){
         createdAt:Date.now(),
         expiresAt:Date.now()+24*60*60*1000
       });
+      notifyAdmin({type:'newStory',teacherName:currentUserData.name||'',teacherId:currentUser.uid}).catch(()=>{});
       showFireToast('✅ הסטורי נשלח לאישור מנהל!');
     }catch(e){showFireToast('❌ שגיאה בהעלאה: '+e.message);}
   };
+}
+
+async function deleteMyStory(storyId){
+  if(!currentUser)return;
+  try{
+    await db.ref('stories/'+storyId).remove();
+    document.querySelectorAll('div[style*="position:fixed"][style*="99999"]').forEach(el=>el.remove());
+    showFireToast('🗑 הסטורי נמחק');
+  }catch(e){showFireToast('❌ שגיאה: '+e.message);}
 }
 
 async function loadTeacherBookings(){
@@ -3540,7 +3553,7 @@ async function _requestBrowserNotifPermission(){
 }
 
 let adminAllUsers=[],adminAllTeachers=[],adminAllVideos=[],adminAllReports=[],adminAllBookings=[],adminIncompleteTeachers=[],adminAllPosts=[],adminAllReviews=[],adminAllStories=[];
-let adminAlertStudents=[],adminAlertPosts=[],adminAlertPayments=[],adminContactMessages=[]; // מקור ראשי לממתינים
+let adminAlertStudents=[],adminAlertPosts=[],adminAlertPayments=[],adminContactMessages=[],adminAlertStoriesPending=0; // מקור ראשי לממתינים
 let adminTab='users';
 let _adminPendingCount=0;
 
@@ -3557,7 +3570,7 @@ let _adminDataLoading=false; // מנע listener מלאפס נתונים בזמן
 function _startAdminAlertsListener(){
   if(!isAdmin())return;
   const _rebadge=()=>{
-    const n=adminAlertStudents.length+adminAlertPosts.length+adminAlertPayments.length+adminContactMessages.filter(m=>!m.read).length;
+    const n=adminAlertStudents.length+adminAlertPosts.length+adminAlertPayments.length+adminContactMessages.filter(m=>!m.read).length+adminAlertStoriesPending;
     _updateAdminBadge(n);
     if(document.getElementById('_adminPanel')&&!_adminActionInProgress)renderAdminPanel();
   };
@@ -3585,6 +3598,11 @@ function _startAdminAlertsListener(){
     const msgs=[];
     if(snap.exists())snap.forEach(c=>msgs.push({id:c.key,...c.val()}));
     adminContactMessages=msgs.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+    _rebadge();
+  });
+  db.ref('stories').orderByChild('status').equalTo('pending').on('value',snap=>{
+    if(_adminDataLoading)return;
+    adminAlertStoriesPending=snap.exists()?snap.numChildren():0;
     _rebadge();
   });
 }
@@ -6991,13 +7009,19 @@ function Home(){
       </div>
 
       ${(()=>{
-        const hasPending=currentUser&&(currentUserData?.role==='teacher'||isAdmin())&&MY_PENDING_STORIES.length>0;
-        if(!currentUser||(!STORIES.length&&!hasPending))return '';
+        if(!currentUser)return '';
+        const isTeacher=currentUserData?.role==='teacher';
+        const hasPending=isTeacher&&MY_PENDING_STORIES.length>0;
         const seen=JSON.parse(localStorage.getItem('_storySeen')||'{}');
         const byTeacher={};
         STORIES.forEach(s=>{if(!byTeacher[s.uid]||s.createdAt>byTeacher[s.uid].createdAt)byTeacher[s.uid]=s;});
         const teachers=Object.values(byTeacher);
-        if(!teachers.length&&!hasPending)return '';
+        if(!isTeacher&&!teachers.length)return '';
+        const addBtn=isTeacher?`
+          <div onclick="uploadStory()" style="display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;flex-shrink:0">
+            <div style="width:62px;height:62px;border-radius:50%;background:rgba(20,184,166,0.1);border:2.5px dashed #14B8A6;display:flex;align-items:center;justify-content:center;font-size:28px;color:#14B8A6;font-weight:300">+</div>
+            <div style="font-size:10px;font-weight:700;color:#14B8A6;max-width:64px;text-align:center">הוסף סטורי</div>
+          </div>`:''
         const pendingItems=hasPending?MY_PENDING_STORIES.slice(0,1).map(s=>`
           <div onclick="openPendingStoryPreview('${s.id}')" style="display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;flex-shrink:0;position:relative">
             <div style="width:62px;height:62px;border-radius:50%;padding:2.5px;background:linear-gradient(135deg,#FFD000,#FFA030)">
@@ -7008,24 +7032,27 @@ function Home(){
             <div style="position:absolute;top:-4px;left:50%;transform:translateX(-50%);background:#FFD000;color:#000;font-size:8px;font-weight:900;padding:1px 5px;border-radius:50px;white-space:nowrap">⏳ ממתין</div>
             <div style="font-size:10px;font-weight:700;color:#0F1A1F;max-width:64px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center">הסטורי שלי</div>
           </div>`).join(''):'';
+        const storyItems=teachers.map(s=>{
+          const isSeen=!!seen[s.uid];
+          return `<div onclick="openStoryViewer(${JSON.stringify(s.uid)})" style="display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;flex-shrink:0">
+            <div style="width:62px;height:62px;border-radius:50%;padding:2.5px;background:${isSeen?'#CBD5E1':'linear-gradient(135deg,#14B8A6,#06B6D4)'}">
+              <div style="width:100%;height:100%;border-radius:50%;background:#fff;padding:2px;box-sizing:border-box">
+                <img src="${escapeHtml(s.teacherPhoto||'')}" style="width:100%;height:100%;border-radius:50%;object-fit:cover" onerror="this.parentElement.innerHTML='<div style=width:100%;height:100%;border-radius:50%;background:linear-gradient(135deg,#14B8A6,#06B6D4);display:flex;align-items:center;justify-content:center;font-size:22px>🎓</div>'">
+              </div>
+            </div>
+            <div style="font-size:10px;font-weight:700;color:#0F1A1F;max-width:64px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center">${escapeHtml(s.teacherName||'').split(' ')[0]}</div>
+          </div>`;
+        }).join('');
         return `<div style="margin-bottom:20px">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
             <div style="width:28px;height:28px;border-radius:9px;background:linear-gradient(135deg,#14B8A6,#06B6D4);display:flex;align-items:center;justify-content:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>
             <span style="font-weight:900;font-size:15px;color:#0F1A1F">סטוריז מורים</span>
           </div>
           <div style="display:flex;gap:14px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;-webkit-overflow-scrolling:touch">
+            ${addBtn}
             ${pendingItems}
-            ${teachers.map(s=>{
-              const isSeen=!!seen[s.uid];
-              return `<div onclick="openStoryViewer(${JSON.stringify(s.uid)})" style="display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;flex-shrink:0">
-                <div style="width:62px;height:62px;border-radius:50%;padding:2.5px;background:${isSeen?'#CBD5E1':'linear-gradient(135deg,#14B8A6,#06B6D4)'}">
-                  <div style="width:100%;height:100%;border-radius:50%;background:#fff;padding:2px;box-sizing:border-box">
-                    <img src="${escapeHtml(s.teacherPhoto||'')}" style="width:100%;height:100%;border-radius:50%;object-fit:cover" onerror="this.parentElement.innerHTML='<div style=width:100%;height:100%;border-radius:50%;background:linear-gradient(135deg,#14B8A6,#06B6D4);display:flex;align-items:center;justify-content:center;font-size:22px>🎓</div>'">
-                  </div>
-                </div>
-                <div style="font-size:10px;font-weight:700;color:#0F1A1F;max-width:64px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center">${escapeHtml(s.teacherName||'').split(' ')[0]}</div>
-              </div>`;
-            }).join('')}
+            ${storyItems}
+            ${!storyItems&&!pendingItems&&isTeacher?`<div style="display:flex;align-items:center;color:#94A3B8;font-size:13px;font-weight:600;padding:10px 0">עדיין אין סטוריז — הוסף את הראשון!</div>`:''}
           </div>
         </div>`;
       })()}
