@@ -527,7 +527,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.48';
+const APP_VERSION='4.9.49';
 const APP_BUILD='25-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -10367,7 +10367,7 @@ auth&&auth.onAuthStateChanged(async user=>{
       }catch(e2){}
       // האזן לניתוק כפוי (admin מחק בזמן שמשתמש מחובר)
       db.ref('forceSignout/'+user.uid).on('value',async snap=>{
-        if(snap.exists()&&snap.val()?.ts){
+        if(snap.exists()&&snap.val()?.ts&&!ADMIN_EMAILS.includes(user.email?.toLowerCase())){
           db.ref('forceSignout/'+user.uid).off('value');
           try{await auth.currentUser?.delete();}catch(e2){}
           await auth.signOut().catch(()=>{});
@@ -11013,7 +11013,7 @@ async function firebaseLogin(usernameOrEmail,password){
         S.screen='splash';
         go('home');
       }
-    },1500);
+    },500);
   }catch(e){
     S._loggingIn=false;
     const m={
