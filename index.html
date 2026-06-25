@@ -10469,6 +10469,7 @@ auth&&auth.onAuthStateChanged(async user=>{
       await loadNotifications();
       await loadMyGroupStatuses();
       await loadUserChats();
+      render(); // refresh current screen now that all data is loaded
       // ── backfill userChats for approved/completed bookings that predate v4.9.9 ──
       if(currentUserData?.role==='teacher'&&teacherAllBookings.length){
         const missing=teacherAllBookings.filter(b=>['approved','completed'].includes(b.status)&&b.studentId&&!userChats.find(c=>c.otherUid===b.studentId));
