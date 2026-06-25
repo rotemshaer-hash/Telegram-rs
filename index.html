@@ -2059,15 +2059,23 @@ async function uploadStory(){
   inp.click();
   inp.onchange=async()=>{
     const file=inp.files[0];
-    document.body.removeChild(inp);
+    if(document.body.contains(inp))document.body.removeChild(inp);
     if(!file)return;
-    if(file.size>10*1024*1024){showFireToast('❌ תמונה גדולה מדי (מקסימום 10MB)');return;}
+    if(file.size>15*1024*1024){showFireToast('❌ תמונה גדולה מדי (מקסימום 15MB)');return;}
     const text=await _prompt('✏️ הוסף כיתוב לסטורי (אופציונלי):','');
     showFireToast('⏳ מעלה סטורי...');
     try{
-      const base64=await new Promise((res,rej)=>{
+      // שלב 1: קרא קובץ כ-base64
+      const rawBase64=await new Promise((res,rej)=>{
         const reader=new FileReader();
-        reader.onload=e=>{
+        reader.onload=e=>res(e.target.result);
+        reader.onerror=()=>rej(new Error('שגיאה בקריאת הקובץ'));
+        reader.readAsDataURL(file);
+      });
+      // שלב 2: נסה לצמצם ב-canvas — אם נכשל, השתמש בקובץ המקורי
+      let base64=rawBase64;
+      try{
+        base64=await new Promise((res,rej)=>{
           const img=new Image();
           img.onload=()=>{
             const MAX=1080;
@@ -2078,12 +2086,11 @@ async function uploadStory(){
             c.getContext('2d').drawImage(img,0,0,c.width,c.height);
             res(c.toDataURL('image/jpeg',0.82));
           };
-          img.onerror=rej;
-          img.src=e.target.result;
-        };
-        reader.onerror=rej;
-        reader.readAsDataURL(file);
-      });
+          img.onerror=()=>rej(new Error('canvas'));
+          img.src=rawBase64;
+        });
+      }catch(_){base64=rawBase64;}
+      // שלב 3: העלה ל-Storage (עם fallback לbase64 אם נכשל)
       const url=await uploadBase64ToStorage(base64,'stories/'+currentUser.uid+'/'+Date.now());
       await db.ref('stories').push({
         uid:currentUser.uid,
@@ -2098,7 +2105,10 @@ async function uploadStory(){
       });
       notifyAdmin({type:'newStory',teacherName:currentUserData.name||'',teacherId:currentUser.uid}).catch(()=>{});
       showFireToast('✅ הסטורי נשלח לאישור מנהל!');
-    }catch(e){console.error('[uploadStory]',e);showFireToast('❌ שגיאה: '+e.message);}
+    }catch(e){
+      console.error('[uploadStory]',e);
+      showFireToast('❌ שגיאה: '+(e?.message||String(e)||'לא ידוע'));
+    }
   };
 }
 
