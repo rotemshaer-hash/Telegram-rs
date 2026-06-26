@@ -123,7 +123,7 @@ input,textarea,select{font-family:inherit;-webkit-appearance:none;appearance:non
 .t-online{background:#E8F4FF;color:#1B4FCC}
 .t-frontal{background:#E8FFE8;color:#27AE60}
 .t-gold{background:linear-gradient(135deg,#FFD23F,#FF9800);color:#1A1A2E;font-size:10px;padding:3px 10px}
-.t-live{background:rgba(20,184,166,.12);color:#0e7a72}
+.t-live{background:rgba(20,184,166,.12);color:#14B8A6}
 .t-live::before{content:'';width:7px;height:7px;border-radius:50%;background:#14B8A6;animation:pulse 1.5s infinite;flex-shrink:0}
 .t-dist{background:linear-gradient(135deg,#14B8A6,#06B6D4);color:#fff}
 
@@ -296,7 +296,7 @@ body.dark .online-dot{border-color:#0D1117 !important}
     <p style="font-size:13px;color:#64748B;margin:0 0 18px;line-height:1.6">סרוק את הקוד עם הטלפון שלך<br>או גש לאפליקציה ישירות מהדפדפן הנייד</p>
     <canvas id="_qrCanvas" style="border-radius:12px;background:#fff;padding:8px"></canvas>
   </div>
-  <button onclick="document.getElementById('_desktopWarn').style.display='none'" style="margin-top:16px;background:rgba(20,184,166,0.12);border:1px solid rgba(20,184,166,0.3);color:#0e7a72;border-radius:50px;padding:8px 20px;font-size:12px;cursor:pointer">כניסת מנהל 🔑</button>
+  <button onclick="document.getElementById('_desktopWarn').style.display='none'" style="margin-top:16px;background:rgba(20,184,166,0.12);border:1px solid rgba(20,184,166,0.3);color:#14B8A6;border-radius:50px;padding:8px 20px;font-size:12px;cursor:pointer">כניסת מנהל 🔑</button>
 </div>
 <script>
 (function(){
@@ -5905,7 +5905,7 @@ function renderAdminPanel(){
            ['students','תלמידים','#06B6D4','<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>',realStats.students,Math.max(adminAlertStudents.length,adminAllUsers.filter(u=>u.role!=='teacher'&&u.verified===false).length)],
            ['bookings','הזמנות','#F59E0B','<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',adminAllBookings.length,adminAllBookings.filter(b=>b.status==='pending').length],
            ['payments','תשלומים ממתינים','#D97706','<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>',adminAlertPayments.length,null],
-           ['posts','פוסטים ממתינים','#0e7a72','<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>',Math.max(adminAlertPosts.length,adminAllPosts.filter(p=>p.status==='pending').length),null],
+           ['posts','פוסטים ממתינים','#14B8A6','<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>',Math.max(adminAlertPosts.length,adminAllPosts.filter(p=>p.status==='pending').length),null],
            ['messages','הודעות חדשות','#06B6D4','<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',adminContactMessages.filter(m=>!m.read).length,null],
            ['reports','דיווחים','#DC2626','<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',adminAllReports.filter(r=>r.status==='open').length,null],
            ['users','כל המשתמשים','#06B6D4','<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',adminAllUsers.length,null],
@@ -7914,7 +7914,7 @@ function Messages(){
       ${approved.length===0&&pending.length===0&&awaitingPaymentBookings.length===0?`
         <div style="background:rgba(255,255,255,0.85);backdrop-filter:blur(12px);border-radius:24px;padding:40px 24px;text-align:center;margin-top:30px">
           ${isTeacherRole?`
-            <div style="width:64px;height:64px;border-radius:18px;background:#0e7a7215;display:flex;align-items:center;justify-content:center;margin:0 auto 14px"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#0e7a72" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg></div>
+            <div style="width:64px;height:64px;border-radius:18px;background:#14B8A615;display:flex;align-items:center;justify-content:center;margin:0 auto 14px"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg></div>
             <h3 style="font-weight:900;font-size:18px;margin:0 0 8px;color:#0F1A1F">עדיין אין הזמנות</h3>
             <p style="color:#64748B;font-size:13px;line-height:1.7;margin:0 0 20px">ודא שהפרופיל שלך מפורסם ועדכני – תלמידים מחפשים!</p>
             <div style="display:flex;flex-direction:column;gap:10px;max-width:240px;margin:0 auto">
@@ -8295,14 +8295,14 @@ function Profile(){
           <button onclick="go('home')" style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:10px 24px;font-weight:900;font-size:13px;cursor:pointer;box-shadow:0 4px 14px rgba(20,184,166,0.4)">🔍 חפש מורה</button>
         </div>`:`
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:-26px 0 16px;position:relative;z-index:2">
-          ${[['<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>','#0e7a72',studentBookings.filter(b=>b.status==='completed').length,'הושלמו'],['<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>','#06B6D4',studentBookings.filter(b=>b.status==='approved').length,'קרובים'],['<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M17 5h3a2 2 0 0 1 0 4h-1M7 5H4a2 2 0 0 0 0 4h1"/>','#14B8A6',_achCount,'הישגים'],['<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>','#F59E0B',studentBookings.filter(b=>b.status==='pending').length,'ממתינים']].map(([icon,col,v,l])=>`<div style="background:rgba(255,255,255,0.94);backdrop-filter:blur(16px);border-radius:18px;padding:13px 6px;text-align:center;box-shadow:0 6px 20px rgba(0,0,0,0.1)"><div style="width:28px;height:28px;border-radius:9px;background:${col}15;display:flex;align-items:center;justify-content:center;margin:0 auto 4px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${col}" stroke-width="2" stroke-linecap="round">${icon}</svg></div><div style="font-weight:900;font-size:19px;color:#0F1A1F;line-height:1">${v}</div><div style="font-size:9px;color:#64748B;font-weight:700;margin-top:2px">${l}</div></div>`).join('')}
+          ${[['<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>','#14B8A6',studentBookings.filter(b=>b.status==='completed').length,'הושלמו'],['<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>','#06B6D4',studentBookings.filter(b=>b.status==='approved').length,'קרובים'],['<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M17 5h3a2 2 0 0 1 0 4h-1M7 5H4a2 2 0 0 0 0 4h1"/>','#14B8A6',_achCount,'הישגים'],['<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>','#F59E0B',studentBookings.filter(b=>b.status==='pending').length,'ממתינים']].map(([icon,col,v,l])=>`<div style="background:rgba(255,255,255,0.94);backdrop-filter:blur(16px);border-radius:18px;padding:13px 6px;text-align:center;box-shadow:0 6px 20px rgba(0,0,0,0.1)"><div style="width:28px;height:28px;border-radius:9px;background:${col}15;display:flex;align-items:center;justify-content:center;margin:0 auto 4px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${col}" stroke-width="2" stroke-linecap="round">${icon}</svg></div><div style="font-weight:900;font-size:19px;color:#0F1A1F;line-height:1">${v}</div><div style="font-size:9px;color:#64748B;font-weight:700;margin-top:2px">${l}</div></div>`).join('')}
         </div>`}
 
         ${_nextLesson?`<div style="background:rgba(20,184,166,0.06);border:1.5px solid rgba(20,184,166,0.4);border-radius:20px;padding:14px 16px;margin-bottom:14px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span style="background:linear-gradient(135deg,#14B8A6,#06B6D4);color:#fff;padding:4px 12px;border-radius:50px;font-size:11px;font-weight:800">⏰ הבא</span><span style="font-weight:900;font-size:14px;color:#1E1B4B">📅 השיעור הבא שלי</span></div><div style="display:flex;justify-content:space-between;align-items:center"><button onclick="S.chat={otherUid:'${_nextLesson.teacherId||''}',otherName:'${((_nextLesson.teacherName||'').replace(/'/g,"\\'"))}'}; go('chat')" style="background:rgba(6,182,212,0.1);border:1.5px solid rgba(6,182,212,0.35);color:#06B6D4;border-radius:50px;padding:8px 15px;font-weight:800;font-size:12px;cursor:pointer">💬 הודעה</button><div style="text-align:right"><div style="font-weight:900;font-size:14px;color:#0F1A1F">${_nextLesson.teacherName||'מורה'}</div><div style="font-size:12px;color:#64748B">📅 ${_nextLesson.day||''} • ⏰ ${_nextLesson.time||''}</div></div></div></div>`:''}
 
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px">
           <button onclick="go('home')" style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:18px;padding:14px 6px;font-weight:900;font-size:12px;cursor:pointer;box-shadow:0 5px 16px rgba(20,184,166,0.38);display:flex;flex-direction:column;align-items:center;gap:6px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>הזמן שיעור</button>
-          <button onclick="showCertificate()" style="background:linear-gradient(135deg,#14B8A6,#0e7a72);border:none;color:#fff;border-radius:18px;padding:14px 6px;font-weight:900;font-size:12px;cursor:pointer;box-shadow:0 5px 16px rgba(20,184,166,0.38);display:flex;flex-direction:column;align-items:center;gap:6px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>התעודה שלי</button>
+          <button onclick="showCertificate()" style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:18px;padding:14px 6px;font-weight:900;font-size:12px;cursor:pointer;box-shadow:0 5px 16px rgba(20,184,166,0.38);display:flex;flex-direction:column;align-items:center;gap:6px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>התעודה שלי</button>
           <button onclick="showRanksPanel()" style="background:linear-gradient(135deg,#06B6D4,#8b2fc9);border:none;color:#fff;border-radius:18px;padding:14px 6px;font-weight:900;font-size:12px;cursor:pointer;box-shadow:0 5px 16px rgba(6,182,212,0.38);display:flex;flex-direction:column;align-items:center;gap:6px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>דרגות</button>
         </div>
 
@@ -8359,7 +8359,7 @@ function Profile(){
           </div>
           ${all.map(uc=>`
           <button onclick="S.chat={otherUid:'${uc.otherUid}',otherName:'${(uc.otherName||'').replace(/'/g,'')}'};go('chat')" style="width:100%;background:${uc.unread?'rgba(6,182,212,0.08)':'#fff'};border:${uc.unread?'1.5px solid rgba(6,182,212,0.3)':'1.5px solid rgba(20,184,166,0.12)'};border-radius:14px;padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;gap:10px;cursor:pointer;text-align:right">
-            <div style="width:36px;height:36px;border-radius:11px;background:${uc.unread?'rgba(6,182,212,0.2)':'rgba(20,184,166,0.1)'};display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="${uc.unread?'#06B6D4':'#0e7a72'}" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+            <div style="width:36px;height:36px;border-radius:11px;background:${uc.unread?'rgba(6,182,212,0.2)':'rgba(20,184,166,0.1)'};display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="${uc.unread?'#06B6D4':'#14B8A6'}" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
             <div style="flex:1;min-width:0">
               <div style="display:flex;justify-content:space-between;margin-bottom:2px">
                 <span style="font-size:10px;color:#94A3B8">${ago(uc.lastTime)}</span>
@@ -8410,7 +8410,7 @@ function Parent(){
         <!-- סטטיסטיקות מהירות -->
         <div style="display:flex;gap:10px;margin-bottom:18px">
           <div class="card-sm" style="flex:1;text-align:center;padding:14px 6px;margin:0;background:rgba(20,184,166,0.1);border:1.5px solid rgba(20,184,166,0.25)">
-            <div style="width:30px;height:30px;border-radius:10px;background:#0e7a7215;display:flex;align-items:center;justify-content:center;margin:0 auto 4px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0e7a72" stroke-width="2" stroke-linecap="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></div>
+            <div style="width:30px;height:30px;border-radius:10px;background:#14B8A615;display:flex;align-items:center;justify-content:center;margin:0 auto 4px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2" stroke-linecap="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></div>
             <div style="font-weight:900;font-size:18px;color:#14B8A6">${totalLessons}</div>
             <div style="font-size:10px;color:#64748B;font-weight:600">שיעורים</div>
           </div>
@@ -8561,11 +8561,11 @@ function Community(){
         </div>
       </div>
       ${S.comTab!=='groups'?`<div style="overflow-x:auto;display:flex;gap:8px;padding-bottom:2px;position:relative;z-index:1">
-        ${CC.map(c=>`<button onclick="S.comFilter='${c.id}';render()" style="flex-shrink:0;padding:7px 13px;border-radius:50px;border:none;font-weight:700;font-size:12px;cursor:pointer;background:${S.comFilter===c.id?"#fff":"rgba(255,255,255,.15)"};color:${S.comFilter===c.id?"#0e7a72":"#fff"};transition:all .2s">${c.e} ${c.l}</button>`).join("")}
+        ${CC.map(c=>`<button onclick="S.comFilter='${c.id}';render()" style="flex-shrink:0;padding:7px 13px;border-radius:50px;border:none;font-weight:700;font-size:12px;cursor:pointer;background:${S.comFilter===c.id?"#fff":"rgba(255,255,255,.15)"};color:${S.comFilter===c.id?"#14B8A6":"#fff"};transition:all .2s">${c.e} ${c.l}</button>`).join("")}
       </div>`:''}
       ${S.comTab!=='groups'&&myArea?`
         <div style="margin-top:10px;position:relative;z-index:1">
-          <button onclick="S.areaOnly=!S.areaOnly;render()" style="background:${S.areaOnly?'#fff':'rgba(255,255,255,.18)'};color:${S.areaOnly?'#0e7a72':'#fff'};border:none;border-radius:50px;padding:7px 14px;font-weight:800;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:6px">
+          <button onclick="S.areaOnly=!S.areaOnly;render()" style="background:${S.areaOnly?'#fff':'rgba(255,255,255,.18)'};color:${S.areaOnly?'#14B8A6':'#fff'};border:none;border-radius:50px;padding:7px 14px;font-weight:800;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:6px">
             📍 ${S.areaOnly?'מציג רק '+myArea:'הצג רק '+myArea}
           </button>
         </div>
@@ -8756,7 +8756,7 @@ function Leaderboard(){
     <div style="padding:18px 20px 50px">
       ${LEADERBOARD.length===0?`
         <div style="background:rgba(255,255,255,0.7);backdrop-filter:blur(12px);border-radius:24px;padding:50px 24px;text-align:center;margin-top:30px">
-          <div style="width:64px;height:64px;border-radius:18px;background:#0e7a7215;display:flex;align-items:center;justify-content:center;margin:0 auto 14px"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#0e7a72" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M17 5h3a2 2 0 0 1 0 4h-1M7 5H4a2 2 0 0 0 0 4h1"/></svg></div>
+          <div style="width:64px;height:64px;border-radius:18px;background:#14B8A615;display:flex;align-items:center;justify-content:center;margin:0 auto 14px"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M17 5h3a2 2 0 0 1 0 4h-1M7 5H4a2 2 0 0 0 0 4h1"/></svg></div>
           <h3 style="font-weight:900;font-size:18px;margin:0 0 8px;color:#0F1A1F">הלידרבורד מתחיל כאן!</h3>
           <p style="color:#64748B;font-size:13px;line-height:1.7;margin:0 0 20px">ככל שמורים יקיימו יותר שיעורים – הם יעלו בדירוג. היה הראשון!</p>
           <button class="btn bp" style="max-width:240px;margin:0 auto;display:flex;align-items:center;justify-content:center;gap:8px" onclick="go('teacherSetup')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>הצטרף כמורה</button>
