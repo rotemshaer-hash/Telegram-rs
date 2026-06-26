@@ -150,7 +150,7 @@ input,textarea,select{font-family:inherit;-webkit-appearance:none;appearance:non
 /* TABS */
 .tabs{display:flex;background:rgba(20,184,166,.07);border-radius:50px;padding:4px;margin-bottom:18px}
 .tabs button{flex:1;padding:10px 4px;border:none;cursor:pointer;border-radius:50px;font-weight:700;font-size:12px;background:transparent;color:var(--muted);transition:all .2s;display:inline-flex;align-items:center;justify-content:center;gap:3px}
-.tabs button.on{background:linear-gradient(135deg,var(--s),#06B6D4);color:#fff;box-shadow:var(--gs)}
+.tabs button.on{background:linear-gradient(135deg,#14B8A6,#8b2fc9);color:#fff;box-shadow:var(--gs)}
 
 /* OTP */
 .otp{display:flex;gap:8px;justify-content:center;margin-bottom:20px}
@@ -1043,7 +1043,7 @@ function Safety(){
       <!-- Section 3 -->
       <div style="background:#fff;border:1.5px solid rgba(6,182,212,.25);border-radius:20px;padding:18px;box-shadow:0 2px 12px rgba(0,0,0,0.06)">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
-          <div style="background:linear-gradient(135deg,#06B6D4,#8b2fc9);border-radius:12px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg></div>
+          <div style="background:linear-gradient(135deg,#14B8A6,#8b2fc9);border-radius:12px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg></div>
           <div><div style="font-weight:900;font-size:15px">שיעורים אונליין מאובטחים</div><div style="font-size:11px;color:#94A3B8;margin-top:2px">טכנולוגיה מוכחת ובטוחה</div></div>
         </div>
         ${[
@@ -2775,7 +2775,7 @@ function showFiltersPanel(){
       <h4 style="font-weight:800;font-size:14px;margin:0 0 10px;color:#06B6D4">📍 אזור</h4>
       <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:18px">
         ${["מרכז","ירושלים","צפון","דרום","שרון","שפלה","חיפה והקריות"].map(a=>`
-          <button onclick="activeFilters.area=${f.area===a?'null':"'"+a+"'"};render();this.closest('._filtPanel').parentElement.remove();showFiltersPanel()" style="background:${f.area===a?'linear-gradient(135deg,#06B6D4,#0EA5E9)':'rgba(6,182,212,0.08)'};color:${f.area===a?'#fff':'#06B6D4'};border:1.5px solid ${f.area===a?'transparent':'rgba(6,182,212,0.2)'};border-radius:50px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer">${a}</button>
+          <button onclick="activeFilters.area=${f.area===a?'null':"'"+a+"'"};render();this.closest('._filtPanel').parentElement.remove();showFiltersPanel()" style="background:${f.area===a?'linear-gradient(135deg,#14B8A6,#8b2fc9)':'rgba(20,184,166,0.08)'};color:${f.area===a?'#fff':'#14B8A6'};border:1.5px solid ${f.area===a?'transparent':'rgba(20,184,166,0.2)'};border-radius:50px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer">${a}</button>
         `).join('')}
       </div>
 
@@ -6064,7 +6064,7 @@ function renderAdminTab(){
           <div style="font-size:20px;font-weight:900">₪${totalGross.toLocaleString()}</div>
           <div style="font-size:10px;opacity:0.9;margin-top:3px">סה"כ הכנסות</div>
         </div>
-        <div style="background:linear-gradient(135deg,#06B6D4,#8b2fc9);border-radius:16px;padding:14px;color:#fff;text-align:center">
+        <div style="background:linear-gradient(135deg,#14B8A6,#8b2fc9);border-radius:16px;padding:14px;color:#fff;text-align:center">
           <div style="font-size:20px;font-weight:900">₪${totalCommission.toLocaleString()}</div>
           <div style="font-size:10px;opacity:0.8;margin-top:3px">עמלות Lamdeni</div>
         </div>
@@ -6666,7 +6666,7 @@ function renderAdminTab(){
 // דרגות מורה
 const RANKS=[
   {min:0,  name:"מתחיל",     icon:"🌱",col:"#94A3B8",grad:"linear-gradient(135deg,#94A3B8,#64748B)"},
-  {min:1,  name:"חוקר",      icon:"🔍",col:"#06B6D4",grad:"linear-gradient(135deg,#06B6D4,#8b2fc9)"},
+  {min:1,  name:"חוקר",      icon:"🔍",col:"#06B6D4",grad:"linear-gradient(135deg,#14B8A6,#8b2fc9)"},
   {min:5,  name:"מתקדם",     icon:"⚡",col:"#14B8A6",grad:"linear-gradient(135deg,#14B8A6,#8b2fc9)"},
   {min:10, name:"מורה זהב",  icon:"🥇",col:"#F59E0B",grad:"linear-gradient(135deg,#FBBF24,#F59E0B)"},
   {min:25, name:"מורה אלמוג",icon:"💎",col:"#A855F7",grad:"linear-gradient(135deg,#A855F7,#9333EA)"},
@@ -6676,7 +6676,7 @@ const RANKS=[
 // דרגות תלמיד — ייחודיות, ללא הזכרת "מורה"
 const STUDENT_RANKS=[
   {min:0,  name:"מתחיל",  icon:"🌱",col:"#94A3B8",grad:"linear-gradient(135deg,#94A3B8,#64748B)"},
-  {min:1,  name:"סקרן",   icon:"🔍",col:"#06B6D4",grad:"linear-gradient(135deg,#06B6D4,#8b2fc9)"},
+  {min:1,  name:"סקרן",   icon:"🔍",col:"#06B6D4",grad:"linear-gradient(135deg,#14B8A6,#8b2fc9)"},
   {min:3,  name:"לומד",   icon:"📚",col:"#14B8A6",grad:"linear-gradient(135deg,#14B8A6,#8b2fc9)"},
   {min:5,  name:"מתקדם",  icon:"⚡",col:"#3B82F6",grad:"linear-gradient(135deg,#3B82F6,#2563EB)"},
   {min:10, name:"מתמיד",  icon:"🔥",col:"#F59E0B",grad:"linear-gradient(135deg,#FBBF24,#F59E0B)"},
@@ -6881,7 +6881,7 @@ function showAnalyticsPanel(){
             <div style="font-size:32px;font-weight:900">${a.completed}</div>
             <div style="font-size:12px;opacity:0.95;font-weight:600">שיעורים שהושלמו</div>
           </div>
-          <div style="background:linear-gradient(135deg,#06B6D4,#8b2fc9);border-radius:18px;padding:16px;color:#fff">
+          <div style="background:linear-gradient(135deg,#14B8A6,#8b2fc9);border-radius:18px;padding:16px;color:#fff">
             <div style="font-size:32px;font-weight:900">${a.uniqueStudentsCount}</div>
             <div style="font-size:12px;opacity:0.95;font-weight:600">תלמידים שונים</div>
           </div>
@@ -7285,7 +7285,7 @@ function Home(){
           (Array.isArray(t.cats)&&t.cats.includes(S.catFilter))
         );
         return `
-          <div style="background:linear-gradient(135deg,${cat?.col||'#14B8A6'},#06B6D4);border-radius:20px;padding:16px;margin-bottom:14px;color:#fff;display:flex;justify-content:space-between;align-items:center">
+          <div style="background:linear-gradient(135deg,${cat?.col||'#14B8A6'},#8b2fc9);border-radius:20px;padding:16px;margin-bottom:14px;color:#fff;display:flex;justify-content:space-between;align-items:center">
             <button onclick="S.catFilter=null;render()" style="background:rgba(255,255,255,0.25);border:none;color:#fff;border-radius:50px;padding:7px 14px;font-size:12px;font-weight:800;cursor:pointer">✕ סגור</button>
             <div style="text-align:left">
               <div style="font-weight:900;font-size:17px">${cat?.em||''} ${cat?.lbl||''}</div>
@@ -8196,7 +8196,7 @@ function Profile(){
     ${catProfile?.tags?.length?`<div class="card"><h4 style="margin:0 0 10px;font-weight:800">🏷 נושאים</h4><div style="display:flex;gap:8px;flex-wrap:wrap">${catProfile.tags.map(tg=>`<span style="background:${catObj.col}18;color:${catObj.col};padding:6px 14px;border-radius:50px;font-size:13px;font-weight:700">${tg}</span>`).join('')}</div></div>`:''}
     <div style="display:flex;justify-content:space-between;align-items:center;margin:14px 0 10px">
       <p style="font-weight:800;font-size:15px;margin:0">📹 סרטונים (${catVids.length})</p>
-      <button onclick="showVideoUploadDialog('${tab}')" style="background:linear-gradient(135deg,${catObj.col},#06B6D4);border:none;color:#fff;border-radius:50px;padding:8px 16px;font-size:12px;font-weight:800;cursor:pointer">+ הוסף סרטון</button>
+      <button onclick="showVideoUploadDialog('${tab}')" style="background:linear-gradient(135deg,${catObj.col},#8b2fc9);border:none;color:#fff;border-radius:50px;padding:8px 16px;font-size:12px;font-weight:800;cursor:pointer">+ הוסף סרטון</button>
     </div>
     ${(()=>{
       const uncat=teacherVideos.filter(v=>!v.cat);
@@ -8401,7 +8401,7 @@ function Profile(){
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px">
           <button onclick="go('home')" style="background:linear-gradient(135deg,#14B8A6,#8b2fc9);border:none;color:#fff;border-radius:18px;padding:14px 6px;font-weight:900;font-size:12px;cursor:pointer;box-shadow:0 5px 16px rgba(20,184,166,0.38);display:flex;flex-direction:column;align-items:center;gap:6px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>הזמן שיעור</button>
           <button onclick="showCertificate()" style="background:linear-gradient(135deg,#14B8A6,#8b2fc9);border:none;color:#fff;border-radius:18px;padding:14px 6px;font-weight:900;font-size:12px;cursor:pointer;box-shadow:0 5px 16px rgba(20,184,166,0.38);display:flex;flex-direction:column;align-items:center;gap:6px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>התעודה שלי</button>
-          <button onclick="showRanksPanel()" style="background:linear-gradient(135deg,#06B6D4,#8b2fc9);border:none;color:#fff;border-radius:18px;padding:14px 6px;font-weight:900;font-size:12px;cursor:pointer;box-shadow:0 5px 16px rgba(6,182,212,0.38);display:flex;flex-direction:column;align-items:center;gap:6px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>דרגות</button>
+          <button onclick="showRanksPanel()" style="background:linear-gradient(135deg,#14B8A6,#8b2fc9);border:none;color:#fff;border-radius:18px;padding:14px 6px;font-weight:900;font-size:12px;cursor:pointer;box-shadow:0 5px 16px rgba(6,182,212,0.38);display:flex;flex-direction:column;align-items:center;gap:6px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>דרגות</button>
         </div>
 
         <div class="tabs" style="margin-bottom:14px">${tabItems.map(([id,lbl])=>`<button class="${tab===id?'on':''}" onclick="S.pTab='${id}';render()">${lbl}</button>`).join('')}</div>
