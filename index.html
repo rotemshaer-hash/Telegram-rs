@@ -2050,66 +2050,70 @@ function openPendingStoryPreview(storyId){
   ov.querySelector('button').onclick=()=>ov.remove();
 }
 
-async function uploadStory(){
+function uploadStory(){
   if(!currentUser||currentUserData?.role!=='teacher'){showFireToast('🎓 רק מורים יכולים להוסיף סטורי');return;}
-  const inp=document.createElement('input');
-  inp.type='file';inp.accept='image/*';
-  inp.style.cssText='position:fixed;top:-9999px;opacity:0';
-  document.body.appendChild(inp);
-  inp.click();
-  inp.onchange=async()=>{
-    const file=inp.files[0];
-    if(document.body.contains(inp))document.body.removeChild(inp);
-    if(!file)return;
-    if(file.size>15*1024*1024){showFireToast('❌ תמונה גדולה מדי (מקסימום 15MB)');return;}
-    const text=await _prompt('✏️ הוסף כיתוב לסטורי (אופציונלי):','');
-    showFireToast('⏳ מעלה סטורי...');
+  const ov=document.createElement('div');
+  ov.id='_storyUpOv';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:flex-end;justify-content:center;direction:rtl';
+  ov.innerHTML=`
+    <div style="background:#fff;border-radius:24px 24px 0 0;padding:24px 20px 44px;width:100%;max-width:500px">
+      <div style="width:40px;height:4px;background:#E2E8F0;border-radius:50px;margin:0 auto 20px"></div>
+      <h3 style="font-weight:900;font-size:18px;text-align:center;margin:0 0 20px;color:#0F1A1F">📸 הוסף סטורי</h3>
+      <div style="margin-bottom:16px">
+        <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:6px">✏️ כיתוב (אופציונלי)</label>
+        <input id="_storyCaption" placeholder="הוסף תיאור לסטורי..." style="width:100%;background:rgba(20,184,166,0.06);border:1.5px solid rgba(20,184,166,0.25);border-radius:12px;padding:12px;font-size:14px;font-family:inherit;direction:rtl;outline:none;box-sizing:border-box">
+      </div>
+      <label style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);color:#fff;border-radius:50px;padding:14px;font-weight:900;font-size:15px;cursor:pointer;box-sizing:border-box;margin-bottom:10px">
+        📸 בחר תמונה מהגלריה
+        <input type="file" accept="image/*" style="display:none" onchange="_handleStoryFile(this)">
+      </label>
+      <button onclick="document.getElementById('_storyUpOv')?.remove()" style="width:100%;background:#F1F5F9;border:none;border-radius:50px;padding:13px;font-weight:700;font-size:14px;cursor:pointer;color:#64748B">ביטול</button>
+    </div>
+  `;
+  document.body.appendChild(ov);
+}
+
+async function _handleStoryFile(input){
+  const file=input.files[0];
+  const text=(document.getElementById('_storyCaption')?.value||'').trim();
+  document.getElementById('_storyUpOv')?.remove();
+  if(!file)return;
+  if(file.size>15*1024*1024){showFireToast('❌ תמונה גדולה מדי (מקסימום 15MB)');return;}
+  showFireToast('⏳ מעלה סטורי...');
+  try{
+    const rawBase64=await new Promise((res,rej)=>{
+      const reader=new FileReader();
+      reader.onload=e=>res(e.target.result);
+      reader.onerror=()=>rej(new Error('שגיאה בקריאת הקובץ'));
+      reader.readAsDataURL(file);
+    });
+    let base64=rawBase64;
     try{
-      // שלב 1: קרא קובץ כ-base64
-      const rawBase64=await new Promise((res,rej)=>{
-        const reader=new FileReader();
-        reader.onload=e=>res(e.target.result);
-        reader.onerror=()=>rej(new Error('שגיאה בקריאת הקובץ'));
-        reader.readAsDataURL(file);
+      base64=await new Promise((res,rej)=>{
+        const img=new Image();
+        img.onload=()=>{
+          const MAX=1080;const scale=Math.min(1,MAX/Math.max(img.width,img.height));
+          const c=document.createElement('canvas');
+          c.width=Math.round(img.width*scale);c.height=Math.round(img.height*scale);
+          c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+          res(c.toDataURL('image/jpeg',0.82));
+        };
+        img.onerror=()=>rej(new Error('canvas'));
+        img.src=rawBase64;
       });
-      // שלב 2: נסה לצמצם ב-canvas — אם נכשל, השתמש בקובץ המקורי
-      let base64=rawBase64;
-      try{
-        base64=await new Promise((res,rej)=>{
-          const img=new Image();
-          img.onload=()=>{
-            const MAX=1080;
-            const scale=Math.min(1,MAX/Math.max(img.width,img.height));
-            const c=document.createElement('canvas');
-            c.width=Math.round(img.width*scale);
-            c.height=Math.round(img.height*scale);
-            c.getContext('2d').drawImage(img,0,0,c.width,c.height);
-            res(c.toDataURL('image/jpeg',0.82));
-          };
-          img.onerror=()=>rej(new Error('canvas'));
-          img.src=rawBase64;
-        });
-      }catch(_){base64=rawBase64;}
-      // שלב 3: העלה ל-Storage (עם fallback לbase64 אם נכשל)
-      const url=await uploadBase64ToStorage(base64,'stories/'+currentUser.uid+'/'+Date.now());
-      await db.ref('stories').push({
-        uid:currentUser.uid,
-        teacherName:currentUserData.name||'',
-        teacherPhoto:currentUserData.photo||'',
-        mediaUrl:url,
-        mediaType:'image',
-        text:text||'',
-        status:'pending',
-        createdAt:Date.now(),
-        expiresAt:Date.now()+24*60*60*1000
-      });
-      notifyAdmin({type:'newStory',teacherName:currentUserData.name||'',teacherId:currentUser.uid}).catch(()=>{});
-      showFireToast('✅ הסטורי נשלח לאישור מנהל!');
-    }catch(e){
-      console.error('[uploadStory]',e);
-      showFireToast('❌ שגיאה: '+(e?.message||String(e)||'לא ידוע'));
-    }
-  };
+    }catch(_){base64=rawBase64;}
+    const url=await uploadBase64ToStorage(base64,'stories/'+currentUser.uid+'/'+Date.now());
+    await db.ref('stories').push({
+      uid:currentUser.uid,teacherName:currentUserData.name||'',
+      teacherPhoto:currentUserData.photo||'',mediaUrl:url,mediaType:'image',
+      text,status:'pending',createdAt:Date.now(),expiresAt:Date.now()+24*60*60*1000
+    });
+    notifyAdmin({type:'newStory',teacherName:currentUserData.name||'',teacherId:currentUser.uid}).catch(()=>{});
+    showFireToast('✅ הסטורי נשלח לאישור מנהל!');
+  }catch(e){
+    console.error('[uploadStory]',e);
+    showFireToast('❌ שגיאה: '+(e?.message||String(e)||'לא ידוע'));
+  }
 }
 
 async function deleteMyStory(storyId){
@@ -2619,9 +2623,9 @@ function showNotificationsPanel(){
   const items=notifications.length===0?
     `<div style="text-align:center;padding:40px 20px"><div style="font-size:54px;margin-bottom:12px">🔔</div><h3 style="font-weight:900;font-size:17px;margin:0 0 6px;color:#0F1A1F">אין התראות חדשות</h3><p style="color:#64748B;font-size:13px;margin:0">כשתקבל הזמנות או הודעות הן יופיעו כאן</p></div>`:
     notifications.map(n=>{
-      const icons={newBooking:'📚',bookingApproved:'✅',bookingRejected:'❌',bookingCancelled:'🚫',newMessage:'💬',newReview:'⭐',newVideo:'📹',newTeacher:'🎓',newReport:'🚨',newUser:'👋',groupJoin:'🙋',groupApproved:'🎉',groupRejected:'😔',rateLesson:'⭐',lessonSummary:'📖',accountApproved:'🎉',teacherApproved:'🎓',adminMessage:'📣',newPost:'📢',lessonCompleted:'✅'};
-      const titles={newBooking:'הזמנת שיעור חדשה',bookingApproved:'ההזמנה אושרה!',bookingRejected:'ההזמנה נדחתה',bookingCancelled:'השיעור בוטל',newMessage:'הודעה חדשה',newReview:'דירוג חדש',newVideo:'סרטון חדש לאישור',newTeacher:'מורה חדש נרשם',newReport:'דיווח חדש!',newUser:'משתמש חדש',groupJoin:'בקשת הצטרפות לקבוצה',groupApproved:'התקבלת לקבוצה!',groupRejected:'הבקשה לא אושרה',rateLesson:'דרג את השיעור',lessonSummary:'סיכום שיעור חדש',accountApproved:'החשבון שלך אושר!',teacherApproved:'פרופיל המורה שלך אושר!',adminMessage:'הודעה מהמנהל',newPost:'פוסט חדש בקהילה',lessonCompleted:'השיעור הסתיים'};
-      const cols={newBooking:'#14B8A6',bookingApproved:'#10B981',bookingRejected:'#EF4444',bookingCancelled:'#F59E0B',newMessage:'#06B6D4',newReview:'#FBBF24',newVideo:'#0891B2',newTeacher:'#0D9488',newReport:'#E74C3C',newUser:'#0EA5E9',groupJoin:'#14B8A6',groupApproved:'#10B981',groupRejected:'#EF4444',rateLesson:'#FBBF24',lessonSummary:'#0891B2',accountApproved:'#10B981',teacherApproved:'#0D9488',adminMessage:'#0891B2',newPost:'#F59E0B',lessonCompleted:'#10B981'};
+      const icons={newBooking:'📚',bookingApproved:'✅',bookingRejected:'❌',bookingCancelled:'🚫',newMessage:'💬',newReview:'⭐',newVideo:'📹',newTeacher:'🎓',newReport:'🚨',newUser:'👋',groupJoin:'🙋',groupApproved:'🎉',groupRejected:'😔',rateLesson:'⭐',lessonSummary:'📖',accountApproved:'🎉',teacherApproved:'🎓',adminMessage:'📣',newPost:'📢',lessonCompleted:'✅',newStory:'📸'};
+      const titles={newBooking:'הזמנת שיעור חדשה',bookingApproved:'ההזמנה אושרה!',bookingRejected:'ההזמנה נדחתה',bookingCancelled:'השיעור בוטל',newMessage:'הודעה חדשה',newReview:'דירוג חדש',newVideo:'סרטון חדש לאישור',newTeacher:'מורה חדש נרשם',newReport:'דיווח חדש!',newUser:'משתמש חדש',groupJoin:'בקשת הצטרפות לקבוצה',groupApproved:'התקבלת לקבוצה!',groupRejected:'הבקשה לא אושרה',rateLesson:'דרג את השיעור',lessonSummary:'סיכום שיעור חדש',accountApproved:'החשבון שלך אושר!',teacherApproved:'פרופיל המורה שלך אושר!',adminMessage:'הודעה מהמנהל',newPost:'פוסט חדש בקהילה',lessonCompleted:'השיעור הסתיים',newStory:'סטורי חדש לאישור'};
+      const cols={newBooking:'#14B8A6',bookingApproved:'#10B981',bookingRejected:'#EF4444',bookingCancelled:'#F59E0B',newMessage:'#06B6D4',newReview:'#FBBF24',newVideo:'#0891B2',newTeacher:'#0D9488',newReport:'#E74C3C',newUser:'#0EA5E9',groupJoin:'#14B8A6',groupApproved:'#10B981',groupRejected:'#EF4444',rateLesson:'#FBBF24',lessonSummary:'#0891B2',accountApproved:'#10B981',teacherApproved:'#0D9488',adminMessage:'#0891B2',newPost:'#F59E0B',lessonCompleted:'#10B981',newStory:'#8B5CF6'};
       const ico=icons[n.type]||'🔔';
       const ttl=titles[n.type]||'התראה';
       const col=cols[n.type]||'#14B8A6';
@@ -2644,9 +2648,10 @@ function showNotificationsPanel(){
       else if(n.type==='newPost')sub=n.from?n.from+' פרסם/ה פוסט חדש':'';
       else if(n.type==='newTeacher')sub=n.from||'';
       else if(n.type==='newReport')sub=(n.from||'')+(n.targetName?' דיווח על '+n.targetName:'');
+      else if(n.type==='newStory')sub=(n.teacherName||'')+(n.teacherName?' • סטורי ממתין לאישור':'סטורי ממתין לאישור');
       else sub=n.message||n.preview||(n.from?'מ-'+n.from:'');
       return `
-        <div onclick="markNotificationRead('${n.id}');document.querySelector('._notifPanel')?.remove();${n.type==='bookingApproved'?"go('messages')":n.type==='newBooking'?"adminTab='bookings';showAdminPanel()":n.type==='newTeacher'||n.type==='newReport'?"adminTab='teachers';showAdminPanel()":n.type==='newVideo'?"adminTab='videos';showAdminPanel()":n.type==='groupJoin'?"showTeacherGroupsPanel()":n.type==='groupApproved'||n.type==='groupRejected'?"S.comTab='groups';go('community')":n.type==='rateLesson'&&n.bookingId?"showRatingDialog('"+n.bookingId+"','"+n.teacherId+"','"+n.teacherName+"')":n.type==='lessonSummary'?"go('messages')":""}" style="background:${n.read?'rgba(255,255,255,0.7)':'#fff'};border-right:4px solid ${col};border-radius:14px;padding:14px;margin-bottom:8px;cursor:pointer;display:flex;align-items:start;gap:12px;${!n.read?'box-shadow:0 4px 14px rgba(20,184,166,0.15)':''}">
+        <div onclick="markNotificationRead('${n.id}');document.querySelector('._notifPanel')?.remove();${n.type==='bookingApproved'?"go('messages')":n.type==='newBooking'?"adminTab='bookings';showAdminPanel()":n.type==='newTeacher'||n.type==='newReport'?"adminTab='teachers';showAdminPanel()":n.type==='newVideo'?"adminTab='videos';showAdminPanel()":n.type==='newStory'?"adminTab='stories';showAdminPanel()":n.type==='groupJoin'?"showTeacherGroupsPanel()":n.type==='groupApproved'||n.type==='groupRejected'?"S.comTab='groups';go('community')":n.type==='rateLesson'&&n.bookingId?"showRatingDialog('"+n.bookingId+"','"+n.teacherId+"','"+n.teacherName+"')":n.type==='lessonSummary'?"go('messages')":""}" style="background:${n.read?'rgba(255,255,255,0.7)':'#fff'};border-right:4px solid ${col};border-radius:14px;padding:14px;margin-bottom:8px;cursor:pointer;display:flex;align-items:start;gap:12px;${!n.read?'box-shadow:0 4px 14px rgba(20,184,166,0.15)':''}">
           <div style="width:40px;height:40px;border-radius:12px;background:${col}20;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">${ico}</div>
           <div style="flex:1;min-width:0">
             <div style="font-weight:900;font-size:14px;color:#0F1A1F">${ttl}</div>
@@ -10450,6 +10455,7 @@ auth&&auth.onAuthStateChanged(async user=>{
           if(n&&!n.read){
             if(n.type==='newTeacher')_sendBrowserNotif('🎓 מורה חדש נרשם!',`${n.from||''} · ${n.teacherEmail||''}`);
             else if(n.type==='newVideo')_sendBrowserNotif('📹 סרטון חדש ממתין',n.from||'');
+            else if(n.type==='newStory')_sendBrowserNotif('📸 סטורי חדש ממתין לאישור',n.teacherName||'');
             else if(n.type==='newUser')_sendBrowserNotif('👋 משתמש חדש',`${n.from||''} · ${n.userEmail||''}`);
           }
           loadNotifications().then(()=>{if(S.screen)render();});
