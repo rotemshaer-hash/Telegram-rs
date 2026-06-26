@@ -251,7 +251,7 @@ input,textarea,select{font-family:inherit;-webkit-appearance:none;appearance:non
 .gbadge{background:linear-gradient(135deg,#14B8A6,#06B6D4);color:#fff;border-radius:50px;padding:4px 12px;font-size:11px;font-weight:700}
 
 /* REFERRAL */
-.ref-card{background:linear-gradient(135deg,#14B8A6,#06B6D4);border-radius:var(--radius);padding:20px;color:#fff;margin-bottom:14px;box-shadow:var(--gp)}
+.ref-card{background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);border-radius:var(--radius);padding:20px;color:#fff;margin-bottom:14px;box-shadow:var(--gp)}
 /* ─── DARK MODE ──────────────────────────────────────────────────────────── */
 body.dark{background:#0D1117 !important;color:#E2E8F0}
 body.dark .card,body.dark .card-sm,body.dark .tc,body.dark .role-card,body.dark .pay-m,body.dark .post,body.dark .lb-row,body.dark .ach{background:#161B22 !important;color:#E2E8F0 !important;box-shadow:0 4px 20px rgba(0,0,0,.4) !important}
@@ -7119,7 +7119,7 @@ function Home(){
 
       ${currentUserData?.role==='teacher'&&!isAdmin()&&teacherPendingBookings.length>0?`
       <!-- Teacher: Pending bookings -->
-      <div style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border-radius:24px;padding:18px;margin-bottom:18px;color:#fff;box-shadow:0 10px 30px rgba(20,184,166,0.3)">
+      <div style="background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);border-radius:24px;padding:18px;margin-bottom:18px;color:#fff;box-shadow:0 10px 30px rgba(20,184,166,0.3)">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
           <div style="width:32px;height:32px;display:flex;align-items:center;justify-content:center"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
           <div style="flex:1">
@@ -7170,7 +7170,7 @@ function Home(){
       })():''}
 
       <!-- Nearby CTA -->
-      <button onclick="go('nearby')" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;border-radius:var(--radius);padding:18px 20px;margin-bottom:22px;display:flex;align-items:center;gap:14px;cursor:pointer;text-align:right;position:relative;overflow:hidden">
+      <button onclick="go('nearby')" style="width:100%;background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);border:none;border-radius:var(--radius);padding:18px 20px;margin-bottom:22px;display:flex;align-items:center;gap:14px;cursor:pointer;text-align:right;position:relative;overflow:hidden">
         <div style="width:50px;height:50px;border-radius:16px;background:rgba(255,255,255,.25);border:1.5px solid rgba(255,255,255,.35);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></div>
         <div style="flex:1">
           <div style="font-weight:900;font-size:15px;color:#fff">מצא מורה קרוב אליך</div>
@@ -7337,7 +7337,7 @@ function Nearby(){
   } else {
     content=`
       <div style="padding:16px 20px 0">
-        <div style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border-radius:24px;padding:18px;color:#fff;margin-bottom:14px;position:relative;overflow:hidden">
+        <div style="background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);border-radius:24px;padding:18px;color:#fff;margin-bottom:14px;position:relative;overflow:hidden">
           <div style="position:absolute;top:-30px;left:-30px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,0.1)"></div>
           <div style="position:absolute;bottom:-20px;right:-20px;width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,0.08)"></div>
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;position:relative;z-index:1">
@@ -8792,7 +8792,7 @@ function About(){
       ${[["💸","חיסכון להורים","חוגים ושיעורים במחיר שפוי"],["🎓","ילדים מלמדים","כישרון ילדים מגיע לכל ילד"],["🤝","קהילה תומכת","לומדים ומלמדים יחד"],["💰","עצמאות כלכלית","הילד המורה מרוויח ולומד לנהל"]].map(([e,t,d])=>`<div class="card" style="text-align:center;padding:16px"><div style="font-size:30px;margin-bottom:8px">${e}</div><div style="font-weight:800;font-size:13px">${t}</div><div style="font-size:11px;color:${C.muted};margin-top:4px;line-height:1.4">${d}</div></div>`).join("")}
     </div>
 
-    <div style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border-radius:var(--radius);padding:22px;text-align:center;box-shadow:var(--gp);margin-bottom:18px">
+    <div style="background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);border-radius:var(--radius);padding:22px;text-align:center;box-shadow:var(--gp);margin-bottom:18px">
       <div style="font-size:34px;margin-bottom:10px">🚀</div>
       <h3 style="color:#fff;margin:0 0 8px;font-weight:900;font-size:17px">רוצה להצטרף לקהילה?</h3>
       <p style="color:rgba(255,255,255,.88);font-size:13px;margin:0 0 14px;line-height:1.6">הצטרף כמורה וגלה שאתה יכול ללמד — ולהרוויח.</p>
