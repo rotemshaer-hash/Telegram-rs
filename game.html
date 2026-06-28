@@ -236,10 +236,11 @@ const ZOOM       = 7;
 const MAP_LAT    = 31.5;
 const MAP_LNG    = 35.0;
 const TILE_SIZE  = 256;
-// ESRI World Imagery — free, no API key
-// Note: ESRI tile URL order is /z/y/x  (row/col)
-const TILE_URL   = (z,ty,tx) =>
-  `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${ty}/${tx}`;
+// Google Maps satellite tiles — standard z/x/y order, mt0-mt3 subdomains
+const TILE_URL = (z, tx, ty) => {
+  const s = (tx + ty) % 4;
+  return `https://mt${s}.google.com/vt/lyrs=s&x=${tx}&y=${ty}&z=${z}`;
+};
 
 let mapReady = false;
 
@@ -274,7 +275,7 @@ function buildMap() {
     for (let tx = tx0; tx <= tx1; tx++) {
       const img = document.createElement('img');
       img.className = 'tile';
-      img.src       = TILE_URL(ZOOM, ty, tx);
+      img.src       = TILE_URL(ZOOM, tx, ty);
       img.draggable = false;
       img.loading   = 'eager';
       // Pixel position: canvas centre + offset from centre tile
