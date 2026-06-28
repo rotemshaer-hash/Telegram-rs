@@ -64,7 +64,7 @@ html,body{height:100%;font-family:'Rubik',sans-serif;overflow:hidden;user-select
   text-align:center;font-size:18px;font-weight:800;color:#0d1b2a;
   border-bottom:3px solid #e3f2fd;flex-shrink:0;
 }
-#map{flex:1;width:100%;min-height:0}
+#map{flex:1;width:100%;min-height:200px}
 
 .answers-panel{
   background:#fff;width:100%;
@@ -372,17 +372,38 @@ function startGame(lvl){
 
 function initMap(){
   if(map){map.remove();map=null;}
+
+  const mapEl = document.getElementById('map');
+  // Force a layout pass so the flex container has a real height
+  mapEl.style.height = mapEl.offsetHeight + 'px';
+
   map = L.map('map',{
     center:[31.5,35.0], zoom:7,
     zoomControl:false, dragging:false,
     touchZoom:false, doubleClickZoom:false,
     scrollWheelZoom:false, boxZoom:false, keyboard:false,
   });
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{
-    attribution:'© <a href="https://www.openstreetmap.org/copyright">OSM</a> © <a href="https://carto.com">CARTO</a>',
-    subdomains:'abcd', maxZoom:19,
-  }).addTo(map);
-  setTimeout(nextQ, 350);
+
+  const cartoLayer = L.tileLayer(
+    'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+    {attribution:'© <a href="https://www.openstreetmap.org/copyright">OSM</a> © <a href="https://carto.com">CARTO</a>',
+     subdomains:'abcd', maxZoom:19}
+  );
+  const osmLayer = L.tileLayer(
+    'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    {attribution:'© <a href="https://www.openstreetmap.org/copyright">OSM</a>', maxZoom:19}
+  );
+
+  cartoLayer.addTo(map);
+  cartoLayer.once('tileerror', () => { map.removeLayer(cartoLayer); osmLayer.addTo(map); });
+
+  // invalidateSize after browser paints to fix blank-map on mobile
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      map.invalidateSize();
+      setTimeout(nextQ, 200);
+    });
+  });
 }
 
 // ═══════════════ QUESTION ═══════════════
