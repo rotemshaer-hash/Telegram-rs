@@ -4,131 +4,126 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
 <title>משחק ידיעת הארץ 🇮🇱</title>
-<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;700;800;900&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;user-select:none;background:#000}
-
 .screen{position:absolute;inset:0;display:none;flex-direction:column;align-items:center}
 .screen.active{display:flex}
 
 /* ── START ── */
 #screen-start{
-  background:linear-gradient(160deg,#0d1b2a 0%,#1a3a5c 60%,#0d3a2a 100%);
-  justify-content:center;padding:28px 20px;gap:0;
+  background:linear-gradient(160deg,#0d1b2a 0%,#1a3a5c 60%,#0d2a1a 100%);
+  justify-content:center;padding:28px 20px;
 }
-.start-flag{font-size:70px;line-height:1;margin-bottom:8px;animation:fl 3s ease-in-out infinite}
+.s-icon{font-size:72px;line-height:1;margin-bottom:10px;animation:fl 3s ease-in-out infinite}
 @keyframes fl{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
-.start-title{font-size:32px;font-weight:900;color:#fff;text-align:center;text-shadow:0 3px 14px rgba(0,200,100,.4);margin-bottom:4px}
-.start-sub{font-size:14px;color:rgba(255,255,255,.75);margin-bottom:26px;text-align:center}
-.diff-label{font-size:11px;font-weight:700;color:rgba(255,255,255,.55);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px}
-.diff-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;width:100%;max-width:340px}
-.diff-btn{
-  background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.2);
+.s-title{font-size:32px;font-weight:900;color:#fff;text-align:center;text-shadow:0 2px 12px rgba(0,200,100,.4);margin-bottom:5px}
+.s-sub{font-size:14px;color:rgba(255,255,255,.7);margin-bottom:28px;text-align:center}
+.s-label{font-size:11px;font-weight:700;color:rgba(255,255,255,.5);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:13px}
+.dgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;width:100%;max-width:340px}
+.dbtn{
+  background:rgba(255,255,255,.09);border:1.5px solid rgba(255,255,255,.18);
   border-radius:20px;padding:18px 10px 14px;cursor:pointer;
   display:flex;flex-direction:column;align-items:center;gap:5px;
-  backdrop-filter:blur(10px);transition:transform .15s,background .15s;font-family:inherit;
+  transition:transform .15s,background .15s;font-family:inherit;
 }
-.diff-btn:active{transform:scale(.95);background:rgba(255,255,255,.2)}
+.dbtn:active{transform:scale(.95);background:rgba(255,255,255,.18)}
 .de{font-size:32px;line-height:1}
 .dn{font-size:16px;font-weight:800;color:#fff}
-.dd{font-size:11px;color:rgba(255,255,255,.65);font-weight:500;text-align:center;line-height:1.4}
+.dd{font-size:11px;color:rgba(255,255,255,.6);text-align:center;line-height:1.4}
 
 /* ── GAME ── */
 #screen-game{background:#000}
-
 .ghdr{
-  background:rgba(0,0,0,.75);backdrop-filter:blur(12px);
+  background:rgba(0,0,0,.8);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
   width:100%;padding:10px 14px;
   display:flex;align-items:center;justify-content:space-between;
-  flex-shrink:0;border-bottom:1px solid rgba(255,255,255,.1);
+  flex-shrink:0;border-bottom:1px solid rgba(255,255,255,.08);z-index:20;
 }
-.sc{display:flex;align-items:center;gap:4px;color:#FFD700;font-size:19px;font-weight:800}
-.qc{
-  background:rgba(255,255,255,.15);border-radius:20px;
-  padding:4px 13px;font-size:13px;font-weight:700;color:#fff;white-space:nowrap;
-}
-.lt{
-  background:rgba(255,255,255,.12);border-radius:12px;
-  padding:4px 11px;font-size:13px;font-weight:600;color:#fff;
-}
-.pbar{width:100%;height:5px;background:rgba(255,255,255,.1);flex-shrink:0}
+.gsc{display:flex;align-items:center;gap:4px;color:#FFD700;font-size:19px;font-weight:800}
+.gqc{background:rgba(255,255,255,.14);border-radius:20px;padding:4px 13px;font-size:13px;font-weight:700;color:#fff;white-space:nowrap}
+.glt{background:rgba(255,255,255,.1);border-radius:12px;padding:4px 11px;font-size:13px;font-weight:600;color:#fff}
+.pbar{width:100%;height:5px;background:rgba(255,255,255,.08);flex-shrink:0;z-index:20}
 .pfill{height:100%;background:linear-gradient(90deg,#00e676,#69f0ae);transition:width .4s}
-
 .qtxt{
-  background:rgba(0,0,0,.6);backdrop-filter:blur(10px);
-  width:100%;padding:11px 16px;
-  text-align:center;font-size:17px;font-weight:800;color:#fff;
-  border-bottom:1px solid rgba(255,255,255,.08);flex-shrink:0;
-  text-shadow:0 1px 6px rgba(0,0,0,.8);
+  background:rgba(0,0,0,.65);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  width:100%;padding:11px 16px;text-align:center;font-size:17px;font-weight:800;color:#fff;
+  border-bottom:1px solid rgba(255,255,255,.07);flex-shrink:0;z-index:20;
+  text-shadow:0 1px 6px rgba(0,0,0,.9);
 }
 
 /* ── MAP ── */
-#map{flex:1;width:100%;min-height:200px}
+#map-wrap{
+  flex:1;width:100%;position:relative;overflow:hidden;
+  background:#0a1a0a;min-height:0;
+}
+.tile{position:absolute;display:block;-webkit-user-drag:none;pointer-events:none}
+
+/* ── MARKER ── */
+#city-marker{
+  position:absolute;transform:translate(-50%,-50%);
+  display:none;pointer-events:none;z-index:10;width:52px;height:52px;
+}
+.pmr{
+  position:absolute;top:50%;left:50%;
+  width:18px;height:18px;border-radius:50%;
+  background:rgba(255,80,30,.5);
+  transform:translate(-50%,-50%);
+  animation:pmx 1.9s ease-out infinite;
+}
+.pmr.r2{animation-delay:.63s}
+.pmr.r3{animation-delay:1.26s}
+@keyframes pmx{
+  0%{transform:translate(-50%,-50%) scale(1);opacity:.85}
+  100%{transform:translate(-50%,-50%) scale(5.5);opacity:0}
+}
+.pmd{
+  position:absolute;top:50%;left:50%;width:20px;height:20px;
+  background:#ff5722;border-radius:50%;border:3px solid #fff;
+  transform:translate(-50%,-50%);
+  box-shadow:0 0 0 3px rgba(255,87,34,.35),0 2px 14px rgba(255,87,34,.9);
+  z-index:2;
+}
 
 /* ── ANSWERS ── */
 .apan{
-  background:rgba(10,10,10,.85);backdrop-filter:blur(14px);
+  background:rgba(8,8,12,.88);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
   width:100%;
   padding:10px 12px max(14px,env(safe-area-inset-bottom));
   display:grid;grid-template-columns:repeat(3,1fr);gap:9px;
-  flex-shrink:0;border-top:1px solid rgba(255,255,255,.1);
+  flex-shrink:0;border-top:1px solid rgba(255,255,255,.09);z-index:20;
 }
 .abtn{
-  background:rgba(255,255,255,.1);border:2px solid rgba(255,255,255,.2);
+  background:rgba(255,255,255,.09);border:2px solid rgba(255,255,255,.18);
   border-radius:16px;padding:12px 5px;font-size:14px;font-weight:700;color:#fff;
   cursor:pointer;transition:all .12s;font-family:inherit;
   min-height:52px;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.3;
 }
-.abtn:active:not(:disabled){transform:scale(.95);background:rgba(255,255,255,.2)}
-.abtn.ok{background:rgba(76,175,80,.35);border-color:#4CAF50;color:#A5D6A7}
-.abtn.no{background:rgba(244,67,54,.3);border-color:#F44336;color:#EF9A9A}
+.abtn:active:not(:disabled){transform:scale(.95);background:rgba(255,255,255,.18)}
+.abtn.ok{background:rgba(76,175,80,.3);border-color:#4CAF50;color:#A5D6A7}
+.abtn.no{background:rgba(244,67,54,.28);border-color:#F44336;color:#EF9A9A}
 .abtn:disabled{cursor:default}
-
-/* ── MARKER ── */
-.mwrap{position:relative;width:50px;height:50px}
-.pmr{
-  position:absolute;top:50%;left:50%;width:16px;height:16px;
-  border-radius:50%;background:rgba(255,100,50,.55);
-  transform:translate(-50%,-50%);
-  animation:pmx 1.8s ease-out infinite;
-}
-.pmr.r2{animation-delay:.6s}
-.pmr.r3{animation-delay:1.2s}
-@keyframes pmx{
-  0%{transform:translate(-50%,-50%) scale(1);opacity:.9}
-  100%{transform:translate(-50%,-50%) scale(5.5);opacity:0}
-}
-.pmd{
-  position:absolute;top:50%;left:50%;width:18px;height:18px;
-  background:#ff5722;border-radius:50%;border:3px solid #fff;
-  transform:translate(-50%,-50%);
-  box-shadow:0 0 0 3px rgba(255,87,34,.4),0 2px 12px rgba(255,87,34,.8);
-  z-index:2;
-}
 
 /* ── FEEDBACK ── */
 .fbo{
   position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
-  z-index:1000;pointer-events:none;opacity:0;transition:opacity .18s;
-  background:rgba(0,0,0,.3);
+  z-index:100;pointer-events:none;opacity:0;transition:opacity .18s;
+  background:rgba(0,0,0,.28);
 }
 .fbo.show{opacity:1}
 .fbx{
-  background:rgba(20,20,30,.92);backdrop-filter:blur(20px);
-  border:1px solid rgba(255,255,255,.15);
-  border-radius:26px;padding:22px 38px;text-align:center;
-  box-shadow:0 20px 60px rgba(0,0,0,.6);transform:scale(.75);
+  background:rgba(18,18,28,.93);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border:1px solid rgba(255,255,255,.13);border-radius:26px;
+  padding:22px 38px;text-align:center;
+  box-shadow:0 20px 60px rgba(0,0,0,.65);transform:scale(.75);
   transition:transform .3s cubic-bezier(.34,1.56,.64,1);
 }
 .fbo.show .fbx{transform:scale(1)}
-.fbe{font-size:58px;line-height:1;margin-bottom:6px}
+.fbe{font-size:56px;line-height:1;margin-bottom:6px}
 .fbt{font-size:21px;font-weight:900;color:#fff}
-.fbt.ok{color:#69f0ae}
-.fbt.no{color:#ff8a80}
-.fbs{font-size:14px;color:rgba(255,255,255,.65);margin-top:4px}
+.fbt.ok{color:#69f0ae} .fbt.no{color:#ff8a80}
+.fbs{font-size:14px;color:rgba(255,255,255,.6);margin-top:4px}
 
 /* ── END ── */
 #screen-end{
@@ -137,21 +132,21 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
 }
 .eico{font-size:74px;line-height:1;margin-bottom:12px;animation:bn .55s ease infinite alternate}
 @keyframes bn{from{transform:translateY(0)}to{transform:translateY(-13px)}}
-.etitle{font-size:28px;font-weight:900;color:#fff;text-align:center;margin-bottom:8px}
+.etit{font-size:28px;font-weight:900;color:#fff;text-align:center;margin-bottom:8px}
 .enum{font-size:62px;font-weight:900;color:#FFD700;text-align:center;line-height:1}
-.elbl{font-size:15px;color:rgba(255,255,255,.6);text-align:center;margin-bottom:14px}
+.elbl{font-size:15px;color:rgba(255,255,255,.55);text-align:center;margin-bottom:14px}
 .estr{font-size:40px;letter-spacing:4px;text-align:center;margin-bottom:10px}
-.emsg{font-size:14px;color:rgba(255,255,255,.75);text-align:center;margin-bottom:26px;font-weight:500;line-height:1.5;max-width:270px}
+.emsg{font-size:14px;color:rgba(255,255,255,.72);text-align:center;margin-bottom:26px;font-weight:500;line-height:1.5;max-width:270px}
 .ebtns{display:flex;flex-direction:column;gap:11px;width:100%;max-width:250px}
 .ebm{
   background:linear-gradient(90deg,#00c853,#1b5e20);color:#fff;border:none;border-radius:20px;
   padding:17px;font-size:16px;font-weight:800;cursor:pointer;font-family:inherit;
-  box-shadow:0 8px 24px rgba(0,200,83,.35);transition:transform .15s;
+  box-shadow:0 8px 24px rgba(0,200,83,.3);transition:transform .15s;
 }
 .ebm:active{transform:scale(.96)}
 .ebs{
-  background:rgba(255,255,255,.08);color:rgba(255,255,255,.8);
-  border:1.5px solid rgba(255,255,255,.2);border-radius:20px;
+  background:rgba(255,255,255,.07);color:rgba(255,255,255,.75);
+  border:1.5px solid rgba(255,255,255,.18);border-radius:20px;
   padding:13px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:transform .15s;
 }
 .ebs:active{transform:scale(.96)}
@@ -159,32 +154,27 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
 /* ── CONFETTI ── */
 .cf{position:fixed;top:-12px;border-radius:2px;animation:cff linear forwards;z-index:999}
 @keyframes cff{0%{transform:translateY(0) rotate(0deg);opacity:1}100%{transform:translateY(105vh) rotate(800deg);opacity:0}}
-
-/* Leaflet overrides */
-.leaflet-container{background:#1a2a1a}
-.leaflet-control-attribution{font-size:8px!important;background:rgba(0,0,0,.5)!important;color:rgba(255,255,255,.5)!important}
-.leaflet-control-attribution a{color:rgba(255,255,255,.4)!important}
 </style>
 </head>
 <body>
 
-<!-- ══ START ═══════════════════════════ -->
+<!-- ══ START ══════════════════════════ -->
 <div id="screen-start" class="screen active">
-  <div class="start-flag">🛰️</div>
-  <h1 class="start-title">ידיעת הארץ</h1>
-  <p class="start-sub">נחש את שם הישוב על מפת הלוויין!</p>
-  <div class="diff-label">בחר רמת קושי</div>
-  <div class="diff-grid">
-    <button class="diff-btn" onclick="startGame('easy')">
+  <div class="s-icon">🛰️</div>
+  <h1 class="s-title">ידיעת הארץ</h1>
+  <p class="s-sub">נחש את שם הישוב על מפת הלוויין!</p>
+  <div class="s-label">בחר רמת קושי</div>
+  <div class="dgrid">
+    <button class="dbtn" onclick="startGame('easy')">
       <span class="de">🌱</span><span class="dn">קל</span><span class="dd">ערים גדולות</span>
     </button>
-    <button class="diff-btn" onclick="startGame('medium')">
+    <button class="dbtn" onclick="startGame('medium')">
       <span class="de">🌟</span><span class="dn">בינוני</span><span class="dd">ערים ויישובים</span>
     </button>
-    <button class="diff-btn" onclick="startGame('hard')">
+    <button class="dbtn" onclick="startGame('hard')">
       <span class="de">🎓</span><span class="dn">קשה</span><span class="dd">ערים קטנות</span>
     </button>
-    <button class="diff-btn" onclick="startGame('expert')">
+    <button class="dbtn" onclick="startGame('expert')">
       <span class="de">🏆</span><span class="dn">אלוף</span><span class="dd">כל הישובים</span>
     </button>
   </div>
@@ -193,13 +183,21 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
 <!-- ══ GAME ═══════════════════════════ -->
 <div id="screen-game" class="screen">
   <div class="ghdr">
-    <div class="sc">⭐ <span id="scoreVal">0</span></div>
-    <div class="qc" id="qCounter">שאלה 1 / 10</div>
-    <div class="lt" id="levelTag">קל</div>
+    <div class="gsc">⭐ <span id="scoreVal">0</span></div>
+    <div class="gqc" id="qCounter">שאלה 1 / 10</div>
+    <div class="glt" id="levelTag">קל</div>
   </div>
   <div class="pbar"><div class="pfill" id="progressFill" style="width:0%"></div></div>
   <div class="qtxt">מה שם הישוב המסומן? 🤔</div>
-  <div id="map"></div>
+  <div id="map-wrap">
+    <!-- Satellite tiles loaded dynamically as <img> tags -->
+    <div id="city-marker">
+      <div class="pmr"></div>
+      <div class="pmr r2"></div>
+      <div class="pmr r3"></div>
+      <div class="pmd"></div>
+    </div>
+  </div>
   <div class="apan">
     <button class="abtn" id="btn0" onclick="checkAnswer(0)"></button>
     <button class="abtn" id="btn1" onclick="checkAnswer(1)"></button>
@@ -210,7 +208,7 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
 <!-- ══ END ════════════════════════════ -->
 <div id="screen-end" class="screen">
   <div class="eico" id="eico">🎉</div>
-  <h2 class="etitle" id="etitle">כל הכבוד!</h2>
+  <h2 class="etit" id="etit">כל הכבוד!</h2>
   <div class="enum" id="enum">8/10</div>
   <div class="elbl">תשובות נכונות</div>
   <div class="estr" id="estr">⭐⭐⭐</div>
@@ -221,7 +219,7 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
   </div>
 </div>
 
-<!-- Feedback -->
+<!-- Feedback overlay -->
 <div class="fbo" id="fbo">
   <div class="fbx">
     <div class="fbe" id="fbe">✅</div>
@@ -231,7 +229,86 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
 </div>
 
 <script>
-// ═══ DATA ════════════════════════════════
+// ════════════════════════════════════════
+//  SATELLITE TILE MAP  (no external libs)
+// ════════════════════════════════════════
+const ZOOM       = 7;
+const MAP_LAT    = 31.5;
+const MAP_LNG    = 35.0;
+const TILE_SIZE  = 256;
+// ESRI World Imagery — free, no API key
+// Note: ESRI tile URL order is /z/y/x  (row/col)
+const TILE_URL   = (z,ty,tx) =>
+  `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${ty}/${tx}`;
+
+let mapReady = false;
+
+// Web-Mercator: returns fractional tile coords for any lat/lng at given zoom
+function worldXY(lat, lng) {
+  const n   = 1 << ZOOM;   // 2^ZOOM
+  const x   = (lng + 180) / 360 * n;
+  const r   = lat * Math.PI / 180;
+  const y   = (1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * n;
+  return {x, y};
+}
+
+function buildMap() {
+  if (mapReady) return;
+  mapReady = true;
+
+  const wrap = document.getElementById('map-wrap');
+  const W = wrap.clientWidth  || window.innerWidth;
+  const H = wrap.clientHeight || Math.max(window.innerHeight - 200, 300);
+  const TS = TILE_SIZE;
+
+  const c = worldXY(MAP_LAT, MAP_LNG);  // center in tile coords
+
+  // Range of tiles needed to fill viewport + 1 tile padding each side
+  const tx0 = Math.floor(c.x - W / 2 / TS) - 1;
+  const ty0 = Math.floor(c.y - H / 2 / TS) - 1;
+  const tx1 = Math.ceil (c.x + W / 2 / TS) + 1;
+  const ty1 = Math.ceil (c.y + H / 2 / TS) + 1;
+
+  const frag = document.createDocumentFragment();
+  for (let ty = ty0; ty <= ty1; ty++) {
+    for (let tx = tx0; tx <= tx1; tx++) {
+      const img = document.createElement('img');
+      img.className = 'tile';
+      img.src       = TILE_URL(ZOOM, ty, tx);
+      img.draggable = false;
+      img.loading   = 'eager';
+      // Pixel position: canvas centre + offset from centre tile
+      const left = Math.round(W / 2 + (tx - c.x) * TS);
+      const top  = Math.round(H / 2 + (ty - c.y) * TS);
+      img.style.cssText = `left:${left}px;top:${top}px;width:${TS}px;height:${TS}px`;
+      frag.appendChild(img);
+    }
+  }
+  // Insert before the marker so marker stays on top
+  wrap.insertBefore(frag, document.getElementById('city-marker'));
+}
+
+function placeMarker(lat, lng) {
+  const wrap = document.getElementById('map-wrap');
+  const W = wrap.clientWidth  || window.innerWidth;
+  const H = wrap.clientHeight || Math.max(window.innerHeight - 200, 300);
+  const TS = TILE_SIZE;
+
+  const c = worldXY(MAP_LAT, MAP_LNG);
+  const p = worldXY(lat, lng);
+
+  const px = Math.round(W / 2 + (p.x - c.x) * TS);
+  const py = Math.round(H / 2 + (p.y - c.y) * TS);
+
+  const m = document.getElementById('city-marker');
+  m.style.left    = px + 'px';
+  m.style.top     = py + 'px';
+  m.style.display = 'block';
+}
+
+// ════════════════════════════════════════
+//  CITY DATA
+// ════════════════════════════════════════
 const T1=[
   {name:"תל אביב",       lat:32.0853,lng:34.7818},
   {name:"ירושלים",       lat:31.7683,lng:35.2137},
@@ -318,24 +395,21 @@ const LVLS={
   expert:{name:"אלוף",  em:"🏆", cities:[...T1,...T2,...T3,...T4]},
 };
 
-// ═══ STATE ═══════════════════════════════
-let map=null, marker=null;
+// ════════════════════════════════════════
+//  GAME STATE
+// ════════════════════════════════════════
 let level,pool,used=[],score,qNum,correctIdx,locked;
 const TOTAL=10;
 const OKP=["כל הכבוד!","נכון! ⭐","מצוין! 🌟","אדיר! 💪","מושלם! 🏆","יפה מאוד!"];
 const NOP=["לא נכון...","נסה שוב","כמעט!","אופס!"];
 
-// ═══ SCREENS ══════════════════════════════
 function show(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
 }
-function goHome(){
-  show('screen-start');
-  if(map){map.remove();map=null;}
-}
 
-// ═══ START ════════════════════════════════
+function goHome(){ show('screen-start'); }
+
 function startGame(lvl){
   level=lvl;
   const cfg=LVLS[lvl];
@@ -343,35 +417,15 @@ function startGame(lvl){
   used=[]; score=0; qNum=0;
   document.getElementById('levelTag').textContent=cfg.em+' '+cfg.name;
   document.getElementById('scoreVal').textContent='0';
+  document.getElementById('progressFill').style.width='0%';
   show('screen-game');
-  requestAnimationFrame(()=>requestAnimationFrame(initMap));
-}
-
-function initMap(){
-  if(map){map.remove();map=null;}
-  if(marker){marker=null;}
-
-  map=L.map('map',{
-    center:[31.5,35.0], zoom:7,
-    zoomControl:false, dragging:false,
-    touchZoom:false, doubleClickZoom:false,
-    scrollWheelZoom:false, boxZoom:false, keyboard:false,
-  });
-
-  // ESRI World Imagery — satellite tiles, free, no API key
-  L.tileLayer(
-    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    {attribution:'Tiles © Esri', maxZoom:17}
-  ).addTo(map);
-
-  // Force correct sizing after browser paint
-  requestAnimationFrame(()=>{
-    map.invalidateSize();
+  // Double rAF — map-wrap has correct dimensions after paint
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    buildMap();
     nextQ();
-  });
+  }));
 }
 
-// ═══ QUESTION ════════════════════════════
 function nextQ(){
   if(qNum>=TOTAL){endGame();return;}
   if(used.length>=pool.length) used=[];
@@ -400,18 +454,7 @@ function nextQ(){
     b.textContent=opts[i]; b.className='abtn'; b.disabled=false;
   }
 
-  if(marker){map.removeLayer(marker);marker=null;}
-
-  const icon=L.divIcon({
-    className:'',
-    html:`<div class="mwrap">
-      <div class="pmr"></div><div class="pmr r2"></div><div class="pmr r3"></div>
-      <div class="pmd"></div>
-    </div>`,
-    iconSize:[50,50], iconAnchor:[25,25],
-  });
-  marker=L.marker([correct.lat,correct.lng],{icon}).addTo(map);
-
+  placeMarker(correct.lat,correct.lng);
   locked=false;
 }
 
@@ -419,26 +462,24 @@ function checkAnswer(idx){
   if(locked) return;
   locked=true;
   for(let i=0;i<3;i++) document.getElementById('btn'+i).disabled=true;
-
   const ok=idx===correctIdx;
   document.getElementById('btn'+idx).classList.add(ok?'ok':'no');
   if(!ok) document.getElementById('btn'+correctIdx).classList.add('ok');
   if(ok){score++;document.getElementById('scoreVal').textContent=score;}
 
-  const ov=document.getElementById('fbo');
   document.getElementById('fbe').textContent=ok
     ?['🎉','⭐','🌟','💪','🏆'][Math.floor(Math.random()*5)]:'❌';
   const ft=document.getElementById('fbt');
   ft.textContent=ok?OKP[Math.floor(Math.random()*OKP.length)]:NOP[Math.floor(Math.random()*NOP.length)];
   ft.className='fbt '+(ok?'ok':'no');
   document.getElementById('fbs').textContent=ok?'':'התשובה: '+document.getElementById('btn'+correctIdx).textContent;
-  ov.classList.add('show');
 
+  const ov=document.getElementById('fbo');
+  ov.classList.add('show');
   if(ok&&score%3===0) confetti();
   setTimeout(()=>{ov.classList.remove('show');setTimeout(nextQ,180);},1400);
 }
 
-// ═══ END ══════════════════════════════════
 function endGame(){
   const p=score/TOTAL;
   let ico,ttl,str,msg;
@@ -448,16 +489,16 @@ function endGame(){
   else if(p>=.4){ico='📚';ttl='ממשיכים!';     str='⭐⭐';      msg='נסה שוב ותשפר את הציון שלך!'}
   else          {ico='💪';ttl='אל תתייאש!';   str='⭐';        msg='כל ניסיון מלמד! תנסה שוב!'}
   document.getElementById('eico').textContent=ico;
-  document.getElementById('etitle').textContent=ttl;
+  document.getElementById('etit').textContent=ttl;
   document.getElementById('enum').textContent=`${score}/${TOTAL}`;
   document.getElementById('estr').textContent=str;
   document.getElementById('emsg').textContent=msg;
   if(p>=.8) confetti();
   show('screen-end');
 }
+
 function restartSame(){startGame(level);}
 
-// ═══ UTILS ════════════════════════════════
 function shuffle(a){
   for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}
   return a;
@@ -465,11 +506,9 @@ function shuffle(a){
 function confetti(){
   const cls=['#ff6b35','#ffd700','#4caf50','#2196f3','#e91e63','#9c27b0','#00bcd4'];
   for(let i=0;i<50;i++) setTimeout(()=>{
-    const e=document.createElement('div');
-    e.className='cf';
+    const e=document.createElement('div'); e.className='cf';
     e.style.cssText=`left:${Math.random()*100}vw;width:${7+Math.random()*7}px;height:${7+Math.random()*7}px;background:${cls[Math.floor(Math.random()*cls.length)]};border-radius:${Math.random()>.5?'50%':'3px'};animation-duration:${2.5+Math.random()*2}s;animation-delay:${Math.random()*.4}s`;
-    document.body.appendChild(e);
-    setTimeout(()=>e.remove(),4500);
+    document.body.appendChild(e); setTimeout(()=>e.remove(),4500);
   },i*25);
 }
 </script>
