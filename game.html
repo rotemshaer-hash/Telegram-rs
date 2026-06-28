@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+<title>משחק ידיעת הארץ 🇮🇱</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;font-family:'Rubik',sans-serif;overflow:hidden;user-select:none;background:#87CEEB}
+
+.screen{position:absolute;inset:0;display:none;flex-direction:column;align-items:center}
+.screen.active{display:flex}
+
+/* ── START ── */
+#screen-start{
+  background:linear-gradient(160deg,#1a73e8 0%,#0d47a1 100%);
+  justify-content:center;
+  padding:28px 24px;
+  gap:0;
+}
+.start-flag{font-size:72px;line-height:1;margin-bottom:8px;animation:float 3s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+.start-title{font-size:34px;font-weight:900;color:#fff;text-align:center;text-shadow:0 3px 10px rgba(0,0,0,.3);margin-bottom:4px}
+.start-sub{font-size:15px;color:rgba(255,255,255,.85);margin-bottom:28px;text-align:center}
+.diff-label{font-size:12px;font-weight:700;color:rgba(255,255,255,.7);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px}
+.diff-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;width:100%;max-width:340px}
+.diff-btn{
+  background:#fff;border:none;border-radius:22px;padding:20px 10px 16px;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  box-shadow:0 8px 28px rgba(0,0,0,.22);
+  transition:transform .15s,box-shadow .15s;
+  font-family:'Rubik',sans-serif;
+}
+.diff-btn:active{transform:scale(.95);box-shadow:0 4px 14px rgba(0,0,0,.2)}
+.diff-emoji{font-size:34px;line-height:1}
+.diff-name{font-size:17px;font-weight:800;color:#0d47a1}
+.diff-desc{font-size:11px;color:#666;font-weight:500;text-align:center;line-height:1.4}
+
+/* ── GAME ── */
+#screen-game{background:#f0f9ff}
+.game-header{
+  background:linear-gradient(90deg,#1565c0,#0288d1);
+  width:100%;padding:10px 16px;
+  display:flex;align-items:center;justify-content:space-between;
+  flex-shrink:0;
+}
+.score-box{display:flex;align-items:center;gap:5px;color:#fff;font-size:20px;font-weight:800}
+.q-counter{
+  background:rgba(255,255,255,.22);border-radius:20px;
+  padding:4px 14px;font-size:13px;font-weight:700;color:#fff;white-space:nowrap
+}
+.level-tag{
+  background:rgba(255,255,255,.18);border-radius:12px;
+  padding:4px 12px;font-size:13px;font-weight:600;color:#fff
+}
+.progress-bar{width:100%;height:7px;background:rgba(0,0,0,.1);flex-shrink:0}
+.progress-fill{height:100%;background:linear-gradient(90deg,#81d4fa,#4fc3f7);transition:width .4s ease}
+.q-text{
+  background:#fff;width:100%;padding:13px 16px;
+  text-align:center;font-size:18px;font-weight:800;color:#0d1b2a;
+  border-bottom:3px solid #e3f2fd;flex-shrink:0;
+}
+#map{flex:1;width:100%;min-height:0}
+
+.answers-panel{
+  background:#fff;width:100%;
+  padding:12px 14px max(16px, env(safe-area-inset-bottom));
+  display:grid;grid-template-columns:repeat(3,1fr);gap:10px;
+  flex-shrink:0;box-shadow:0 -4px 20px rgba(0,0,0,.1);
+}
+.ans-btn{
+  background:#e3f2fd;border:3px solid transparent;border-radius:18px;
+  padding:13px 6px;font-size:14px;font-weight:700;color:#1565c0;
+  cursor:pointer;transition:all .12s;font-family:'Rubik',sans-serif;
+  line-height:1.3;min-height:54px;
+  display:flex;align-items:center;justify-content:center;text-align:center;
+}
+.ans-btn:active:not(:disabled){transform:scale(.95)}
+.ans-btn.correct{background:#e8f5e9;border-color:#43a047;color:#2e7d32}
+.ans-btn.wrong{background:#ffebee;border-color:#e53935;color:#b71c1c}
+.ans-btn:disabled{cursor:default}
+
+/* ── MARKER ── */
+.marker-wrap{position:relative;width:44px;height:44px}
+.pulse-dot{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  width:20px;height:20px;background:#ff3d00;
+  border-radius:50%;border:3px solid #fff;
+  box-shadow:0 2px 10px rgba(255,61,0,.6);z-index:2;
+}
+.pulse-ring{
+  position:absolute;top:50%;left:50%;
+  width:20px;height:20px;border-radius:50%;
+  background:rgba(255,61,0,.35);
+  animation:pulse-out 1.8s ease-out infinite;
+}
+.pulse-ring:nth-child(2){animation-delay:.6s}
+.pulse-ring:nth-child(3){animation-delay:1.2s}
+@keyframes pulse-out{
+  0%{transform:translate(-50%,-50%) scale(1);opacity:.8}
+  100%{transform:translate(-50%,-50%) scale(4.5);opacity:0}
+}
+
+/* ── FEEDBACK ── */
+.feedback-overlay{
+  position:fixed;inset:0;
+  display:flex;align-items:center;justify-content:center;
+  z-index:1000;pointer-events:none;
+  opacity:0;transition:opacity .18s;
+}
+.feedback-overlay.show{opacity:1}
+.feedback-box{
+  background:#fff;border-radius:28px;
+  padding:24px 40px;text-align:center;
+  box-shadow:0 20px 60px rgba(0,0,0,.22);
+  transform:scale(.75);
+  transition:transform .3s cubic-bezier(.34,1.56,.64,1);
+}
+.feedback-overlay.show .feedback-box{transform:scale(1)}
+.fb-emoji{font-size:60px;line-height:1;margin-bottom:6px}
+.fb-text{font-size:22px;font-weight:900}
+.fb-text.ok{color:#2e7d32}
+.fb-text.no{color:#b71c1c}
+.fb-sub{font-size:14px;color:#666;margin-top:4px}
+
+/* ── END ── */
+#screen-end{
+  background:linear-gradient(160deg,#fff9c4 0%,#ffe082 50%,#ffca28 100%);
+  justify-content:center;align-items:center;
+  padding:28px 24px;
+}
+.end-icon{font-size:76px;line-height:1;margin-bottom:12px;animation:bounce .6s ease infinite alternate}
+@keyframes bounce{from{transform:translateY(0)}to{transform:translateY(-14px)}}
+.end-title{font-size:30px;font-weight:900;color:#1a1a2e;text-align:center;margin-bottom:8px}
+.end-score-num{font-size:64px;font-weight:900;color:#e65100;text-align:center;line-height:1}
+.end-score-label{font-size:16px;color:#5d4037;text-align:center;margin-bottom:16px}
+.stars-row{font-size:42px;letter-spacing:4px;text-align:center;margin-bottom:12px}
+.end-msg{font-size:15px;color:#4e342e;text-align:center;margin-bottom:28px;font-weight:500;line-height:1.5;max-width:280px}
+.end-btns{display:flex;flex-direction:column;gap:12px;width:100%;max-width:260px}
+.btn-main{
+  background:linear-gradient(90deg,#ff6b35,#e64a19);
+  color:#fff;border:none;border-radius:22px;
+  padding:18px 24px;font-size:17px;font-weight:800;
+  cursor:pointer;font-family:'Rubik',sans-serif;
+  box-shadow:0 8px 24px rgba(230,74,25,.4);
+  transition:transform .15s,box-shadow .15s;
+}
+.btn-main:active{transform:scale(.96);box-shadow:0 4px 12px rgba(230,74,25,.4)}
+.btn-sec{
+  background:#fff;color:#e65100;
+  border:3px solid #ffca28;border-radius:22px;
+  padding:15px 24px;font-size:15px;font-weight:700;
+  cursor:pointer;font-family:'Rubik',sans-serif;
+  transition:transform .15s;
+}
+.btn-sec:active{transform:scale(.96)}
+
+/* ── CONFETTI ── */
+.conf{
+  position:fixed;top:-12px;border-radius:2px;
+  animation:conf-fall linear forwards;z-index:999;
+}
+@keyframes conf-fall{
+  0%{transform:translateY(0) rotate(0deg);opacity:1}
+  100%{transform:translateY(105vh) rotate(800deg);opacity:0}
+}
+
+.leaflet-control-attribution{font-size:9px!important}
+</style>
+</head>
+<body>
+
+<!-- ══ START SCREEN ══ -->
+<div id="screen-start" class="screen active">
+  <div class="start-flag">🗺️</div>
+  <h1 class="start-title">ידיעת הארץ</h1>
+  <p class="start-sub">נחש את שם הישוב על המפה!</p>
+  <div class="diff-label">בחר רמת קושי</div>
+  <div class="diff-grid">
+    <button class="diff-btn" onclick="startGame('easy')">
+      <span class="diff-emoji">🌱</span>
+      <span class="diff-name">קל</span>
+      <span class="diff-desc">ערים גדולות</span>
+    </button>
+    <button class="diff-btn" onclick="startGame('medium')">
+      <span class="diff-emoji">🌟</span>
+      <span class="diff-name">בינוני</span>
+      <span class="diff-desc">ערים ויישובים</span>
+    </button>
+    <button class="diff-btn" onclick="startGame('hard')">
+      <span class="diff-emoji">🎓</span>
+      <span class="diff-name">קשה</span>
+      <span class="diff-desc">יישובים וערים קטנות</span>
+    </button>
+    <button class="diff-btn" onclick="startGame('expert')">
+      <span class="diff-emoji">🏆</span>
+      <span class="diff-name">אלוף</span>
+      <span class="diff-desc">כל הישובים</span>
+    </button>
+  </div>
+</div>
+
+<!-- ══ GAME SCREEN ══ -->
+<div id="screen-game" class="screen">
+  <div class="game-header">
+    <div class="score-box">⭐ <span id="scoreVal">0</span></div>
+    <div class="q-counter" id="qCounter">שאלה 1 / 10</div>
+    <div class="level-tag" id="levelTag">קל</div>
+  </div>
+  <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+  <div class="q-text" id="qText">מה שם הישוב המסומן? 🤔</div>
+  <div id="map"></div>
+  <div class="answers-panel">
+    <button class="ans-btn" id="btn0" onclick="checkAnswer(0)"></button>
+    <button class="ans-btn" id="btn1" onclick="checkAnswer(1)"></button>
+    <button class="ans-btn" id="btn2" onclick="checkAnswer(2)"></button>
+  </div>
+</div>
+
+<!-- ══ END SCREEN ══ -->
+<div id="screen-end" class="screen">
+  <div class="end-icon" id="endIcon">🎉</div>
+  <h2 class="end-title" id="endTitle">כל הכבוד!</h2>
+  <div class="end-score-num" id="endScore">8/10</div>
+  <div class="end-score-label">תשובות נכונות</div>
+  <div class="stars-row" id="endStars">⭐⭐⭐</div>
+  <div class="end-msg" id="endMsg">מצוין!</div>
+  <div class="end-btns">
+    <button class="btn-main" onclick="restartSame()">🔄 שחק שוב</button>
+    <button class="btn-sec"  onclick="goHome()">🏠 החלף רמה</button>
+  </div>
+</div>
+
+<!-- ══ FEEDBACK ══ -->
+<div class="feedback-overlay" id="fbOverlay">
+  <div class="feedback-box">
+    <div class="fb-emoji" id="fbEmoji">✅</div>
+    <div class="fb-text"  id="fbText">כל הכבוד!</div>
+    <div class="fb-sub"   id="fbSub"></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════ DATA ═══════════════
+const T1 = [
+  {name:"תל אביב",       lat:32.0853, lng:34.7818},
+  {name:"ירושלים",       lat:31.7683, lng:35.2137},
+  {name:"חיפה",          lat:32.7940, lng:34.9896},
+  {name:"באר שבע",       lat:31.2518, lng:34.7913},
+  {name:"נתניה",         lat:32.3226, lng:34.8533},
+  {name:"אשדוד",         lat:31.8044, lng:34.6553},
+  {name:"אשקלון",        lat:31.6688, lng:34.5743},
+  {name:"ראשון לציון",   lat:31.9730, lng:34.7925},
+  {name:"פתח תקווה",     lat:32.0870, lng:34.8878},
+  {name:"הרצליה",        lat:32.1657, lng:34.8439},
+  {name:"כפר סבא",       lat:32.1748, lng:34.9069},
+  {name:"רמת גן",        lat:32.0704, lng:34.8238},
+  {name:"חולון",         lat:32.0153, lng:34.7748},
+  {name:"בני ברק",       lat:32.0843, lng:34.8338},
+  {name:"אילת",          lat:29.5581, lng:34.9482},
+];
+
+const T2 = [
+  {name:"טבריה",         lat:32.7922, lng:35.5312},
+  {name:"נצרת",          lat:32.7021, lng:35.2978},
+  {name:"עכו",           lat:32.9226, lng:35.0680},
+  {name:"צפת",           lat:32.9646, lng:35.4961},
+  {name:"קריית שמונה",   lat:33.2073, lng:35.5697},
+  {name:"חדרה",          lat:32.4311, lng:34.9192},
+  {name:"רעננה",         lat:32.1836, lng:34.8706},
+  {name:"הוד השרון",     lat:32.1500, lng:34.8833},
+  {name:"לוד",           lat:31.9505, lng:34.8950},
+  {name:"רמלה",          lat:31.9273, lng:34.8686},
+  {name:"נס ציונה",      lat:31.9248, lng:34.7980},
+  {name:"יבנה",          lat:31.8766, lng:34.7369},
+  {name:"קריית גת",      lat:31.6069, lng:34.7642},
+  {name:"דימונה",        lat:31.0705, lng:35.0330},
+  {name:"נהריה",         lat:33.0067, lng:35.0972},
+];
+
+const T3 = [
+  {name:"ערד",            lat:31.2599, lng:35.2130},
+  {name:"אופקים",         lat:31.3107, lng:34.6186},
+  {name:"שדרות",          lat:31.5242, lng:34.5969},
+  {name:"מגדל העמק",      lat:32.6744, lng:35.2389},
+  {name:"עפולה",          lat:32.6061, lng:35.2881},
+  {name:"בית שאן",        lat:32.4981, lng:35.4973},
+  {name:"זכרון יעקב",     lat:32.5706, lng:34.9505},
+  {name:"פרדס חנה-כרכור", lat:32.4681, lng:34.9733},
+  {name:"קריית אתא",      lat:32.8094, lng:35.1049},
+  {name:"בית שמש",        lat:31.7477, lng:34.9939},
+  {name:"מודיעין",        lat:31.8977, lng:34.9989},
+  {name:"ביתר עילית",     lat:31.6967, lng:35.1203},
+  {name:"קצרין",          lat:32.9942, lng:35.6904},
+  {name:"מצפה רמון",      lat:30.6105, lng:34.8018},
+  {name:"רהט",            lat:31.3919, lng:34.7542},
+  {name:"אום אל-פחם",     lat:32.5153, lng:35.1531},
+  {name:"שפרעם",          lat:32.8063, lng:35.1673},
+  {name:"סח'נין",         lat:32.8669, lng:35.3037},
+  {name:"ערערה",          lat:32.5075, lng:35.1019},
+  {name:"נשר",            lat:32.7779, lng:35.0453},
+];
+
+const T4 = [
+  {name:"טייבה",          lat:32.2716, lng:34.9964},
+  {name:"טירה",           lat:32.2328, lng:34.9529},
+  {name:"כפר קאסם",       lat:32.1138, lng:34.9751},
+  {name:"כפר יאסיף",      lat:32.9554, lng:35.1573},
+  {name:"ירכא",           lat:32.9555, lng:35.1874},
+  {name:"מגאר",           lat:32.8932, lng:35.4002},
+  {name:"פקיעין",         lat:32.9773, lng:35.3255},
+  {name:"בוקעתא",         lat:33.2414, lng:35.7300},
+  {name:"מגדל שמס",       lat:33.2687, lng:35.7826},
+  {name:"עין מאהל",       lat:32.7197, lng:35.3400},
+  {name:"יוקנעם עילית",   lat:32.6619, lng:35.1103},
+  {name:"כרמיאל",         lat:32.9151, lng:35.2979},
+  {name:"מעלות-תרשיחא",   lat:32.9958, lng:35.2747},
+  {name:"אור יהודה",      lat:32.0263, lng:34.8565},
+  {name:"אלעד",           lat:32.0516, lng:34.9514},
+  {name:"גבעת שמואל",     lat:32.0806, lng:34.8481},
+  {name:"טירת כרמל",      lat:32.7594, lng:34.9721},
+  {name:"גדרה",           lat:31.8125, lng:34.7780},
+  {name:"מודיעין עילית",  lat:31.9276, lng:35.0438},
+  {name:"קריית מלאכי",    lat:31.7324, lng:34.7384},
+];
+
+const LEVELS = {
+  easy:   {name:"קל",    emoji:"🌱", cities:[...T1]},
+  medium: {name:"בינוני",emoji:"🌟", cities:[...T1,...T2]},
+  hard:   {name:"קשה",   emoji:"🎓", cities:[...T1,...T2,...T3]},
+  expert: {name:"אלוף",  emoji:"🏆", cities:[...T1,...T2,...T3,...T4]},
+};
+
+const TOTAL_Q = 10;
+const CORRECT_PHRASES = ["כל הכבוד! 🎉","נכון! ⭐","מצוין! 🌟","אדיר! 💪","מושלם! 🏆","יפה מאוד! 😊"];
+const WRONG_PHRASES   = ["לא נכון...","נסה שוב בפעם הבאה","כמעט...","אופס!"];
+
+// ═══════════════ STATE ═══════════════
+let map = null, marker = null;
+let level, pool, used = [], score, qNum, correctIdx, locked;
+
+// ═══════════════ SCREENS ═══════════════
+function show(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function goHome(){
+  show('screen-start');
+  if(map){map.remove();map=null;}
+}
+
+// ═══════════════ START ═══════════════
+function startGame(lvl){
+  level = lvl;
+  const cfg = LEVELS[lvl];
+  pool  = shuffle([...cfg.cities]);
+  used  = [];
+  score = 0;
+  qNum  = 0;
+
+  document.getElementById('levelTag').textContent  = cfg.emoji+' '+cfg.name;
+  document.getElementById('scoreVal').textContent  = '0';
+
+  show('screen-game');
+  setTimeout(initMap, 60);
+}
+
+function initMap(){
+  if(map){map.remove();map=null;}
+  map = L.map('map',{
+    center:[31.5,35.0], zoom:7,
+    zoomControl:false, dragging:false,
+    touchZoom:false, doubleClickZoom:false,
+    scrollWheelZoom:false, boxZoom:false, keyboard:false,
+  });
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{
+    attribution:'© <a href="https://www.openstreetmap.org/copyright">OSM</a> © <a href="https://carto.com">CARTO</a>',
+    subdomains:'abcd', maxZoom:19,
+  }).addTo(map);
+  setTimeout(nextQ, 350);
+}
+
+// ═══════════════ QUESTION ═══════════════
+function nextQ(){
+  if(qNum >= TOTAL_Q){endGame();return;}
+
+  if(used.length >= pool.length) used = [];
+
+  let ci;
+  do{ ci = Math.floor(Math.random()*pool.length); }while(used.includes(ci));
+  used.push(ci);
+
+  const correct = pool[ci];
+
+  // 2 wrong options
+  const wrongs = [];
+  while(wrongs.length < 2){
+    const wi = Math.floor(Math.random()*pool.length);
+    if(wi !== ci && !wrongs.includes(wi)) wrongs.push(wi);
+  }
+
+  const opts = [correct.name, pool[wrongs[0]].name, pool[wrongs[1]].name];
+  shuffle(opts);
+  correctIdx = opts.indexOf(correct.name);
+
+  // Update header
+  qNum++;
+  document.getElementById('qCounter').textContent = `שאלה ${qNum} / ${TOTAL_Q}`;
+  document.getElementById('progressFill').style.width = `${((qNum-1)/TOTAL_Q)*100}%`;
+  document.getElementById('qText').textContent = 'מה שם הישוב המסומן? 🤔';
+
+  // Buttons
+  for(let i=0;i<3;i++){
+    const b = document.getElementById('btn'+i);
+    b.textContent = opts[i];
+    b.className   = 'ans-btn';
+    b.disabled    = false;
+  }
+
+  // Marker
+  if(marker){map.removeLayer(marker);marker=null;}
+  const icon = L.divIcon({
+    className:'',
+    html:`<div class="marker-wrap">
+      <div class="pulse-ring"></div>
+      <div class="pulse-ring"></div>
+      <div class="pulse-ring"></div>
+      <div class="pulse-dot"></div>
+    </div>`,
+    iconSize:[44,44], iconAnchor:[22,22],
+  });
+  marker = L.marker([correct.lat, correct.lng],{icon}).addTo(map);
+
+  locked = false;
+}
+
+function checkAnswer(idx){
+  if(locked) return;
+  locked = true;
+
+  const ok = idx === correctIdx;
+  for(let i=0;i<3;i++) document.getElementById('btn'+i).disabled = true;
+
+  document.getElementById('btn'+idx).classList.add(ok?'correct':'wrong');
+  if(!ok) document.getElementById('btn'+correctIdx).classList.add('correct');
+
+  if(ok){
+    score++;
+    document.getElementById('scoreVal').textContent = score;
+  }
+
+  // Feedback
+  const ov  = document.getElementById('fbOverlay');
+  const em  = document.getElementById('fbEmoji');
+  const tx  = document.getElementById('fbText');
+  const sb  = document.getElementById('fbSub');
+
+  if(ok){
+    em.textContent = ['🎉','⭐','🌟','💪','🏆'][Math.floor(Math.random()*5)];
+    tx.textContent = CORRECT_PHRASES[Math.floor(Math.random()*CORRECT_PHRASES.length)];
+    tx.className   = 'fb-text ok';
+    sb.textContent = '';
+    if(score>0 && score%3===0) confetti();
+  } else {
+    em.textContent = '❌';
+    tx.textContent = WRONG_PHRASES[Math.floor(Math.random()*WRONG_PHRASES.length)];
+    tx.className   = 'fb-text no';
+    sb.textContent = 'התשובה הנכונה: '+document.getElementById('btn'+correctIdx).textContent;
+  }
+
+  ov.classList.add('show');
+  setTimeout(()=>{
+    ov.classList.remove('show');
+    setTimeout(nextQ, 180);
+  }, 1400);
+}
+
+// ═══════════════ END ═══════════════
+function endGame(){
+  const pct = score/TOTAL_Q;
+  let icon,title,stars,msg;
+
+  if(pct===1)    {icon='🏆';title='מושלם לחלוטין!';stars='⭐⭐⭐⭐⭐';msg='תוצאה מושלמת! אתה אלוף ידיעת הארץ!'}
+  else if(pct>=.8){icon='🎉';title='כל הכבוד!';   stars='⭐⭐⭐⭐';  msg='תוצאה מצוינת! אתה מכיר את ישראל יפה מאוד!'}
+  else if(pct>=.6){icon='😊';title='יפה מאוד!';   stars='⭐⭐⭐';    msg='תוצאה טובה! עוד קצת אימון ותגיע למקסימום!'}
+  else if(pct>=.4){icon='📚';title='ממשיכים!';    stars='⭐⭐';      msg='נסה שוב ותשפר את הציון שלך!'}
+  else            {icon='💪';title='אל תתייאש!';  stars='⭐';        msg='כל ניסיון מלמד! תנסה שוב!'}
+
+  document.getElementById('endIcon').textContent  = icon;
+  document.getElementById('endTitle').textContent = title;
+  document.getElementById('endScore').textContent = `${score}/${TOTAL_Q}`;
+  document.getElementById('endStars').textContent = stars;
+  document.getElementById('endMsg').textContent   = msg;
+
+  if(pct>=.8) confetti();
+  show('screen-end');
+}
+
+function restartSame(){ startGame(level); }
+
+// ═══════════════ UTILS ═══════════════
+function shuffle(a){
+  for(let i=a.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+  return a;
+}
+
+function confetti(){
+  const colors=['#ff6b35','#ffd700','#4caf50','#2196f3','#e91e63','#9c27b0','#ff5722','#00bcd4'];
+  for(let i=0;i<50;i++){
+    setTimeout(()=>{
+      const el=document.createElement('div');
+      el.className='conf';
+      el.style.cssText=`
+        left:${Math.random()*100}vw;
+        width:${7+Math.random()*7}px;
+        height:${7+Math.random()*7}px;
+        background:${colors[Math.floor(Math.random()*colors.length)]};
+        border-radius:${Math.random()>.5?'50%':'3px'};
+        animation-duration:${2.5+Math.random()*2}s;
+        animation-delay:${Math.random()*.4}s;
+      `;
+      document.body.appendChild(el);
+      setTimeout(()=>el.remove(),4500);
+    },i*25);
+  }
+}
+</script>
+</body>
+</html>
