@@ -5,157 +5,174 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
 <title>משחק ידיעת הארץ 🇮🇱</title>
 <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;user-select:none;background:#1565c0}
+html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;user-select:none;background:#000}
 
 .screen{position:absolute;inset:0;display:none;flex-direction:column;align-items:center}
 .screen.active{display:flex}
 
-/* ── START ─────────────────────────────── */
+/* ── START ── */
 #screen-start{
-  background:linear-gradient(160deg,#1565c0 0%,#01579b 100%);
+  background:linear-gradient(160deg,#0d1b2a 0%,#1a3a5c 60%,#0d3a2a 100%);
   justify-content:center;padding:28px 20px;gap:0;
 }
 .start-flag{font-size:70px;line-height:1;margin-bottom:8px;animation:fl 3s ease-in-out infinite}
 @keyframes fl{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
-.start-title{font-size:32px;font-weight:900;color:#fff;text-align:center;text-shadow:0 3px 10px rgba(0,0,0,.3);margin-bottom:4px}
-.start-sub{font-size:14px;color:rgba(255,255,255,.85);margin-bottom:26px;text-align:center}
-.diff-label{font-size:11px;font-weight:700;color:rgba(255,255,255,.7);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px}
+.start-title{font-size:32px;font-weight:900;color:#fff;text-align:center;text-shadow:0 3px 14px rgba(0,200,100,.4);margin-bottom:4px}
+.start-sub{font-size:14px;color:rgba(255,255,255,.75);margin-bottom:26px;text-align:center}
+.diff-label{font-size:11px;font-weight:700;color:rgba(255,255,255,.55);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px}
 .diff-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;width:100%;max-width:340px}
 .diff-btn{
-  background:#fff;border:none;border-radius:20px;padding:18px 10px 14px;cursor:pointer;
+  background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.2);
+  border-radius:20px;padding:18px 10px 14px;cursor:pointer;
   display:flex;flex-direction:column;align-items:center;gap:5px;
-  box-shadow:0 8px 28px rgba(0,0,0,.22);transition:transform .15s;font-family:inherit;
+  backdrop-filter:blur(10px);transition:transform .15s,background .15s;font-family:inherit;
 }
-.diff-btn:active{transform:scale(.95)}
+.diff-btn:active{transform:scale(.95);background:rgba(255,255,255,.2)}
 .de{font-size:32px;line-height:1}
-.dn{font-size:16px;font-weight:800;color:#0d47a1}
-.dd{font-size:11px;color:#666;font-weight:500;text-align:center;line-height:1.4}
+.dn{font-size:16px;font-weight:800;color:#fff}
+.dd{font-size:11px;color:rgba(255,255,255,.65);font-weight:500;text-align:center;line-height:1.4}
 
-/* ── GAME ─────────────────────────────── */
-#screen-game{background:#f0f9ff}
+/* ── GAME ── */
+#screen-game{background:#000}
+
 .ghdr{
-  background:linear-gradient(90deg,#1565c0,#0288d1);
+  background:rgba(0,0,0,.75);backdrop-filter:blur(12px);
   width:100%;padding:10px 14px;
-  display:flex;align-items:center;justify-content:space-between;flex-shrink:0;
+  display:flex;align-items:center;justify-content:space-between;
+  flex-shrink:0;border-bottom:1px solid rgba(255,255,255,.1);
 }
-.sc{display:flex;align-items:center;gap:4px;color:#fff;font-size:19px;font-weight:800}
+.sc{display:flex;align-items:center;gap:4px;color:#FFD700;font-size:19px;font-weight:800}
 .qc{
-  background:rgba(255,255,255,.22);border-radius:20px;
+  background:rgba(255,255,255,.15);border-radius:20px;
   padding:4px 13px;font-size:13px;font-weight:700;color:#fff;white-space:nowrap;
 }
-.lt{background:rgba(255,255,255,.18);border-radius:12px;padding:4px 11px;font-size:13px;font-weight:600;color:#fff}
-.pbar{width:100%;height:6px;background:rgba(0,0,0,.1);flex-shrink:0}
-.pfill{height:100%;background:linear-gradient(90deg,#81d4fa,#4fc3f7);transition:width .4s}
+.lt{
+  background:rgba(255,255,255,.12);border-radius:12px;
+  padding:4px 11px;font-size:13px;font-weight:600;color:#fff;
+}
+.pbar{width:100%;height:5px;background:rgba(255,255,255,.1);flex-shrink:0}
+.pfill{height:100%;background:linear-gradient(90deg,#00e676,#69f0ae);transition:width .4s}
+
 .qtxt{
-  background:#fff;width:100%;padding:11px 16px;
-  text-align:center;font-size:17px;font-weight:800;color:#0d1b2a;
-  border-bottom:3px solid #e3f2fd;flex-shrink:0;
+  background:rgba(0,0,0,.6);backdrop-filter:blur(10px);
+  width:100%;padding:11px 16px;
+  text-align:center;font-size:17px;font-weight:800;color:#fff;
+  border-bottom:1px solid rgba(255,255,255,.08);flex-shrink:0;
+  text-shadow:0 1px 6px rgba(0,0,0,.8);
 }
 
-/* ── MAP ─────────────────────────────── */
-#map-wrap{flex:1;width:100%;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;background:#a8d8ea}
-#israel-svg{display:block;max-width:100%;max-height:100%}
+/* ── MAP ── */
+#map{flex:1;width:100%;min-height:200px}
 
-/* ── MARKER ─────────────────────────── */
-#city-marker{
-  position:absolute;transform:translate(-50%,-50%);
-  display:none;pointer-events:none;z-index:10;
-  width:50px;height:50px;
-}
-.pmr{
-  position:absolute;top:50%;left:50%;
-  width:16px;height:16px;border-radius:50%;
-  background:rgba(255,61,0,.5);
-  transform:translate(-50%,-50%);
-  animation:pmx 1.8s ease-out infinite;
-}
-.pmr:nth-child(2){animation-delay:.6s}
-.pmr:nth-child(3){animation-delay:1.2s}
-@keyframes pmx{
-  0%{transform:translate(-50%,-50%) scale(1);opacity:.8}
-  100%{transform:translate(-50%,-50%) scale(5);opacity:0}
-}
-.pmd{
-  position:absolute;top:50%;left:50%;width:18px;height:18px;
-  background:#ff3d00;border-radius:50%;border:3px solid #fff;
-  transform:translate(-50%,-50%);
-  box-shadow:0 2px 10px rgba(255,61,0,.7);z-index:2;
-}
-
-/* ── ANSWERS ─────────────────────────── */
+/* ── ANSWERS ── */
 .apan{
-  background:#fff;width:100%;
-  padding:11px 12px max(14px,env(safe-area-inset-bottom));
+  background:rgba(10,10,10,.85);backdrop-filter:blur(14px);
+  width:100%;
+  padding:10px 12px max(14px,env(safe-area-inset-bottom));
   display:grid;grid-template-columns:repeat(3,1fr);gap:9px;
-  flex-shrink:0;box-shadow:0 -4px 20px rgba(0,0,0,.1);
+  flex-shrink:0;border-top:1px solid rgba(255,255,255,.1);
 }
 .abtn{
-  background:#e3f2fd;border:3px solid transparent;border-radius:16px;
-  padding:12px 5px;font-size:14px;font-weight:700;color:#1565c0;
+  background:rgba(255,255,255,.1);border:2px solid rgba(255,255,255,.2);
+  border-radius:16px;padding:12px 5px;font-size:14px;font-weight:700;color:#fff;
   cursor:pointer;transition:all .12s;font-family:inherit;
   min-height:52px;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.3;
 }
-.abtn:active:not(:disabled){transform:scale(.95)}
-.abtn.ok{background:#e8f5e9;border-color:#43a047;color:#2e7d32}
-.abtn.no{background:#ffebee;border-color:#e53935;color:#b71c1c}
+.abtn:active:not(:disabled){transform:scale(.95);background:rgba(255,255,255,.2)}
+.abtn.ok{background:rgba(76,175,80,.35);border-color:#4CAF50;color:#A5D6A7}
+.abtn.no{background:rgba(244,67,54,.3);border-color:#F44336;color:#EF9A9A}
 .abtn:disabled{cursor:default}
 
-/* ── FEEDBACK ─────────────────────────── */
+/* ── MARKER ── */
+.mwrap{position:relative;width:50px;height:50px}
+.pmr{
+  position:absolute;top:50%;left:50%;width:16px;height:16px;
+  border-radius:50%;background:rgba(255,100,50,.55);
+  transform:translate(-50%,-50%);
+  animation:pmx 1.8s ease-out infinite;
+}
+.pmr.r2{animation-delay:.6s}
+.pmr.r3{animation-delay:1.2s}
+@keyframes pmx{
+  0%{transform:translate(-50%,-50%) scale(1);opacity:.9}
+  100%{transform:translate(-50%,-50%) scale(5.5);opacity:0}
+}
+.pmd{
+  position:absolute;top:50%;left:50%;width:18px;height:18px;
+  background:#ff5722;border-radius:50%;border:3px solid #fff;
+  transform:translate(-50%,-50%);
+  box-shadow:0 0 0 3px rgba(255,87,34,.4),0 2px 12px rgba(255,87,34,.8);
+  z-index:2;
+}
+
+/* ── FEEDBACK ── */
 .fbo{
   position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
   z-index:1000;pointer-events:none;opacity:0;transition:opacity .18s;
+  background:rgba(0,0,0,.3);
 }
 .fbo.show{opacity:1}
 .fbx{
-  background:#fff;border-radius:26px;padding:22px 38px;text-align:center;
-  box-shadow:0 20px 60px rgba(0,0,0,.22);transform:scale(.75);
+  background:rgba(20,20,30,.92);backdrop-filter:blur(20px);
+  border:1px solid rgba(255,255,255,.15);
+  border-radius:26px;padding:22px 38px;text-align:center;
+  box-shadow:0 20px 60px rgba(0,0,0,.6);transform:scale(.75);
   transition:transform .3s cubic-bezier(.34,1.56,.64,1);
 }
 .fbo.show .fbx{transform:scale(1)}
 .fbe{font-size:58px;line-height:1;margin-bottom:6px}
-.fbt{font-size:21px;font-weight:900}
-.fbt.ok{color:#2e7d32} .fbt.no{color:#b71c1c}
-.fbs{font-size:14px;color:#666;margin-top:4px}
+.fbt{font-size:21px;font-weight:900;color:#fff}
+.fbt.ok{color:#69f0ae}
+.fbt.no{color:#ff8a80}
+.fbs{font-size:14px;color:rgba(255,255,255,.65);margin-top:4px}
 
-/* ── END ─────────────────────────────── */
+/* ── END ── */
 #screen-end{
-  background:linear-gradient(160deg,#fff9c4,#ffe082 50%,#ffca28);
+  background:linear-gradient(160deg,#0d1b2a,#1a3a5c 60%,#0d2a1a);
   justify-content:center;align-items:center;padding:28px 20px;
 }
 .eico{font-size:74px;line-height:1;margin-bottom:12px;animation:bn .55s ease infinite alternate}
 @keyframes bn{from{transform:translateY(0)}to{transform:translateY(-13px)}}
-.etitle{font-size:28px;font-weight:900;color:#1a1a2e;text-align:center;margin-bottom:8px}
-.enum{font-size:62px;font-weight:900;color:#e65100;text-align:center;line-height:1}
-.elbl{font-size:15px;color:#5d4037;text-align:center;margin-bottom:14px}
+.etitle{font-size:28px;font-weight:900;color:#fff;text-align:center;margin-bottom:8px}
+.enum{font-size:62px;font-weight:900;color:#FFD700;text-align:center;line-height:1}
+.elbl{font-size:15px;color:rgba(255,255,255,.6);text-align:center;margin-bottom:14px}
 .estr{font-size:40px;letter-spacing:4px;text-align:center;margin-bottom:10px}
-.emsg{font-size:14px;color:#4e342e;text-align:center;margin-bottom:26px;font-weight:500;line-height:1.5;max-width:270px}
+.emsg{font-size:14px;color:rgba(255,255,255,.75);text-align:center;margin-bottom:26px;font-weight:500;line-height:1.5;max-width:270px}
 .ebtns{display:flex;flex-direction:column;gap:11px;width:100%;max-width:250px}
 .ebm{
-  background:linear-gradient(90deg,#ff6b35,#e64a19);color:#fff;border:none;border-radius:20px;
+  background:linear-gradient(90deg,#00c853,#1b5e20);color:#fff;border:none;border-radius:20px;
   padding:17px;font-size:16px;font-weight:800;cursor:pointer;font-family:inherit;
-  box-shadow:0 8px 24px rgba(230,74,25,.4);transition:transform .15s;
+  box-shadow:0 8px 24px rgba(0,200,83,.35);transition:transform .15s;
 }
 .ebm:active{transform:scale(.96)}
 .ebs{
-  background:#fff;color:#e65100;border:3px solid #ffca28;border-radius:20px;
+  background:rgba(255,255,255,.08);color:rgba(255,255,255,.8);
+  border:1.5px solid rgba(255,255,255,.2);border-radius:20px;
   padding:13px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:transform .15s;
 }
 .ebs:active{transform:scale(.96)}
 
-/* ── CONFETTI ─────────────────────────── */
+/* ── CONFETTI ── */
 .cf{position:fixed;top:-12px;border-radius:2px;animation:cff linear forwards;z-index:999}
 @keyframes cff{0%{transform:translateY(0) rotate(0deg);opacity:1}100%{transform:translateY(105vh) rotate(800deg);opacity:0}}
+
+/* Leaflet overrides */
+.leaflet-container{background:#1a2a1a}
+.leaflet-control-attribution{font-size:8px!important;background:rgba(0,0,0,.5)!important;color:rgba(255,255,255,.5)!important}
+.leaflet-control-attribution a{color:rgba(255,255,255,.4)!important}
 </style>
 </head>
 <body>
 
-<!-- ══ START ══════════════════════════════ -->
+<!-- ══ START ═══════════════════════════ -->
 <div id="screen-start" class="screen active">
-  <div class="start-flag">🗺️</div>
+  <div class="start-flag">🛰️</div>
   <h1 class="start-title">ידיעת הארץ</h1>
-  <p class="start-sub">נחש את שם הישוב על המפה!</p>
+  <p class="start-sub">נחש את שם הישוב על מפת הלוויין!</p>
   <div class="diff-label">בחר רמת קושי</div>
   <div class="diff-grid">
     <button class="diff-btn" onclick="startGame('easy')">
@@ -173,7 +190,7 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
   </div>
 </div>
 
-<!-- ══ GAME ═══════════════════════════════ -->
+<!-- ══ GAME ═══════════════════════════ -->
 <div id="screen-game" class="screen">
   <div class="ghdr">
     <div class="sc">⭐ <span id="scoreVal">0</span></div>
@@ -182,61 +199,7 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
   </div>
   <div class="pbar"><div class="pfill" id="progressFill" style="width:0%"></div></div>
   <div class="qtxt">מה שם הישוב המסומן? 🤔</div>
-
-  <div id="map-wrap">
-    <!--
-      ViewBox 0 0 300 640
-      svgX = 10 + (lng - 34.10) / 1.85 * 280
-      svgY = 10 + (33.50 - lat) / 4.20 * 620
-    -->
-    <svg id="israel-svg" viewBox="0 0 300 640" preserveAspectRatio="xMidYMid meet">
-      <defs>
-        <linearGradient id="seaGrad" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stop-color="#6EC6E6"/>
-          <stop offset="100%" stop-color="#3A9EC2"/>
-        </linearGradient>
-        <linearGradient id="landGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#8CC665"/>
-          <stop offset="55%" stop-color="#A8C87A"/>
-          <stop offset="100%" stop-color="#D4BC6A"/>
-        </linearGradient>
-      </defs>
-
-      <!-- Sea -->
-      <rect width="300" height="640" fill="url(#seaGrad)"/>
-
-      <!-- Israel land polygon -->
-      <polygon
-        points="161,72 184,64 232,42 261,126 247,129 229,158 224,206 218,262 217,362 176,445 143,576 128,583 58,590 51,390 55,339 36,286 75,278 110,216 129,165 141,109 156,93"
-        fill="url(#landGrad)" stroke="#5a8a3a" stroke-width="1.5" stroke-linejoin="round"/>
-
-      <!-- Kinneret (Sea of Galilee) -->
-      <ellipse cx="237" cy="121" rx="14" ry="22" fill="#4CA8D4" stroke="#2E88B4" stroke-width="1"/>
-      <text x="237" y="124" font-size="7" fill="white" text-anchor="middle" font-weight="bold" font-family="Arial">כנרת</text>
-
-      <!-- Dead Sea -->
-      <ellipse cx="220" cy="318" rx="11" ry="42" fill="#4CA8D4" stroke="#2E88B4" stroke-width="1" opacity=".85"/>
-      <text x="220" y="315" font-size="6.5" fill="white" text-anchor="middle" font-weight="bold" font-family="Arial">ים</text>
-      <text x="220" y="324" font-size="6.5" fill="white" text-anchor="middle" font-weight="bold" font-family="Arial">המלח</text>
-
-      <!-- Gulf of Aqaba / Eilat -->
-      <polygon points="128,583 143,576 150,615 128,640 108,640" fill="#4CA8D4" stroke="#2E88B4" stroke-width="1" opacity=".8"/>
-      <text x="124" y="625" font-size="6" fill="white" text-anchor="middle" font-weight="bold" font-family="Arial">מפרץ אילת</text>
-
-      <!-- Mediterranean label -->
-      <text x="28" y="300" font-size="8" fill="rgba(255,255,255,.7)" text-anchor="middle"
-        transform="rotate(-90,28,300)" font-family="Arial">הים התיכון</text>
-    </svg>
-
-    <!-- Pulsing marker (positioned by JS) -->
-    <div id="city-marker">
-      <div class="pmr"></div>
-      <div class="pmr"></div>
-      <div class="pmr"></div>
-      <div class="pmd"></div>
-    </div>
-  </div>
-
+  <div id="map"></div>
   <div class="apan">
     <button class="abtn" id="btn0" onclick="checkAnswer(0)"></button>
     <button class="abtn" id="btn1" onclick="checkAnswer(1)"></button>
@@ -244,7 +207,7 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
   </div>
 </div>
 
-<!-- ══ END ════════════════════════════════ -->
+<!-- ══ END ════════════════════════════ -->
 <div id="screen-end" class="screen">
   <div class="eico" id="eico">🎉</div>
   <h2 class="etitle" id="etitle">כל הכבוד!</h2>
@@ -258,7 +221,7 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
   </div>
 </div>
 
-<!-- Feedback overlay -->
+<!-- Feedback -->
 <div class="fbo" id="fbo">
   <div class="fbx">
     <div class="fbe" id="fbe">✅</div>
@@ -268,49 +231,7 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
 </div>
 
 <script>
-// ═══ MAP PROJECTION ═══════════════════════════
-// ViewBox: 300 × 640
-// svgX = 10 + (lng - 34.10) / 1.85 * 280
-// svgY = 10 + (33.50 - lat) / 4.20 * 620
-const VBW=300, VBH=640;
-function toSVG(lat,lng){
-  return {
-    x: 10 + (lng - 34.10) / 1.85 * 280,
-    y: 10 + (33.50 - lat) / 4.20 * 620
-  };
-}
-
-function placeMarker(lat,lng){
-  const wrap = document.getElementById('map-wrap');
-  const svg  = document.getElementById('israel-svg');
-  const wr   = wrap.getBoundingClientRect();
-  const sr   = svg.getBoundingClientRect();
-
-  // SVG renders with "meet" — actual rendered rect is sr
-  const scaleX = sr.width  / VBW;
-  const scaleY = sr.height / VBH;
-  // Because preserveAspectRatio=meet, both axes use the same scale
-  const scale  = Math.min(scaleX, scaleY);
-
-  const rendW = VBW * scale;
-  const rendH = VBH * scale;
-  // Offset of rendered SVG within the SVG element rect
-  const offX  = (sr.width  - rendW) / 2;
-  const offY  = (sr.height - rendH) / 2;
-
-  const {x:svgX, y:svgY} = toSVG(lat,lng);
-
-  // pixel position within map-wrap
-  const px = (sr.left - wr.left) + offX + svgX * scale;
-  const py = (sr.top  - wr.top)  + offY + svgY * scale;
-
-  const m = document.getElementById('city-marker');
-  m.style.left    = px + 'px';
-  m.style.top     = py + 'px';
-  m.style.display = 'block';
-}
-
-// ═══ CITIES ═══════════════════════════════════
+// ═══ DATA ════════════════════════════════
 const T1=[
   {name:"תל אביב",       lat:32.0853,lng:34.7818},
   {name:"ירושלים",       lat:31.7683,lng:35.2137},
@@ -397,20 +318,24 @@ const LVLS={
   expert:{name:"אלוף",  em:"🏆", cities:[...T1,...T2,...T3,...T4]},
 };
 
-// ═══ STATE ════════════════════════════════════
+// ═══ STATE ═══════════════════════════════
+let map=null, marker=null;
 let level,pool,used=[],score,qNum,correctIdx,locked;
 const TOTAL=10;
 const OKP=["כל הכבוד!","נכון! ⭐","מצוין! 🌟","אדיר! 💪","מושלם! 🏆","יפה מאוד!"];
-const NOP=["לא נכון...","נסה שוב בפעם הבאה","כמעט!","אופס!"];
+const NOP=["לא נכון...","נסה שוב","כמעט!","אופס!"];
 
-// ═══ SCREENS ══════════════════════════════════
+// ═══ SCREENS ══════════════════════════════
 function show(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
 }
-function goHome(){ show('screen-start'); }
+function goHome(){
+  show('screen-start');
+  if(map){map.remove();map=null;}
+}
 
-// ═══ START ════════════════════════════════════
+// ═══ START ════════════════════════════════
 function startGame(lvl){
   level=lvl;
   const cfg=LVLS[lvl];
@@ -419,11 +344,34 @@ function startGame(lvl){
   document.getElementById('levelTag').textContent=cfg.em+' '+cfg.name;
   document.getElementById('scoreVal').textContent='0';
   show('screen-game');
-  // small delay to let layout settle before measuring SVG
-  requestAnimationFrame(()=>requestAnimationFrame(nextQ));
+  requestAnimationFrame(()=>requestAnimationFrame(initMap));
 }
 
-// ═══ QUESTION ════════════════════════════════
+function initMap(){
+  if(map){map.remove();map=null;}
+  if(marker){marker=null;}
+
+  map=L.map('map',{
+    center:[31.5,35.0], zoom:7,
+    zoomControl:false, dragging:false,
+    touchZoom:false, doubleClickZoom:false,
+    scrollWheelZoom:false, boxZoom:false, keyboard:false,
+  });
+
+  // ESRI World Imagery — satellite tiles, free, no API key
+  L.tileLayer(
+    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    {attribution:'Tiles © Esri', maxZoom:17}
+  ).addTo(map);
+
+  // Force correct sizing after browser paint
+  requestAnimationFrame(()=>{
+    map.invalidateSize();
+    nextQ();
+  });
+}
+
+// ═══ QUESTION ════════════════════════════
 function nextQ(){
   if(qNum>=TOTAL){endGame();return;}
   if(used.length>=pool.length) used=[];
@@ -431,7 +379,6 @@ function nextQ(){
   let ci;
   do{ ci=Math.floor(Math.random()*pool.length); }while(used.includes(ci));
   used.push(ci);
-
   const correct=pool[ci];
 
   const wrongs=[];
@@ -450,12 +397,21 @@ function nextQ(){
 
   for(let i=0;i<3;i++){
     const b=document.getElementById('btn'+i);
-    b.textContent=opts[i];
-    b.className='abtn';
-    b.disabled=false;
+    b.textContent=opts[i]; b.className='abtn'; b.disabled=false;
   }
 
-  placeMarker(correct.lat, correct.lng);
+  if(marker){map.removeLayer(marker);marker=null;}
+
+  const icon=L.divIcon({
+    className:'',
+    html:`<div class="mwrap">
+      <div class="pmr"></div><div class="pmr r2"></div><div class="pmr r3"></div>
+      <div class="pmd"></div>
+    </div>`,
+    iconSize:[50,50], iconAnchor:[25,25],
+  });
+  marker=L.marker([correct.lat,correct.lng],{icon}).addTo(map);
+
   locked=false;
 }
 
@@ -467,7 +423,7 @@ function checkAnswer(idx){
   const ok=idx===correctIdx;
   document.getElementById('btn'+idx).classList.add(ok?'ok':'no');
   if(!ok) document.getElementById('btn'+correctIdx).classList.add('ok');
-  if(ok){ score++; document.getElementById('scoreVal').textContent=score; }
+  if(ok){score++;document.getElementById('scoreVal').textContent=score;}
 
   const ov=document.getElementById('fbo');
   document.getElementById('fbe').textContent=ok
@@ -479,10 +435,10 @@ function checkAnswer(idx){
   ov.classList.add('show');
 
   if(ok&&score%3===0) confetti();
-  setTimeout(()=>{ ov.classList.remove('show'); setTimeout(nextQ,180); },1400);
+  setTimeout(()=>{ov.classList.remove('show');setTimeout(nextQ,180);},1400);
 }
 
-// ═══ END ══════════════════════════════════════
+// ═══ END ══════════════════════════════════
 function endGame(){
   const p=score/TOTAL;
   let ico,ttl,str,msg;
@@ -499,9 +455,9 @@ function endGame(){
   if(p>=.8) confetti();
   show('screen-end');
 }
-function restartSame(){ startGame(level); }
+function restartSame(){startGame(level);}
 
-// ═══ UTILS ════════════════════════════════════
+// ═══ UTILS ════════════════════════════════
 function shuffle(a){
   for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}
   return a;
