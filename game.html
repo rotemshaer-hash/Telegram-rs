@@ -267,48 +267,67 @@ function _drawArea() {
   ctx.clearRect(0, 0, oc.width, oc.height);
 
   const {cx, cy, baseR} = _markerXY;
-
   const t = Date.now() / 1000;
-  const p = 0.5 + 0.5 * Math.sin(t * Math.PI * 1.4);  // 0→1, ~0.7 Hz
 
-  // Seed from city position so each city gets a unique but stable polygon shape
-  const seed = (cx * 0.137 + cy * 0.271) % 1;
-  const N = 14;
+  // Sharp blink: 0.65s ON / 0.45s OFF
+  const on = (t % 1.1) < 0.65;
 
-  function buildPoly() {
+  // Stable seed from city pixel position
+  const s = cx * 0.137 + cy * 0.271;
+
+  // Per-city ellipse orientation & elongation (no two cities look the same)
+  const rotAngle = (s * 3.7) % Math.PI;
+  const elongX   = 0.82 + 0.42 * ((s * 5.1) % 1);
+  const elongY   = 0.82 + 0.42 * ((s * 7.3) % 1);
+
+  // 3-5 organic lobes at random angles — makes shape look like a real boundary
+  const numLobes = 3 + Math.floor((s * 4.1) % 3);
+  const lobes = [];
+  for (let b = 0; b < numLobes; b++) {
+    lobes.push({
+      angle:  (s * 6.1 + b * 2.4) % (Math.PI * 2),
+      height: 0.18 + 0.24 * ((s * 11.3 + b * 5.7) % 1),
+      width:  0.22 + 0.32 * ((s * 13.7 + b * 4.1) % 1),
+    });
+  }
+
+  const N = 72;  // smooth boundary
+  const cosR = Math.cos(rotAngle), sinR = Math.sin(rotAngle);
+
+  function poly() {
     ctx.beginPath();
     for (let i = 0; i <= N; i++) {
-      const angle = (i / N) * Math.PI * 2 - Math.PI / 2;
-      const noise = 0.70 + 0.34 * Math.sin(seed * 47 + i * 2.1);
-      const r = baseR * noise;
-      const x = cx + Math.cos(angle) * r;
-      const y = cy + Math.sin(angle) * r;
+      const a = (i / N) * Math.PI * 2;
+      let r = baseR;
+      // Add each lobe contribution
+      for (const lobe of lobes) {
+        const diff = Math.abs(((a - lobe.angle + Math.PI * 3) % (Math.PI * 2)) - Math.PI);
+        if (diff < lobe.width * Math.PI) {
+          const factor = Math.cos((diff / (lobe.width * Math.PI)) * Math.PI / 2) ** 2;
+          r += baseR * lobe.height * factor;
+        }
+      }
+      // Fine boundary roughness (two frequencies)
+      r *= 1 + 0.04 * Math.sin(s * 37 + i * 5.1) + 0.025 * Math.sin(s * 71 + i * 9.3);
+      // Apply elongation then rotation
+      const lx = Math.cos(a) * r * elongX;
+      const ly = Math.sin(a) * r * elongY;
+      const x = cx + lx * cosR - ly * sinR;
+      const y = cy + lx * sinR + ly * cosR;
       i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
     }
     ctx.closePath();
   }
 
-  // Outer glow halo
-  const grd = ctx.createRadialGradient(cx, cy, baseR * 0.5, cx, cy, baseR * 2.1);
-  grd.addColorStop(0, `rgba(255,190,0,${0.28 * p})`);
-  grd.addColorStop(1, 'rgba(255,100,0,0)');
-  ctx.beginPath();
-  ctx.arc(cx, cy, baseR * 2.1, 0, Math.PI * 2);
-  ctx.fillStyle = grd;
-  ctx.fill();
-
-  // Filled area — pulses opacity
-  buildPoly();
-  ctx.fillStyle = `rgba(255,210,20,${0.12 + 0.22 * p})`;
-  ctx.fill();
-
-  // Dashed boundary line
-  buildPoly();
-  ctx.strokeStyle = `rgba(255,230,0,${0.55 + 0.45 * p})`;
-  ctx.lineWidth = 2.5;
-  ctx.setLineDash([6, 4]);
-  ctx.stroke();
-  ctx.setLineDash([]);
+  if (on) {
+    poly();
+    ctx.fillStyle = 'rgba(255,200,0,0.32)';
+    ctx.fill();
+    poly();
+    ctx.strokeStyle = 'rgba(200,30,0,0.95)';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+  }
 
   _animRaf = requestAnimationFrame(_drawArea);
 }
