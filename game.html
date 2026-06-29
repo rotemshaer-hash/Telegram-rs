@@ -56,7 +56,7 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
 /* ── MAP ── */
 #map-wrap{
   flex:1;width:100%;position:relative;overflow:hidden;
-  background:#0a1a0a;min-height:0;
+  background:#f2efe9;min-height:0;
 }
 #map-canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 
@@ -230,39 +230,75 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
 
 <script>
 // ════════════════════════════════════════
-//  OFFLINE CANVAS MAP — no internet needed
+//  HYBRID MAP: CartoDB Voyager tiles + Canvas fallback
 // ════════════════════════════════════════
 
-// Geographic bounds rendered on the canvas (Israel + surroundings)
-const MB = { minLat: 28.8, maxLat: 34.2, minLng: 33.4, maxLng: 37.2 };
+const ZOOM = 7;
+const TS   = 256;
 
-function mY(lat) {
+function tileXY(lat, lng) {
+  const n = 1 << ZOOM;
+  const x = (lng + 180) / 360 * n;
   const r = lat * Math.PI / 180;
-  return Math.log(Math.tan(Math.PI / 4 + r / 2));
+  const y = (1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * n;
+  return { x, y };
 }
-const MB_TOP = mY(MB.maxLat);
-const MB_BOT = mY(MB.minLat);
+
+const TC = tileXY(31.5, 35.0);  // map center
 
 function geo2px(lat, lng, W, H) {
-  const x = (lng - MB.minLng) / (MB.maxLng - MB.minLng) * W;
-  const y = (1 - (mY(lat) - MB_BOT) / (MB_TOP - MB_BOT)) * H;
-  return [x, y];
+  const p = tileXY(lat, lng);
+  return [
+    Math.round(W / 2 + (p.x - TC.x) * TS),
+    Math.round(H / 2 + (p.y - TC.y) * TS),
+  ];
 }
 
-let mapReady = false;
+let mapBuilt = false;
 
 function buildMap() {
-  if (mapReady) return;
-  mapReady = true;
+  if (mapBuilt) return;
+  mapBuilt = true;
   const wrap = document.getElementById('map-wrap');
   const W = wrap.clientWidth  || window.innerWidth;
   const H = wrap.clientHeight || Math.max(window.innerHeight - 200, 300);
+
+  // Canvas fallback — always visible (z-index:1)
   const canvas = document.createElement('canvas');
   canvas.id = 'map-canvas';
-  canvas.width  = W;
-  canvas.height = H;
+  canvas.width = W; canvas.height = H;
+  canvas.style.cssText = 'position:absolute;inset:0;display:block;z-index:1';
   wrap.insertBefore(canvas, document.getElementById('city-marker'));
-  drawIsraelMap(canvas.getContext('2d'), W, H);
+  drawFallbackMap(canvas.getContext('2d'), W, H);
+
+  // CartoDB Voyager tile layer — fades in over canvas when tiles load (z-index:2)
+  const tLayer = document.createElement('div');
+  tLayer.style.cssText = 'position:absolute;inset:0;overflow:hidden;z-index:2;opacity:0;transition:opacity .6s';
+  wrap.insertBefore(tLayer, document.getElementById('city-marker'));
+
+  const tx0 = Math.floor(TC.x - W / 2 / TS) - 1;
+  const ty0 = Math.floor(TC.y - H / 2 / TS) - 1;
+  const tx1 = Math.ceil(TC.x + W / 2 / TS) + 1;
+  const ty1 = Math.ceil(TC.y + H / 2 / TS) + 1;
+  const total = (tx1 - tx0 + 1) * (ty1 - ty0 + 1);
+  let loaded = 0, shown = false;
+
+  const frag = document.createDocumentFragment();
+  for (let ty = ty0; ty <= ty1; ty++) {
+    for (let tx = tx0; tx <= tx1; tx++) {
+      const img = document.createElement('img');
+      const s = 'abcd'[(tx + ty) & 3];
+      img.src = `https://${s}.basemaps.cartocdn.com/rastertiles/voyager/${ZOOM}/${tx}/${ty}.png`;
+      img.style.cssText = `position:absolute;width:${TS}px;height:${TS}px;` +
+        `left:${Math.round(W / 2 + (tx - TC.x) * TS)}px;` +
+        `top:${Math.round(H / 2 + (ty - TC.y) * TS)}px`;
+      img.draggable = false;
+      img.onload = () => { if (!shown && ++loaded >= total * 0.35) { shown = true; tLayer.style.opacity = '1'; } };
+      img.onerror = () => img.remove();
+      frag.appendChild(img);
+    }
+  }
+  tLayer.appendChild(frag);
 }
 
 function placeMarker(lat, lng) {
@@ -311,7 +347,7 @@ const KINNERET = [
   [32.92,35.54],
 ];
 
-function drawIsraelMap(ctx, W, H) {
+function drawFallbackMap(ctx, W, H) {
   function pt(lat, lng) { return geo2px(lat, lng, W, H); }
 
   function fillPoly(pts, style) {
@@ -339,14 +375,14 @@ function drawIsraelMap(ctx, W, H) {
 
   // ── 2. Mediterranean Sea (light blue)
   {
-    const [s0x,s0y] = pt(MB.maxLat, MB.minLng);
+    const [s0x,s0y] = pt(34.2, 33.4);
     const [s1x,s1y] = pt(31.0, 35.0);
     const seaG = ctx.createLinearGradient(s0x, s0y, s1x, s1y);
     seaG.addColorStop(0, '#88c0d5');
     seaG.addColorStop(1, '#aad3df');
     ctx.beginPath();
     ctx.moveTo(s0x, s0y);
-    ctx.lineTo(...pt(MB.maxLat, 35.20));
+    ctx.lineTo(...pt(34.2, 35.20));
     ctx.lineTo(...pt(33.09, 35.10));
     [
       [33.00,35.05],[32.83,34.98],[32.60,34.93],
@@ -354,7 +390,7 @@ function drawIsraelMap(ctx, W, H) {
       [31.90,34.65],[31.65,34.50],[31.50,34.35],
       [31.30,34.27],[31.15,34.26],[31.05,34.23],
     ].forEach(c => ctx.lineTo(...pt(...c)));
-    ctx.lineTo(...pt(MB.minLat, MB.minLng));
+    ctx.lineTo(...pt(28.8, 33.4));
     ctx.closePath();
     ctx.fillStyle = seaG;
     ctx.fill();
