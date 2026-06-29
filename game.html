@@ -127,7 +127,7 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
 }
 
 /* ── MAP ── */
-#map-wrap{flex:1;width:100%;position:relative;overflow:hidden;background:#071428;min-height:0}
+#map-wrap{flex:1;width:100%;position:relative;overflow:hidden;background:#000;min-height:0}
 
 /* ── ANSWERS ── */
 .apan{
@@ -332,6 +332,7 @@ function buildMap() {
   wrap.style.backgroundSize  = 'contain';
   wrap.style.backgroundRepeat   = 'no-repeat';
   wrap.style.backgroundPosition = 'center';
+  wrap.style.backgroundColor = '#000';
 
   // Geo-area marker canvas (on top of map)
   const oc = document.createElement('canvas');
