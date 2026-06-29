@@ -58,7 +58,7 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
   flex:1;width:100%;position:relative;overflow:hidden;
   background:#0a1a0a;min-height:0;
 }
-.tile{position:absolute;display:block;-webkit-user-drag:none;pointer-events:none}
+#map-canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 
 /* ── MARKER ── */
 #city-marker{
@@ -230,81 +230,205 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
 
 <script>
 // ════════════════════════════════════════
-//  SATELLITE TILE MAP  (no external libs)
+//  OFFLINE CANVAS MAP — no internet needed
 // ════════════════════════════════════════
-const ZOOM       = 7;
-const MAP_LAT    = 31.5;
-const MAP_LNG    = 35.0;
-const TILE_SIZE  = 256;
-// Google Maps satellite tiles — standard z/x/y order, mt0-mt3 subdomains
-const TILE_URL = (z, tx, ty) => {
-  const s = (tx + ty) % 4;
-  return `https://mt${s}.google.com/vt/lyrs=s&x=${tx}&y=${ty}&z=${z}`;
-};
+
+// Geographic bounds rendered on the canvas (Israel + surroundings)
+const MB = { minLat: 28.8, maxLat: 34.2, minLng: 33.4, maxLng: 37.2 };
+
+function mY(lat) {
+  const r = lat * Math.PI / 180;
+  return Math.log(Math.tan(Math.PI / 4 + r / 2));
+}
+const MB_TOP = mY(MB.maxLat);
+const MB_BOT = mY(MB.minLat);
+
+function geo2px(lat, lng, W, H) {
+  const x = (lng - MB.minLng) / (MB.maxLng - MB.minLng) * W;
+  const y = (1 - (mY(lat) - MB_BOT) / (MB_TOP - MB_BOT)) * H;
+  return [x, y];
+}
 
 let mapReady = false;
-
-// Web-Mercator: returns fractional tile coords for any lat/lng at given zoom
-function worldXY(lat, lng) {
-  const n   = 1 << ZOOM;   // 2^ZOOM
-  const x   = (lng + 180) / 360 * n;
-  const r   = lat * Math.PI / 180;
-  const y   = (1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * n;
-  return {x, y};
-}
 
 function buildMap() {
   if (mapReady) return;
   mapReady = true;
-
   const wrap = document.getElementById('map-wrap');
   const W = wrap.clientWidth  || window.innerWidth;
   const H = wrap.clientHeight || Math.max(window.innerHeight - 200, 300);
-  const TS = TILE_SIZE;
-
-  const c = worldXY(MAP_LAT, MAP_LNG);  // center in tile coords
-
-  // Range of tiles needed to fill viewport + 1 tile padding each side
-  const tx0 = Math.floor(c.x - W / 2 / TS) - 1;
-  const ty0 = Math.floor(c.y - H / 2 / TS) - 1;
-  const tx1 = Math.ceil (c.x + W / 2 / TS) + 1;
-  const ty1 = Math.ceil (c.y + H / 2 / TS) + 1;
-
-  const frag = document.createDocumentFragment();
-  for (let ty = ty0; ty <= ty1; ty++) {
-    for (let tx = tx0; tx <= tx1; tx++) {
-      const img = document.createElement('img');
-      img.className = 'tile';
-      img.src       = TILE_URL(ZOOM, tx, ty);
-      img.draggable = false;
-      img.loading   = 'eager';
-      // Pixel position: canvas centre + offset from centre tile
-      const left = Math.round(W / 2 + (tx - c.x) * TS);
-      const top  = Math.round(H / 2 + (ty - c.y) * TS);
-      img.style.cssText = `left:${left}px;top:${top}px;width:${TS}px;height:${TS}px`;
-      frag.appendChild(img);
-    }
-  }
-  // Insert before the marker so marker stays on top
-  wrap.insertBefore(frag, document.getElementById('city-marker'));
+  const canvas = document.createElement('canvas');
+  canvas.id = 'map-canvas';
+  canvas.width  = W;
+  canvas.height = H;
+  wrap.insertBefore(canvas, document.getElementById('city-marker'));
+  drawIsraelMap(canvas.getContext('2d'), W, H);
 }
 
 function placeMarker(lat, lng) {
   const wrap = document.getElementById('map-wrap');
   const W = wrap.clientWidth  || window.innerWidth;
   const H = wrap.clientHeight || Math.max(window.innerHeight - 200, 300);
-  const TS = TILE_SIZE;
-
-  const c = worldXY(MAP_LAT, MAP_LNG);
-  const p = worldXY(lat, lng);
-
-  const px = Math.round(W / 2 + (p.x - c.x) * TS);
-  const py = Math.round(H / 2 + (p.y - c.y) * TS);
-
+  const [px, py] = geo2px(lat, lng, W, H);
   const m = document.getElementById('city-marker');
   m.style.left    = px + 'px';
   m.style.top     = py + 'px';
   m.style.display = 'block';
+}
+
+// Israel border polygon (clockwise from Rosh HaNikra)
+const ISRAEL_POLY = [
+  [33.09,35.10],[33.07,35.15],[33.07,35.20],[33.11,35.30],
+  [33.12,35.42],[33.07,35.55],[33.08,35.68],
+  // Golan east (Syria border)
+  [32.92,35.78],[32.72,35.78],
+  // Jordan border south
+  [32.65,35.65],[32.50,35.57],[32.35,35.55],[32.10,35.55],
+  [31.90,35.55],[31.75,35.57],[31.55,35.57],[31.48,35.59],
+  // Arava south to Eilat
+  [31.20,35.43],[31.00,35.35],[30.75,35.18],[30.50,35.08],
+  [30.20,35.00],[29.80,34.98],[29.62,34.98],[29.55,34.95],
+  // Egyptian border west
+  [29.48,34.87],[29.50,34.70],[29.52,34.55],[29.62,34.35],
+  [29.80,34.27],[30.00,34.23],[30.30,34.25],[30.65,34.25],
+  [31.05,34.23],
+  // Mediterranean coast north
+  [31.15,34.26],[31.30,34.27],[31.50,34.35],[31.65,34.50],
+  [31.80,34.60],[31.95,34.68],[32.05,34.74],[32.20,34.84],
+  [32.40,34.87],[32.60,34.93],[32.83,34.98],[32.95,35.05],
+  [33.00,35.05],[33.09,35.10],
+];
+
+const DEAD_SEA = [
+  [31.75,35.47],[31.68,35.55],[31.55,35.58],[31.40,35.56],
+  [31.25,35.52],[31.08,35.43],[31.05,35.38],[31.10,35.34],
+  [31.25,35.42],[31.45,35.50],[31.62,35.53],[31.75,35.47],
+];
+
+const KINNERET = [
+  [32.92,35.54],[32.87,35.61],[32.80,35.65],[32.73,35.63],
+  [32.70,35.57],[32.73,35.51],[32.80,35.49],[32.87,35.50],
+  [32.92,35.54],
+];
+
+function drawIsraelMap(ctx, W, H) {
+  function pt(lat, lng) { return geo2px(lat, lng, W, H); }
+
+  function fillPoly(pts, style) {
+    ctx.beginPath();
+    pts.forEach(([lat,lng],i) => { const [x,y]=pt(lat,lng); i?ctx.lineTo(x,y):ctx.moveTo(x,y); });
+    ctx.closePath();
+    ctx.fillStyle = style;
+    ctx.fill();
+  }
+
+  // ── 1. Background: surrounding desert (Jordan, Sinai, Lebanon inland)
+  const bgG = ctx.createLinearGradient(0, 0, W, H);
+  bgG.addColorStop(0,   '#7a6a4e');
+  bgG.addColorStop(0.5, '#9e8560');
+  bgG.addColorStop(1,   '#b89a6a');
+  ctx.fillStyle = bgG;
+  ctx.fillRect(0, 0, W, H);
+
+  // ── 2. Mediterranean Sea (everything west of Israeli coastline)
+  {
+    const seaG = ctx.createLinearGradient(0, 0, W * 0.4, H);
+    seaG.addColorStop(0, '#0b3d5e');
+    seaG.addColorStop(1, '#1a6b8a');
+    ctx.beginPath();
+    ctx.moveTo(...pt(MB.maxLat, MB.minLng));       // NW corner
+    ctx.lineTo(...pt(MB.maxLat, 35.15));            // across north (Lebanon coast)
+    ctx.lineTo(...pt(33.09, 35.10));                // Rosh HaNikra
+    [
+      [33.00,35.05],[32.83,34.98],[32.60,34.93],
+      [32.40,34.87],[32.20,34.84],[32.05,34.74],
+      [31.90,34.65],[31.65,34.50],[31.50,34.35],
+      [31.30,34.27],[31.15,34.26],[31.05,34.23],
+    ].forEach(c => ctx.lineTo(...pt(...c)));
+    ctx.lineTo(...pt(MB.minLat, MB.minLng));        // SW corner
+    ctx.closePath();
+    ctx.fillStyle = seaG;
+    ctx.fill();
+  }
+
+  // ── 3. Gulf of Eilat (Red Sea sliver at south)
+  fillPoly([
+    [29.55,34.95],[29.47,34.87],[29.30,34.77],
+    [29.00,34.82],[28.85,34.92],[28.80,35.08],
+    [29.00,35.18],[29.30,35.15],[29.55,34.95],
+  ], '#10607e');
+
+  // ── 4. Israel land — north-green to south-sand gradient
+  {
+    const [ix0,iy0] = pt(33.5, 35.5);
+    const [ix1,iy1] = pt(29.4, 35.5);
+    const landG = ctx.createLinearGradient(ix0, iy0, ix1, iy1);
+    landG.addColorStop(0,    '#2a5820');
+    landG.addColorStop(0.18, '#3d7230');
+    landG.addColorStop(0.38, '#5a8038');
+    landG.addColorStop(0.55, '#7a8848');
+    landG.addColorStop(0.70, '#a89050');
+    landG.addColorStop(0.85, '#c4a85a');
+    landG.addColorStop(1,    '#d4b870');
+    fillPoly(ISRAEL_POLY, landG);
+  }
+
+  // ── 5. Jordan Valley / Arava (darker brown strip on east side)
+  fillPoly([
+    [32.70,35.57],[32.55,35.54],[32.35,35.53],[32.10,35.54],
+    [31.90,35.53],[31.70,35.54],[31.48,35.57],[31.20,35.42],
+    [31.00,35.33],[30.75,35.16],[30.50,35.06],[30.20,34.98],
+    [29.80,34.96],[29.62,34.96],
+    [29.63,34.98],[29.80,34.98],[30.20,35.00],[30.50,35.08],
+    [30.75,35.18],[31.00,35.35],[31.22,35.45],[31.50,35.57],
+    [31.72,35.57],[31.92,35.55],[32.12,35.55],[32.37,35.55],
+    [32.55,35.57],[32.70,35.59],[32.70,35.57],
+  ], 'rgba(80,55,20,0.35)');
+
+  // ── 6. Dead Sea
+  fillPoly(DEAD_SEA, '#133a52');
+
+  // ── 7. Sea of Galilee (Kinneret)
+  fillPoly(KINNERET, '#1a6a96');
+
+  // ── 8. Lebanon highland tint (NW, darker green)
+  fillPoly([
+    [34.2,35.15],[33.09,35.10],[33.07,35.20],[33.11,35.42],
+    [33.07,35.55],[33.08,35.68],[33.25,35.68],[33.50,35.55],
+    [33.70,35.45],[33.90,35.40],[34.2,35.40],
+  ], 'rgba(40,80,30,0.30)');
+
+  // ── 9. Golan/Syria tint (darker brown)
+  fillPoly([
+    [33.08,35.68],[32.92,35.78],[32.72,35.78],[32.72,36.00],
+    [33.00,36.00],[33.25,35.90],[33.40,35.80],[33.08,35.68],
+  ], 'rgba(90,65,25,0.35)');
+
+  // ── 10. Subtle terrain noise (horizontal bands for depth)
+  for (let i = 0; i < 6; i++) {
+    const y = H * (i + 0.5) / 6;
+    const rowG = ctx.createLinearGradient(0, y - 4, 0, y + 4);
+    rowG.addColorStop(0, 'rgba(0,0,0,0)');
+    rowG.addColorStop(0.5, 'rgba(0,0,0,0.04)');
+    rowG.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = rowG;
+    ctx.fillRect(0, y - 4, W, 8);
+  }
+
+  // ── 11. Thin border outline for Israel
+  ctx.beginPath();
+  ISRAEL_POLY.forEach(([lat,lng],i) => { const [x,y]=pt(lat,lng); i?ctx.lineTo(x,y):ctx.moveTo(x,y); });
+  ctx.closePath();
+  ctx.strokeStyle = 'rgba(255,255,200,0.22)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // ── 12. Edge vignette for depth
+  const vig = ctx.createRadialGradient(W/2, H/2, Math.min(W,H)*0.25, W/2, H/2, Math.max(W,H)*0.75);
+  vig.addColorStop(0, 'rgba(0,0,0,0)');
+  vig.addColorStop(1, 'rgba(0,0,0,0.38)');
+  ctx.fillStyle = vig;
+  ctx.fillRect(0, 0, W, H);
 }
 
 // ════════════════════════════════════════
