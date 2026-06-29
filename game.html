@@ -203,8 +203,8 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
 // ════════════════════════════════════════
 
 // Geographic bounds of this relief image
-const IMG_MIN_LAT = 29.40, IMG_MAX_LAT = 33.30;
-const IMG_MIN_LNG = 33.40, IMG_MAX_LNG = 36.80;
+const IMG_MIN_LAT = 29.00, IMG_MAX_LAT = 35.50;
+const IMG_MIN_LNG = 34.00, IMG_MAX_LNG = 36.60;
 
 function _mY(lat) {
   const r = lat * Math.PI / 180;
@@ -254,7 +254,7 @@ function placeMarker(lat, lng, radiusKm) {
   const cy = _mapRect.offsetY + py_pct / 100 * _mapRect.dispH;
   // Convert km to pixels using map scale
   const pxPerKm = _mapRect.dispH / (IMG_MAX_LAT - IMG_MIN_LAT) / 111;
-  const baseR = Math.max(6, pxPerKm * (radiusKm || 4));
+  const baseR = Math.max(12, pxPerKm * (radiusKm || 8));
   _markerXY = {cx, cy, baseR};
   if (_animRaf) { cancelAnimationFrame(_animRaf); _animRaf = null; }
   _drawArea();
@@ -286,8 +286,8 @@ function _drawArea() {
   for (let b = 0; b < numLobes; b++) {
     lobes.push({
       angle:  (s * 6.1 + b * 2.4) % (Math.PI * 2),
-      height: 0.18 + 0.24 * ((s * 11.3 + b * 5.7) % 1),
-      width:  0.22 + 0.32 * ((s * 13.7 + b * 4.1) % 1),
+      height: 0.28 + 0.38 * ((s * 11.3 + b * 5.7) % 1),
+      width:  0.25 + 0.38 * ((s * 13.7 + b * 4.1) % 1),
     });
   }
 
@@ -321,11 +321,11 @@ function _drawArea() {
 
   if (on) {
     poly();
-    ctx.fillStyle = 'rgba(255,200,0,0.32)';
+    ctx.fillStyle = 'rgba(255,210,0,0.50)';
     ctx.fill();
     poly();
-    ctx.strokeStyle = 'rgba(200,30,0,0.95)';
-    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(200,20,0,0.97)';
+    ctx.lineWidth = Math.max(2, baseR * 0.18);
     ctx.stroke();
   }
 
@@ -480,9 +480,9 @@ function nextQ(){
     b.textContent=opts[i]; b.className='abtn'; b.disabled=false;
   }
 
-  const _r = T1.some(c=>c.name===correct.name)?5:
-             T2.some(c=>c.name===correct.name)?3.5:
-             T3.some(c=>c.name===correct.name)?2.2:1.4;
+  const _r = T1.some(c=>c.name===correct.name)?12:
+             T2.some(c=>c.name===correct.name)?8:
+             T3.some(c=>c.name===correct.name)?5:3;
   placeMarker(correct.lat, correct.lng, _r);
   locked=false;
 }
