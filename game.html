@@ -316,119 +316,200 @@ function drawIsraelMap(ctx, W, H) {
 
   function fillPoly(pts, style) {
     ctx.beginPath();
-    pts.forEach(([lat,lng],i) => { const [x,y]=pt(lat,lng); i?ctx.lineTo(x,y):ctx.moveTo(x,y); });
+    pts.forEach(([la,ln],i) => { const [x,y]=pt(la,ln); i?ctx.lineTo(x,y):ctx.moveTo(x,y); });
     ctx.closePath();
     ctx.fillStyle = style;
     ctx.fill();
   }
 
-  // ── 1. Background: surrounding desert (Jordan, Sinai, Lebanon inland)
-  const bgG = ctx.createLinearGradient(0, 0, W, H);
-  bgG.addColorStop(0,   '#7a6a4e');
-  bgG.addColorStop(0.5, '#9e8560');
-  bgG.addColorStop(1,   '#b89a6a');
-  ctx.fillStyle = bgG;
+  function road(pts, outerC, innerC, ow, iw) {
+    const hw = Math.max(1.5, W / 180);
+    ctx.lineJoin='round'; ctx.lineCap='round'; ctx.setLineDash([]);
+    ctx.beginPath();
+    pts.forEach(([la,ln],i) => { const [x,y]=pt(la,ln); i?ctx.lineTo(x,y):ctx.moveTo(x,y); });
+    ctx.strokeStyle=outerC; ctx.lineWidth=ow*hw; ctx.stroke();
+    ctx.beginPath();
+    pts.forEach(([la,ln],i) => { const [x,y]=pt(la,ln); i?ctx.lineTo(x,y):ctx.moveTo(x,y); });
+    ctx.strokeStyle=innerC; ctx.lineWidth=iw*hw; ctx.stroke();
+  }
+
+  // ── 1. Background — Jordan, Egypt, Sinai, Syria (off-white tan, Google Maps style)
+  ctx.fillStyle = '#e8e0cc';
   ctx.fillRect(0, 0, W, H);
 
-  // ── 2. Mediterranean Sea (everything west of Israeli coastline)
+  // ── 2. Mediterranean Sea (light blue)
   {
-    const seaG = ctx.createLinearGradient(0, 0, W * 0.4, H);
-    seaG.addColorStop(0, '#0b3d5e');
-    seaG.addColorStop(1, '#1a6b8a');
+    const [s0x,s0y] = pt(MB.maxLat, MB.minLng);
+    const [s1x,s1y] = pt(31.0, 35.0);
+    const seaG = ctx.createLinearGradient(s0x, s0y, s1x, s1y);
+    seaG.addColorStop(0, '#88c0d5');
+    seaG.addColorStop(1, '#aad3df');
     ctx.beginPath();
-    ctx.moveTo(...pt(MB.maxLat, MB.minLng));       // NW corner
-    ctx.lineTo(...pt(MB.maxLat, 35.15));            // across north (Lebanon coast)
-    ctx.lineTo(...pt(33.09, 35.10));                // Rosh HaNikra
+    ctx.moveTo(s0x, s0y);
+    ctx.lineTo(...pt(MB.maxLat, 35.20));
+    ctx.lineTo(...pt(33.09, 35.10));
     [
       [33.00,35.05],[32.83,34.98],[32.60,34.93],
       [32.40,34.87],[32.20,34.84],[32.05,34.74],
       [31.90,34.65],[31.65,34.50],[31.50,34.35],
       [31.30,34.27],[31.15,34.26],[31.05,34.23],
     ].forEach(c => ctx.lineTo(...pt(...c)));
-    ctx.lineTo(...pt(MB.minLat, MB.minLng));        // SW corner
+    ctx.lineTo(...pt(MB.minLat, MB.minLng));
     ctx.closePath();
     ctx.fillStyle = seaG;
     ctx.fill();
   }
 
-  // ── 3. Gulf of Eilat (Red Sea sliver at south)
+  // ── 3. Gulf of Eilat
   fillPoly([
-    [29.55,34.95],[29.47,34.87],[29.30,34.77],
-    [29.00,34.82],[28.85,34.92],[28.80,35.08],
-    [29.00,35.18],[29.30,35.15],[29.55,34.95],
-  ], '#10607e');
+    [29.55,34.95],[29.47,34.87],[29.25,34.77],
+    [28.92,34.83],[28.80,35.02],[28.85,35.15],
+    [29.20,35.15],[29.55,34.95],
+  ], '#aad3df');
 
-  // ── 4. Israel land — north-green to south-sand gradient
-  {
-    const [ix0,iy0] = pt(33.5, 35.5);
-    const [ix1,iy1] = pt(29.4, 35.5);
-    const landG = ctx.createLinearGradient(ix0, iy0, ix1, iy1);
-    landG.addColorStop(0,    '#2a5820');
-    landG.addColorStop(0.18, '#3d7230');
-    landG.addColorStop(0.38, '#5a8038');
-    landG.addColorStop(0.55, '#7a8848');
-    landG.addColorStop(0.70, '#a89050');
-    landG.addColorStop(0.85, '#c4a85a');
-    landG.addColorStop(1,    '#d4b870');
-    fillPoly(ISRAEL_POLY, landG);
-  }
+  // ── 4. Israel land base (off-white, Google Maps terrain)
+  fillPoly(ISRAEL_POLY, '#f5f0e8');
 
-  // ── 5. Jordan Valley / Arava (darker brown strip on east side)
+  // ── 5. Northern Galilee forests (muted green)
   fillPoly([
-    [32.70,35.57],[32.55,35.54],[32.35,35.53],[32.10,35.54],
-    [31.90,35.53],[31.70,35.54],[31.48,35.57],[31.20,35.42],
-    [31.00,35.33],[30.75,35.16],[30.50,35.06],[30.20,34.98],
-    [29.80,34.96],[29.62,34.96],
-    [29.63,34.98],[29.80,34.98],[30.20,35.00],[30.50,35.08],
-    [30.75,35.18],[31.00,35.35],[31.22,35.45],[31.50,35.57],
-    [31.72,35.57],[31.92,35.55],[32.12,35.55],[32.37,35.55],
-    [32.55,35.57],[32.70,35.59],[32.70,35.57],
-  ], 'rgba(80,55,20,0.35)');
+    [33.09,35.10],[33.05,35.25],[33.08,35.42],[33.00,35.55],
+    [32.90,35.62],[32.72,35.68],[32.65,35.65],[32.55,35.57],
+    [32.47,35.50],[32.40,35.40],[32.38,35.25],[32.35,35.12],
+    [32.40,35.00],[32.55,34.97],[32.70,34.97],[32.83,34.98],
+    [32.95,35.05],[33.00,35.05],[33.09,35.10],
+  ], '#c8dba8');
 
-  // ── 6. Dead Sea
-  fillPoly(DEAD_SEA, '#133a52');
-
-  // ── 7. Sea of Galilee (Kinneret)
-  fillPoly(KINNERET, '#1a6a96');
-
-  // ── 8. Lebanon highland tint (NW, darker green)
+  // ── 6. Golan Heights plateau
   fillPoly([
-    [34.2,35.15],[33.09,35.10],[33.07,35.20],[33.11,35.42],
-    [33.07,35.55],[33.08,35.68],[33.25,35.68],[33.50,35.55],
-    [33.70,35.45],[33.90,35.40],[34.2,35.40],
-  ], 'rgba(40,80,30,0.30)');
+    [33.08,35.68],[32.92,35.78],[32.72,35.78],
+    [32.65,35.65],[32.75,35.62],[32.92,35.68],[33.08,35.68],
+  ], '#b8d0a0');
 
-  // ── 9. Golan/Syria tint (darker brown)
+  // ── 7. Carmel ridge
   fillPoly([
-    [33.08,35.68],[32.92,35.78],[32.72,35.78],[32.72,36.00],
-    [33.00,36.00],[33.25,35.90],[33.40,35.80],[33.08,35.68],
-  ], 'rgba(90,65,25,0.35)');
+    [32.83,34.98],[32.75,35.06],[32.63,35.10],[32.52,35.07],
+    [32.43,34.99],[32.45,34.92],[32.60,34.93],[32.83,34.98],
+  ], '#c0d4a0');
 
-  // ── 10. Subtle terrain noise (horizontal bands for depth)
-  for (let i = 0; i < 6; i++) {
-    const y = H * (i + 0.5) / 6;
-    const rowG = ctx.createLinearGradient(0, y - 4, 0, y + 4);
-    rowG.addColorStop(0, 'rgba(0,0,0,0)');
-    rowG.addColorStop(0.5, 'rgba(0,0,0,0.04)');
-    rowG.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = rowG;
-    ctx.fillRect(0, y - 4, W, 8);
-  }
+  // ── 8. Judean Hills
+  fillPoly([
+    [32.00,34.92],[32.05,35.02],[32.12,35.12],[32.12,35.25],
+    [32.00,35.22],[31.88,35.12],[31.75,35.00],[31.72,34.88],
+    [31.82,34.83],[32.00,34.92],
+  ], '#ddd8c8');
 
-  // ── 11. Thin border outline for Israel
+  // ── 9. Negev desert (sandy cream)
+  fillPoly([
+    [31.15,34.26],[31.22,34.55],[31.22,34.82],[31.12,35.10],
+    [31.00,35.35],[30.75,35.18],[30.50,35.08],[30.20,35.00],
+    [29.80,34.98],[29.62,34.98],[29.55,34.95],[29.48,34.87],
+    [29.50,34.65],[29.62,34.35],[29.80,34.27],[30.00,34.23],
+    [30.30,34.25],[30.65,34.25],[31.05,34.23],[31.15,34.26],
+  ], '#ede0b8');
+
+  // ── 10. Jordan Valley / Arava (lowest point on Earth — faint green)
+  fillPoly([
+    [32.70,35.57],[32.55,35.55],[32.35,35.53],[32.10,35.54],
+    [31.90,35.53],[31.70,35.54],[31.50,35.57],[31.48,35.59],
+    [31.48,35.65],[31.72,35.62],[31.92,35.58],[32.12,35.58],
+    [32.37,35.58],[32.57,35.60],[32.72,35.62],[32.70,35.57],
+  ], '#d8e8c8');
+
+  // ── 11. Hillshading — NW light source, clipped to Israel
+  ctx.save();
   ctx.beginPath();
-  ISRAEL_POLY.forEach(([lat,lng],i) => { const [x,y]=pt(lat,lng); i?ctx.lineTo(x,y):ctx.moveTo(x,y); });
+  ISRAEL_POLY.forEach(([la,ln],i) => { const [x,y]=pt(la,ln); i?ctx.lineTo(x,y):ctx.moveTo(x,y); });
   ctx.closePath();
-  ctx.strokeStyle = 'rgba(255,255,200,0.22)';
-  ctx.lineWidth = 1;
-  ctx.stroke();
+  ctx.clip();
+  [
+    [32.90,35.35,0.28,0.22,0.14],
+    [32.70,35.00,0.13,0.10,0.10],
+    [31.82,35.12,0.30,0.20,0.10],
+    [31.15,34.80,0.22,0.22,0.07],
+    [30.60,34.75,0.20,0.18,0.06],
+    [30.60,34.98,0.15,0.12,0.07],
+    [32.85,35.72,0.18,0.14,0.11],
+  ].forEach(([clat,clng,rLat,rLng,a]) => {
+    const [cx,cy]=pt(clat,clng);
+    const rx=Math.abs(pt(clat,clng+rLng)[0]-cx);
+    const ry=Math.abs(cy-pt(clat+rLat,clng)[1]);
+    const r=Math.max(rx,ry);
+    const sg=ctx.createRadialGradient(cx+rx*0.2,cy+ry*0.2,0,cx,cy,r*1.05);
+    sg.addColorStop(0,`rgba(80,60,20,${a*2})`);
+    sg.addColorStop(0.5,`rgba(80,60,20,${a*0.7})`);
+    sg.addColorStop(1,'rgba(80,60,20,0)');
+    ctx.fillStyle=sg;
+    ctx.beginPath(); ctx.ellipse(cx,cy,rx*1.1,ry*1.1,0,0,Math.PI*2); ctx.fill();
+    const hg=ctx.createRadialGradient(cx-rx*0.18,cy-ry*0.18,0,cx,cy,r*0.65);
+    hg.addColorStop(0,`rgba(255,252,235,${a})`);
+    hg.addColorStop(1,'rgba(255,252,235,0)');
+    ctx.fillStyle=hg;
+    ctx.beginPath(); ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2); ctx.fill();
+  });
+  ctx.restore();
 
-  // ── 12. Edge vignette for depth
-  const vig = ctx.createRadialGradient(W/2, H/2, Math.min(W,H)*0.25, W/2, H/2, Math.max(W,H)*0.75);
-  vig.addColorStop(0, 'rgba(0,0,0,0)');
-  vig.addColorStop(1, 'rgba(0,0,0,0.38)');
-  ctx.fillStyle = vig;
-  ctx.fillRect(0, 0, W, H);
+  // ── 12. Water bodies (same blue as Mediterranean)
+  fillPoly(DEAD_SEA, '#aad3df');
+  fillPoly(KINNERET, '#aad3df');
+  [DEAD_SEA,KINNERET].forEach(p => {
+    ctx.beginPath();
+    p.forEach(([la,ln],i) => { const [x,y]=pt(la,ln); i?ctx.lineTo(x,y):ctx.moveTo(x,y); });
+    ctx.closePath(); ctx.strokeStyle='#80b8d0'; ctx.lineWidth=0.5; ctx.setLineDash([]); ctx.stroke();
+  });
+
+  // ── 13. Road network (Google Maps yellow highways + secondary)
+  road([[33.00,35.02],[32.83,34.95],[32.60,34.90],[32.33,34.83],
+        [32.05,34.71],[31.80,34.58],[31.50,34.32],[31.20,34.24]],
+    '#c4962a','#fcd693',3,1.8);
+  road([[32.05,34.76],[31.98,34.87],[31.90,34.96],[31.82,35.10],[31.78,35.22]],
+    '#c4962a','#fcd693',3,1.8);
+  road([[32.75,35.04],[32.50,34.98],[32.20,34.95],[31.90,34.88],[31.60,34.80]],
+    '#c4962a','#fcd693',3,1.8);
+  road([[33.05,35.58],[32.68,35.58],[32.50,35.56],[32.12,35.55],
+        [31.90,35.55],[31.55,35.57],[31.20,35.43],[30.80,35.24],
+        [30.50,35.08],[29.95,34.99],[29.62,34.98]],
+    '#c4962a','#fcd693',3,1.8);
+  road([[32.75,34.99],[32.60,34.95],[32.40,34.91],[32.10,34.83],[31.80,34.65]],
+    '#b8aa80','#e8d8a0',2.2,1.3);
+  road([[32.83,34.96],[32.68,35.10],[32.55,35.30],[32.50,35.45]],
+    '#b8aa80','#e8d8a0',2.2,1.3);
+  road([[31.25,34.80],[30.90,34.78],[30.55,34.75],[30.15,34.70],[29.90,34.88]],
+    '#b8aa80','#e8d8a0',2.2,1.3);
+  road([[32.12,35.20],[31.95,35.14],[31.80,35.10],[31.55,35.00],[31.25,34.80]],
+    '#b8aa80','#e8d8a0',2,1.2);
+  road([[32.78,35.03],[32.80,35.20],[32.83,35.42]],
+    '#b8aa80','#e8d8a0',2,1.2);
+
+  // ── 14. Israel border (dashed dark gray — Google/Waze style)
+  ctx.beginPath();
+  ISRAEL_POLY.forEach(([la,ln],i) => { const [x,y]=pt(la,ln); i?ctx.lineTo(x,y):ctx.moveTo(x,y); });
+  ctx.closePath();
+  ctx.strokeStyle='#888'; ctx.lineWidth=1.5; ctx.setLineDash([4,3]); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // ── 15. Hebrew region labels (faint, Google Maps style)
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  const fs = Math.max(8, W / 30);
+  function lbl(t,la,ln,sz,a) {
+    const [lx,ly]=pt(la,ln);
+    ctx.font=`bold ${Math.round(sz)}px Arial,sans-serif`;
+    ctx.fillStyle=`rgba(100,88,65,${a})`;
+    ctx.fillText(t,lx,ly);
+  }
+  lbl('ישראל',     30.80,34.70,fs*1.1,0.60);
+  lbl('הנגב',      30.15,34.65,fs*0.8,0.50);
+  lbl('גליל',      32.88,35.30,fs*0.75,0.50);
+  lbl('ים תיכון',  32.15,34.22,fs*0.7,0.55);
+  lbl('ים המלח',   31.38,35.52,fs*0.55,0.60);
+  lbl('גולן',      32.88,35.73,fs*0.6,0.50);
+  lbl('הגדה',      31.85,35.28,fs*0.55,0.45);
+  lbl('המערבית',   31.70,35.28,fs*0.55,0.45);
+
+  // ── 16. Edge vignette
+  const vig=ctx.createRadialGradient(W/2,H/2,Math.min(W,H)*0.3,W/2,H/2,Math.max(W,H)*0.75);
+  vig.addColorStop(0,'rgba(0,0,0,0)');
+  vig.addColorStop(1,'rgba(0,0,0,0.18)');
+  ctx.fillStyle=vig; ctx.fillRect(0,0,W,H);
 }
 
 // ════════════════════════════════════════
