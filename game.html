@@ -58,31 +58,7 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
   flex:1;width:100%;position:relative;overflow:hidden;
   background:#b8d4e8;min-height:0;
 }
-/* ── MARKER ── */
-#city-marker{
-  position:absolute;transform:translate(-50%,-50%);
-  display:none;pointer-events:none;z-index:10;width:52px;height:52px;
-}
-.pmr{
-  position:absolute;top:50%;left:50%;
-  width:18px;height:18px;border-radius:50%;
-  background:rgba(255,80,30,.5);
-  transform:translate(-50%,-50%);
-  animation:pmx 1.9s ease-out infinite;
-}
-.pmr.r2{animation-delay:.63s}
-.pmr.r3{animation-delay:1.26s}
-@keyframes pmx{
-  0%{transform:translate(-50%,-50%) scale(1);opacity:.85}
-  100%{transform:translate(-50%,-50%) scale(5.5);opacity:0}
-}
-.pmd{
-  position:absolute;top:50%;left:50%;width:20px;height:20px;
-  background:#ff5722;border-radius:50%;border:3px solid #fff;
-  transform:translate(-50%,-50%);
-  box-shadow:0 0 0 3px rgba(255,87,34,.35),0 2px 14px rgba(255,87,34,.9);
-  z-index:2;
-}
+/* ── MARKER: canvas overlay, see buildMap/placeMarker ── */
 
 /* ── ANSWERS ── */
 .apan{
@@ -189,12 +165,7 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
   <div class="qtxt">מה שם הישוב המסומן? 🤔</div>
   <div id="map-wrap">
     <!-- Satellite tiles loaded dynamically as <img> tags -->
-    <div id="city-marker">
-      <div class="pmr"></div>
-      <div class="pmr r2"></div>
-      <div class="pmr r3"></div>
-      <div class="pmd"></div>
-    </div>
+
   </div>
   <div class="apan">
     <button class="abtn" id="btn0" onclick="checkAnswer(0)"></button>
@@ -265,17 +236,72 @@ function buildMap() {
   wrap.style.backgroundSize  = 'contain';
   wrap.style.backgroundRepeat   = 'no-repeat';
   wrap.style.backgroundPosition = 'center';
+
+  // Geo-area marker canvas (on top of map)
+  const oc = document.createElement('canvas');
+  oc.id = 'city-canvas';
+  oc.width = W; oc.height = H;
+  oc.style.cssText = 'position:absolute;inset:0;z-index:5;pointer-events:none;display:block';
+  wrap.appendChild(oc);
 }
+
+let _markerXY = null, _animRaf = null;
 
 function placeMarker(lat, lng) {
   if (!_mapRect) return;
   const [px_pct, py_pct] = geo2pct(lat, lng);
-  const px = _mapRect.offsetX + px_pct / 100 * _mapRect.dispW;
-  const py = _mapRect.offsetY + py_pct / 100 * _mapRect.dispH;
-  const m = document.getElementById('city-marker');
-  m.style.left    = Math.round(px) + 'px';
-  m.style.top     = Math.round(py) + 'px';
-  m.style.display = 'block';
+  const cx = _mapRect.offsetX + px_pct / 100 * _mapRect.dispW;
+  const cy = _mapRect.offsetY + py_pct / 100 * _mapRect.dispH;
+  _markerXY = {cx, cy};
+  if (_animRaf) { cancelAnimationFrame(_animRaf); _animRaf = null; }
+  _drawArea();
+}
+
+function _drawArea() {
+  const oc = document.getElementById('city-canvas');
+  if (!oc || !_markerXY) return;
+  const ctx = oc.getContext('2d');
+  const W = oc.width, H = oc.height;
+  ctx.clearRect(0, 0, W, H);
+
+  const {cx, cy} = _markerXY;
+
+  // Geographic base radius: ~15 km → pixels
+  const latRange = IMG_MAX_LAT - IMG_MIN_LAT;  // degrees
+  const baseR = Math.max(14, _mapRect.dispH / latRange / 111 * 15);
+
+  const t = Date.now() / 1000;
+  const p = 0.5 + 0.5 * Math.sin(t * Math.PI * 1.6);   // 0–1, ~0.8 Hz
+
+  // Outer expanding glow ring
+  const outerR = baseR * (1.6 + 0.7 * p);
+  const grd = ctx.createRadialGradient(cx, cy, baseR * 0.6, cx, cy, outerR);
+  grd.addColorStop(0,   \`rgba(255,210,0,\${0.55 + 0.25 * p})\`);
+  grd.addColorStop(0.5, \`rgba(255,120,0,\${0.30 + 0.15 * p})\`);
+  grd.addColorStop(1,   'rgba(255,60,0,0)');
+  ctx.beginPath();
+  ctx.arc(cx, cy, outerR, 0, Math.PI * 2);
+  ctx.fillStyle = grd;
+  ctx.fill();
+
+  // Solid filled geo-area
+  const areaGrd = ctx.createRadialGradient(cx, cy, 0, cx, cy, baseR);
+  areaGrd.addColorStop(0,   \`rgba(255,240,60,\${0.88 + 0.10 * p})\`);
+  areaGrd.addColorStop(0.55,\`rgba(255,160,0,\${0.70 + 0.15 * p})\`);
+  areaGrd.addColorStop(1,   'rgba(255,80,0,0.05)');
+  ctx.beginPath();
+  ctx.arc(cx, cy, baseR, 0, Math.PI * 2);
+  ctx.fillStyle = areaGrd;
+  ctx.fill();
+
+  // Crisp border
+  ctx.beginPath();
+  ctx.arc(cx, cy, baseR, 0, Math.PI * 2);
+  ctx.strokeStyle = \`rgba(255,200,0,\${0.75 + 0.25 * p})\`;
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+
+  _animRaf = requestAnimationFrame(_drawArea);
 }
 
 // ════════════════════════════════════════
