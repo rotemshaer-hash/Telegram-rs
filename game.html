@@ -261,45 +261,54 @@ function _drawArea() {
   const oc = document.getElementById('city-canvas');
   if (!oc || !_markerXY) return;
   const ctx = oc.getContext('2d');
-  const W = oc.width, H = oc.height;
-  ctx.clearRect(0, 0, W, H);
+  ctx.clearRect(0, 0, oc.width, oc.height);
 
   const {cx, cy} = _markerXY;
-
-  // Geographic base radius: ~15 km → pixels
-  const latRange = IMG_MAX_LAT - IMG_MIN_LAT;  // degrees
-  const baseR = Math.max(14, _mapRect.dispH / latRange / 111 * 15);
+  const latRange = IMG_MAX_LAT - IMG_MIN_LAT;
+  // ~25 km radius — looks like a real city footprint on this map scale
+  const baseR = Math.max(22, _mapRect.dispH / latRange / 111 * 25);
 
   const t = Date.now() / 1000;
-  const p = 0.5 + 0.5 * Math.sin(t * Math.PI * 1.6);   // 0–1, ~0.8 Hz
+  const p = 0.5 + 0.5 * Math.sin(t * Math.PI * 1.4);  // 0→1, ~0.7 Hz
 
-  // Outer expanding glow ring
-  const outerR = baseR * (1.6 + 0.7 * p);
-  const grd = ctx.createRadialGradient(cx, cy, baseR * 0.6, cx, cy, outerR);
-  grd.addColorStop(0,   `rgba(255,210,0,${0.55 + 0.25 * p})`);
-  grd.addColorStop(0.5, `rgba(255,120,0,${0.30 + 0.15 * p})`);
-  grd.addColorStop(1,   'rgba(255,60,0,0)');
+  // Seed from city position so each city gets a unique but stable polygon shape
+  const seed = (cx * 0.137 + cy * 0.271) % 1;
+  const N = 14;
+
+  function buildPoly() {
+    ctx.beginPath();
+    for (let i = 0; i <= N; i++) {
+      const angle = (i / N) * Math.PI * 2 - Math.PI / 2;
+      const noise = 0.70 + 0.34 * Math.sin(seed * 47 + i * 2.1);
+      const r = baseR * noise;
+      const x = cx + Math.cos(angle) * r;
+      const y = cy + Math.sin(angle) * r;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+  }
+
+  // Outer glow halo
+  const grd = ctx.createRadialGradient(cx, cy, baseR * 0.5, cx, cy, baseR * 2.1);
+  grd.addColorStop(0, `rgba(255,190,0,${0.28 * p})`);
+  grd.addColorStop(1, 'rgba(255,100,0,0)');
   ctx.beginPath();
-  ctx.arc(cx, cy, outerR, 0, Math.PI * 2);
+  ctx.arc(cx, cy, baseR * 2.1, 0, Math.PI * 2);
   ctx.fillStyle = grd;
   ctx.fill();
 
-  // Solid filled geo-area
-  const areaGrd = ctx.createRadialGradient(cx, cy, 0, cx, cy, baseR);
-  areaGrd.addColorStop(0,   `rgba(255,240,60,${0.88 + 0.10 * p})`);
-  areaGrd.addColorStop(0.55,`rgba(255,160,0,${0.70 + 0.15 * p})`);
-  areaGrd.addColorStop(1,   'rgba(255,80,0,0.05)');
-  ctx.beginPath();
-  ctx.arc(cx, cy, baseR, 0, Math.PI * 2);
-  ctx.fillStyle = areaGrd;
+  // Filled area — pulses opacity
+  buildPoly();
+  ctx.fillStyle = `rgba(255,210,20,${0.12 + 0.22 * p})`;
   ctx.fill();
 
-  // Crisp border
-  ctx.beginPath();
-  ctx.arc(cx, cy, baseR, 0, Math.PI * 2);
-  ctx.strokeStyle = `rgba(255,200,0,${0.75 + 0.25 * p})`;
+  // Dashed boundary line
+  buildPoly();
+  ctx.strokeStyle = `rgba(255,230,0,${0.55 + 0.45 * p})`;
   ctx.lineWidth = 2.5;
+  ctx.setLineDash([6, 4]);
   ctx.stroke();
+  ctx.setLineDash([]);
 
   _animRaf = requestAnimationFrame(_drawArea);
 }
