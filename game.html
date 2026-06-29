@@ -253,7 +253,7 @@ function placeMarker(lat, lng, radiusKm) {
   const cx = _mapRect.offsetX + px_pct / 100 * _mapRect.dispW;
   const cy = _mapRect.offsetY + py_pct / 100 * _mapRect.dispH;
   const pxPerKm = _mapRect.dispH / (IMG_MAX_LAT - IMG_MIN_LAT) / 111;
-  const baseR = Math.max(12, pxPerKm * (radiusKm || 16));
+  const baseR = Math.max(6, pxPerKm * (radiusKm || 8));
   _markerXY = {cx, cy, baseR};
   if (_animRaf) { cancelAnimationFrame(_animRaf); _animRaf = null; }
   _drawArea();
@@ -471,9 +471,9 @@ function nextQ(){
     b.textContent=opts[i]; b.className='abtn'; b.disabled=false;
   }
 
-  const _r = T1.some(c=>c.name===correct.name)?16:
-             T2.some(c=>c.name===correct.name)?11:
-             T3.some(c=>c.name===correct.name)?7:4;
+  const _r = T1.some(c=>c.name===correct.name)?8:
+             T2.some(c=>c.name===correct.name)?5.5:
+             T3.some(c=>c.name===correct.name)?3.5:2;
   placeMarker(correct.lat, correct.lng, _r);
   locked=false;
 }
