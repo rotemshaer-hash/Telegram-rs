@@ -2589,48 +2589,6 @@ function drawMapDecorations(){
     ctx.globalAlpha=1;
   }
 
-  // ── Compass rose (TOP-right corner) ──
-  const cR=Math.max(20,Math.round(24*Math.max(scl,0.6)));
-  // Compass in Mediterranean sea strip
-  const cx=_geoXY(31.2,34.34).x;
-  const cy=offsetY+cR+Math.max(8,Math.round(10*scl));
-  // Outer ring
-  ctx.globalAlpha=.60;
-  ctx.fillStyle='rgba(5,15,50,.75)';
-  ctx.beginPath(); ctx.arc(cx,cy,cR+3,0,Math.PI*2); ctx.fill();
-  ctx.strokeStyle='rgba(180,150,255,.65)';
-  ctx.lineWidth=Math.max(1,scl*.8);
-  ctx.beginPath(); ctx.arc(cx,cy,cR+3,0,Math.PI*2); ctx.stroke();
-  // North arrow (gold)
-  ctx.globalAlpha=1;
-  ctx.fillStyle='#FFD700';
-  ctx.shadowColor='rgba(255,200,0,.7)'; ctx.shadowBlur=4;
-  ctx.beginPath();
-  ctx.moveTo(cx,          cy-cR*.88);
-  ctx.lineTo(cx-cR*.30,  cy+cR*.08);
-  ctx.lineTo(cx,          cy-cR*.18);
-  ctx.closePath(); ctx.fill();
-  // South arrow (silver)
-  ctx.fillStyle='rgba(200,210,230,.65)'; ctx.shadowBlur=0;
-  ctx.beginPath();
-  ctx.moveTo(cx,          cy+cR*.88);
-  ctx.lineTo(cx+cR*.30,  cy-cR*.08);
-  ctx.lineTo(cx,          cy+cR*.18);
-  ctx.closePath(); ctx.fill();
-  // E / W ticks
-  ctx.strokeStyle='rgba(200,210,230,.45)';
-  ctx.lineWidth=Math.max(1,scl*.7);
-  [[cx-cR*.82,cy,cx-cR*.44,cy],[cx+cR*.82,cy,cx+cR*.44,cy]].forEach(([x1,y1,x2,y2])=>{
-    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
-  });
-  // "צ" north label
-  const lsz=Math.max(6,Math.round(9*scl));
-  ctx.font=`bold ${lsz}px "Arial Hebrew","Arial",sans-serif`;
-  ctx.fillStyle='#FFD700';
-  ctx.textAlign='center'; ctx.textBaseline='middle';
-  ctx.shadowColor='rgba(0,0,0,.95)'; ctx.shadowBlur=2;
-  ctx.fillText('צ',cx,cy-cR*.52);
-  ctx.shadowBlur=0; ctx.globalAlpha=1; ctx.textAlign='left';
 }
 
 // ════════════════════════════════════════
