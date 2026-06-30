@@ -621,7 +621,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.60';
+const APP_VERSION='4.9.61';
 const APP_BUILD='25-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -9350,6 +9350,7 @@ function Login(){
 function TeacherPending(){
   const t=S.pendingTeacherData||{};
   const name=currentUserData?.name||currentUser?.email?.split('@')[0]||'מורה';
+  const username=currentUserData?.username||currentUser?.email?.split('@')[0]||'';
   const cat=CATS.find(c=>c.id===t.cat)||{lbl:'',em:'📚'};
   const createdAt=t.createdAt?new Date(t.createdAt).toLocaleDateString('he-IL'):'היום';
   const rejected=currentUserData?.rejected===true;
@@ -9385,6 +9386,12 @@ function TeacherPending(){
               <p style="color:#14B8A6;font-size:13px;font-weight:700;margin:0">${cat.lbl} • ${t.city||''}</p>
             </div>
           </div>
+
+          ${username?`<div style="background:rgba(139,47,201,0.08);border:2px solid rgba(139,47,201,0.3);border-radius:14px;padding:12px 16px;margin-bottom:16px;text-align:center">
+            <div style="font-size:11px;color:#8b2fc9;font-weight:800;margin-bottom:4px">🔑 שם המשתמש שלך לכניסה</div>
+            <div style="color:#0F1A1F;font-size:18px;font-weight:900;letter-spacing:0.02em;direction:ltr">${username}</div>
+            <div style="font-size:10px;color:#64748B;margin-top:4px">הכנס שם זה בדיוק כשתתחבר</div>
+          </div>`:''}
 
           <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
             <div style="display:flex;align-items:center;gap:8px">
@@ -9453,6 +9460,7 @@ function TeacherPending(){
 
 function StudentPending(){
   const name=currentUserData?.name||currentUser?.email?.split('@')[0]||'תלמיד';
+  const username=currentUserData?.username||currentUser?.email?.split('@')[0]||'';
   const parentName=currentUserData?.parentName||'';
   const parentPhone=currentUserData?.parentPhone||'';
   const createdAt=currentUserData?.createdAt?new Date(currentUserData.createdAt).toLocaleDateString('he-IL'):'היום';
@@ -9482,6 +9490,11 @@ function StudentPending(){
               <p style="color:#06B6D4;font-size:13px;font-weight:700;margin:0">תלמיד • גיל ${currentUserData?.age||'?'}</p>
             </div>
           </div>
+          ${username?`<div style="background:rgba(139,47,201,0.08);border:2px solid rgba(139,47,201,0.3);border-radius:14px;padding:12px 16px;margin-bottom:16px;text-align:center">
+            <div style="font-size:11px;color:#8b2fc9;font-weight:800;margin-bottom:4px">🔑 שם המשתמש שלך לכניסה</div>
+            <div style="color:#0F1A1F;font-size:18px;font-weight:900;letter-spacing:0.02em;direction:ltr">${username}</div>
+            <div style="font-size:10px;color:#64748B;margin-top:4px">הכנס שם זה בדיוק כשתתחבר</div>
+          </div>`:''}
           ${rejected?`
           <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:14px;padding:16px;margin-bottom:16px;text-align:center">
             <div style="font-size:36px;margin-bottom:8px">❌</div>
@@ -11295,26 +11308,8 @@ async function firebaseLogin(usernameOrEmail,password){
   try{
     showFireToast('⏳ מתחבר...');
     S._loggingIn=true; // מסמן שזו כניסה ידנית — לא לנתק ב-onAuthStateChanged
-    // אם הוזן מייל אמיתי (לא @lamdeni.app) — נסה למצוא את שם המשתמש ב-DB לפי parentEmail
-    let email;
-    if(usernameOrEmail.includes('@')&&!usernameOrEmail.endsWith('@lamdeni.app')){
-      let found=null;
-      try{
-        const snap=await db.ref('users').orderByChild('parentEmail').equalTo(usernameOrEmail.toLowerCase()).get();
-        if(snap.exists())snap.forEach(c=>{found=c.val()?.email||null;});
-      }catch(_e){}
-      if(found){
-        email=found;
-        showFireToast('🔍 נמצא חשבון — מתחבר...');
-      } else {
-        S._loggingIn=false;
-        showFireToast('❌ לא נמצא חשבון — הכנס שם משתמש (לא מייל)');
-        return;
-      }
-    } else {
-      // שם משתמש רגיל — הוסף @lamdeni.app
-      email=usernameOrEmail.includes('@')?usernameOrEmail:usernameOrEmail.toLowerCase().replace(/[^a-z0-9_@.]/g,'')+'@lamdeni.app';
-    }
+    // אם הוזן שם משתמש בלבד (לא מייל), הוסף @lamdeni.app
+    const email=usernameOrEmail.includes('@')?usernameOrEmail:usernameOrEmail.toLowerCase()+'@lamdeni.app';
     await auth.signInWithEmailAndPassword(email,password);
     showFireToast('✅ ברוך הבא!');
     // Safety net: if onAuthStateChanged doesn't navigate within 1.5s, force navigate
@@ -11337,6 +11332,12 @@ async function firebaseLogin(usernameOrEmail,password){
     },1500);
   }catch(e){
     S._loggingIn=false;
+    // אם ניסו להיכנס עם מייל אמיתי (לא שם משתמש), הצג הסבר ספציפי
+    const triedEmail=usernameOrEmail.includes('@')&&!usernameOrEmail.endsWith('@lamdeni.app');
+    if(triedEmail&&(e.code==='auth/user-not-found'||e.code==='auth/invalid-credential'||e.code==='auth/wrong-password')){
+      showFireToast('❌ הכנס שם משתמש שיצרת בהרשמה — לא כתובת מייל');
+      return;
+    }
     const m={
       'auth/user-not-found':'❌ שם משתמש לא קיים',
       'auth/wrong-password':'❌ סיסמה שגויה',
