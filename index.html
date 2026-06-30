@@ -526,7 +526,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.63';
+const APP_VERSION='4.9.65';
 const APP_BUILD='25-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -10336,6 +10336,7 @@ function showIOSInstallGuide(){
 
 // ── FIREBASE AUTH & DB ─────────────────────────────────────────────────────
 let currentUser=null, currentUserData=null;
+let _sessionAuthenticated=false; // set to true after explicit login/register — never reset
 
 // Fetch verified student count via REST API (bypasses Firebase SDK in-memory cache).
 // Called after currentUser is confirmed so getIdToken always succeeds.
@@ -10362,9 +10363,10 @@ if(typeof auth==='undefined'||!auth){
 auth&&auth.onAuthStateChanged(async user=>{
   if(user){loadRealTeachers();}
   if(user){
-    // אין כניסה אוטומטית — רק כניסה ידנית מתקבלת (S._loggingIn=true מסמן כניסה ידנית)
+    // אין כניסה אוטומטית — רק כניסה ידנית מתקבלת
+    // _sessionAuthenticated=true מגן לצמיתות לאחר כניסה — לא מתאפס גם אם onAuthStateChanged יורה שוב
     const _inRegFlow=['safety','parentReg','register','teacherPending','studentPending'].includes(S.screen);
-    if(!S._registering&&!S._loggingIn&&!S._googleImporting&&!_inRegFlow){
+    if(!S._registering&&!S._loggingIn&&!_sessionAuthenticated&&!S._googleImporting&&!_inRegFlow){
       await auth.signOut().catch(()=>{});
       go('login');
       return;
@@ -10384,8 +10386,11 @@ auth&&auth.onAuthStateChanged(async user=>{
         }
       }catch(e2){}
       // האזן לניתוק כפוי (admin מחק בזמן שמשתמש מחובר)
+      // חשוב: שומרים זמן ההאזנה — ערכים ישנים מלפני ההתחברות מתעלמים מהם
+      const _forceSignoutListenStart=Date.now();
       db.ref('forceSignout/'+user.uid).on('value',async snap=>{
         if(snap.exists()&&snap.val()?.ts){
+          if(snap.val().ts<_forceSignoutListenStart)return; // ערך ישן — מתעלמים
           db.ref('forceSignout/'+user.uid).off('value');
           try{await auth.currentUser?.delete();}catch(e2){}
           await auth.signOut().catch(()=>{});
@@ -10476,7 +10481,7 @@ auth&&auth.onAuthStateChanged(async user=>{
 
       // ── ניווט מיידי — כל שאר הטעינה ברקע ────────────────────────
       S._loggingIn=false;S._registering=false;
-      if(S.screen==='splash'||S.screen==='login'){go('home');setTimeout(showOnboarding,800);}
+      if(S.screen==='splash'||S.screen==='login'){showFireToast('✅ ברוך הבא!');go('home');setTimeout(showOnboarding,800);}
 
       // כל הטעינות אחרי הניווט — כישלון כאן לא מחזיר ל-login
       if(currentUserData?.role==='teacher')await loadTeacherBookings();
@@ -11004,38 +11009,13 @@ async function firebaseLogin(usernameOrEmail,password){
   try{
     showFireToast('⏳ מתחבר...');
     S._loggingIn=true;
+    _sessionAuthenticated=true;
     const email=usernameOrEmail.includes('@')?usernameOrEmail:usernameOrEmail.toLowerCase()+'@lamdeni.app';
     await auth.signInWithEmailAndPassword(email,password);
-    currentUser=auth.currentUser;
-    // Load user data directly — don't wait for onAuthStateChanged
-    if(currentUser&&db){
-      try{
-        const snap=await db.ref('users/'+currentUser.uid).get();
-        if(snap.exists()){
-          currentUserData=snap.val();
-          if(isAdmin()&&currentUserData.role!=='teacher'){currentUserData={...currentUserData,role:'teacher',verified:true};}
-        }
-      }catch(_e){}
-    }
-    // Navigate based on role
-    if(currentUserData?.role==='student'&&currentUserData?.verified!==true&&!isAdmin()){
-      showFireToast('✅ מחובר — ממתין לאישור מנהל');
-      go('studentPending');
-    } else if(currentUserData?.role==='teacher'&&!isAdmin()){
-      try{
-        const tSnap=await db.ref('teachers/'+currentUser.uid).get();
-        if(!tSnap.exists()){showFireToast('✅ ברוך הבא!');go('teacherSetup');}
-        else if(!tSnap.val()?.verified){S.pendingTeacherData=tSnap.val();showFireToast('✅ מחובר — ממתין לאישור מנהל');go('teacherPending');}
-        else{showFireToast('✅ ברוך הבא!');go('home');setTimeout(showOnboarding,800);}
-      }catch(_te){showFireToast('✅ ברוך הבא!');go('home');setTimeout(showOnboarding,800);}
-    } else {
-      showFireToast('✅ ברוך הבא!');
-      go('home');
-      setTimeout(showOnboarding,800);
-    }
-    // S._loggingIn stays true so onAuthStateChanged won't auto-signout
+    // onAuthStateChanged מטפל בכל הניווט — אין כפילות כאן
   }catch(e){
     S._loggingIn=false;
+    _sessionAuthenticated=false;
     const triedEmail=usernameOrEmail.includes('@')&&!usernameOrEmail.endsWith('@lamdeni.app');
     if(triedEmail&&(e.code==='auth/user-not-found'||e.code==='auth/invalid-credential'||e.code==='auth/wrong-password')){
       showFireToast('❌ הכנס שם משתמש שיצרת בהרשמה — לא כתובת מייל');
@@ -11065,7 +11045,7 @@ async function firebaseLogout(){
       db.ref('adminAlerts').off();
     }
   }catch(e){}
-  S._loggingIn=false;S._registering=false;
+  S._loggingIn=false;S._registering=false;_sessionAuthenticated=false;
   await auth.signOut();
   currentUser=null;currentUserData=null;
   teacherAllBookings=[];studentBookings=[];userChats=[];
