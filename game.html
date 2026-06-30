@@ -2463,7 +2463,7 @@ function drawMapDecorations(){
 
   // ── City dots with names ──
   const cities=[
-    {lat:32.08,lng:34.78,name:'תל אביב', color:'#00E5FF',r:2.5,above:false},
+    {lat:32.08,lng:34.78,name:'גוש דן',  color:'#00E5FF',r:2.5,above:false},
     {lat:29.56,lng:34.98,name:'אילת',    color:'#FF4081',r:2.5,above:true},
   ];
   ctx.textAlign='center'; ctx.textBaseline='middle';
@@ -2494,20 +2494,44 @@ function drawMapDecorations(){
 
   // ── Animal / landmark icons ──
   const icons=[
+    // ── Animals ──
     {lat:30.60,lng:34.85,icon:'🐪',sz:18},   // Camel in Negev
-    {lat:29.57,lng:35.01,icon:'🌴',sz:16},   // Palm near Eilat
+    {lat:30.20,lng:34.70,icon:'🐐',sz:14},   // Ibex (יעל) deep Negev
+    {lat:33.02,lng:35.18,icon:'🦌',sz:14},   // Deer in Galilee forest
+    {lat:32.93,lng:35.72,icon:'🦅',sz:15},   // Eagle over Golan
+    {lat:31.55,lng:35.52,icon:'🦢',sz:12},   // Swan near Dead Sea
+    {lat:32.72,lng:35.57,icon:'🐟',sz:11},   // Fish in Kinneret
+    {lat:29.52,lng:34.92,icon:'🐠',sz:13},   // Tropical fish Red Sea
+    {lat:29.50,lng:34.89,icon:'🦈',sz:13},   // Shark in Red Sea
+    {lat:29.49,lng:34.91,icon:'🪸',sz:12},   // Coral Eilat
+    {lat:29.58,lng:34.87,icon:'🦩',sz:13},   // Flamingo (migrating via Eilat)
+    {lat:31.40,lng:35.48,icon:'🦞',sz:11},   // Crustacean Dead Sea shore
+    {lat:32.15,lng:34.65,icon:'🐢',sz:12},   // Sea turtle Mediterranean coast
+    {lat:32.40,lng:34.90,icon:'🐦',sz:11},   // Bird (migrating route)
+    {lat:33.10,lng:35.55,icon:'🦋',sz:12},   // Butterfly north Israel
     {lat:31.78,lng:35.22,icon:'🦁',sz:17},   // Lion (symbol of Jerusalem)
-    {lat:32.10,lng:34.75,icon:'⚓',sz:14},   // Anchor near Tel Aviv / Jaffa port
-    {lat:32.82,lng:35.03,icon:'⚓',sz:14},   // Anchor in Haifa port
-    {lat:32.55,lng:35.10,icon:'🌻',sz:14},   // Sunflower in Jezreel Valley
-    {lat:33.02,lng:35.18,icon:'🌲',sz:15},   // Pine tree in Upper Galilee
-    {lat:33.08,lng:35.35,icon:'🌲',sz:14},   // Pine tree in Galilee
-    {lat:32.18,lng:34.72,icon:'🌸',sz:13},   // Flower in Sharon
-    {lat:31.25,lng:34.82,icon:'🌵',sz:14},   // Cactus in Negev
-    {lat:29.52,lng:34.92,icon:'🐠',sz:13},   // Tropical fish in Red Sea
-    {lat:29.50,lng:34.90,icon:'🪸',sz:12},   // Coral near Eilat
-    {lat:32.93,lng:35.72,icon:'🦅',sz:14},   // Eagle over Golan
-    {lat:31.55,lng:35.52,icon:'🦢',sz:12},   // Swan in Dead Sea area
+    {lat:31.05,lng:35.20,icon:'🐆',sz:13},   // Leopard (Judean Desert)
+    // ── Plants & nature ──
+    {lat:29.57,lng:35.01,icon:'🌴',sz:16},   // Palm near Eilat
+    {lat:32.55,lng:35.10,icon:'🌻',sz:14},   // Sunflower Jezreel Valley
+    {lat:33.02,lng:35.20,icon:'🌲',sz:15},   // Pine Upper Galilee
+    {lat:33.08,lng:35.38,icon:'🌲',sz:14},   // Pine Galilee
+    {lat:32.70,lng:35.02,icon:'🫒',sz:14},   // Olive tree (Galilee)
+    {lat:32.18,lng:34.72,icon:'🌸',sz:13},   // Flower Sharon
+    {lat:31.85,lng:34.92,icon:'🌺',sz:12},   // Kalanit (anemone) Sharon/Shfela
+    {lat:31.25,lng:34.82,icon:'🌵',sz:14},   // Cactus Negev
+    {lat:30.85,lng:34.78,icon:'🌵',sz:12},   // Cactus central Negev
+    {lat:32.10,lng:35.18,icon:'🌿',sz:12},   // Herb/plant Judean hills
+    {lat:33.20,lng:35.60,icon:'🍇',sz:13},   // Grapes Golan vineyards
+    {lat:32.60,lng:35.30,icon:'🌾',sz:13},   // Wheat Jezreel
+    // ── Landmarks & culture ──
+    {lat:32.10,lng:34.75,icon:'⚓',sz:14},   // Anchor Jaffa port
+    {lat:32.82,lng:35.03,icon:'⚓',sz:14},   // Anchor Haifa port
+    {lat:31.77,lng:35.23,icon:'✡️',sz:13},   // Star of David Jerusalem
+    {lat:32.32,lng:34.86,icon:'🏛️',sz:12},  // Caesarea ruins
+    {lat:32.70,lng:35.30,icon:'🏺',sz:12},   // Ancient pottery Nazareth area
+    {lat:31.52,lng:35.08,icon:'🗿',sz:11},   // Ancient site Judean Desert
+    {lat:33.00,lng:35.50,icon:'⛰️',sz:13},  // Mountain Galilee
   ];
   ctx.textAlign='center'; ctx.textBaseline='middle';
   icons.forEach(({lat,lng,icon,sz})=>{
@@ -2666,60 +2690,34 @@ function animateMapDecorations(){
     // ── Red Sea/Eilat shimmer ──
     _seaShimmer(ctx,RS.x, RS.y, RS.r, t+3.2,'rgba(0,210,190,', 0.58);
 
-    // ── Sparkles (minimum 3px so always visible) ──
-    const minSz=Math.max(3,3.5*scl);
-    sparkles.forEach(({x,y},i)=>{
-      const pulse=0.4+0.6*Math.abs(Math.sin(t*1.4+i*.73));
-      const sz=minSz*(0.8+Math.abs(Math.sin(t*.8+i))*.6);
-      ctx.globalAlpha=pulse*.85;
-      // Bright white-blue dot
-      const dotGr=ctx.createRadialGradient(x,y,0,x,y,sz);
-      dotGr.addColorStop(0,'rgba(255,255,255,1)');
-      dotGr.addColorStop(0.5,'rgba(150,230,255,.9)');
-      dotGr.addColorStop(1,'rgba(0,180,255,0)');
-      ctx.fillStyle=dotGr;
-      ctx.beginPath(); ctx.arc(x,y,sz,0,Math.PI*2); ctx.fill();
-      // Cross sparkle rays
-      ctx.strokeStyle='rgba(200,240,255,.95)';
-      ctx.lineWidth=Math.max(1,sz*.35);
-      const arm=sz*2.8;
-      ctx.beginPath();
-      ctx.moveTo(x-arm,y); ctx.lineTo(x+arm,y);
-      ctx.moveTo(x,y-arm); ctx.lineTo(x,y+arm);
-      ctx.stroke();
-      // Diagonal rays (4-point star)
-      ctx.globalAlpha=pulse*.5;
-      const arm2=arm*.65;
-      ctx.beginPath();
-      ctx.moveTo(x-arm2,y-arm2); ctx.lineTo(x+arm2,y+arm2);
-      ctx.moveTo(x+arm2,y-arm2); ctx.lineTo(x-arm2,y+arm2);
-      ctx.stroke();
-    });
-    ctx.globalAlpha=1;
-
-    // ── Coastline glow ──
-    if(coastPts.length>1){
-      const gal=0.30+0.12*Math.sin(t*1.6);
-      ctx.shadowColor='rgba(0,180,255,.9)';
-      ctx.shadowBlur=Math.max(6,10*scl);
-      ctx.strokeStyle=`rgba(0,220,255,${gal})`;
-      ctx.lineWidth=Math.max(2,3*scl);
-      ctx.beginPath();
-      ctx.moveTo(coastPts[0].x,coastPts[0].y);
-      for(let i=1;i<coastPts.length;i++) ctx.lineTo(coastPts[i].x,coastPts[i].y);
-      ctx.stroke();
-      ctx.shadowBlur=0;
-    }
-
-    // ── Animated boat in Mediterranean ──
+    // ── Nautical fleet in Mediterranean ──
     {
-      const bx=offsetX+Math.max(seaW*.08,4)+(Math.sin(t*.07)+1)/2*Math.max(seaW*.78,10);
-      const by=offsetY+dispH*.40;
-      const bsz=Math.max(14,Math.round(18*scl));
-      ctx.globalAlpha=.88;
-      ctx.font=bsz+'px serif';
       ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.fillText('⛵',bx,by);
+      // Sailboat 1 — slow drift right-left at mid-height
+      const b1x=offsetX+Math.max(seaW*.08,4)+(Math.sin(t*.07)+1)/2*Math.max(seaW*.75,8);
+      const b1y=offsetY+dispH*.40+Math.sin(t*.3)*dispH*.008;
+      const bsz=Math.max(14,Math.round(18*scl));
+      ctx.globalAlpha=.88; ctx.font=bsz+'px serif';
+      ctx.fillText('⛵',b1x,b1y);
+      // Large cruise ship — slow crossing upper sea
+      const b2x=offsetX+((t*8)%(seaW*2+dispW*.15))-dispW*.05;
+      const b2y=offsetY+dispH*.26;
+      const b2sz=Math.max(16,Math.round(22*scl));
+      ctx.globalAlpha=.80; ctx.font=b2sz+'px serif';
+      ctx.fillText('🚢',b2x,b2y);
+      // Fishing boat — opposite direction, lower
+      const b3x=offsetX+seaW*.9-((t*6)%(seaW*1.6));
+      const b3y=offsetY+dispH*.55+Math.sin(t*.5)*dispH*.01;
+      const b3sz=Math.max(12,Math.round(15*scl));
+      ctx.globalAlpha=.82; ctx.font=b3sz+'px serif';
+      ctx.fillText('🛥️',b3x,b3y);
+      // Small rubber boat at south sea
+      const b4x=offsetX+Math.max(seaW*.1,4)+(Math.sin(t*.05+2)+1)/2*Math.max(seaW*.70,6);
+      const b4y=offsetY+dispH*.68+Math.sin(t*.4+1)*dispH*.009;
+      const b4sz=Math.max(11,Math.round(13*scl));
+      ctx.globalAlpha=.75; ctx.font=b4sz+'px serif';
+      ctx.fillText('⛵',b4x,b4y);
+      ctx.globalAlpha=1;
     }
 
     // ── Fish in Kinneret ──
