@@ -2414,33 +2414,39 @@ function drawMapDecorations(){
   ctx.textAlign='center';
   ctx.textBaseline='middle';
   const labels=[
-    {lat:33.10,lng:35.25,text:'גליל עליון', sz:10.5,alpha:.80},
-    {lat:32.74,lng:35.28,text:'גליל תחתון', sz:9.5, alpha:.75},
-    {lat:32.52,lng:35.20,text:'עמק יזרעאל', sz:9.5, alpha:.72},
-    {lat:32.15,lng:34.78,text:'שרון',        sz:10,  alpha:.70},
-    {lat:31.62,lng:35.05,text:'יהודה',       sz:10,  alpha:.70},
-    {lat:30.35,lng:34.72,text:'נגב',         sz:13.5,alpha:.65},
-    {lat:31.50,lng:35.54,text:'ים המלח',     sz:8.5, alpha:.75},
-    {lat:32.83,lng:35.60,text:'כנרת',        sz:8.5, alpha:.80},
-    {lat:29.54,lng:34.92,text:'ים אדום',     sz:7.5, alpha:.65},
+    {lat:33.10,lng:35.25,text:'גליל עליון', base:13,big:false},
+    {lat:32.74,lng:35.28,text:'גליל תחתון', base:12,big:false},
+    {lat:32.52,lng:35.20,text:'עמק יזרעאל', base:12,big:false},
+    {lat:32.15,lng:34.78,text:'שרון',        base:13,big:false},
+    {lat:31.62,lng:35.05,text:'יהודה',       base:13,big:false},
+    {lat:30.35,lng:34.72,text:'נגב',         base:20,big:true},
+    {lat:31.50,lng:35.54,text:'ים המלח',     base:11,big:false},
+    {lat:32.83,lng:35.60,text:'כנרת',        base:11,big:false},
+    {lat:29.54,lng:34.92,text:'ים אדום',     base:10,big:false},
   ];
-  labels.forEach(({lat,lng,text,sz,alpha})=>{
+  labels.forEach(({lat,lng,text,base,big})=>{
     if(lat<IMG_MIN_LAT||lat>IMG_MAX_LAT) return;
     const {x,y}=_geoXY(lat,lng);
-    const fs=Math.max(7,Math.round(sz*scl));
-    ctx.font=`bold ${fs}px "Arial Hebrew","Arial",sans-serif`;
-    ctx.globalAlpha=alpha;
-    ctx.shadowColor='rgba(0,0,0,.9)';
-    ctx.shadowBlur=3;
-    ctx.fillStyle='#f0f4ff';
+    // Scale from reference 790px map, minimum stays readable
+    const fs=Math.max(base*.7,Math.round(base*Math.max(scl,0.55)));
+    ctx.font=`${big?'900':'bold'} ${fs}px "Arial Hebrew","Arial",sans-serif`;
+    // Thick dark outline for readability over any terrain
+    ctx.strokeStyle='rgba(0,5,30,.95)';
+    ctx.lineWidth=Math.max(2.5,fs*.28);
+    ctx.lineJoin='round';
+    ctx.globalAlpha=0.95;
+    ctx.strokeText(text,x,y);
+    // White fill
+    ctx.fillStyle=big?'#FFE066':'#FFFFFF';
+    ctx.globalAlpha=1;
     ctx.fillText(text,x,y);
   });
   ctx.shadowBlur=0; ctx.globalAlpha=1;
 
-  // ── Compass rose (lower-right of map image) ──
-  const cR=Math.max(18,Math.round(24*scl));
-  const cx=offsetX+dispW-cR-Math.round(14*scl);
-  const cy=offsetY+dispH-cR-Math.round(14*scl);
+  // ── Compass rose (TOP-right corner) ──
+  const cR=Math.max(22,Math.round(28*Math.max(scl,0.6)));
+  const cx=offsetX+dispW-cR-Math.round(12*scl)-4;
+  const cy=offsetY+cR+Math.round(12*scl)+4;
   // Outer ring
   ctx.globalAlpha=.60;
   ctx.fillStyle='rgba(5,15,50,.75)';
@@ -2533,15 +2539,15 @@ function animateMapDecorations(){
     ctx.beginPath();
     ctx.rect(offsetX,offsetY,Math.max(seaW,20),dispH);
     ctx.clip();
-    for(let i=0;i<7;i++){
-      const yt=offsetY+((t*36+i*dispH/7)%dispH);
-      const al=0.032+i*.003;
+    for(let i=0;i<8;i++){
+      const yt=offsetY+((t*40+i*dispH/8)%dispH);
+      const al=0.10+i*.012;  // clearly visible
       ctx.strokeStyle=`rgba(0,180,255,${al})`;
-      ctx.lineWidth=1.1*scl;
+      ctx.lineWidth=Math.max(1,1.5*scl);
       ctx.beginPath();
       ctx.moveTo(offsetX,yt);
-      for(let xi=0;xi<=seaW;xi+=5*scl){
-        const wy=Math.sin(xi/(16*scl)+t*2.2+i*.9)*2.5*scl;
+      for(let xi=0;xi<=seaW;xi+=4){
+        const wy=Math.sin(xi/(20*scl+8)+t*2.2+i*.9)*(3+2*scl);
         ctx.lineTo(offsetX+xi,yt+wy);
       }
       ctx.stroke();
@@ -2549,36 +2555,50 @@ function animateMapDecorations(){
     ctx.restore();
 
     // ── Kinneret shimmer ──
-    _seaShimmer(ctx,KIN.x,KIN.y,KIN.r,t,  'rgba(60,160,255,',0.50);
+    _seaShimmer(ctx,KIN.x,KIN.y,KIN.r,t,  'rgba(60,160,255,',0.72);
     // ── Dead Sea shimmer ──
-    _seaShimmer(ctx,DS.x, DS.y, DS.r, t+1.8,'rgba(180,220,255,',0.42);
+    _seaShimmer(ctx,DS.x, DS.y, DS.r, t+1.8,'rgba(180,220,255,',0.60);
     // ── Red Sea/Eilat shimmer ──
-    _seaShimmer(ctx,RS.x, RS.y, RS.r, t+3.2,'rgba(0,210,190,', 0.40);
+    _seaShimmer(ctx,RS.x, RS.y, RS.r, t+3.2,'rgba(0,210,190,', 0.58);
 
-    // ── Sparkles ──
+    // ── Sparkles (minimum 3px so always visible) ──
+    const minSz=Math.max(3,3.5*scl);
     sparkles.forEach(({x,y},i)=>{
-      const pulse=0.25+0.75*Math.abs(Math.sin(t*1.4+i*.73));
-      const sz=(0.9+Math.sin(t*.8+i)*.7)*scl;
-      ctx.globalAlpha=pulse*.55;
-      ctx.fillStyle='rgba(160,230,255,1)';
-      ctx.beginPath(); ctx.arc(x,y,Math.max(.5,sz),0,Math.PI*2); ctx.fill();
-      ctx.strokeStyle='rgba(220,245,255,.85)';
-      ctx.lineWidth=Math.max(.3,sz*.4);
-      const arm=Math.max(.8,sz*2.0);
+      const pulse=0.4+0.6*Math.abs(Math.sin(t*1.4+i*.73));
+      const sz=minSz*(0.8+Math.abs(Math.sin(t*.8+i))*.6);
+      ctx.globalAlpha=pulse*.85;
+      // Bright white-blue dot
+      const dotGr=ctx.createRadialGradient(x,y,0,x,y,sz);
+      dotGr.addColorStop(0,'rgba(255,255,255,1)');
+      dotGr.addColorStop(0.5,'rgba(150,230,255,.9)');
+      dotGr.addColorStop(1,'rgba(0,180,255,0)');
+      ctx.fillStyle=dotGr;
+      ctx.beginPath(); ctx.arc(x,y,sz,0,Math.PI*2); ctx.fill();
+      // Cross sparkle rays
+      ctx.strokeStyle='rgba(200,240,255,.95)';
+      ctx.lineWidth=Math.max(1,sz*.35);
+      const arm=sz*2.8;
       ctx.beginPath();
       ctx.moveTo(x-arm,y); ctx.lineTo(x+arm,y);
       ctx.moveTo(x,y-arm); ctx.lineTo(x,y+arm);
+      ctx.stroke();
+      // Diagonal rays (4-point star)
+      ctx.globalAlpha=pulse*.5;
+      const arm2=arm*.65;
+      ctx.beginPath();
+      ctx.moveTo(x-arm2,y-arm2); ctx.lineTo(x+arm2,y+arm2);
+      ctx.moveTo(x+arm2,y-arm2); ctx.lineTo(x-arm2,y+arm2);
       ctx.stroke();
     });
     ctx.globalAlpha=1;
 
     // ── Coastline glow ──
     if(coastPts.length>1){
-      const gal=0.055+0.025*Math.sin(t*1.6);
-      ctx.shadowColor='rgba(0,180,255,.7)';
-      ctx.shadowBlur=7*scl;
-      ctx.strokeStyle=`rgba(0,200,255,${gal})`;
-      ctx.lineWidth=2.5*scl;
+      const gal=0.30+0.12*Math.sin(t*1.6);
+      ctx.shadowColor='rgba(0,180,255,.9)';
+      ctx.shadowBlur=Math.max(6,10*scl);
+      ctx.strokeStyle=`rgba(0,220,255,${gal})`;
+      ctx.lineWidth=Math.max(2,3*scl);
       ctx.beginPath();
       ctx.moveTo(coastPts[0].x,coastPts[0].y);
       for(let i=1;i<coastPts.length;i++) ctx.lineTo(coastPts[i].x,coastPts[i].y);
@@ -2600,14 +2620,15 @@ function animateMapDecorations(){
   }
 }
 function _seaShimmer(ctx,cx,cy,r,t,colorBase,maxAl){
-  for(let i=0;i<3;i++){
-    const p=((t*.65+i/3)%1);
-    const ri=Math.max(1,r*(0.25+p*.75));
-    const al=maxAl*(1-p)*.38;
-    if(al<0.002) continue;
+  for(let i=0;i<4;i++){
+    const p=((t*.7+i/4)%1);
+    const ri=Math.max(2,r*(0.15+p*.85));
+    const al=maxAl*(1-p)*.65;
+    if(al<0.01) continue;
     ctx.globalAlpha=al;
     const gr=ctx.createRadialGradient(cx,cy,0,cx,cy,ri);
-    gr.addColorStop(0,colorBase+'0.8)');
+    gr.addColorStop(0,colorBase+'0.9)');
+    gr.addColorStop(0.5,colorBase+'0.4)');
     gr.addColorStop(1,colorBase+'0)');
     ctx.fillStyle=gr;
     ctx.beginPath(); ctx.arc(cx,cy,ri,0,Math.PI*2); ctx.fill();
