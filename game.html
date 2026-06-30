@@ -288,6 +288,169 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
 .cat-panel.active{display:block}
 .dgrid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%}
 .dgrid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;width:100%}
+
+/* ══ MULTIPLAYER LAUNCH BTN ══ */
+.mp-or{
+  display:flex;align-items:center;gap:10px;
+  width:100%;max-width:360px;margin:12px 0 8px;position:relative;z-index:1;
+}
+.mp-or::before,.mp-or::after{
+  content:'';flex:1;height:1px;background:rgba(255,255,255,.12);
+}
+.mp-or span{font-size:11px;color:rgba(255,255,255,.3);white-space:nowrap;font-weight:700}
+.mp-launch-btn{
+  width:100%;max-width:360px;padding:16px;border:none;border-radius:22px;
+  background:linear-gradient(135deg,#7B2FBE,#E91E8C,#FF6B35);
+  background-size:200% auto;animation:shimmer 3s linear infinite;
+  color:#fff;font-size:16px;font-weight:900;cursor:pointer;font-family:inherit;
+  box-shadow:0 6px 30px rgba(180,0,180,.35);transition:transform .15s;
+  position:relative;z-index:1;
+}
+.mp-launch-btn:active{transform:scale(.95)}
+
+/* ══ MP SETUP SCREEN ══ */
+#screen-mp-setup{
+  overflow-y:auto;padding:16px 16px max(20px,env(safe-area-inset-bottom));
+  background:radial-gradient(ellipse at 30% 20%,rgba(180,0,180,.22) 0%,transparent 50%),
+             radial-gradient(ellipse at 70% 80%,rgba(255,100,50,.15) 0%,transparent 50%),#06061A;
+}
+.mp-back{
+  align-self:flex-start;padding:8px 14px;border-radius:14px;
+  background:rgba(255,255,255,.08);color:rgba(255,255,255,.7);
+  font-size:13px;font-weight:700;cursor:pointer;margin-bottom:10px;
+}
+.mp-head{text-align:center;margin-bottom:20px}
+.mp-head-icon{font-size:48px;line-height:1;margin-bottom:6px}
+.mp-head-title{
+  font-size:26px;font-weight:900;
+  background:linear-gradient(135deg,#FF6B35,#E91E8C,#7B2FBE);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.mp-sec-label{
+  font-size:11px;font-weight:800;color:rgba(255,255,255,.4);
+  letter-spacing:2.5px;margin:16px 0 10px;align-self:flex-start;
+}
+.mp-count-row{
+  display:flex;gap:12px;width:100%;max-width:360px;margin-bottom:4px;
+}
+.mp-count-btn{
+  flex:1;padding:14px 0;border-radius:18px;border:1.5px solid rgba(255,255,255,.15);
+  background:rgba(255,255,255,.05);color:rgba(255,255,255,.55);
+  font-size:20px;font-weight:900;cursor:pointer;font-family:inherit;transition:all .2s;
+}
+.mp-count-btn.active{
+  border-color:transparent;
+  background:linear-gradient(135deg,rgba(123,47,190,.7),rgba(233,30,140,.6));
+  color:#fff;box-shadow:0 4px 20px rgba(200,0,150,.3);
+}
+.mp-names{width:100%;max-width:360px;display:flex;flex-direction:column;gap:8px}
+.mp-name-row{display:flex;align-items:center;gap:10px}
+.mp-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+.mp-name-input{
+  flex:1;padding:12px 14px;border-radius:14px;border:1.5px solid rgba(255,255,255,.12);
+  background:rgba(255,255,255,.06);color:#fff;font-size:15px;font-weight:700;
+  font-family:inherit;outline:none;
+}
+.mp-name-input:focus{border-color:rgba(200,100,255,.5)}
+.mp-name-input::placeholder{color:rgba(255,255,255,.3)}
+.mp-cat-tabs{margin-bottom:10px}
+.mp-lvl-row{
+  display:flex;gap:8px;width:100%;max-width:360px;margin-bottom:4px;
+}
+.mp-lvl-btn{
+  flex:1;padding:11px 4px;border-radius:14px;
+  border:1.5px solid rgba(255,255,255,.12);
+  background:rgba(255,255,255,.05);color:rgba(255,255,255,.5);
+  font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;transition:all .2s;
+}
+.mp-lvl-btn.active{
+  border-color:transparent;
+  background:linear-gradient(135deg,rgba(0,200,150,.6),rgba(0,180,240,.5));
+  color:#fff;
+}
+.mp-start-btn{
+  width:100%;max-width:360px;padding:18px;margin-top:20px;border:none;
+  border-radius:22px;
+  background:linear-gradient(135deg,#7B2FBE,#E91E8C,#FF6B35);
+  background-size:200% auto;animation:shimmer 3s linear infinite;
+  color:#fff;font-size:18px;font-weight:900;cursor:pointer;font-family:inherit;
+  box-shadow:0 8px 36px rgba(200,0,150,.4);transition:transform .15s;
+}
+.mp-start-btn:active{transform:scale(.95)}
+
+/* ══ PASS SCREEN ══ */
+#screen-pass{
+  justify-content:center;align-items:center;cursor:pointer;
+  overflow:hidden;
+}
+@keyframes pass-in{0%{transform:scale(.7) translateY(30px);opacity:0}100%{transform:scale(1) translateY(0);opacity:1}}
+@keyframes pulse-glow{0%,100%{opacity:.6}50%{opacity:1}}
+.pass-glow{
+  position:absolute;width:350px;height:350px;border-radius:50%;
+  top:50%;left:50%;transform:translate(-50%,-50%);
+  animation:pulse-glow 2s ease-in-out infinite;pointer-events:none;
+}
+.pass-inner{
+  display:flex;flex-direction:column;align-items:center;gap:8px;
+  animation:pass-in .5s cubic-bezier(.34,1.56,.64,1) both;
+  position:relative;z-index:2;padding:30px;text-align:center;
+}
+.pass-badge{
+  width:80px;height:80px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-size:36px;margin-bottom:8px;
+  border:3px solid currentColor;
+}
+.pass-get-ready{font-size:13px;font-weight:700;color:rgba(255,255,255,.5);letter-spacing:2px;margin-bottom:4px}
+.pass-name-big{font-size:38px;font-weight:900;line-height:1.1}
+.pass-ready-txt{font-size:15px;font-weight:700;color:rgba(255,255,255,.6);margin-top:10px}
+.pass-tap-hint{
+  font-size:12px;color:rgba(255,255,255,.3);margin-top:24px;letter-spacing:1.5px;
+  animation:pulse-glow 2s ease-in-out infinite;
+}
+
+/* ══ MP GAME SCORE BAR ══ */
+#mp-score-bar{
+  display:none;width:100%;
+  background:rgba(0,0,0,.4);
+  padding:6px 14px;flex-shrink:0;
+  border-bottom:1px solid rgba(255,255,255,.06);z-index:20;
+}
+#mp-score-bar.active{display:flex;align-items:center;justify-content:center;gap:12px}
+.mp-sb-item{
+  display:flex;align-items:center;gap:5px;
+  font-size:12px;font-weight:800;padding:4px 10px;
+  border-radius:20px;border:1.5px solid transparent;transition:all .3s;
+}
+.mp-sb-item.current{
+  transform:scale(1.1);border-color:currentColor;
+  background:rgba(255,255,255,.08);
+}
+.mp-sb-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+
+/* ══ MP END SCREEN ══ */
+#screen-mp-end{
+  justify-content:center;padding:24px 20px;overflow-y:auto;
+  background:radial-gradient(ellipse at 50% 30%,rgba(180,0,180,.22) 0%,transparent 55%),#06061A;
+}
+.mp-end-trophy{font-size:72px;line-height:1;margin-bottom:8px;animation:bounce .7s ease-in-out infinite}
+.mp-winner-name{
+  font-size:28px;font-weight:900;text-align:center;margin-bottom:4px;
+}
+.mp-winner-label{font-size:13px;color:rgba(255,255,255,.45);margin-bottom:22px}
+.mp-leaderboard{width:100%;max-width:360px;display:flex;flex-direction:column;gap:10px}
+.mp-rank-row{
+  display:flex;align-items:center;gap:12px;
+  padding:14px 16px;border-radius:18px;
+  background:rgba(255,255,255,.04);border:1.5px solid rgba(255,255,255,.08);
+}
+.mp-rank-row.first{
+  background:rgba(255,220,0,.06);border-color:rgba(255,220,0,.25);
+  box-shadow:0 4px 20px rgba(255,200,0,.1);
+}
+.mp-rank-medal{font-size:24px;flex-shrink:0}
+.mp-rank-name{flex:1;font-size:17px;font-weight:900}
+.mp-rank-score{font-size:22px;font-weight:900;flex-shrink:0}
+.mp-rank-q{font-size:11px;color:rgba(255,255,255,.35);flex-shrink:0;min-width:40px;text-align:left}
 </style>
 </head>
 <body>
@@ -361,6 +524,9 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
       </div>
     </div>
   </div>
+
+  <div class="mp-or"><span>או</span></div>
+  <button class="mp-launch-btn" onclick="goMultiplayer()">🎮 משחק קבוצתי</button>
 </div>
 
 <!-- ══ GAME ═══════════════════════════ -->
@@ -371,6 +537,7 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
     <div class="glt" id="levelTag">קל</div>
   </div>
   <div class="pbar"><div class="pfill" id="progressFill" style="width:0%"></div></div>
+  <div id="mp-score-bar"></div>
   <div class="qtxt" id="qtxt">מה שם הישוב המסומן? 🤔</div>
   <div id="map-wrap">
     <!-- Satellite tiles loaded dynamically as <img> tags -->
@@ -414,6 +581,63 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
     <div class="fm-tag" id="fm-tag"></div>
     <div id="fm-facts"></div>
     <button class="fm-next" onclick="closeFacts()">לשאלה הבאה ←</button>
+  </div>
+</div>
+
+
+<!-- ══ MP SETUP ══════════════════════════ -->
+<div id="screen-mp-setup" class="screen">
+  <div class="mp-back" onclick="goHome()">← חזרה</div>
+  <div class="mp-head">
+    <div class="mp-head-icon">🎮</div>
+    <div class="mp-head-title">משחק קבוצתי</div>
+  </div>
+
+  <div class="mp-sec-label">כמה שחקנים?</div>
+  <div class="mp-count-row">
+    <button class="mp-count-btn active" onclick="setMpCount(2)">2</button>
+    <button class="mp-count-btn" onclick="setMpCount(3)">3</button>
+    <button class="mp-count-btn" onclick="setMpCount(4)">4</button>
+  </div>
+
+  <div class="mp-sec-label">שמות שחקנים</div>
+  <div class="mp-names" id="mp-names"></div>
+
+  <div class="mp-sec-label">קטגוריה</div>
+  <div class="cat-tabs mp-cat-tabs" id="mp-cat-tabs">
+    <button class="cat-tab active" data-cat="cities" onclick="showMpCat('cities')">ערים</button>
+    <button class="cat-tab" data-cat="moshavim" onclick="showMpCat('moshavim')">מושבים</button>
+    <button class="cat-tab" data-cat="kibbutzim" onclick="showMpCat('kibbutzim')">קיבוצים</button>
+    <button class="cat-tab" data-cat="rivers" onclick="showMpCat('rivers')">נחלים</button>
+  </div>
+
+  <div class="mp-sec-label">רמת קושי</div>
+  <div class="mp-lvl-row" id="mp-lvl-row"></div>
+
+  <button class="mp-start-btn" onclick="startMultiplayer()">התחל משחק !</button>
+</div>
+
+<!-- ══ PASS SCREEN ════════════════════════ -->
+<div id="screen-pass" class="screen" onclick="continueFromPass()">
+  <div class="pass-glow" id="pass-glow"></div>
+  <div class="pass-inner">
+    <div class="pass-get-ready">עכשיו תור:</div>
+    <div class="pass-badge" id="pass-badge"></div>
+    <div class="pass-name-big" id="pass-name-big">שחקן 1</div>
+    <div class="pass-ready-txt">מוכן?</div>
+    <div class="pass-tap-hint">הקש להתחיל</div>
+  </div>
+</div>
+
+<!-- ══ MP END ═════════════════════════════ -->
+<div id="screen-mp-end" class="screen">
+  <div class="mp-end-trophy">🏆</div>
+  <div class="mp-winner-name" id="mp-winner-name"></div>
+  <div class="mp-winner-label">ניצח במשחק!</div>
+  <div class="mp-leaderboard" id="mp-leaderboard"></div>
+  <div class="ebtns" style="margin-top:24px;width:100%;max-width:360px">
+    <button class="ebm" onclick="rematchMultiplayer()">🔄 סיבוב נוסף</button>
+    <button class="ebs" onclick="goHome()">🏠 תפריט ראשי</button>
   </div>
 </div>
 
@@ -866,7 +1090,7 @@ function startGame(lvl){
 }
 
 function nextQ(){
-  if(qNum>=TOTAL){endGame();return;}
+  if(qNum>=TOTAL){ if(mpMode) endMultiplayer(); else endGame(); return; }
   if(used.length>=pool.length) used=[];
 
   let ci;
@@ -926,7 +1150,7 @@ function checkAnswer(idx){
     if(ok && correctItem && correctItem.f){
       setTimeout(()=>showFacts(correctItem),180);
     } else {
-      setTimeout(nextQ,180);
+      setTimeout(afterAnswer,180);
     }
   },1400);
 }
@@ -951,7 +1175,230 @@ function showFacts(item){
 
 function closeFacts(){
   document.getElementById('facts-modal').classList.remove('show');
-  setTimeout(nextQ,200);
+  setTimeout(afterAnswer,200);
+}
+
+
+// ════════════════════════════════════════
+//  MULTIPLAYER
+// ════════════════════════════════════════
+const MP_COLORS=[
+  {color:'#00E5FF',glow:'rgba(0,229,255,.25)',bg:'rgba(0,229,255,.12)',initials:'1'},
+  {color:'#FFD700',glow:'rgba(255,215,0,.25)', bg:'rgba(255,215,0,.12)', initials:'2'},
+  {color:'#00E676',glow:'rgba(0,230,118,.25)',bg:'rgba(0,230,118,.12)',initials:'3'},
+  {color:'#FF7043',glow:'rgba(255,112,67,.25)',bg:'rgba(255,112,67,.12)',initials:'4'},
+];
+const MP_MEDALS=['🥇','🥈','🥉','🏅'];
+const MP_TOTAL_Q=10;
+
+let mpMode=false;
+let mpPlayers=[];
+let mpCurrentPlayerIdx=0;
+let mpQuestionCount=0;
+let mpCategory='cities';
+let mpSelectedDifficulty='easy';
+let mpCount=2;
+
+function goMultiplayer(){
+  mpCount=2; mpCategory='cities'; mpSelectedDifficulty='easy';
+  document.querySelectorAll('.mp-count-btn').forEach((b,i)=>b.classList.toggle('active',i===0));
+  document.querySelectorAll('#mp-cat-tabs .cat-tab').forEach((t,i)=>t.classList.toggle('active',i===0));
+  updateMpNames();
+  updateMpLevels();
+  show('screen-mp-setup');
+}
+
+function setMpCount(n){
+  mpCount=n;
+  document.querySelectorAll('.mp-count-btn').forEach((b,i)=>b.classList.toggle('active',i+2===n));
+  updateMpNames();
+}
+
+function updateMpNames(){
+  const c=document.getElementById('mp-names');
+  c.innerHTML='';
+  for(let i=0;i<mpCount;i++){
+    const col=MP_COLORS[i].color;
+    const div=document.createElement('div');
+    div.className='mp-name-row';
+    div.innerHTML=`<span class="mp-dot" style="background:${col}"></span><input class="mp-name-input" id="mp-n-${i}" placeholder="שחקן ${i+1}" maxlength="12">`;
+    c.appendChild(div);
+  }
+}
+
+function showMpCat(cat){
+  mpCategory=cat;
+  document.querySelectorAll('#mp-cat-tabs .cat-tab').forEach(t=>t.classList.toggle('active',t.dataset.cat===cat));
+  updateMpLevels();
+}
+
+const MP_LEVELS={
+  cities:[{k:'easy',n:'קל'},{k:'medium',n:'בינוני'},{k:'hard',n:'קשה'},{k:'expert',n:'אלוף'}],
+  moshavim:[{k:'moshav-easy',n:'קל'},{k:'moshav-hard',n:'קשה'}],
+  kibbutzim:[{k:'kib-easy',n:'קל'},{k:'kib-hard',n:'קשה'}],
+  rivers:[{k:'riv-easy',n:'קל'},{k:'riv-medium',n:'בינוני'},{k:'riv-hard',n:'קשה'}],
+};
+
+function updateMpLevels(){
+  const lvls=MP_LEVELS[mpCategory]||[];
+  const row=document.getElementById('mp-lvl-row');
+  row.innerHTML=lvls.map((l,i)=>`<button class="mp-lvl-btn${i===0?' active':''}" data-k="${l.k}" onclick="setMpLevel('${l.k}')">${l.n}</button>`).join('');
+  mpSelectedDifficulty=lvls[0]?.k||'easy';
+}
+
+function setMpLevel(k){
+  mpSelectedDifficulty=k;
+  document.querySelectorAll('.mp-lvl-btn').forEach(b=>b.classList.toggle('active',b.dataset.k===k));
+}
+
+function startMultiplayer(){
+  if(!mpSelectedDifficulty){return;}
+  const cfg=LVLS[mpSelectedDifficulty];
+  if(!cfg){return;}
+
+  mpMode=true; mpCurrentPlayerIdx=0; mpQuestionCount=0;
+
+  // Build players array
+  mpPlayers=[];
+  for(let i=0;i<mpCount;i++){
+    const inp=document.getElementById('mp-n-'+i);
+    const name=(inp&&inp.value.trim())||'שחקן '+(i+1);
+    mpPlayers.push({name,score:0,color:MP_COLORS[i].color,glow:MP_COLORS[i].glow,bg:MP_COLORS[i].bg});
+  }
+
+  // Init game state (shared pool)
+  level=mpSelectedDifficulty;
+  const cfg2=LVLS[level];
+  pool=shuffle([...cfg2.cities]);
+  used=[]; score=0; qNum=0;
+  _markerColor={city:'gold',moshav:'lime',kibbutz:'orange',river:'cyan'}[cfg2.mode]||'gold';
+
+  const qtxt=document.getElementById('qtxt');
+  const _qtxts={city:'מה שם העיר המסומנת? 🤔',moshav:'מה שם המושב המסומן? 🏡',kibbutz:'מה שם הקיבוץ המסומן? 🌾',river:'מה שם הנחל המסומן? 🌊'};
+  if(qtxt) qtxt.textContent=_qtxts[cfg2.mode]||'מה שם הישוב המסומן? 🤔';
+
+  document.getElementById('progressFill').style.width='0%';
+  document.getElementById('scoreVal').textContent='0';
+
+  show('screen-game');
+  updateMpScoreBar();
+
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    buildMap();
+    showPassScreen();
+  }));
+}
+
+function updateMpScoreBar(){
+  const bar=document.getElementById('mp-score-bar');
+  if(!mpMode){bar.classList.remove('active');return;}
+  bar.classList.add('active');
+  bar.innerHTML=mpPlayers.map((p,i)=>`
+    <div class="mp-sb-item${i===mpCurrentPlayerIdx?' current':''}" style="color:${p.color}">
+      <span class="mp-sb-dot" style="background:${p.color}"></span>
+      <span>${p.name.length>6?p.name.slice(0,5)+'…':p.name}</span>
+      <span style="margin-right:3px">${p.score}</span>
+    </div>`).join('');
+}
+
+function updateMpGameHeader(){
+  const p=mpPlayers[mpCurrentPlayerIdx];
+  const lt=document.getElementById('levelTag');
+  lt.style.cssText=`background:${p.color};color:#000;font-weight:900;border-radius:20px;padding:5px 13px;font-size:12px;letter-spacing:.3px;`;
+  lt.textContent=p.name;
+  score=p.score;
+  document.getElementById('scoreVal').textContent=score;
+  updateMpScoreBar();
+}
+
+function showPassScreen(){
+  const p=mpPlayers[mpCurrentPlayerIdx];
+  const badge=document.getElementById('pass-badge');
+  const nameEl=document.getElementById('pass-name-big');
+  const glow=document.getElementById('pass-glow');
+
+  badge.textContent=(mpCurrentPlayerIdx+1)+'';
+  badge.style.cssText=`width:80px;height:80px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:900;margin-bottom:8px;color:${p.color};border:3px solid ${p.color};background:${p.bg};`;
+  nameEl.textContent=p.name;
+  nameEl.style.color=p.color;
+  nameEl.style.textShadow=`0 0 40px ${p.color}`;
+
+  glow.style.cssText=`position:absolute;width:360px;height:360px;border-radius:50%;top:50%;left:50%;transform:translate(-50%,-50%);background:radial-gradient(circle,${p.glow} 0%,transparent 70%);animation:pulse-glow 2s ease-in-out infinite;pointer-events:none;`;
+
+  const ps=document.getElementById('screen-pass');
+  ps.style.background=`radial-gradient(ellipse at 50% 45%,${p.glow.replace('0.25','0.15')} 0%,transparent 65%),#06061A`;
+
+  show('screen-pass');
+}
+
+function continueFromPass(){
+  show('screen-game');
+  updateMpGameHeader();
+  nextQ();
+}
+
+function afterAnswer(){
+  if(mpMode){
+    // Sync current player score
+    mpPlayers[mpCurrentPlayerIdx].score=score;
+    mpQuestionCount++;
+
+    if(mpQuestionCount>=MP_TOTAL_Q){
+      endMultiplayer();
+      return;
+    }
+    // Advance player
+    mpCurrentPlayerIdx=(mpCurrentPlayerIdx+1)%mpPlayers.length;
+    showPassScreen();
+  } else {
+    nextQ();
+  }
+}
+
+function rematchMultiplayer(){
+  mpCurrentPlayerIdx=0; mpQuestionCount=0;
+  mpPlayers.forEach(p=>p.score=0);
+  const cfg=LVLS[mpSelectedDifficulty];
+  pool=shuffle([...cfg.cities]);
+  used=[]; score=0; qNum=0;
+  document.getElementById('progressFill').style.width='0%';
+  show('screen-game');
+  updateMpGameHeader();
+  requestAnimationFrame(()=>requestAnimationFrame(()=>showPassScreen()));
+}
+
+function endMultiplayer(){
+  mpMode=false;
+  // Sync last player's score
+  mpPlayers[mpCurrentPlayerIdx].score=score;
+
+  const sorted=[...mpPlayers].map((p,i)=>({...p,origIdx:i})).sort((a,b)=>b.score-a.score);
+  const perPlayer=Math.ceil(MP_TOTAL_Q/mpPlayers.length);
+
+  // Winner display
+  const winner=sorted[0];
+  const wn=document.getElementById('mp-winner-name');
+  wn.textContent=winner.name;
+  wn.style.color=winner.color;
+  wn.style.textShadow=`0 0 30px ${winner.color}`;
+
+  // Leaderboard
+  document.getElementById('mp-leaderboard').innerHTML=sorted.map((p,i)=>{
+    const stars='⭐'.repeat(Math.min(5,Math.round(p.score/Math.max(1,perPlayer)*5)))||'—';
+    return `<div class="mp-rank-row${i===0?' first':''}">
+      <span class="mp-rank-medal">${MP_MEDALS[i]||'🏅'}</span>
+      <span class="mp-rank-name" style="color:${p.color}">${p.name}</span>
+      <span class="mp-rank-score" style="color:${p.color}">${p.score}</span>
+      <span class="mp-rank-q">${stars}</span>
+    </div>`;
+  }).join('');
+
+  // Reset level tag style
+  const lt=document.getElementById('levelTag');
+  lt.style.cssText='';
+
+  confetti();
+  show('screen-mp-end');
 }
 
 function endGame(){
