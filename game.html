@@ -144,7 +144,7 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
 }
 
 /* ── MAP ── */
-#map-wrap{flex:1;width:100%;position:relative;overflow:hidden;background:#0A1840;min-height:0}
+#map-wrap{flex:1;width:100%;position:relative;overflow:hidden;background:#0A5FAF;min-height:0}
 
 /* ── ANSWERS ── */
 .apan{
@@ -680,14 +680,14 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
   background:repeating-linear-gradient(
     0deg,
     transparent 0px,transparent 40px,
-    rgba(0,180,230,.028) 40px,rgba(0,180,230,.028) 43px
+    rgba(255,255,255,.055) 40px,rgba(255,255,255,.055) 43px
   );
   animation:wave-drift 6s linear infinite;
 }
 
 /* ── MAP OCEAN COLOUR ── */
 #map-wrap{animation:ocean-pulse 5s ease-in-out infinite;}
-@keyframes ocean-pulse{0%,100%{background-color:#0A1840}50%{background-color:#0D2460}}
+@keyframes ocean-pulse{0%,100%{background-color:#083D7A}50%{background-color:#1470CC}}
 
 /* ── +1 SCORE FLOAT (feature 8) ── */
 .score-float{
@@ -924,10 +924,10 @@ function buildMap() {
   const offsetX = (W - dispW) / 2;
   const offsetY = (H - dispH) / 2;
   _mapRect = { dispW, dispH, offsetX, offsetY };
-  wrap.style.backgroundColor = '#08122A';
+  wrap.style.backgroundColor = '#0A5FAF';
   const mc = document.createElement('canvas');
   mc.width = W; mc.height = H;
-  mc.style.cssText = 'position:absolute;inset:0;z-index:1;display:block;background:#08122A';
+  mc.style.cssText = 'position:absolute;inset:0;z-index:1;display:block;background:#0A5FAF';
   wrap.appendChild(mc);
   const mi = new Image();
   mi.onload = function() {
@@ -940,7 +940,7 @@ function buildMap() {
     for (let k = 0; k < d.length; k += 4) {
       const r=d[k], g=d[k+1], b=d[k+2];
       if (r>200 && g>200 && b>200 && Math.max(r,g,b)-Math.min(r,g,b)<40) {
-        d[k]=8; d[k+1]=18; d[k+2]=42;
+        d[k]=10; d[k+1]=95; d[k+2]=175;
       } else {
         // Latitude-based toning: greener north (Galilee), warmer south (Negev)
         const row=Math.floor((k/4)/790);
@@ -956,7 +956,7 @@ function buildMap() {
     }
     tc.putImageData(id, 0, 0);
     const mctx = mc.getContext('2d');
-    mctx.fillStyle = '#08122A';
+    mctx.fillStyle = '#0A5FAF';
     mctx.fillRect(0, 0, W, H);
     mctx.drawImage(tmp, offsetX, offsetY, dispW, dispH);
     setTimeout(()=>{
@@ -2542,7 +2542,7 @@ function animateMapDecorations(){
     for(let i=0;i<8;i++){
       const yt=offsetY+((t*40+i*dispH/8)%dispH);
       const al=0.10+i*.012;  // clearly visible
-      ctx.strokeStyle=`rgba(0,180,255,${al})`;
+      ctx.strokeStyle=`rgba(255,255,255,${al*.6})`;
       ctx.lineWidth=Math.max(1,1.5*scl);
       ctx.beginPath();
       ctx.moveTo(offsetX,yt);
