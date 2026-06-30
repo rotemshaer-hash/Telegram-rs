@@ -2463,10 +2463,7 @@ function drawMapDecorations(){
 
   // ── City dots with names ──
   const cities=[
-    {lat:31.77,lng:35.23,name:'ירושלים',color:'#FFD700',r:3.0,above:true},
     {lat:32.08,lng:34.78,name:'תל אביב', color:'#00E5FF',r:2.5,above:false},
-    {lat:32.82,lng:35.0, name:'חיפה',    color:'#69FF80',r:2.5,above:true},
-    {lat:31.25,lng:34.80,name:'באר שבע', color:'#FF9500',r:2.5,above:false},
     {lat:29.56,lng:34.98,name:'אילת',    color:'#FF4081',r:2.5,above:true},
   ];
   ctx.textAlign='center'; ctx.textBaseline='middle';
@@ -2499,6 +2496,18 @@ function drawMapDecorations(){
   const icons=[
     {lat:30.60,lng:34.85,icon:'🐪',sz:18},   // Camel in Negev
     {lat:29.57,lng:35.01,icon:'🌴',sz:16},   // Palm near Eilat
+    {lat:31.78,lng:35.22,icon:'🦁',sz:17},   // Lion (symbol of Jerusalem)
+    {lat:32.10,lng:34.75,icon:'⚓',sz:14},   // Anchor near Tel Aviv / Jaffa port
+    {lat:32.82,lng:35.03,icon:'⚓',sz:14},   // Anchor in Haifa port
+    {lat:32.55,lng:35.10,icon:'🌻',sz:14},   // Sunflower in Jezreel Valley
+    {lat:33.02,lng:35.18,icon:'🌲',sz:15},   // Pine tree in Upper Galilee
+    {lat:33.08,lng:35.35,icon:'🌲',sz:14},   // Pine tree in Galilee
+    {lat:32.18,lng:34.72,icon:'🌸',sz:13},   // Flower in Sharon
+    {lat:31.25,lng:34.82,icon:'🌵',sz:14},   // Cactus in Negev
+    {lat:29.52,lng:34.92,icon:'🐠',sz:13},   // Tropical fish in Red Sea
+    {lat:29.50,lng:34.90,icon:'🪸',sz:12},   // Coral near Eilat
+    {lat:32.93,lng:35.72,icon:'🦅',sz:14},   // Eagle over Golan
+    {lat:31.55,lng:35.52,icon:'🦢',sz:12},   // Swan in Dead Sea area
   ];
   ctx.textAlign='center'; ctx.textBaseline='middle';
   icons.forEach(({lat,lng,icon,sz})=>{
@@ -2581,9 +2590,10 @@ function drawMapDecorations(){
   }
 
   // ── Compass rose (TOP-right corner) ──
-  const cR=Math.max(22,Math.round(28*Math.max(scl,0.6)));
-  const cx=offsetX+dispW-cR-Math.round(12*scl)-4;
-  const cy=offsetY+cR+Math.round(12*scl)+4;
+  const cR=Math.max(20,Math.round(24*Math.max(scl,0.6)));
+  // Compass in Mediterranean sea strip
+  const cx=_geoXY(31.2,34.34).x;
+  const cy=offsetY+cR+Math.max(8,Math.round(10*scl));
   // Outer ring
   ctx.globalAlpha=.60;
   ctx.fillStyle='rgba(5,15,50,.75)';
@@ -2793,6 +2803,44 @@ function animateMapDecorations(){
       });
     }
 
+    // ── Animated clouds drifting over sea ──
+    {
+      const cloudR=Math.max(9,Math.round(13*scl));
+      [[.12,.09,0],[.55,.14,1.8],[.30,.06,3.5]].forEach(([xf,yf,ph])=>{
+        const spd=0.004+xf*.002;
+        const cx2=offsetX+((seaW*(xf+spd*t/Math.PI)%(seaW+cloudR*6))+cloudR*3-cloudR*3);
+        const cy2=offsetY+dispH*yf+Math.sin(t*.4+ph)*dispH*.008;
+        _drawCloud(ctx,cx2,cy2,cloudR,.42+yf*.1);
+      });
+    }
+
+    // ── Animated butterflies in the Negev ──
+    {
+      const bfsz=Math.max(9,Math.round(12*scl));
+      ctx.font=bfsz+'px serif';
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      const bfBase=_geoXY(30.4,34.78);
+      [[0,0,1.8],[1,dispW*.04,0]].forEach(([i,ox,ph])=>{
+        const bfx=bfBase.x+ox+Math.sin(t*1.2+ph)*dispW*.025;
+        const bfy=bfBase.y+Math.sin(t*2.5+ph)*dispH*.018;
+        ctx.globalAlpha=.80;
+        ctx.fillText('🦋',bfx,bfy);
+      });
+      ctx.globalAlpha=1;
+    }
+
+    // ── Dolphin jumping in Mediterranean ──
+    {
+      const dlpX=offsetX+Math.max(seaW*.15,6)+((Math.sin(t*.11)+1)/2)*Math.max(seaW*.62,8);
+      const dlpY=offsetY+dispH*.58+Math.sin(t*1.8)*dispH*.025;
+      const dlpSz=Math.max(11,Math.round(15*scl));
+      ctx.globalAlpha=.82;
+      ctx.font=dlpSz+'px serif';
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText('🐬',dlpX,dlpY);
+      ctx.globalAlpha=1;
+    }
+
     _animMapRaf=requestAnimationFrame(_frame);
   }
   _animMapRaf=requestAnimationFrame(_frame);
@@ -2805,6 +2853,15 @@ function animateMapDecorations(){
     };
     document.addEventListener('visibilitychange',_animMapVisHandler);
   }
+}
+function _drawCloud(ctx,cx,cy,r,al){
+  ctx.globalAlpha=al;
+  ctx.fillStyle='rgba(255,255,255,.88)';
+  ctx.shadowColor='rgba(200,220,255,.4)'; ctx.shadowBlur=r*.5;
+  [[0,0,1],[r*.65,r*.18,.82],[r*-.58,r*.22,.75],[r*.3,r*-.28,.7],[r*-.2,r*-.22,.65]].forEach(([dx,dy,rs])=>{
+    ctx.beginPath(); ctx.arc(cx+dx,cy+dy,r*rs,0,Math.PI*2); ctx.fill();
+  });
+  ctx.shadowBlur=0; ctx.globalAlpha=1;
 }
 function _seaShimmer(ctx,cx,cy,r,t,colorBase,maxAl){
   for(let i=0;i<4;i++){
