@@ -24,7 +24,7 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
 
 /* ── START ── */
 #screen-start{
-  justify-content:center;padding:28px 20px;position:relative;overflow:hidden;
+  justify-content:center;padding:18px 16px 12px;position:relative;overflow:hidden;
   background:radial-gradient(ellipse at 20% 20%,rgba(120,40,200,.28) 0%,transparent 55%),
              radial-gradient(ellipse at 80% 75%,rgba(0,180,240,.22) 0%,transparent 55%),
              radial-gradient(ellipse at 55% 50%,rgba(0,220,130,.1) 0%,transparent 60%),
@@ -40,21 +40,21 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
   background:radial-gradient(circle,rgba(0,180,240,.14),transparent 70%);
   bottom:-60px;right:-60px;animation:orb2 10s ease-in-out infinite;pointer-events:none;
 }
-.s-icon{font-size:78px;line-height:1;margin-bottom:10px;animation:float 3.5s ease-in-out infinite;filter:drop-shadow(0 0 18px rgba(0,220,150,.5))}
+.s-icon{font-size:52px;line-height:1;margin-bottom:4px;animation:float 3s ease-in-out infinite;filter:drop-shadow(0 0 14px rgba(0,220,150,.5))}
 .s-title{
-  font-size:36px;font-weight:900;text-align:center;margin-bottom:6px;
+  font-size:30px;font-weight:900;text-align:center;margin-bottom:4px;
   background:linear-gradient(135deg,#00E5FF,#B400FF,#FF6B35);
   background-size:200% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;
   background-clip:text;animation:shimmer 4s linear infinite;
 }
-.s-sub{font-size:14px;color:rgba(255,255,255,.58);margin-bottom:30px;text-align:center;letter-spacing:.3px}
+.s-sub{font-size:13px;color:rgba(255,255,255,.58);margin-bottom:14px;text-align:center;letter-spacing:.3px}
 .s-label{
   font-size:10px;font-weight:700;color:rgba(255,255,255,.35);
   letter-spacing:3px;text-transform:uppercase;margin-bottom:14px;
 }
 .dgrid{display:grid;grid-template-columns:1fr 1fr;gap:13px;width:100%;max-width:340px;position:relative;z-index:1}
 .dbtn{
-  border-radius:24px;padding:20px 12px 16px;cursor:pointer;
+  border-radius:20px;padding:16px 10px 12px;cursor:pointer;
   display:flex;flex-direction:column;align-items:center;gap:7px;
   transition:transform .18s,box-shadow .18s;font-family:inherit;
   border:1.5px solid transparent;
@@ -80,8 +80,8 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
   box-shadow:0 4px 24px rgba(150,0,255,.2);
 }
 .dbtn.expert:active{box-shadow:0 0 28px rgba(150,0,255,.45)}
-.de{font-size:38px;line-height:1}
-.dn{font-size:17px;font-weight:900;color:#fff}
+.de{font-size:32px;line-height:1}
+.dn{font-size:15px;font-weight:900;color:#fff}
 .dd{font-size:11px;color:rgba(255,255,255,.5);text-align:center;line-height:1.4}
 
 /* ── GAME ── */
@@ -265,10 +265,27 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
 }
 .fm-next:active{transform:scale(.95)}
 
-/* ── START SCREEN SECTIONS ── */
-#screen-start{overflow-y:auto}
-.s-cats{width:100%;max-width:360px;display:flex;flex-direction:column;gap:18px;position:relative;z-index:1}
-.s-cat-section{display:flex;flex-direction:column;align-items:center;gap:10px}
+/* ── CATEGORY TABS ── */
+#screen-start{overflow:hidden;padding:20px 16px 16px}
+.s-label{display:none}
+.cat-tabs{
+  display:flex;width:100%;max-width:360px;
+  background:rgba(255,255,255,.07);border-radius:18px;
+  padding:4px;gap:3px;margin-bottom:16px;position:relative;z-index:1;flex-shrink:0;
+}
+.cat-tab{
+  flex:1;padding:9px 2px;border:none;border-radius:14px;
+  background:transparent;color:rgba(255,255,255,.45);
+  font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;
+  transition:background .2s,color .2s;line-height:1.2;
+}
+.cat-tab.active{
+  background:linear-gradient(135deg,rgba(100,60,220,.7),rgba(0,160,220,.5));
+  color:#fff;box-shadow:0 2px 12px rgba(80,40,200,.3);
+}
+.cat-panels{width:100%;max-width:360px;position:relative;z-index:1}
+.cat-panel{display:none}
+.cat-panel.active{display:block}
 .dgrid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%}
 .dgrid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;width:100%}
 </style>
@@ -281,10 +298,17 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
   <h1 class="s-title">ידיעת הארץ</h1>
   <p class="s-sub">נחש את שם הישוב על מפת הלוויין!</p>
 
-  <div class="s-cats">
-    <!-- CITIES -->
-    <div class="s-cat-section">
-      <div class="s-label">🏙️ ערים</div>
+  <!-- CATEGORY TABS -->
+  <div class="cat-tabs">
+    <button class="cat-tab active" data-cat="cities" onclick="showCat('cities')">ערים</button>
+    <button class="cat-tab" data-cat="moshavim" onclick="showCat('moshavim')">מושבים</button>
+    <button class="cat-tab" data-cat="kibbutzim" onclick="showCat('kibbutzim')">קיבוצים</button>
+    <button class="cat-tab" data-cat="rivers" onclick="showCat('rivers')">נחלים</button>
+  </div>
+
+  <!-- PANELS -->
+  <div class="cat-panels">
+    <div class="cat-panel active" id="cat-cities">
       <div class="dgrid2">
         <button class="dbtn easy" onclick="startGame('easy')">
           <span class="de">🌱</span><span class="dn">קל</span><span class="dd">15 ערים גדולות</span>
@@ -301,9 +325,7 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
       </div>
     </div>
 
-    <!-- MOSHAVIM -->
-    <div class="s-cat-section">
-      <div class="s-label">🏡 מושבים</div>
+    <div class="cat-panel" id="cat-moshavim">
       <div class="dgrid2">
         <button class="dbtn easy" onclick="startGame('moshav-easy')">
           <span class="de">🌿</span><span class="dn">קל</span><span class="dd">25 מושבים</span>
@@ -314,9 +336,7 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
       </div>
     </div>
 
-    <!-- KIBBUTZIM -->
-    <div class="s-cat-section">
-      <div class="s-label">🌾 קיבוצים</div>
+    <div class="cat-panel" id="cat-kibbutzim">
       <div class="dgrid2">
         <button class="dbtn easy" onclick="startGame('kib-easy')">
           <span class="de">🌄</span><span class="dn">קל</span><span class="dd">25 קיבוצים</span>
@@ -327,9 +347,7 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
       </div>
     </div>
 
-    <!-- RIVERS -->
-    <div class="s-cat-section">
-      <div class="s-label">💧 נחלים ונהרות</div>
+    <div class="cat-panel" id="cat-rivers">
       <div class="dgrid3">
         <button class="dbtn easy" onclick="startGame('riv-easy')">
           <span class="de">💧</span><span class="dn">קל</span><span class="dd">נהרות</span>
@@ -338,7 +356,7 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
           <span class="de">🌊</span><span class="dn">בינוני</span><span class="dd">נחלים</span>
         </button>
         <button class="dbtn hard" onclick="startGame('riv-hard')">
-          <span class="de">🏔️</span><span class="dn">קשה</span><span class="dd">כולם</span>
+          <span class="de">🏔</span><span class="dn">קשה</span><span class="dd">כולם</span>
         </button>
       </div>
     </div>
@@ -811,6 +829,11 @@ let _markerColor='gold';
 const TOTAL=10;
 const OKP=["כל הכבוד!","נכון! ⭐","מצוין! 🌟","אדיר! 💪","מושלם! 🏆","יפה מאוד!"];
 const NOP=["לא נכון...","נסה שוב","כמעט!","אופס!"];
+
+function showCat(id){
+  document.querySelectorAll('.cat-tab').forEach(t=>t.classList.toggle('active',t.dataset.cat===id));
+  document.querySelectorAll('.cat-panel').forEach(p=>p.classList.toggle('active',p.id==='cat-'+id));
+}
 
 function show(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
