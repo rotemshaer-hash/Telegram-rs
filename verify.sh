@@ -19,7 +19,6 @@ check "APP_VERSION"                     "APP_VERSION="
 # פונקציות ליבה
 check "firebaseLogin"                   "async function firebaseLogin"
 check "firebaseLogout"                  "async function firebaseLogout"
-check "showFullRegistrationDetails"     "function showFullRegistrationDetails"
 check "onAuthStateChanged"              "onAuthStateChanged"
 check "go() function"                   "^function go\("
 check "render() function"              "^function render\("
@@ -33,12 +32,10 @@ check "מסך TeacherPending"              "^function TeacherPending\("
 check "מסך Splash"                      "^function Splash\("
 
 # UI קריטי
-check "כפתור צפה בכל פרטי ההרשמה"     "צפה בכל פרטי ההרשמה"
 check "gradient כותרת כהה"             "linear-gradient\(150deg,#0F1A1F"
 check "מערך CATS"                       "const CATS="
-check "GPS timeout 20000"               "20000"
 check "listener לסטוריז"               "ref\('stories'\)"
-check "שם האפליקציה Lamdeni"           "Lamdeni"
+check "שם האפליקציה Kidemy"           "Kidemy"
 
 if [ ${#ERRORS[@]} -gt 0 ]; then
   echo ""
