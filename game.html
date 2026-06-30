@@ -451,6 +451,186 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
 .mp-rank-name{flex:1;font-size:17px;font-weight:900}
 .mp-rank-score{font-size:22px;font-weight:900;flex-shrink:0}
 .mp-rank-q{font-size:11px;color:rgba(255,255,255,.35);flex-shrink:0;min-width:40px;text-align:left}
+
+/* ══ ONLINE MULTIPLAYER ══ */
+.ol-launch-btn{
+  width:100%;max-width:360px;padding:14px;border:none;border-radius:22px;
+  background:linear-gradient(135deg,#0044CC,#0099EE,#00E5FF);
+  background-size:200% auto;animation:shimmer 3s linear infinite;
+  color:#fff;font-size:16px;font-weight:900;cursor:pointer;font-family:inherit;
+  box-shadow:0 6px 28px rgba(0,100,255,.4);transition:transform .15s;
+  position:relative;z-index:1;margin-top:6px;
+}
+.ol-launch-btn:active{transform:scale(.95)}
+.ol-back{
+  align-self:flex-start;padding:8px 14px;border-radius:14px;
+  background:rgba(255,255,255,.08);color:rgba(255,255,255,.7);
+  font-size:13px;font-weight:700;cursor:pointer;margin-bottom:16px;
+}
+.ol-sec-label{
+  font-size:11px;font-weight:800;color:rgba(255,255,255,.4);
+  letter-spacing:2.5px;margin-bottom:8px;align-self:flex-start;
+}
+/* setup */
+#screen-ol-setup{
+  overflow-y:auto;padding:24px 20px max(24px,env(safe-area-inset-bottom));
+  background:radial-gradient(ellipse at 40% 20%,rgba(0,80,220,.25) 0%,transparent 55%),#06061A;
+}
+.ol-setup-icon{font-size:52px;line-height:1;text-align:center;margin-bottom:10px}
+.ol-setup-title{
+  font-size:24px;font-weight:900;text-align:center;margin-bottom:8px;
+  background:linear-gradient(135deg,#00CFFF,#0055CC);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.ol-setup-desc{
+  font-size:13px;color:rgba(255,255,255,.5);line-height:1.75;
+  text-align:center;margin-bottom:20px;width:100%;
+}
+.ol-url-input{
+  width:100%;box-sizing:border-box;padding:14px;border-radius:16px;
+  border:1.5px solid rgba(0,200,255,.3);background:rgba(0,80,180,.12);
+  color:#fff;font-size:13px;font-family:monospace;
+  outline:none;margin-bottom:12px;direction:ltr;
+}
+.ol-url-input:focus{border-color:rgba(0,200,255,.7)}
+.ol-url-input::placeholder{color:rgba(255,255,255,.2)}
+.ol-save-btn{
+  width:100%;padding:16px;border:none;border-radius:20px;
+  background:linear-gradient(135deg,#0055CC,#00BFFF);
+  color:#fff;font-size:17px;font-weight:900;cursor:pointer;font-family:inherit;
+  box-shadow:0 6px 26px rgba(0,100,220,.35);transition:transform .15s;
+}
+.ol-save-btn:active{transform:scale(.95)}
+.ol-setup-hint{
+  font-size:11px;color:rgba(255,255,255,.25);text-align:center;
+  margin-top:14px;line-height:1.75;width:100%;
+}
+/* hub */
+#screen-ol-hub{
+  overflow-y:auto;padding:24px 20px max(24px,env(safe-area-inset-bottom));
+  background:radial-gradient(ellipse at 40% 20%,rgba(0,80,220,.25) 0%,transparent 55%),#06061A;
+}
+.ol-hub-title{
+  font-size:26px;font-weight:900;text-align:center;margin-bottom:6px;
+  background:linear-gradient(135deg,#00CFFF,#0055CC);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.ol-hub-sub{font-size:13px;color:rgba(255,255,255,.45);text-align:center;margin-bottom:20px}
+.ol-name-input{
+  width:100%;box-sizing:border-box;padding:14px 16px;border-radius:16px;
+  border:1.5px solid rgba(255,255,255,.14);background:rgba(255,255,255,.07);
+  color:#fff;font-size:16px;font-weight:700;font-family:inherit;
+  outline:none;text-align:center;margin-bottom:20px;
+}
+.ol-name-input:focus{border-color:rgba(0,200,255,.5)}
+.ol-name-input::placeholder{color:rgba(255,255,255,.25)}
+.ol-create-btn{
+  width:100%;padding:20px;border:none;border-radius:22px;
+  background:linear-gradient(135deg,#1A50D0,#0099EE);
+  color:#fff;font-size:18px;font-weight:900;cursor:pointer;font-family:inherit;
+  box-shadow:0 6px 28px rgba(0,100,220,.4);transition:transform .15s;margin-bottom:14px;
+}
+.ol-create-btn:active{transform:scale(.95)}
+.ol-join-card{
+  display:flex;flex-direction:column;align-items:center;gap:12px;width:100%;
+  padding:18px;border-radius:22px;box-sizing:border-box;
+  border:1.5px solid rgba(0,200,255,.2);background:rgba(0,80,180,.1);
+}
+.ol-join-card-title{font-size:13px;font-weight:800;color:rgba(255,255,255,.55)}
+.ol-code-input{
+  width:150px;padding:14px;border-radius:16px;
+  border:2px solid rgba(0,200,255,.35);background:rgba(0,80,200,.15);
+  color:#fff;font-size:28px;font-weight:900;font-family:monospace;
+  outline:none;text-align:center;letter-spacing:6px;direction:ltr;
+}
+.ol-code-input:focus{border-color:rgba(0,220,255,.8)}
+.ol-code-input::placeholder{color:rgba(255,255,255,.2);letter-spacing:2px;font-size:18px}
+.ol-join-btn{
+  padding:14px 32px;border:none;border-radius:18px;
+  background:linear-gradient(135deg,#00BFFF,#00E5FF);
+  color:#000;font-size:16px;font-weight:900;cursor:pointer;font-family:inherit;
+  transition:transform .15s;
+}
+.ol-join-btn:active{transform:scale(.95)}
+.ol-err{font-size:13px;color:#FF5555;text-align:center;min-height:18px;font-weight:700;margin-top:4px}
+/* host lobby */
+#screen-ol-host{
+  overflow-y:auto;padding:16px 16px max(16px,env(safe-area-inset-bottom));
+  background:radial-gradient(ellipse at 40% 20%,rgba(0,80,220,.25) 0%,transparent 55%),#06061A;
+}
+.ol-host-title{font-size:15px;font-weight:700;color:rgba(255,255,255,.55);text-align:center;margin-bottom:2px}
+.ol-code-display{
+  font-size:52px;font-weight:900;font-family:monospace;letter-spacing:10px;
+  background:linear-gradient(135deg,#00CFFF,#0055CC);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  text-align:center;line-height:1.1;
+}
+.ol-code-label{font-size:11px;color:rgba(255,255,255,.3);text-align:center;margin-bottom:6px}
+.ol-copy-btn{
+  display:block;margin:0 auto 14px;padding:7px 18px;
+  border:1px solid rgba(0,200,255,.3);border-radius:12px;
+  background:rgba(0,80,180,.15);color:rgba(0,220,255,.9);
+  font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;
+}
+.ol-player-list{width:100%;display:flex;flex-direction:column;gap:6px;margin-bottom:12px;min-height:44px}
+.ol-player-item{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 14px;border-radius:14px;background:rgba(255,255,255,.06);
+}
+.ol-player-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.ol-player-name{font-size:14px;font-weight:700;color:#fff;flex:1}
+.ol-player-host-tag{
+  font-size:10px;font-weight:800;padding:2px 7px;border-radius:8px;
+  background:rgba(255,200,0,.15);color:rgba(255,220,80,.9);
+}
+.ol-waiting-hint{font-size:12px;color:rgba(255,255,255,.3);text-align:center;margin-bottom:8px}
+.ol-start-btn{
+  width:100%;padding:18px;border:none;border-radius:22px;
+  background:linear-gradient(135deg,#1A50D0,#00BFFF);
+  background-size:200% auto;animation:shimmer 3s linear infinite;
+  color:#fff;font-size:18px;font-weight:900;cursor:pointer;font-family:inherit;
+  box-shadow:0 8px 36px rgba(0,100,255,.4);transition:transform .15s;margin-top:12px;
+}
+.ol-start-btn:disabled{
+  background:rgba(255,255,255,.1);color:rgba(255,255,255,.3);
+  animation:none;box-shadow:none;cursor:not-allowed;
+}
+.ol-start-btn:not(:disabled):active{transform:scale(.95)}
+/* guest waiting */
+#screen-ol-guest{
+  justify-content:center;align-items:center;
+  background:radial-gradient(ellipse at 40% 30%,rgba(0,80,220,.2) 0%,transparent 60%),#06061A;
+}
+.ol-guest-inner{
+  display:flex;flex-direction:column;align-items:center;gap:12px;
+  padding:30px 20px;text-align:center;width:100%;max-width:340px;
+}
+@keyframes ol-spin{to{transform:rotate(360deg)}}
+.ol-spinner{
+  width:56px;height:56px;border-radius:50%;
+  border:4px solid rgba(0,200,255,.15);border-top-color:#00E5FF;
+  animation:ol-spin 1s linear infinite;
+}
+.ol-guest-code-display{
+  font-size:38px;font-weight:900;font-family:monospace;letter-spacing:8px;
+  background:linear-gradient(135deg,#00CFFF,#0055CC);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.ol-guest-msg{font-size:16px;font-weight:700;color:rgba(255,255,255,.7)}
+.ol-guest-sub{font-size:13px;color:rgba(255,255,255,.4);margin-bottom:4px}
+.ol-guest-players{width:100%;display:flex;flex-direction:column;gap:6px;margin-top:4px}
+/* timer bar */
+#ol-timer-bar-wrap{
+  width:100%;height:4px;background:rgba(255,255,255,.08);
+  display:none;overflow:hidden;flex-shrink:0;
+}
+#ol-timer-bar-wrap.active{display:block}
+#ol-timer-bar{
+  height:100%;width:100%;
+  background:linear-gradient(90deg,#00E5FF,#0099EE);
+  transform-origin:left center;will-change:transform;
+}
+
 </style>
 </head>
 <body>
@@ -527,6 +707,7 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
 
   <div class="mp-or"><span>או</span></div>
   <button class="mp-launch-btn" onclick="goMultiplayer()">🎮 משחק קבוצתי</button>
+  <button class="ol-launch-btn" onclick="goOnline()">🌐 משחק אונליין</button>
 </div>
 
 <!-- ══ GAME ═══════════════════════════ -->
@@ -537,6 +718,7 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
     <div class="glt" id="levelTag">קל</div>
   </div>
   <div class="pbar"><div class="pfill" id="progressFill" style="width:0%"></div></div>
+  <div id="ol-timer-bar-wrap"><div id="ol-timer-bar"></div></div>
   <div id="mp-score-bar"></div>
   <div class="qtxt" id="qtxt">מה שם הישוב המסומן? 🤔</div>
   <div id="map-wrap">
@@ -1064,7 +1246,16 @@ function show(id){
   document.getElementById(id).classList.add('active');
 }
 
-function goHome(){ show('screen-start'); }
+function goHome(){
+  olStopPolling();
+  olStopTimer();
+  if(olIsHost && olCode){
+    olFetch('/rooms/'+olCode+'/status.json','PUT','ended').catch(()=>{});
+  }
+  olMode=false; olIsHost=false; olCode=null; olRoom=null; olRevealTriggered=false;
+  mpMode=false;
+  show('screen-start');
+}
 
 function startGame(lvl){
   level=lvl;
@@ -1133,7 +1324,11 @@ function checkAnswer(idx){
   const ok=idx===correctIdx;
   document.getElementById('btn'+idx).classList.add(ok?'ok':'no');
   if(!ok) document.getElementById('btn'+correctIdx).classList.add('ok');
-  if(ok){score++;document.getElementById('scoreVal').textContent=score;}
+  if(ok){
+    score++;
+    document.getElementById('scoreVal').textContent=score;
+    if(olMode) olFetch('/rooms/'+olCode+'/players/'+olPlayerId+'/score.json','PUT',score).catch(()=>{});
+  }
 
   document.getElementById('fbe').textContent=ok
     ?['🎉','⭐','🌟','💪','🏆'][Math.floor(Math.random()*5)]:'❌';
@@ -1147,7 +1342,13 @@ function checkAnswer(idx){
   if(ok&&score%3===0) confetti();
   setTimeout(()=>{
     ov.classList.remove('show');
-    if(ok && correctItem && correctItem.f){
+    if(olMode){
+      olFetch('/rooms/'+olCode+'/ans/'+olPlayerId+'.json','PUT',idx).catch(()=>{});
+      if(ok && correctItem && correctItem.f){
+        setTimeout(()=>showFacts(correctItem),180);
+      }
+      // else: wait for polling to detect reveal
+    } else if(ok && correctItem && correctItem.f){
       setTimeout(()=>showFacts(correctItem),180);
     } else {
       setTimeout(afterAnswer,180);
@@ -1175,6 +1376,7 @@ function showFacts(item){
 
 function closeFacts(){
   document.getElementById('facts-modal').classList.remove('show');
+  if(olMode) return;
   setTimeout(afterAnswer,200);
 }
 
@@ -1432,6 +1634,571 @@ function confetti(){
     document.body.appendChild(e); setTimeout(()=>e.remove(),4500);
   },i*25);
 }
+
+
+// ════════════════════════════════════════════════════
+//  ONLINE MULTIPLAYER (Firebase Realtime Database)
+// ════════════════════════════════════════════════════
+
+const OL_Q_TIME   = 20000;  // 20 s per question
+const OL_REVEAL   = 3500;   // ms on reveal screen before next q
+const OL_COLORS   = [
+  {color:'#00E5FF',bg:'rgba(0,229,255,.12)'},
+  {color:'#FFD700',bg:'rgba(255,215,0,.12)'},
+  {color:'#00E676',bg:'rgba(0,230,118,.12)'},
+  {color:'#FF7043',bg:'rgba(255,112,67,.12)'},
+  {color:'#CE93D8',bg:'rgba(206,147,216,.12)'},
+  {color:'#80CBC4',bg:'rgba(128,203,196,.12)'},
+];
+
+let olMode            = false;
+let olIsHost          = false;
+let olCode            = null;
+let olPlayerId        = null;
+let olPollTimer       = null;
+let olRoom            = null;
+let olLastQNum        = -1;
+let olLastStatus      = null;
+let olTimerRaf        = null;
+let olRevealTriggered = false;
+let olLevelKey        = 'easy';
+let olPool            = [];
+let olUsed            = [];
+
+// ── Firebase helpers ──────────────────────────────
+function olGetDbUrl(){
+  return (localStorage.getItem('ol-firebase-url')||'').replace(/\/+$/,'');
+}
+async function olFetch(path, method, body){
+  method = method || 'GET';
+  const url = olGetDbUrl() + path;
+  const opts = {method, headers:{'Content-Type':'application/json','Accept':'application/json'}};
+  if(body !== undefined) opts.body = JSON.stringify(body);
+  const r = await fetch(url, opts);
+  if(!r.ok) throw new Error('Firebase '+r.status);
+  return r.json();
+}
+
+// ── Entry points ──────────────────────────────────
+function goOnline(){
+  const url = olGetDbUrl();
+  if(!url){ show('screen-ol-setup'); return; }
+  show('screen-ol-hub');
+}
+
+function olSetupSave(){
+  const inp = document.getElementById('ol-setup-url');
+  const url = (inp.value||'').trim().replace(/\/+$/,'');
+  if(!url.startsWith('https://')){
+    inp.style.borderColor='#FF5555';
+    inp.focus();
+    return;
+  }
+  inp.style.borderColor='';
+  localStorage.setItem('ol-firebase-url', url);
+  show('screen-ol-hub');
+}
+
+function olGetMyName(){
+  const inp = document.getElementById('ol-hub-name');
+  return ((inp&&inp.value)||'').trim() || 'שחקן';
+}
+
+// ── Create room (host) ────────────────────────────
+async function olCreateRoom(){
+  const name = olGetMyName();
+  olPlayerId  = Math.random().toString(36).slice(2,10);
+  olCode      = String(Math.floor(1000 + Math.random()*9000));
+  olIsHost    = true;
+  olLevelKey  = 'easy';
+
+  const room = {
+    status:'waiting', hostId:olPlayerId, levelKey:'easy',
+    qNum:0, totalQ:10, createdAt:Date.now(),
+    players:{ [olPlayerId]:{name,score:0} },
+    ans:{}
+  };
+  try {
+    await olFetch('/rooms/'+olCode+'.json','PUT',room);
+  } catch(e) {
+    alert('שגיאת חיבור. בדוק כתובת Firebase.');
+    return;
+  }
+  olRoom = room;
+  olLastStatus = 'waiting'; olLastQNum = -1;
+  olStartPolling();
+
+  // Init host lobby UI
+  document.getElementById('ol-host-code').textContent = olCode;
+  document.querySelectorAll('#ol-host-cats .cat-tab').forEach((t,i)=>t.classList.toggle('active',i===0));
+  olUpdateHostLevels('cities');
+  olUpdatePlayerList('ol-host-player-list', room, true);
+  const sb = document.getElementById('ol-start-btn');
+  if(sb) sb.disabled = true;
+  show('screen-ol-host');
+}
+
+// ── Join room (guest) ─────────────────────────────
+async function olJoinRoom(){
+  const name  = olGetMyName();
+  const code  = (document.getElementById('ol-join-code').value||'').replace(/\D/g,'').slice(0,4);
+  const errEl = document.getElementById('ol-join-err');
+  errEl.textContent = '';
+  if(code.length!==4){ errEl.textContent='קוד חייב להיות 4 ספרות'; return; }
+
+  let room;
+  try { room = await olFetch('/rooms/'+code+'.json'); } catch(e){
+    errEl.textContent='שגיאת חיבור לשרת'; return;
+  }
+  if(!room){ errEl.textContent='חדר לא נמצא'; return; }
+  if(room.status==='ended'){ errEl.textContent='המשחק הסתיים'; return; }
+  if(room.status!=='waiting'){ errEl.textContent='המשחק כבר התחיל'; return; }
+
+  olCode    = code;
+  olIsHost  = false;
+  olPlayerId = Math.random().toString(36).slice(2,10);
+  olRoom    = room;
+  olLastStatus = 'waiting'; olLastQNum = -1;
+
+  try {
+    await olFetch('/rooms/'+olCode+'/players/'+olPlayerId+'.json','PUT',{name,score:0});
+  } catch(e){ errEl.textContent='שגיאה בהצטרפות'; return; }
+
+  olStartPolling();
+  document.getElementById('ol-guest-code').textContent = olCode;
+  document.getElementById('ol-guest-msg').textContent  = 'ממתין לתחילת המשחק...';
+  document.getElementById('ol-guest-sub').textContent  = 'המארח יבחר קטגוריה ויתחיל';
+  olUpdatePlayerList('ol-guest-player-list', olRoom, false);
+  show('screen-ol-guest');
+}
+
+// ── Polling ───────────────────────────────────────
+function olStartPolling(){
+  if(olPollTimer) clearInterval(olPollTimer);
+  olPollTimer = setInterval(olDoPoll, 1500);
+}
+function olStopPolling(){
+  if(olPollTimer){ clearInterval(olPollTimer); olPollTimer = null; }
+}
+async function olDoPoll(){
+  try {
+    const room = await olFetch('/rooms/'+olCode+'.json');
+    if(room){ olRoom=room; handleOlRoom(room); }
+  } catch(e){}
+}
+
+// ── Central room-state router ─────────────────────
+function handleOlRoom(room){
+  const status = room.status||'waiting';
+  const qNum   = room.qNum||0;
+
+  // Host: detect when to reveal
+  if(olIsHost && status==='question' && room.q && !olRevealTriggered){
+    const ans     = room.ans||{};
+    const pIds    = Object.keys(room.players||{});
+    const allDone = pIds.every(id=>(ans[id]!==undefined ? ans[id]>=0 : false));
+    const timeout = Date.now() > (room.q.deadline||Infinity);
+    if(allDone||timeout){
+      olRevealTriggered = true;
+      olFetch('/rooms/'+olCode+'/status.json','PUT','reveal').catch(()=>{});
+    }
+  }
+
+  // Lobby updates (waiting)
+  if(status==='waiting'){
+    olUpdatePlayerList('ol-host-player-list', room, true);
+    olUpdatePlayerList('ol-guest-player-list', room, false);
+    const sb = document.getElementById('ol-start-btn');
+    if(sb) sb.disabled = Object.keys(room.players||{}).length < 2;
+    return;
+  }
+
+  if(status==='question' && qNum!==olLastQNum){
+    olLastQNum   = qNum;
+    olLastStatus = status;
+    olRevealTriggered = false;
+    olShowQuestion(room);
+  } else if(status==='reveal' && olLastStatus!=='reveal'){
+    olLastStatus = status;
+    olShowReveal(room);
+  } else if(status==='ended' && olLastStatus!=='ended'){
+    olLastStatus = 'ended';
+    olStopPolling();
+    olStopTimer();
+    olShowEnd(room);
+  }
+}
+
+// ── Player list renderer ──────────────────────────
+function olUpdatePlayerList(elId, room, isHost){
+  const el = document.getElementById(elId);
+  if(!el) return;
+  const players = room.players||{};
+  const keys = Object.keys(players);
+  el.innerHTML = keys.map((id,idx)=>{
+    const p   = players[id];
+    const col = OL_COLORS[idx%OL_COLORS.length].color;
+    const isH = id===room.hostId;
+    return '<div class="ol-player-item">'
+      +'<div class="ol-player-dot" style="background:'+col+'"></div>'
+      +'<span class="ol-player-name">'+p.name+'</span>'
+      +(isH?'<span class="ol-player-host-tag">מארח</span>':'')
+      +'</div>';
+  }).join('');
+}
+
+// ── Host: category/level selectors ───────────────
+function showOlCat(cat){
+  document.querySelectorAll('#ol-host-cats .cat-tab').forEach(t=>t.classList.toggle('active',t.dataset.cat===cat));
+  olUpdateHostLevels(cat);
+}
+function olUpdateHostLevels(cat){
+  const lvls = MP_LEVELS[cat]||[];
+  const row  = document.getElementById('ol-host-lvl-row');
+  row.innerHTML = lvls.map((l,i)=>
+    '<button class="mp-lvl-btn'+(i===0?' active':'')+'" data-k="'+l.k+'" onclick="setOlLevel(''+l.k+'')">'+l.n+'</button>'
+  ).join('');
+  olLevelKey = lvls[0]?.k||'easy';
+  olFetch('/rooms/'+olCode+'/levelKey.json','PUT',olLevelKey).catch(()=>{});
+}
+function setOlLevel(k){
+  olLevelKey = k;
+  document.querySelectorAll('#ol-host-lvl-row .mp-lvl-btn').forEach(b=>b.classList.toggle('active',b.dataset.k===k));
+  olFetch('/rooms/'+olCode+'/levelKey.json','PUT',k).catch(()=>{});
+}
+function olCopyCode(){
+  if(navigator.clipboard) navigator.clipboard.writeText(olCode).catch(()=>{});
+  const btn = document.getElementById('ol-copy-btn');
+  if(btn){ btn.textContent='✓ הועתק!'; setTimeout(()=>{ btn.textContent='📋 העתק קוד'; },1800); }
+}
+
+// ── Host: start game ──────────────────────────────
+async function olHostStart(){
+  if(!olIsHost) return;
+  const cfg = LVLS[olLevelKey];
+  if(!cfg) return;
+
+  olPool = shuffle([...cfg.cities]);
+  olUsed = [];
+  olMode = true;
+  level  = olLevelKey;
+  score  = 0;
+
+  _markerColor = {city:'gold',moshav:'lime',kibbutz:'orange',river:'cyan'}[cfg.mode]||'gold';
+  const qtxt  = document.getElementById('qtxt');
+  const qtxts = {city:'מה שם העיר המסומנת? 🤔',moshav:'מה שם המושב המסומן? 🏡',kibbutz:'מה שם הקיבוץ המסומן? 🌾',river:'מה שם הנחל המסומן? 🌊'};
+  if(qtxt) qtxt.textContent = qtxts[cfg.mode]||'מה שם הישוב המסומן? 🤔';
+  document.getElementById('scoreVal').textContent = '0';
+  document.getElementById('progressFill').style.width = '0%';
+
+  const lt = document.getElementById('levelTag');
+  lt.style.cssText = '';
+  lt.textContent = cfg.em+' '+cfg.name;
+
+  // Reset all player scores
+  const pIds = Object.keys(olRoom.players||{});
+  const pPatch = {};
+  pIds.forEach(id=>{ pPatch[id]={name:olRoom.players[id].name,score:0}; });
+  try {
+    await olFetch('/rooms/'+olCode+'/players.json','PATCH',pPatch);
+  } catch(e){}
+
+  show('screen-game');
+  updateOlScoreBar(olRoom);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    buildMap();
+    olHostSendQuestion();
+  }));
+}
+
+// ── Host: push next question ──────────────────────
+async function olHostSendQuestion(){
+  if(olUsed.length>=olPool.length) olUsed=[];
+  let ci;
+  do{ ci=Math.floor(Math.random()*olPool.length); }while(olUsed.includes(ci));
+  olUsed.push(ci);
+  const correct = olPool[ci];
+
+  const wrongs=[];
+  while(wrongs.length<2){
+    const wi=Math.floor(Math.random()*olPool.length);
+    if(wi!==ci&&!wrongs.includes(wi)) wrongs.push(wi);
+  }
+  const opts=[correct.name,olPool[wrongs[0]].name,olPool[wrongs[1]].name];
+  shuffle(opts);
+  const okIdx = opts.indexOf(correct.name);
+
+  const newQNum = (olRoom.qNum||0)+1;
+  const q={
+    num:newQNum, lat:correct.lat, lng:correct.lng,
+    r:correct.r!==undefined?correct.r:2,
+    opts, ok:okIdx, name:correct.name,
+    facts:correct.f||null,
+    deadline:Date.now()+OL_Q_TIME
+  };
+
+  // Reset answers
+  const ansReset={};
+  Object.keys(olRoom.players||{}).forEach(id=>{ ansReset[id]=-1; });
+
+  try {
+    await olFetch('/rooms/'+olCode+'.json','PATCH',{
+      status:'question', qNum:newQNum, q, ans:ansReset
+    });
+    olRevealTriggered = false;
+    olLastQNum   = newQNum;
+    olLastStatus = 'question';
+    olRoom = {...olRoom, status:'question', qNum:newQNum, q, ans:ansReset};
+    olShowQuestion(olRoom);
+  } catch(e){ console.error('Send Q error',e); }
+}
+
+// ── Show question (all clients) ───────────────────
+function olShowQuestion(room){
+  const q = room.q;
+  if(!q) return;
+
+  level        = room.levelKey||'easy';
+  const cfg    = LVLS[level];
+  if(cfg) _markerColor={city:'gold',moshav:'lime',kibbutz:'orange',river:'cyan'}[cfg.mode]||'gold';
+
+  // correctIdx used by checkAnswer visual feedback
+  correctIdx  = q.ok;
+  correctItem = {name:q.name, f:q.facts, lat:q.lat, lng:q.lng, r:q.r};
+  locked      = false;
+
+  for(let i=0;i<3;i++){
+    const b=document.getElementById('btn'+i);
+    b.textContent=q.opts[i]; b.className='abtn'; b.disabled=false;
+  }
+  document.getElementById('qCounter').textContent='שאלה '+q.num+' / '+(room.totalQ||10);
+  document.getElementById('progressFill').style.width=((q.num-1)/(room.totalQ||10)*100)+'%';
+
+  const myScore = ((room.players||{})[olPlayerId]||{}).score||0;
+  score = myScore;
+  document.getElementById('scoreVal').textContent = myScore;
+
+  const qtxt  = document.getElementById('qtxt');
+  const qtxts = {city:'מה שם העיר המסומנת? 🤔',moshav:'מה שם המושב המסומן? 🏡',kibbutz:'מה שם הקיבוץ המסומן? 🌾',river:'מה שם הנחל המסומן? 🌊'};
+  if(qtxt && cfg) qtxt.textContent = qtxts[cfg.mode]||'מה שם הישוב המסומן? 🤔';
+
+  olMode = true;
+  updateOlScoreBar(room);
+
+  const isGame = document.querySelector('.screen.active')?.id==='screen-game';
+  if(!isGame){
+    const lt=document.getElementById('levelTag');
+    lt.style.cssText='';
+    if(cfg) lt.textContent=cfg.em+' '+cfg.name;
+    show('screen-game');
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      buildMap();
+      placeMarker(q.lat,q.lng,q.r);
+      olStartTimer(q.deadline);
+    }));
+  } else {
+    placeMarker(q.lat,q.lng,q.r);
+    olStartTimer(q.deadline);
+  }
+}
+
+// ── Show reveal (all clients) ─────────────────────
+function olShowReveal(room){
+  olStopTimer();
+  const q = room.q||{};
+  for(let i=0;i<3;i++) document.getElementById('btn'+i).disabled=true;
+  if(q.ok!==undefined) document.getElementById('btn'+q.ok).classList.add('ok');
+
+  const myScore = ((room.players||{})[olPlayerId]||{}).score||0;
+  score = myScore;
+  document.getElementById('scoreVal').textContent = myScore;
+  updateOlScoreBar(room);
+  document.getElementById('progressFill').style.width=((q.num||0)/(room.totalQ||10)*100)+'%';
+
+  // Host auto-advances after reveal delay
+  if(olIsHost){
+    setTimeout(()=>{
+      if((q.num||0)>=(room.totalQ||10)){
+        olFetch('/rooms/'+olCode+'/status.json','PUT','ended').catch(()=>{});
+      } else {
+        olHostSendQuestion();
+      }
+    }, OL_REVEAL);
+  }
+}
+
+// ── Score bar (online) ────────────────────────────
+function updateOlScoreBar(room){
+  const bar = document.getElementById('mp-score-bar');
+  if(!bar) return;
+  const players = room.players||{};
+  const keys = Object.keys(players);
+  bar.classList.add('active');
+  bar.innerHTML = keys.map((id,idx)=>{
+    const p   = players[id];
+    const col = OL_COLORS[idx%OL_COLORS.length].color;
+    const me  = id===olPlayerId;
+    return '<div class="mp-sb-item'+(me?' current':'')+'" style="color:'+col+'">'
+      +'<span class="mp-sb-dot" style="background:'+col+'"></span>'
+      +'<span>'+(p.name.length>6?p.name.slice(0,5)+'…':p.name)+'</span>'
+      +'<span style="margin-right:3px">'+(p.score||0)+'</span>'
+      +'</div>';
+  }).join('');
+}
+
+// ── Show end (all clients) ────────────────────────
+function olShowEnd(room){
+  olMode = false;
+  mpMode = false;
+  const players = room.players||{};
+  const keys    = Object.keys(players);
+  const sorted  = keys.map((id,idx)=>({
+    id, name:players[id].name,
+    score:players[id].score||0,
+    color:OL_COLORS[idx%OL_COLORS.length].color
+  })).sort((a,b)=>b.score-a.score);
+
+  const winner = sorted[0]||{name:'',color:'#fff'};
+  const wn     = document.getElementById('mp-winner-name');
+  if(wn){
+    wn.textContent  = winner.name;
+    wn.style.color  = winner.color;
+    wn.style.textShadow = '0 0 30px '+winner.color;
+  }
+  document.getElementById('mp-leaderboard').innerHTML = sorted.map((p,i)=>{
+    const stars = '⭐'.repeat(Math.min(5,Math.round(p.score/(room.totalQ||10)*5)))||'—';
+    return '<div class="mp-rank-row'+(i===0?' first':'')+'"><span class="mp-rank-medal">'
+      +(MP_MEDALS[i]||'🏅')+'</span><span class="mp-rank-name" style="color:'+p.color
+      +'">'+p.name+'</span><span class="mp-rank-score" style="color:'+p.color
+      +'">'+p.score+'</span><span class="mp-rank-q">'+stars+'</span></div>';
+  }).join('');
+
+  const lt = document.getElementById('levelTag');
+  lt.style.cssText='';
+  confetti();
+  show('screen-mp-end');
+}
+
+// ── Timer animation ───────────────────────────────
+function olStartTimer(deadline){
+  olStopTimer();
+  const wrap = document.getElementById('ol-timer-bar-wrap');
+  const bar  = document.getElementById('ol-timer-bar');
+  if(!wrap||!bar) return;
+  wrap.classList.add('active');
+  function tick(){
+    const rem = deadline - Date.now();
+    const frac = Math.max(0, Math.min(1, rem/OL_Q_TIME));
+    bar.style.transform = 'scaleX('+frac+')';
+    bar.style.background = frac<.25
+      ? 'linear-gradient(90deg,#FF3D00,#FF5500)'
+      : frac<.5
+        ? 'linear-gradient(90deg,#FF9500,#FFCD00)'
+        : 'linear-gradient(90deg,#00E5FF,#0099EE)';
+    if(frac>0) olTimerRaf = requestAnimationFrame(tick);
+    else wrap.classList.remove('active');
+  }
+  olTimerRaf = requestAnimationFrame(tick);
+}
+function olStopTimer(){
+  if(olTimerRaf){ cancelAnimationFrame(olTimerRaf); olTimerRaf=null; }
+  const w=document.getElementById('ol-timer-bar-wrap');
+  if(w) w.classList.remove('active');
+}
+
+// ── Leave handlers ────────────────────────────────
+function olHostLeave(){
+  olFetch('/rooms/'+olCode+'/status.json','PUT','ended').catch(()=>{});
+  olStopPolling(); olMode=false; olIsHost=false; olCode=null; olRoom=null;
+  show('screen-start');
+}
+function olGuestLeave(){
+  olStopPolling(); olMode=false; olIsHost=false; olCode=null; olRoom=null;
+  show('screen-start');
+}
+
 </script>
+
+<!-- ══ OL SETUP ════════════════════════════ -->
+<div id="screen-ol-setup" class="screen">
+  <div class="ol-back" onclick="goHome()">← חזרה</div>
+  <div class="ol-setup-icon">🔥</div>
+  <div class="ol-setup-title">הגדרת שרת אונליין</div>
+  <div class="ol-setup-desc">
+    כדי לשחק אונליין נדרשת מסד נתונים של Firebase.<br>
+    הגדרה פעם אחת — ואז המשחק עובד על כל המכשירים.
+  </div>
+  <div class="ol-sec-label">כתובת Firebase Realtime Database</div>
+  <input class="ol-url-input" id="ol-setup-url" type="url"
+    placeholder="https://my-project-default-rtdb.firebaseio.com"
+    autocomplete="off" autocorrect="off" spellcheck="false">
+  <button class="ol-save-btn" onclick="olSetupSave()">שמור והמשך</button>
+  <div class="ol-setup-hint">
+    📋 יצור פרויקט ב־console.firebase.google.com<br>
+    הוסף Realtime Database → בחר "Start in test mode"<br>
+    העתק את ה-URL שמופיע בחלק העליון של הדף
+  </div>
+</div>
+
+<!-- ══ OL HUB ══════════════════════════════ -->
+<div id="screen-ol-hub" class="screen">
+  <div class="ol-back" onclick="goHome()">← חזרה</div>
+  <div style="font-size:48px;text-align:center;line-height:1;margin-bottom:8px">🌐</div>
+  <div class="ol-hub-title">משחק אונליין</div>
+  <div class="ol-hub-sub">כל שחקן ממכשיר שלו — בזמן אמת</div>
+  <div class="ol-sec-label">השם שלך במשחק</div>
+  <input class="ol-name-input" id="ol-hub-name" placeholder="הכנס שם..." maxlength="14" autocomplete="off">
+  <button class="ol-create-btn" onclick="olCreateRoom()">🎯 צור משחק חדש</button>
+  <div class="ol-join-card">
+    <div class="ol-join-card-title">הצטרף למשחק קיים</div>
+    <input class="ol-code-input" id="ol-join-code" type="tel" inputmode="numeric"
+      maxlength="4" placeholder="קוד" autocomplete="off">
+    <button class="ol-join-btn" onclick="olJoinRoom()">הצטרף</button>
+    <div class="ol-err" id="ol-join-err"></div>
+  </div>
+</div>
+
+<!-- ══ OL HOST LOBBY ════════════════════════ -->
+<div id="screen-ol-host" class="screen">
+  <div class="ol-back" onclick="olHostLeave()">← צא</div>
+  <div class="ol-host-title">שתף קוד עם חברים</div>
+  <div class="ol-code-display" id="ol-host-code">----</div>
+  <div class="ol-code-label">קוד חדר — שתף עם החברים שלך</div>
+  <button class="ol-copy-btn" id="ol-copy-btn" onclick="olCopyCode()">📋 העתק קוד</button>
+
+  <div class="ol-sec-label">שחקנים מחוברים</div>
+  <div class="ol-player-list" id="ol-host-player-list"></div>
+  <div class="ol-waiting-hint" id="ol-waiting-hint">ממתין לשחקנים נוספים... (נדרשים לפחות 2)</div>
+
+  <div class="ol-sec-label">קטגוריה</div>
+  <div class="cat-tabs" id="ol-host-cats" style="max-width:100%">
+    <button class="cat-tab active" data-cat="cities" onclick="showOlCat('cities')">ערים</button>
+    <button class="cat-tab" data-cat="moshavim" onclick="showOlCat('moshavim')">מושבים</button>
+    <button class="cat-tab" data-cat="kibbutzim" onclick="showOlCat('kibbutzim')">קיבוצים</button>
+    <button class="cat-tab" data-cat="rivers" onclick="showOlCat('rivers')">נחלים</button>
+  </div>
+
+  <div class="ol-sec-label" style="margin-top:10px">רמת קושי</div>
+  <div class="mp-lvl-row" id="ol-host-lvl-row"></div>
+
+  <button class="ol-start-btn" id="ol-start-btn" disabled onclick="olHostStart()">
+    התחל משחק ▶
+  </button>
+</div>
+
+<!-- ══ OL GUEST WAITING ══════════════════════ -->
+<div id="screen-ol-guest" class="screen">
+  <div style="position:absolute;top:16px;left:16px">
+    <div class="ol-back" style="margin:0" onclick="olGuestLeave()">← צא</div>
+  </div>
+  <div class="ol-guest-inner">
+    <div class="ol-spinner"></div>
+    <div class="ol-guest-code-display" id="ol-guest-code">----</div>
+    <div class="ol-guest-msg" id="ol-guest-msg">ממתין לתחילת המשחק...</div>
+    <div class="ol-guest-sub" id="ol-guest-sub">המארח יתחיל בקרוב</div>
+    <div class="ol-guest-players" id="ol-guest-player-list"></div>
+  </div>
+</div>
+
 </body>
 </html>
