@@ -941,6 +941,17 @@ function buildMap() {
       const r=d[k], g=d[k+1], b=d[k+2];
       if (r>200 && g>200 && b>200 && Math.max(r,g,b)-Math.min(r,g,b)<40) {
         d[k]=8; d[k+1]=18; d[k+2]=42;
+      } else {
+        // Latitude-based toning: greener north (Galilee), warmer south (Negev)
+        const row=Math.floor((k/4)/790);
+        const northness=1-row/1845; // 1=north, 0=south
+        const avg=(r+g+b)/3;
+        let nr=Math.min(255,Math.max(0,Math.round(avg+(r-avg)*1.16)));
+        let ng=Math.min(255,Math.max(0,Math.round(avg+(g-avg)*1.16)));
+        let nb=Math.min(255,Math.max(0,Math.round(avg+(b-avg)*1.16)));
+        ng=Math.min(255,ng+Math.round(northness*9));
+        nr=Math.min(255,nr+Math.round((1-northness)*13));
+        d[k]=nr; d[k+1]=ng; d[k+2]=nb;
       }
     }
     tc.putImageData(id, 0, 0);
@@ -952,6 +963,7 @@ function buildMap() {
       drawMapDecorations();
       const dcEl=document.getElementById('deco-canvas');
       if(dcEl) dcEl.style.opacity='1';
+      animateMapDecorations();
     },300);
   };
   mi.src = _MAP_B64;
@@ -962,12 +974,18 @@ function buildMap() {
   oc.width = W; oc.height = H;
   oc.style.cssText = 'position:absolute;inset:0;z-index:5;pointer-events:none;display:block';
   wrap.appendChild(oc);
-  // Decoration canvas (icons on map)
+  // Decoration canvas (static overlays, labels, compass rose)
   const dc = document.createElement('canvas');
   dc.id = 'deco-canvas';
   dc.width = W; dc.height = H;
   dc.style.cssText = 'position:absolute;inset:0;z-index:2;pointer-events:none;display:block;opacity:0;transition:opacity 1.8s';
   wrap.appendChild(dc);
+  // Animation canvas (sea waves, sparkles, coastline glow)
+  const ac = document.createElement('canvas');
+  ac.id = 'anim-canvas';
+  ac.width = W; ac.height = H;
+  ac.style.cssText = 'position:absolute;inset:0;z-index:4;pointer-events:none;display:block';
+  wrap.appendChild(ac);
 }
 
 let _markerXY = null, _animRaf = null;
@@ -2360,33 +2378,240 @@ function _spawnMapParticles(){
 }
 
 // ════════════════════════════════════════
-//  FEATURE 2: Map decorations (emoji icons)
+//  FEATURE 2: Map decorations (overlays, labels, compass)
 // ════════════════════════════════════════
+function _geoXY(lat,lng){
+  const [px,py]=geo2pct(lat,lng);
+  return {x:_mapRect.offsetX+px/100*_mapRect.dispW, y:_mapRect.offsetY+py/100*_mapRect.dispH};
+}
 function drawMapDecorations(){
   const wrap=document.getElementById('map-wrap');
   const dc=document.getElementById('deco-canvas');
   if(!wrap||!dc||!_mapRect) return;
   const ctx=dc.getContext('2d');
   ctx.clearRect(0,0,dc.width,dc.height);
-  const spots=[
-    {lat:31.77,lng:35.23,icon:'✡️',sz:22},
-    {lat:32.82,lng:34.99,icon:'⚓',sz:20},
-    {lat:29.56,lng:34.95,icon:'🐠',sz:20},
-    {lat:32.72,lng:35.57,icon:'⛵',sz:19},
-    {lat:30.55,lng:34.75,icon:'🌵',sz:22},
-    {lat:33.05,lng:35.28,icon:'🌿',sz:18},
-    {lat:31.50,lng:35.47,icon:'💧',sz:18},
-    {lat:32.09,lng:33.90,icon:'🌊',sz:18},
+  const {dispW,dispH,offsetX,offsetY}=_mapRect;
+  const scl=dispW/790;
+
+  // ── Subtle region color overlays ──
+  const regions=[
+    {lat:33.05,lng:35.1, r:dispW*.22,color:'rgba(40,200,80,.10)'},   // Upper Galilee (green)
+    {lat:32.55,lng:35.15,r:dispW*.14,color:'rgba(80,200,120,.08)'},   // Jezreel Valley
+    {lat:31.55,lng:35.0, r:dispW*.18,color:'rgba(220,180,60,.07)'},   // Judea (golden)
+    {lat:30.2, lng:34.72,r:dispW*.30,color:'rgba(240,160,40,.08)'},   // Negev (warm)
+    {lat:32.1, lng:34.82,r:dispW*.13,color:'rgba(80,180,255,.06)'},   // Sharon (coastal)
   ];
-  ctx.globalAlpha=0.38;
-  spots.forEach(({lat,lng,icon,sz})=>{
-    if(lat<IMG_MIN_LAT||lat>IMG_MAX_LAT) return;
-    const [px,py]=geo2pct(lat,lng);
-    const x=_mapRect.offsetX+px/100*_mapRect.dispW;
-    const y=_mapRect.offsetY+py/100*_mapRect.dispH;
-    ctx.font=sz+'px serif';
-    ctx.fillText(icon,x-sz/2,y+sz/2);
+  regions.forEach(({lat,lng,r,color})=>{
+    const p=_geoXY(lat,lng);
+    const gr=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,r);
+    gr.addColorStop(0,color);
+    gr.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=gr;
+    ctx.fillRect(0,0,dc.width,dc.height);
   });
+
+  // ── Hebrew region labels ──
+  ctx.textAlign='center';
+  ctx.textBaseline='middle';
+  const labels=[
+    {lat:33.10,lng:35.25,text:'גליל עליון', sz:10.5,alpha:.80},
+    {lat:32.74,lng:35.28,text:'גליל תחתון', sz:9.5, alpha:.75},
+    {lat:32.52,lng:35.20,text:'עמק יזרעאל', sz:9.5, alpha:.72},
+    {lat:32.15,lng:34.78,text:'שרון',        sz:10,  alpha:.70},
+    {lat:31.62,lng:35.05,text:'יהודה',       sz:10,  alpha:.70},
+    {lat:30.35,lng:34.72,text:'נגב',         sz:13.5,alpha:.65},
+    {lat:31.50,lng:35.54,text:'ים המלח',     sz:8.5, alpha:.75},
+    {lat:32.83,lng:35.60,text:'כנרת',        sz:8.5, alpha:.80},
+    {lat:29.54,lng:34.92,text:'ים אדום',     sz:7.5, alpha:.65},
+  ];
+  labels.forEach(({lat,lng,text,sz,alpha})=>{
+    if(lat<IMG_MIN_LAT||lat>IMG_MAX_LAT) return;
+    const {x,y}=_geoXY(lat,lng);
+    const fs=Math.max(7,Math.round(sz*scl));
+    ctx.font=`bold ${fs}px "Arial Hebrew","Arial",sans-serif`;
+    ctx.globalAlpha=alpha;
+    ctx.shadowColor='rgba(0,0,0,.9)';
+    ctx.shadowBlur=3;
+    ctx.fillStyle='#f0f4ff';
+    ctx.fillText(text,x,y);
+  });
+  ctx.shadowBlur=0; ctx.globalAlpha=1;
+
+  // ── Compass rose (lower-right of map image) ──
+  const cR=Math.max(18,Math.round(24*scl));
+  const cx=offsetX+dispW-cR-Math.round(14*scl);
+  const cy=offsetY+dispH-cR-Math.round(14*scl);
+  // Outer ring
+  ctx.globalAlpha=.60;
+  ctx.fillStyle='rgba(5,15,50,.75)';
+  ctx.beginPath(); ctx.arc(cx,cy,cR+3,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle='rgba(180,150,255,.65)';
+  ctx.lineWidth=Math.max(1,scl*.8);
+  ctx.beginPath(); ctx.arc(cx,cy,cR+3,0,Math.PI*2); ctx.stroke();
+  // North arrow (gold)
+  ctx.globalAlpha=1;
+  ctx.fillStyle='#FFD700';
+  ctx.shadowColor='rgba(255,200,0,.7)'; ctx.shadowBlur=4;
+  ctx.beginPath();
+  ctx.moveTo(cx,          cy-cR*.88);
+  ctx.lineTo(cx-cR*.30,  cy+cR*.08);
+  ctx.lineTo(cx,          cy-cR*.18);
+  ctx.closePath(); ctx.fill();
+  // South arrow (silver)
+  ctx.fillStyle='rgba(200,210,230,.65)'; ctx.shadowBlur=0;
+  ctx.beginPath();
+  ctx.moveTo(cx,          cy+cR*.88);
+  ctx.lineTo(cx+cR*.30,  cy-cR*.08);
+  ctx.lineTo(cx,          cy+cR*.18);
+  ctx.closePath(); ctx.fill();
+  // E / W ticks
+  ctx.strokeStyle='rgba(200,210,230,.45)';
+  ctx.lineWidth=Math.max(1,scl*.7);
+  [[cx-cR*.82,cy,cx-cR*.44,cy],[cx+cR*.82,cy,cx+cR*.44,cy]].forEach(([x1,y1,x2,y2])=>{
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  });
+  // "צ" north label
+  const lsz=Math.max(6,Math.round(9*scl));
+  ctx.font=`bold ${lsz}px "Arial Hebrew","Arial",sans-serif`;
+  ctx.fillStyle='#FFD700';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.shadowColor='rgba(0,0,0,.95)'; ctx.shadowBlur=2;
+  ctx.fillText('צ',cx,cy-cR*.52);
+  ctx.shadowBlur=0; ctx.globalAlpha=1; ctx.textAlign='left';
+}
+
+// ════════════════════════════════════════
+//  FEATURE 2b: Animated sea effects
+// ════════════════════════════════════════
+let _animMapRaf=null;
+let _animMapVisHandler=null;
+function animateMapDecorations(){
+  if(_animMapRaf){cancelAnimationFrame(_animMapRaf);_animMapRaf=null;}
+  const ac=document.getElementById('anim-canvas');
+  if(!ac||!_mapRect) return;
+  const ctx=ac.getContext('2d');
+  const {dispW,dispH,offsetX,offsetY}=_mapRect;
+  const scl=dispW/790;
+  // Water body centers
+  const KIN=_geoXY(32.82,35.58); KIN.r=dispW*.052;  // Kinneret
+  const DS =_geoXY(31.48,35.54); DS.r=dispW*.024;   // Dead Sea
+  const RS =_geoXY(29.53,34.92); RS.r=dispW*.022;   // Red Sea/Eilat
+  // Mediterranean coast longitude in pixels
+  const coastX=_geoXY(32.0,34.67).x;  // ~west coastline x
+  const seaW=coastX-offsetX+dispW*.04; // sea width = from left edge to coast + small buffer
+  // Sparkle dots in water areas
+  const sparkles=[
+    // Mediterranean
+    {x:offsetX+seaW*.18,y:offsetY+dispH*.20},
+    {x:offsetX+seaW*.38,y:offsetY+dispH*.28},
+    {x:offsetX+seaW*.12,y:offsetY+dispH*.36},
+    {x:offsetX+seaW*.52,y:offsetY+dispH*.42},
+    {x:offsetX+seaW*.25,y:offsetY+dispH*.32},
+    {x:offsetX+seaW*.44,y:offsetY+dispH*.24},
+    {x:offsetX+seaW*.08,y:offsetY+dispH*.48},
+    {x:offsetX+seaW*.34,y:offsetY+dispH*.52},
+    // Kinneret
+    {x:KIN.x-KIN.r*.4,y:KIN.y-KIN.r*.3},
+    {x:KIN.x+KIN.r*.3,y:KIN.y+KIN.r*.2},
+    {x:KIN.x,y:KIN.y-KIN.r*.5},
+    // Dead Sea
+    {x:DS.x,y:DS.y-DS.r*.5},
+    {x:DS.x-DS.r*.3,y:DS.y+DS.r*.3},
+    // Red Sea
+    {x:RS.x,y:RS.y},{x:RS.x+RS.r*.3,y:RS.y+RS.r*.2},
+  ];
+  // Coastline trace (lat points along the Mediterranean coast of Israel)
+  const coastLats=[33.10,32.92,32.75,32.55,32.35,32.18,32.00,31.82,31.65,31.50,31.32,31.15,30.92];
+  const coastPts=coastLats.map(lat=>_geoXY(lat,34.67));
+  let t=0;
+  function _frame(){
+    ctx.clearRect(0,0,ac.width,ac.height);
+    t+=0.010;
+
+    // ── Mediterranean wave lines (horizontal bands drifting down) ──
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(offsetX,offsetY,Math.max(seaW,20),dispH);
+    ctx.clip();
+    for(let i=0;i<7;i++){
+      const yt=offsetY+((t*36+i*dispH/7)%dispH);
+      const al=0.032+i*.003;
+      ctx.strokeStyle=`rgba(0,180,255,${al})`;
+      ctx.lineWidth=1.1*scl;
+      ctx.beginPath();
+      ctx.moveTo(offsetX,yt);
+      for(let xi=0;xi<=seaW;xi+=5*scl){
+        const wy=Math.sin(xi/(16*scl)+t*2.2+i*.9)*2.5*scl;
+        ctx.lineTo(offsetX+xi,yt+wy);
+      }
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // ── Kinneret shimmer ──
+    _seaShimmer(ctx,KIN.x,KIN.y,KIN.r,t,  'rgba(60,160,255,',0.50);
+    // ── Dead Sea shimmer ──
+    _seaShimmer(ctx,DS.x, DS.y, DS.r, t+1.8,'rgba(180,220,255,',0.42);
+    // ── Red Sea/Eilat shimmer ──
+    _seaShimmer(ctx,RS.x, RS.y, RS.r, t+3.2,'rgba(0,210,190,', 0.40);
+
+    // ── Sparkles ──
+    sparkles.forEach(({x,y},i)=>{
+      const pulse=0.25+0.75*Math.abs(Math.sin(t*1.4+i*.73));
+      const sz=(0.9+Math.sin(t*.8+i)*.7)*scl;
+      ctx.globalAlpha=pulse*.55;
+      ctx.fillStyle='rgba(160,230,255,1)';
+      ctx.beginPath(); ctx.arc(x,y,Math.max(.5,sz),0,Math.PI*2); ctx.fill();
+      ctx.strokeStyle='rgba(220,245,255,.85)';
+      ctx.lineWidth=Math.max(.3,sz*.4);
+      const arm=Math.max(.8,sz*2.0);
+      ctx.beginPath();
+      ctx.moveTo(x-arm,y); ctx.lineTo(x+arm,y);
+      ctx.moveTo(x,y-arm); ctx.lineTo(x,y+arm);
+      ctx.stroke();
+    });
+    ctx.globalAlpha=1;
+
+    // ── Coastline glow ──
+    if(coastPts.length>1){
+      const gal=0.055+0.025*Math.sin(t*1.6);
+      ctx.shadowColor='rgba(0,180,255,.7)';
+      ctx.shadowBlur=7*scl;
+      ctx.strokeStyle=`rgba(0,200,255,${gal})`;
+      ctx.lineWidth=2.5*scl;
+      ctx.beginPath();
+      ctx.moveTo(coastPts[0].x,coastPts[0].y);
+      for(let i=1;i<coastPts.length;i++) ctx.lineTo(coastPts[i].x,coastPts[i].y);
+      ctx.stroke();
+      ctx.shadowBlur=0;
+    }
+
+    _animMapRaf=requestAnimationFrame(_frame);
+  }
+  _animMapRaf=requestAnimationFrame(_frame);
+  // Pause when tab hidden
+  if(!_animMapVisHandler){
+    _animMapVisHandler=()=>{
+      if(document.hidden){
+        if(_animMapRaf){cancelAnimationFrame(_animMapRaf);_animMapRaf=null;}
+      } else { animateMapDecorations(); }
+    };
+    document.addEventListener('visibilitychange',_animMapVisHandler);
+  }
+}
+function _seaShimmer(ctx,cx,cy,r,t,colorBase,maxAl){
+  for(let i=0;i<3;i++){
+    const p=((t*.65+i/3)%1);
+    const ri=Math.max(1,r*(0.25+p*.75));
+    const al=maxAl*(1-p)*.38;
+    if(al<0.002) continue;
+    ctx.globalAlpha=al;
+    const gr=ctx.createRadialGradient(cx,cy,0,cx,cy,ri);
+    gr.addColorStop(0,colorBase+'0.8)');
+    gr.addColorStop(1,colorBase+'0)');
+    ctx.fillStyle=gr;
+    ctx.beginPath(); ctx.arc(cx,cy,ri,0,Math.PI*2); ctx.fill();
+  }
   ctx.globalAlpha=1;
 }
 
