@@ -2443,6 +2443,143 @@ function drawMapDecorations(){
   });
   ctx.shadowBlur=0; ctx.globalAlpha=1;
 
+  // ── Mediterranean sea label (rotated vertical) ──
+  {
+    const slp=_geoXY(31.6,34.37);
+    const sfs=Math.max(8,Math.round(10*Math.max(scl,.5)));
+    ctx.save();
+    ctx.translate(slp.x,slp.y);
+    ctx.rotate(-Math.PI/2);
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.font=`bold ${sfs}px "Arial Hebrew","Arial",sans-serif`;
+    ctx.strokeStyle='rgba(0,15,60,.95)'; ctx.lineWidth=Math.max(2,sfs*.25); ctx.lineJoin='round';
+    ctx.globalAlpha=.92;
+    ctx.strokeText('הים התיכון',0,0);
+    ctx.fillStyle='rgba(220,245,255,.98)';
+    ctx.fillText('הים התיכון',0,0);
+    ctx.restore();
+    ctx.globalAlpha=1;
+  }
+
+  // ── City dots with names ──
+  const cities=[
+    {lat:31.77,lng:35.23,name:'ירושלים',color:'#FFD700',r:3.0,above:true},
+    {lat:32.08,lng:34.78,name:'תל אביב', color:'#00E5FF',r:2.5,above:false},
+    {lat:32.82,lng:35.0, name:'חיפה',    color:'#69FF80',r:2.5,above:true},
+    {lat:31.25,lng:34.80,name:'באר שבע', color:'#FF9500',r:2.5,above:false},
+    {lat:29.56,lng:34.98,name:'אילת',    color:'#FF4081',r:2.5,above:true},
+  ];
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  cities.forEach(({lat,lng,name,color,r,above})=>{
+    if(lat<IMG_MIN_LAT||lat>IMG_MAX_LAT) return;
+    const {x,y}=_geoXY(lat,lng);
+    const dr=Math.max(3,r*Math.max(scl,.7));
+    // Glowing dot
+    ctx.globalAlpha=.95;
+    ctx.shadowColor=color; ctx.shadowBlur=6;
+    ctx.fillStyle=color;
+    ctx.beginPath(); ctx.arc(x,y,dr,0,Math.PI*2); ctx.fill();
+    ctx.shadowBlur=0;
+    // White ring
+    ctx.strokeStyle='rgba(255,255,255,.7)'; ctx.lineWidth=Math.max(.8,dr*.3);
+    ctx.beginPath(); ctx.arc(x,y,dr+Math.max(.8,dr*.35),0,Math.PI*2); ctx.stroke();
+    // Name label
+    const nfs=Math.max(7,Math.round(8.5*Math.max(scl,.6)));
+    ctx.font=`bold ${nfs}px "Arial Hebrew","Arial",sans-serif`;
+    const ty=above ? y-dr-nfs*.85 : y+dr+nfs*.85;
+    ctx.strokeStyle='rgba(0,0,30,.95)'; ctx.lineWidth=Math.max(2,nfs*.22);
+    ctx.lineJoin='round';
+    ctx.strokeText(name,x,ty);
+    ctx.fillStyle='#ffffff';
+    ctx.fillText(name,x,ty);
+    ctx.globalAlpha=1;
+  });
+
+  // ── Animal / landmark icons ──
+  const icons=[
+    {lat:30.60,lng:34.85,icon:'🐪',sz:18},   // Camel in Negev
+    {lat:29.57,lng:35.01,icon:'🌴',sz:16},   // Palm near Eilat
+  ];
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  icons.forEach(({lat,lng,icon,sz})=>{
+    if(lat<IMG_MIN_LAT||lat>IMG_MAX_LAT) return;
+    const {x,y}=_geoXY(lat,lng);
+    const isz=Math.max(10,Math.round(sz*Math.max(scl,.55)));
+    ctx.globalAlpha=.90;
+    ctx.font=isz+'px serif';
+    ctx.fillText(icon,x,y);
+  });
+  ctx.globalAlpha=1;
+
+  // ── הר חרמון — mountain peak ──
+  {
+    const {x:mx,y:my}=_geoXY(33.18,35.74);
+    const ps=Math.max(10,Math.round(14*Math.max(scl,.55)));
+    ctx.globalAlpha=.80;
+    // Mountain body
+    ctx.fillStyle='rgba(200,215,240,.85)';
+    ctx.shadowColor='rgba(150,180,255,.4)'; ctx.shadowBlur=4;
+    ctx.beginPath();
+    ctx.moveTo(mx,         my-ps*.95);
+    ctx.lineTo(mx-ps*.75,  my+ps*.35);
+    ctx.lineTo(mx+ps*.75,  my+ps*.35);
+    ctx.closePath(); ctx.fill();
+    // Snow cap
+    ctx.shadowBlur=0;
+    ctx.fillStyle='#ffffff';
+    ctx.beginPath();
+    ctx.moveTo(mx,         my-ps*.95);
+    ctx.lineTo(mx-ps*.30,  my-ps*.30);
+    ctx.lineTo(mx+ps*.30,  my-ps*.30);
+    ctx.closePath(); ctx.fill();
+    // Label
+    const mfs=Math.max(6,Math.round(7*Math.max(scl,.6)));
+    ctx.font=`bold ${mfs}px "Arial Hebrew","Arial",sans-serif`;
+    ctx.textAlign='center'; ctx.textBaseline='top';
+    ctx.strokeStyle='rgba(0,0,40,.92)'; ctx.lineWidth=Math.max(1.5,mfs*.2);
+    ctx.lineJoin='round';
+    ctx.strokeText('הר חרמון',mx,my+ps*.40);
+    ctx.fillStyle='#e8f2ff';
+    ctx.fillText('הר חרמון',mx,my+ps*.40);
+    ctx.globalAlpha=1;
+  }
+
+  // ── Sun with smiley — top-left of map image ──
+  {
+    const sr=Math.max(12,Math.round(17*Math.max(scl,.6)));
+    const sx=offsetX+sr+Math.max(4,6*scl);
+    const sy=offsetY+sr+Math.max(4,6*scl);
+    ctx.globalAlpha=.88;
+    // Rays
+    ctx.strokeStyle='#FFB800'; ctx.lineWidth=Math.max(1,sr*.12);
+    for(let i=0;i<8;i++){
+      const a=i*Math.PI/4;
+      ctx.beginPath();
+      ctx.moveTo(sx+Math.cos(a)*sr*1.22,sy+Math.sin(a)*sr*1.22);
+      ctx.lineTo(sx+Math.cos(a)*sr*1.55,sy+Math.sin(a)*sr*1.55);
+      ctx.stroke();
+    }
+    // Sun body gradient
+    const sg=ctx.createRadialGradient(sx-sr*.25,sy-sr*.25,0,sx,sy,sr);
+    sg.addColorStop(0,'#FFF06A');
+    sg.addColorStop(1,'#FFB800');
+    ctx.fillStyle=sg;
+    ctx.shadowColor='rgba(255,190,0,.6)'; ctx.shadowBlur=8;
+    ctx.beginPath(); ctx.arc(sx,sy,sr,0,Math.PI*2); ctx.fill();
+    ctx.shadowBlur=0;
+    // Face
+    const ep=sr*.27;
+    ctx.fillStyle='rgba(60,25,0,.8)';
+    ctx.beginPath(); ctx.arc(sx-ep,sy-ep*.3,Math.max(1.2,sr*.09),0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(sx+ep,sy-ep*.3,Math.max(1.2,sr*.09),0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle='rgba(60,25,0,.8)';
+    ctx.lineWidth=Math.max(1,sr*.09);
+    ctx.beginPath();
+    ctx.arc(sx,sy+ep*.08,ep*.82,0.2,Math.PI-0.2);
+    ctx.stroke();
+    ctx.globalAlpha=1;
+  }
+
   // ── Compass rose (TOP-right corner) ──
   const cR=Math.max(22,Math.round(28*Math.max(scl,0.6)));
   const cx=offsetX+dispW-cR-Math.round(12*scl)-4;
@@ -2604,6 +2741,56 @@ function animateMapDecorations(){
       for(let i=1;i<coastPts.length;i++) ctx.lineTo(coastPts[i].x,coastPts[i].y);
       ctx.stroke();
       ctx.shadowBlur=0;
+    }
+
+    // ── Animated boat in Mediterranean ──
+    {
+      const bx=offsetX+Math.max(seaW*.08,4)+(Math.sin(t*.07)+1)/2*Math.max(seaW*.78,10);
+      const by=offsetY+dispH*.40;
+      const bsz=Math.max(14,Math.round(18*scl));
+      ctx.globalAlpha=.88;
+      ctx.font=bsz+'px serif';
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText('⛵',bx,by);
+    }
+
+    // ── Fish in Kinneret ──
+    {
+      const fsz=Math.max(10,Math.round(13*scl));
+      ctx.font=fsz+'px serif';
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      [{ox:.32,oy:.25,sp:.38,ph:0},{ox:.22,oy:.12,sp:.30,ph:2.1}].forEach(({ox,oy,sp,ph})=>{
+        const fx=KIN.x+Math.cos(t*sp+ph)*KIN.r*ox;
+        const fy=KIN.y+Math.sin(t*sp+ph)*KIN.r*oy;
+        const dir=Math.cos(t*sp+ph+.5);
+        ctx.globalAlpha=.80;
+        ctx.save();
+        ctx.translate(fx,fy);
+        if(dir<0) ctx.scale(-1,1);
+        ctx.fillText('🐟',0,0);
+        ctx.restore();
+      });
+    }
+    ctx.globalAlpha=1;
+
+    // ── Flying birds (V-flock crossing the sea) ──
+    {
+      const totalW=dispW*1.8;
+      const birdPhase=((t*.016)%1);
+      const birdX=offsetX+seaW*1.1 - birdPhase*totalW;
+      const birdY=offsetY+dispH*.20;
+      const bw=Math.max(7,Math.round(10*scl));
+      ctx.strokeStyle='rgba(20,20,40,.70)';
+      ctx.lineWidth=Math.max(.8,1.1*scl);
+      ctx.lineJoin='round';
+      // 4 birds staggered
+      [{dx:0,dy:0},{dx:bw*2.2,dy:bw*.8},{dx:bw*4.5,dy:bw*.4},{dx:bw*6.8,dy:bw*1.0}].forEach(({dx,dy})=>{
+        const bx=birdX+dx, by=birdY+dy;
+        ctx.beginPath();
+        ctx.moveTo(bx-bw*.75,by+bw*.45);
+        ctx.quadraticCurveTo(bx,by-bw*.28,bx+bw*.75,by+bw*.45);
+        ctx.stroke();
+      });
     }
 
     _animMapRaf=requestAnimationFrame(_frame);
