@@ -526,7 +526,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.62';
+const APP_VERSION='4.9.63';
 const APP_BUILD='25-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -11003,31 +11003,44 @@ async function firebaseLogin(usernameOrEmail,password){
   if(typeof auth==='undefined'||!auth){showFireToast('❌ Firebase לא נטען — רענן את הדף (F5)');return;}
   try{
     showFireToast('⏳ מתחבר...');
-    S._loggingIn=true; // מסמן שזו כניסה ידנית — לא לנתק ב-onAuthStateChanged
-    // אם הוזן שם משתמש בלבד (לא מייל), הוסף @lamdeni.app
+    S._loggingIn=true;
     const email=usernameOrEmail.includes('@')?usernameOrEmail:usernameOrEmail.toLowerCase()+'@lamdeni.app';
     await auth.signInWithEmailAndPassword(email,password);
-    showFireToast('✅ ברוך הבא!');
-    // Safety net: if onAuthStateChanged doesn't navigate within 1.5s, force navigate
-    setTimeout(async()=>{
-      if((S.screen==='login'||S.screen==='splash')&&auth?.currentUser){
-        S._loggingIn=false;
-        currentUser=auth.currentUser;
-        // טעינת נתוני משתמש אם חסרים
-        if(!currentUserData&&db){
-          try{
-            const _s=await db.ref('users/'+currentUser.uid).get();
-            if(_s.exists()){
-              currentUserData=_s.val();
-              if(isAdmin()&&currentUserData.role!=='teacher'){currentUserData={...currentUserData,role:'teacher',verified:true};}
-            }
-          }catch(_e){}
+    currentUser=auth.currentUser;
+    // Load user data directly — don't wait for onAuthStateChanged
+    if(currentUser&&db){
+      try{
+        const snap=await db.ref('users/'+currentUser.uid).get();
+        if(snap.exists()){
+          currentUserData=snap.val();
+          if(isAdmin()&&currentUserData.role!=='teacher'){currentUserData={...currentUserData,role:'teacher',verified:true};}
         }
-        go('home');
-      }
-    },1500);
+      }catch(_e){}
+    }
+    // Navigate based on role
+    if(currentUserData?.role==='student'&&currentUserData?.verified!==true&&!isAdmin()){
+      showFireToast('✅ מחובר — ממתין לאישור מנהל');
+      go('studentPending');
+    } else if(currentUserData?.role==='teacher'&&!isAdmin()){
+      try{
+        const tSnap=await db.ref('teachers/'+currentUser.uid).get();
+        if(!tSnap.exists()){showFireToast('✅ ברוך הבא!');go('teacherSetup');}
+        else if(!tSnap.val()?.verified){S.pendingTeacherData=tSnap.val();showFireToast('✅ מחובר — ממתין לאישור מנהל');go('teacherPending');}
+        else{showFireToast('✅ ברוך הבא!');go('home');setTimeout(showOnboarding,800);}
+      }catch(_te){showFireToast('✅ ברוך הבא!');go('home');setTimeout(showOnboarding,800);}
+    } else {
+      showFireToast('✅ ברוך הבא!');
+      go('home');
+      setTimeout(showOnboarding,800);
+    }
+    // S._loggingIn stays true so onAuthStateChanged won't auto-signout
   }catch(e){
     S._loggingIn=false;
+    const triedEmail=usernameOrEmail.includes('@')&&!usernameOrEmail.endsWith('@lamdeni.app');
+    if(triedEmail&&(e.code==='auth/user-not-found'||e.code==='auth/invalid-credential'||e.code==='auth/wrong-password')){
+      showFireToast('❌ הכנס שם משתמש שיצרת בהרשמה — לא כתובת מייל');
+      return;
+    }
     const m={
       'auth/user-not-found':'❌ שם משתמש לא קיים',
       'auth/wrong-password':'❌ סיסמה שגויה',
