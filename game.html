@@ -672,6 +672,30 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
   transform-origin:left center;will-change:transform;
 }
 
+
+/* ── OCEAN WAVES (feature 6) ── */
+@keyframes wave-drift{from{transform:translateY(0)}to{transform:translateY(82px)}}
+#map-wrap::before{
+  content:'';position:absolute;inset:0;z-index:3;pointer-events:none;
+  background:repeating-linear-gradient(
+    0deg,
+    transparent 0px,transparent 40px,
+    rgba(0,180,230,.028) 40px,rgba(0,180,230,.028) 43px
+  );
+  animation:wave-drift 6s linear infinite;
+}
+
+/* ── MAP OCEAN COLOUR ── */
+#map-wrap{animation:ocean-pulse 5s ease-in-out infinite;}
+@keyframes ocean-pulse{0%,100%{background-color:#0A1840}50%{background-color:#0D2460}}
+
+/* ── +1 SCORE FLOAT (feature 8) ── */
+.score-float{
+  position:fixed;pointer-events:none;z-index:500;
+  font-size:28px;font-weight:900;color:#FFE000;
+  text-shadow:0 0 12px rgba(255,200,0,.9),0 0 28px rgba(255,150,0,.6);
+  transition:transform .7s cubic-bezier(.17,.67,.4,1.3),opacity .7s ease-in;
+}
 </style>
 </head>
 <body>
@@ -924,6 +948,11 @@ function buildMap() {
     mctx.fillStyle = '#08122A';
     mctx.fillRect(0, 0, W, H);
     mctx.drawImage(tmp, offsetX, offsetY, dispW, dispH);
+    setTimeout(()=>{
+      drawMapDecorations();
+      const dcEl=document.getElementById('deco-canvas');
+      if(dcEl) dcEl.style.opacity='1';
+    },300);
   };
   mi.src = _MAP_B64;
 
@@ -933,6 +962,12 @@ function buildMap() {
   oc.width = W; oc.height = H;
   oc.style.cssText = 'position:absolute;inset:0;z-index:5;pointer-events:none;display:block';
   wrap.appendChild(oc);
+  // Decoration canvas (icons on map)
+  const dc = document.createElement('canvas');
+  dc.id = 'deco-canvas';
+  dc.width = W; dc.height = H;
+  dc.style.cssText = 'position:absolute;inset:0;z-index:2;pointer-events:none;display:block;opacity:0;transition:opacity 1.8s';
+  wrap.appendChild(dc);
 }
 
 let _markerXY = null, _animRaf = null;
@@ -946,6 +981,7 @@ function placeMarker(lat, lng, radiusKm) {
   const baseR = Math.max(6, pxPerKm * (radiusKm || 8));
   _markerXY = {cx, cy, baseR};
   if (_animRaf) { cancelAnimationFrame(_animRaf); _animRaf = null; }
+  _playSound('ping');
   _drawMarker();
 }
 
@@ -962,36 +998,87 @@ function _drawMarker() {
   const NUM_RINGS = 3;
   const INNER_R = Math.max(4, baseR * 0.48);
   const MAX_R = INNER_R + baseR * 2.8;
+
+  // ── FEATURE 4: Area zone hint ──
+  const ZONE_R = Math.max(INNER_R * 5, 55);
+  const zoneGrd = ctx.createRadialGradient(cx, cy, ZONE_R * 0.25, cx, cy, ZONE_R);
+  zoneGrd.addColorStop(0, `rgba(${cr},${cg},${cb},0.10)`);
+  zoneGrd.addColorStop(1, `rgba(${cr},${cg},${cb},0)`);
+  ctx.beginPath();
+  ctx.arc(cx, cy, ZONE_R, 0, Math.PI * 2);
+  ctx.fillStyle = zoneGrd;
+  ctx.fill();
+
+  // ── FEATURE 3: Vertical light beam ──
+  const beamH = 70;
+  const beamGrd = ctx.createLinearGradient(cx, cy - beamH, cx, cy);
+  beamGrd.addColorStop(0, `rgba(${cr},${cg},${cb},0)`);
+  beamGrd.addColorStop(0.6, `rgba(${cr},${cg},${cb},0.18)`);
+  beamGrd.addColorStop(1, `rgba(${cr},${cg},${cb},0.55)`);
+  ctx.fillStyle = beamGrd;
+  ctx.beginPath();
+  ctx.moveTo(cx - 1.5, cy);
+  ctx.lineTo(cx + 1.5, cy);
+  ctx.lineTo(cx + 5, cy - beamH);
+  ctx.lineTo(cx - 5, cy - beamH);
+  ctx.closePath();
+  ctx.fill();
+
   // Expanding sonar rings
   for (let i = 0; i < NUM_RINGS; i++) {
     const phase = ((t / PERIOD) + i / NUM_RINGS) % 1;
     const r = INNER_R + (MAX_R - INNER_R) * phase;
     const alpha = (1 - phase) * 0.9;
-    const lw = Math.max(1.2, (1 - phase * 0.6) * baseR * 0.20);
+    const lw = Math.max(1.2, (1 - phase * 0.6) * baseR * 0.22);
     ctx.beginPath();
     ctx.arc(cx, cy, r, 0, Math.PI * 2);
     ctx.strokeStyle = `rgba(${cr},${cg},${cb},${alpha.toFixed(2)})`;
     ctx.lineWidth = lw;
     ctx.stroke();
   }
+
+  // Dashed outer target ring (feature 3)
+  ctx.save();
+  ctx.setLineDash([5, 7]);
+  ctx.beginPath();
+  ctx.arc(cx, cy, MAX_R + 6, 0, Math.PI * 2);
+  ctx.strokeStyle = `rgba(${cr},${cg},${cb},0.18)`;
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+
   // Glow halo behind dot
-  const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, INNER_R * 2.2);
-  grd.addColorStop(0, `rgba(${cr},${cg},${cb},0.40)`);
+  const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, INNER_R * 2.6);
+  grd.addColorStop(0, `rgba(${cr},${cg},${cb},0.55)`);
+  grd.addColorStop(0.4, `rgba(${cr},${cg},${cb},0.20)`);
   grd.addColorStop(1, `rgba(${cr},${cg},${cb},0)`);
   ctx.beginPath();
-  ctx.arc(cx, cy, INNER_R * 2.2, 0, Math.PI * 2);
+  ctx.arc(cx, cy, INNER_R * 2.6, 0, Math.PI * 2);
   ctx.fillStyle = grd;
   ctx.fill();
+
   // Solid dot
   ctx.beginPath();
   ctx.arc(cx, cy, INNER_R, 0, Math.PI * 2);
   ctx.fillStyle = `rgb(${cr},${cg},${cb})`;
   ctx.fill();
+
+  // Crosshair lines (feature 3)
+  const cLen = INNER_R * 1.8;
+  ctx.strokeStyle = `rgba(255,255,255,0.6)`;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(cx - cLen, cy); ctx.lineTo(cx - INNER_R * 1.1, cy); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx + INNER_R * 1.1, cy); ctx.lineTo(cx + cLen, cy); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx, cy - cLen); ctx.lineTo(cx, cy - INNER_R * 1.1); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx, cy + INNER_R * 1.1); ctx.lineTo(cx, cy + cLen); ctx.stroke();
+
   // White hot core
   ctx.beginPath();
-  ctx.arc(cx, cy, INNER_R * 0.42, 0, Math.PI * 2);
+  ctx.arc(cx, cy, INNER_R * 0.38, 0, Math.PI * 2);
   ctx.fillStyle = '#ffffff';
   ctx.fill();
+
   _animRaf = requestAnimationFrame(_drawMarker);
 }
 
@@ -1369,7 +1456,12 @@ function checkAnswer(idx){
   if(ok){
     score++;
     document.getElementById('scoreVal').textContent=score;
+    _playSound('correct');
+    _spawnScoreFloat(idx);
+    setTimeout(_spawnMapParticles, 60);
     if(olMode) olFetch('/rooms/'+olCode+'/players/'+olPlayerId+'/score.json','PUT',score).catch(()=>{});
+  } else {
+    _playSound('wrong');
   }
 
   document.getElementById('fbe').textContent=ok
@@ -2157,6 +2249,145 @@ function olHostLeave(){
 function olGuestLeave(){
   olStopPolling(); olMode=false; olIsHost=false; olCode=null; olRoom=null;
   show('screen-start');
+}
+
+
+// ════════════════════════════════════════
+//  FEATURE 5: Sound effects (Web Audio)
+// ════════════════════════════════════════
+let _audioCtx = null;
+function _getAudio(){
+  if(!_audioCtx){
+    try{_audioCtx=new(window.AudioContext||window.webkitAudioContext)();}catch(e){}
+  }
+  return _audioCtx;
+}
+function _playSound(type){
+  const ctx=_getAudio(); if(!ctx) return;
+  try{
+    if(ctx.state==='suspended') ctx.resume();
+    const now=ctx.currentTime;
+    if(type==='ping'){
+      const o=ctx.createOscillator(),g=ctx.createGain();
+      o.connect(g);g.connect(ctx.destination);
+      o.type='sine';
+      o.frequency.setValueAtTime(900,now);
+      o.frequency.exponentialRampToValueAtTime(660,now+0.18);
+      g.gain.setValueAtTime(0,now);
+      g.gain.linearRampToValueAtTime(0.22,now+0.01);
+      g.gain.exponentialRampToValueAtTime(0.001,now+0.38);
+      o.start(now);o.stop(now+0.4);
+    } else if(type==='correct'){
+      [[523,0],[659,.09],[784,.18],[1047,.28]].forEach(([freq,d])=>{
+        const o=ctx.createOscillator(),g=ctx.createGain();
+        o.connect(g);g.connect(ctx.destination);
+        o.type='triangle';
+        o.frequency.setValueAtTime(freq,now+d);
+        g.gain.setValueAtTime(0,now+d);
+        g.gain.linearRampToValueAtTime(0.18,now+d+0.01);
+        g.gain.exponentialRampToValueAtTime(0.001,now+d+0.22);
+        o.start(now+d);o.stop(now+d+0.25);
+      });
+    } else if(type==='wrong'){
+      const o=ctx.createOscillator(),g=ctx.createGain();
+      o.connect(g);g.connect(ctx.destination);
+      o.type='sawtooth';
+      o.frequency.setValueAtTime(320,now);
+      o.frequency.exponentialRampToValueAtTime(110,now+0.42);
+      g.gain.setValueAtTime(0.22,now);
+      g.gain.exponentialRampToValueAtTime(0.001,now+0.45);
+      o.start(now);o.stop(now+0.48);
+    }
+  }catch(e){}
+}
+
+// ════════════════════════════════════════
+//  FEATURE 8: Animated +1 score float
+// ════════════════════════════════════════
+function _spawnScoreFloat(btnIdx){
+  const btn=document.getElementById('btn'+btnIdx);
+  const sc=document.getElementById('scoreVal');
+  if(!btn||!sc) return;
+  const br=btn.getBoundingClientRect();
+  const sr=sc.getBoundingClientRect();
+  const el=document.createElement('div');
+  el.className='score-float';
+  el.textContent='+1';
+  const sx=br.left+br.width/2;
+  const sy=br.top+br.height/2;
+  el.style.left=sx+'px';
+  el.style.top=sy+'px';
+  el.style.transform='translate(-50%,-50%)';
+  el.style.opacity='1';
+  document.body.appendChild(el);
+  const tx=sr.left+sr.width/2-sx;
+  const ty=sr.top+sr.height/2-sy;
+  requestAnimationFrame(()=>{
+    el.style.transform=`translate(calc(-50% + ${tx}px),calc(-50% + ${ty}px)) scale(1.3)`;
+    el.style.opacity='0';
+  });
+  setTimeout(()=>el.remove(),750);
+}
+
+// ════════════════════════════════════════
+//  FEATURE 7: Map confetti from marker
+// ════════════════════════════════════════
+function _spawnMapParticles(){
+  if(!_markerXY) return;
+  const wrap=document.getElementById('map-wrap');
+  if(!wrap) return;
+  const {cx,cy}=_markerXY;
+  const syms=['⭐','✨','💫','🌟','🎉','💥','⚡'];
+  for(let i=0;i<9;i++){
+    const el=document.createElement('div');
+    el.textContent=syms[i%syms.length];
+    const angle=(Math.PI*2/9)*i - Math.PI/2;
+    const dist=50+Math.random()*50;
+    const tx=Math.cos(angle)*dist;
+    const ty=Math.sin(angle)*dist;
+    const sz=16+Math.floor(Math.random()*12);
+    el.style.cssText=`position:absolute;left:${cx}px;top:${cy}px;
+      font-size:${sz}px;pointer-events:none;z-index:10;
+      transform:translate(-50%,-50%);transition:none;`;
+    wrap.appendChild(el);
+    requestAnimationFrame(()=>{
+      el.style.transition='transform .65s cubic-bezier(.17,.67,.58,1.2),opacity .65s ease-out';
+      el.style.transform=`translate(calc(-50% + ${tx}px),calc(-50% + ${ty}px)) scale(0.2)`;
+      el.style.opacity='0';
+    });
+    setTimeout(()=>el.remove(),700);
+  }
+}
+
+// ════════════════════════════════════════
+//  FEATURE 2: Map decorations (emoji icons)
+// ════════════════════════════════════════
+function drawMapDecorations(){
+  const wrap=document.getElementById('map-wrap');
+  const dc=document.getElementById('deco-canvas');
+  if(!wrap||!dc||!_mapRect) return;
+  const ctx=dc.getContext('2d');
+  ctx.clearRect(0,0,dc.width,dc.height);
+  const spots=[
+    {lat:31.77,lng:35.23,icon:'✡️',sz:22},
+    {lat:32.82,lng:34.99,icon:'⚓',sz:20},
+    {lat:29.56,lng:34.95,icon:'🐠',sz:20},
+    {lat:32.72,lng:35.57,icon:'⛵',sz:19},
+    {lat:30.55,lng:34.75,icon:'🌵',sz:22},
+    {lat:33.05,lng:35.28,icon:'🌿',sz:18},
+    {lat:31.50,lng:35.47,icon:'💧',sz:18},
+    {lat:32.09,lng:33.90,icon:'🌊',sz:18},
+  ];
+  ctx.globalAlpha=0.38;
+  spots.forEach(({lat,lng,icon,sz})=>{
+    if(lat<IMG_MIN_LAT||lat>IMG_MAX_LAT) return;
+    const [px,py]=geo2pct(lat,lng);
+    const x=_mapRect.offsetX+px/100*_mapRect.dispW;
+    const y=_mapRect.offsetY+py/100*_mapRect.dispH;
+    ctx.font=sz+'px serif';
+    ctx.fillText(icon,x-sz/2,y+sz/2);
+  });
+  ctx.globalAlpha=1;
 }
 
 </script>
