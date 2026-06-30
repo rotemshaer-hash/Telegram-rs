@@ -1857,7 +1857,7 @@ function olUpdateHostLevels(cat){
   const lvls = MP_LEVELS[cat]||[];
   const row  = document.getElementById('ol-host-lvl-row');
   row.innerHTML = lvls.map((l,i)=>
-    '<button class="mp-lvl-btn'+(i===0?' active':'')+'" data-k="'+l.k+'" onclick="setOlLevel(''+l.k+'')">'+l.n+'</button>'
+    '<button class="mp-lvl-btn'+(i===0?' active':'')+'" data-k="'+l.k+'" onclick="setOlLevel(\''+l.k+'\')">'+l.n+'</button>'
   ).join('');
   olLevelKey = lvls[0]?.k||'easy';
   olFetch('/rooms/'+olCode+'/levelKey.json','PUT',olLevelKey).catch(()=>{});
