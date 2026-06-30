@@ -9321,7 +9321,8 @@ function Login(){
       <div style="width:100%;max-width:380px">
         <div style="background:#fff;border-radius:24px;padding:24px;box-shadow:0 8px 32px rgba(14,122,114,0.12);margin-bottom:14px">
           <div class="ing"><label>שם משתמש</label>
-            <input id="loginEmail" class="inp" type="text" placeholder="שם המשתמש שלך" autocomplete="username" autocapitalize="none"></div>
+            <input id="loginEmail" class="inp" type="text" placeholder="שם המשתמש שלך" autocomplete="username" autocapitalize="none">
+            <span style="font-size:11px;color:#94A3B8;margin-top:3px;display:block">הכנס שם משתמש (לא כתובת מייל)</span></div>
           <div class="ing"><label>סיסמה</label>
             <input id="loginPass" class="inp" type="password" placeholder="הסיסמה שלך"></div>
           <button class="btn bp" style="margin-bottom:10px" onclick="
@@ -9333,7 +9334,7 @@ function Login(){
               showFireToast('❌ מלא שם משתמש וסיסמה');
             }
           ">🔑 התחבר</button>
-          <button onclick="forgotPassword()" style="width:100%;background:none;border:none;padding:8px;font-size:13px;color:#14B8A6;cursor:pointer;font-weight:700">
+          <button onclick="sendResetEmail()" style="width:100%;background:none;border:none;padding:8px;font-size:13px;color:#14B8A6;cursor:pointer;font-weight:700">
             שכחתי סיסמה?
           </button>
         </div>
@@ -11285,16 +11286,8 @@ async function sendResetToParentEmail(parentEmail,fakeEmail,btn){
 }
 
 async function forgotPassword(){
-  const email=await _prompt('הכנס את כתובת המייל שלך:');
-  if(!email)return;
-  const normalized=email.includes('@')?email.toLowerCase():email.toLowerCase()+'@lamdeni.app';
-  try{
-    await auth.sendPasswordResetEmail(normalized);
-    showFireToast('📧 קישור לאיפוס סיסמה נשלח למייל שלך');
-  }catch(e){
-    const msgs={'auth/user-not-found':'❌ מייל לא נמצא במערכת','auth/invalid-email':'❌ מייל לא תקין'};
-    showFireToast(msgs[e.code]||'❌ '+e.message);
-  }
+  // delegate to sendResetEmail() which handles both virtual (@lamdeni.app) and real emails
+  sendResetEmail();
 }
 
 async function firebaseLogin(usernameOrEmail,password){
@@ -11302,8 +11295,26 @@ async function firebaseLogin(usernameOrEmail,password){
   try{
     showFireToast('⏳ מתחבר...');
     S._loggingIn=true; // מסמן שזו כניסה ידנית — לא לנתק ב-onAuthStateChanged
-    // אם הוזן שם משתמש בלבד (לא מייל), הוסף @lamdeni.app
-    const email=usernameOrEmail.includes('@')?usernameOrEmail:usernameOrEmail.toLowerCase()+'@lamdeni.app';
+    // אם הוזן מייל אמיתי (לא @lamdeni.app) — נסה למצוא את שם המשתמש ב-DB לפי parentEmail
+    let email;
+    if(usernameOrEmail.includes('@')&&!usernameOrEmail.endsWith('@lamdeni.app')){
+      let found=null;
+      try{
+        const snap=await db.ref('users').orderByChild('parentEmail').equalTo(usernameOrEmail.toLowerCase()).get();
+        if(snap.exists())snap.forEach(c=>{found=c.val()?.email||null;});
+      }catch(_e){}
+      if(found){
+        email=found;
+        showFireToast('🔍 נמצא חשבון — מתחבר...');
+      } else {
+        S._loggingIn=false;
+        showFireToast('❌ לא נמצא חשבון — הכנס שם משתמש (לא מייל)');
+        return;
+      }
+    } else {
+      // שם משתמש רגיל — הוסף @lamdeni.app
+      email=usernameOrEmail.includes('@')?usernameOrEmail:usernameOrEmail.toLowerCase().replace(/[^a-z0-9_@.]/g,'')+'@lamdeni.app';
+    }
     await auth.signInWithEmailAndPassword(email,password);
     showFireToast('✅ ברוך הבא!');
     // Safety net: if onAuthStateChanged doesn't navigate within 1.5s, force navigate
@@ -11364,7 +11375,7 @@ function confirmLogout(){
     <div style="background:#fff;border-radius:24px;padding:28px 24px;width:100%;max-width:340px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
       <div style="font-size:48px;margin-bottom:12px">🚪</div>
       <h3 style="font-weight:900;font-size:20px;margin:0 0 8px;color:#0F1A1F">להתנתק מהחשבון?</h3>
-      <p style="color:#64748B;font-size:14px;margin:0 0 22px;line-height:1.6">תוכל להתחבר מחדש עם המייל והסיסמה בכל עת.</p>
+      <p style="color:#64748B;font-size:14px;margin:0 0 22px;line-height:1.6">תוכל להתחבר מחדש עם שם המשתמש והסיסמה בכל עת.</p>
       <div style="display:flex;gap:10px">
         <button id="_logoutCancel" style="flex:1;background:rgba(20,184,166,0.08);border:1.5px solid rgba(20,184,166,0.2);border-radius:50px;padding:13px;font-size:14px;font-weight:700;color:#14B8A6;cursor:pointer">ביטול</button>
         <button id="_logoutConfirm" style="flex:1;background:linear-gradient(135deg,#E74C3C,#C0392B);border:none;border-radius:50px;padding:13px;font-size:14px;font-weight:800;color:#fff;cursor:pointer;box-shadow:0 4px 14px rgba(231,76,60,0.4)">🚪 התנתק</button>
