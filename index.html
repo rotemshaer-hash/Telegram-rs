@@ -526,7 +526,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.65';
+const APP_VERSION='4.9.66-debug';
 const APP_BUILD='25-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -10361,16 +10361,19 @@ if(typeof auth==='undefined'||!auth){
   setTimeout(()=>showFireToast('❌ Firebase לא נטען — רענן את הדף (F5)'),500);
 }
 auth&&auth.onAuthStateChanged(async user=>{
+  _dbg('onAuthStateChanged fired, user='+(user?user.uid:'null')+' screen='+S.screen);
   if(user){loadRealTeachers();}
   if(user){
     // אין כניסה אוטומטית — רק כניסה ידנית מתקבלת
     // _sessionAuthenticated=true מגן לצמיתות לאחר כניסה — לא מתאפס גם אם onAuthStateChanged יורה שוב
     const _inRegFlow=['safety','parentReg','register','teacherPending','studentPending'].includes(S.screen);
     if(!S._registering&&!S._loggingIn&&!_sessionAuthenticated&&!S._googleImporting&&!_inRegFlow){
+      _dbg('GUARD: auto-signout fired');
       await auth.signOut().catch(()=>{});
       go('login');
       return;
     }
+    _dbg('guard passed, _loggingIn='+S._loggingIn+' _sessAuth='+_sessionAuthenticated);
     // Google import only — don't load DB data or re-render (would wipe the filled form)
     if(S._googleImporting){return;}
     // בדוק אם המשתמש נחסם על ידי מנהל
@@ -10386,6 +10389,7 @@ auth&&auth.onAuthStateChanged(async user=>{
         }
       }catch(e2){}
       // האזן לניתוק כפוי (admin מחק בזמן שמשתמש מחובר)
+      _dbg('bannedUsers OK, setting forceSignout listener');
       // חשוב: שומרים זמן ההאזנה — ערכים ישנים מלפני ההתחברות מתעלמים מהם
       const _forceSignoutListenStart=Date.now();
       db.ref('forceSignout/'+user.uid).on('value',async snap=>{
@@ -10401,9 +10405,11 @@ auth&&auth.onAuthStateChanged(async user=>{
       });
     }
     currentUser=user;
+    _dbg('loading users/'+user.uid);
     refreshStudentCount(); // auth is confirmed, token always available here
     try{
       const snap=await db.ref('users/'+user.uid).get();
+      _dbg('users snap exists='+snap.exists()+' role='+(snap.val()?.role||'none'));
       if(snap.exists()){
         currentUserData=snap.val();
         // אם הרשומה קיימת אבל חסר שם — שחזר מ-Auth displayName ועדכן ב-DB
@@ -10480,6 +10486,7 @@ auth&&auth.onAuthStateChanged(async user=>{
       }
 
       // ── ניווט מיידי — כל שאר הטעינה ברקע ────────────────────────
+      _dbg('navigating: screen='+S.screen+' role='+currentUserData?.role+' verified='+currentUserData?.verified);
       S._loggingIn=false;S._registering=false;
       if(S.screen==='splash'||S.screen==='login'){showFireToast('✅ ברוך הבא!');go('home');setTimeout(showOnboarding,800);}
 
@@ -11011,11 +11018,14 @@ async function firebaseLogin(usernameOrEmail,password){
     S._loggingIn=true;
     _sessionAuthenticated=true;
     const email=usernameOrEmail.includes('@')?usernameOrEmail:usernameOrEmail.toLowerCase()+'@lamdeni.app';
+    _dbg('signIn start: '+email);
     await auth.signInWithEmailAndPassword(email,password);
+    _dbg('signIn OK — waiting for onAuthStateChanged');
     // onAuthStateChanged מטפל בכל הניווט — אין כפילות כאן
   }catch(e){
     S._loggingIn=false;
     _sessionAuthenticated=false;
+    _dbg('signIn ERROR: '+e.code+' '+e.message);
     const triedEmail=usernameOrEmail.includes('@')&&!usernameOrEmail.endsWith('@lamdeni.app');
     if(triedEmail&&(e.code==='auth/user-not-found'||e.code==='auth/invalid-credential'||e.code==='auth/wrong-password')){
       showFireToast('❌ הכנס שם משתמש שיצרת בהרשמה — לא כתובת מייל');
@@ -11080,6 +11090,19 @@ function showFireToast(msg){
   const t=document.createElement('div');t.id='_ft';
   t.style.cssText='position:fixed;bottom:110px;left:50%;transform:translateX(-50%);background:#1A1A2E;color:#fff;padding:13px 22px;border-radius:50px;font-size:14px;font-weight:700;z-index:9999;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,.35);direction:rtl;max-width:92vw';
   t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),3500);
+}
+// DEBUG — TEMP: מוסר אחרי האבחון
+function _dbg(msg){
+  let p=document.getElementById('_dbgPanel');
+  if(!p){
+    p=document.createElement('div');p.id='_dbgPanel';
+    p.style.cssText='position:fixed;top:0;left:0;right:0;z-index:99999;background:rgba(0,0,0,0.85);color:#0f0;font-size:11px;font-family:monospace;padding:6px 8px;max-height:40vh;overflow-y:auto;direction:ltr';
+    p.innerHTML='<b style="color:#ff0">🔧 LOGIN DEBUG (temp)</b><br>';
+    document.body.appendChild(p);
+  }
+  const t=new Date().toISOString().slice(11,19);
+  p.innerHTML+=t+' '+msg+'<br>';
+  p.scrollTop=p.scrollHeight;
 }
 
 function _confirm(msg,{confirmText='אישור',cancelText='ביטול',destructive=false}={}){
