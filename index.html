@@ -11295,26 +11295,8 @@ async function firebaseLogin(usernameOrEmail,password){
   try{
     showFireToast('⏳ מתחבר...');
     S._loggingIn=true; // מסמן שזו כניסה ידנית — לא לנתק ב-onAuthStateChanged
-    // אם הוזן מייל אמיתי (לא @lamdeni.app) — נסה למצוא את שם המשתמש ב-DB לפי parentEmail
-    let email;
-    if(usernameOrEmail.includes('@')&&!usernameOrEmail.endsWith('@lamdeni.app')){
-      let found=null;
-      try{
-        const snap=await db.ref('users').orderByChild('parentEmail').equalTo(usernameOrEmail.toLowerCase()).get();
-        if(snap.exists())snap.forEach(c=>{found=c.val()?.email||null;});
-      }catch(_e){}
-      if(found){
-        email=found;
-        showFireToast('🔍 נמצא חשבון — מתחבר...');
-      } else {
-        S._loggingIn=false;
-        showFireToast('❌ לא נמצא חשבון — הכנס שם משתמש (לא מייל)');
-        return;
-      }
-    } else {
-      // שם משתמש רגיל — הוסף @lamdeni.app
-      email=usernameOrEmail.includes('@')?usernameOrEmail:usernameOrEmail.toLowerCase().replace(/[^a-z0-9_@.]/g,'')+'@lamdeni.app';
-    }
+    // אם הוזן שם משתמש בלבד (לא מייל), הוסף @lamdeni.app
+    const email=usernameOrEmail.includes('@')?usernameOrEmail:usernameOrEmail.toLowerCase()+'@lamdeni.app';
     await auth.signInWithEmailAndPassword(email,password);
     showFireToast('✅ ברוך הבא!');
     // Safety net: if onAuthStateChanged doesn't navigate within 1.5s, force navigate
@@ -11337,6 +11319,12 @@ async function firebaseLogin(usernameOrEmail,password){
     },1500);
   }catch(e){
     S._loggingIn=false;
+    // אם ניסו להיכנס עם מייל אמיתי (לא שם משתמש), הצג הסבר ספציפי
+    const triedEmail=usernameOrEmail.includes('@')&&!usernameOrEmail.endsWith('@lamdeni.app');
+    if(triedEmail&&(e.code==='auth/user-not-found'||e.code==='auth/invalid-credential'||e.code==='auth/wrong-password')){
+      showFireToast('❌ הכנס שם משתמש שיצרת בהרשמה — לא כתובת מייל');
+      return;
+    }
     const m={
       'auth/user-not-found':'❌ שם משתמש לא קיים',
       'auth/wrong-password':'❌ סיסמה שגויה',
