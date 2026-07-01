@@ -526,7 +526,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.54';
+const APP_VERSION='4.9.55';
 const APP_BUILD='25-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -2079,14 +2079,16 @@ async function _handleStoryFile(input){
   document.getElementById('_storyUpOv')?.remove();
   if(!file)return;
   if(file.size>15*1024*1024){showFireToast('❌ תמונה גדולה מדי (מקסימום 15MB)');return;}
-  showFireToast('⏳ מעלה סטורי...');
+  showFireToast('⏳ מכין תמונה...');
   try{
+    // שלב 1: קריאת הקובץ
     const rawBase64=await new Promise((res,rej)=>{
       const reader=new FileReader();
       reader.onload=e=>res(e.target.result);
       reader.onerror=()=>rej(new Error('שגיאה בקריאת הקובץ'));
       reader.readAsDataURL(file);
     });
+    // שלב 2: דחיסה ל-max 1080px JPEG
     let base64=rawBase64;
     try{
       base64=await new Promise((res,rej)=>{
@@ -2096,23 +2098,41 @@ async function _handleStoryFile(input){
           const c=document.createElement('canvas');
           c.width=Math.round(img.width*scale);c.height=Math.round(img.height*scale);
           c.getContext('2d').drawImage(img,0,0,c.width,c.height);
-          res(c.toDataURL('image/jpeg',0.82));
+          res(c.toDataURL('image/jpeg',0.80));
         };
         img.onerror=()=>rej(new Error('canvas'));
         img.src=rawBase64;
       });
     }catch(_){base64=rawBase64;}
-    const url=await uploadBase64ToStorage(base64,'stories/'+currentUser.uid+'/'+Date.now());
-    await db.ref('stories').push({
-      uid:currentUser.uid,teacherName:currentUserData.name||'',
-      teacherPhoto:currentUserData.photo||'',mediaUrl:url,mediaType:'image',
-      text,status:'pending',createdAt:Date.now(),expiresAt:Date.now()+24*60*60*1000
+    // שלב 3: העלאה ל-Storage עם timeout 15 שניות — אם נכשל, שומר base64 ישירות
+    showFireToast('⏳ מעלה סטורי...');
+    let mediaUrl=base64;
+    try{
+      mediaUrl=await Promise.race([
+        uploadBase64ToStorage(base64,'stories/'+currentUser.uid+'/'+Date.now()),
+        new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),15000))
+      ]);
+    }catch(_){
+      mediaUrl=base64;
+    }
+    // שלב 4: שמירה ב-DB עם status pending
+    const storyRef=await db.ref('stories').push({
+      uid:currentUser.uid,
+      teacherName:currentUserData.name||'',
+      teacherPhoto:currentUserData.photo||'',
+      mediaUrl,mediaType:'image',
+      text,status:'pending',
+      createdAt:Date.now(),
+      expiresAt:Date.now()+24*60*60*1000
     });
+    // שלב 5: עדכון מיידי של MY_PENDING_STORIES ו-render בלי לחכות ל-listener
+    MY_PENDING_STORIES.unshift({id:storyRef.key,uid:currentUser.uid,teacherName:currentUserData.name||'',teacherPhoto:currentUserData.photo||'',mediaUrl,text,status:'pending',createdAt:Date.now(),expiresAt:Date.now()+24*60*60*1000});
     notifyAdmin({type:'newStory',teacherName:currentUserData.name||'',teacherId:currentUser.uid}).catch(()=>{});
     showFireToast('✅ הסטורי נשלח לאישור מנהל!');
+    if(S.screen==='home')render();
   }catch(e){
     console.error('[uploadStory]',e);
-    showFireToast('❌ שגיאה: '+(e?.message||String(e)||'לא ידוע'));
+    showFireToast('❌ שגיאה בהעלאה: '+(e?.message||String(e)||'נסה שנית'));
   }
 }
 
