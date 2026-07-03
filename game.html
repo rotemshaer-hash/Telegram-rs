@@ -2584,7 +2584,7 @@ function drawMapDecorations(){
     const sy=offsetY+sr+Math.max(4,6*scl);
     ctx.globalAlpha=.88;
     // Rays
-    ctx.strokeStyle='#E06000'; ctx.lineWidth=Math.max(1.5,sr*.14);
+    ctx.strokeStyle='#CC0000'; ctx.lineWidth=Math.max(1.5,sr*.14);
     for(let i=0;i<8;i++){
       const a=i*Math.PI/4;
       ctx.beginPath();
@@ -2592,13 +2592,13 @@ function drawMapDecorations(){
       ctx.lineTo(sx+Math.cos(a)*sr*1.60,sy+Math.sin(a)*sr*1.60);
       ctx.stroke();
     }
-    // Sun body gradient — deep amber-orange, clearly visible
+    // Sun body gradient — red
     const sg=ctx.createRadialGradient(sx-sr*.25,sy-sr*.25,0,sx,sy,sr);
-    sg.addColorStop(0,'#FF9A00');
-    sg.addColorStop(1,'#D04000');
+    sg.addColorStop(0,'#FF4444');
+    sg.addColorStop(1,'#AA0000');
     ctx.fillStyle=sg;
-    ctx.strokeStyle='rgba(80,20,0,.55)'; ctx.lineWidth=Math.max(1,sr*.10);
-    ctx.shadowColor='rgba(220,80,0,.7)'; ctx.shadowBlur=10;
+    ctx.strokeStyle='rgba(80,0,0,.55)'; ctx.lineWidth=Math.max(1,sr*.10);
+    ctx.shadowColor='rgba(200,0,0,.7)'; ctx.shadowBlur=10;
     ctx.beginPath(); ctx.arc(sx,sy,sr,0,Math.PI*2); ctx.fill(); ctx.stroke();
     ctx.shadowBlur=0;
     // Face
