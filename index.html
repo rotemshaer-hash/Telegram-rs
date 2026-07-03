@@ -401,6 +401,8 @@ let teachersLoaded=false;
 let realStats={teachers:0,students:0,cities:0,categories:16};
 let publicTeacherVideos=[];
 let publicTeacherReviews=[];
+let publicTeacherQA=[];
+let _qaAnsweringId=null;
 async function loadPublicTeacherReviews(teacherId){
   if(!teacherId)return;
   try{
@@ -416,6 +418,112 @@ async function loadPublicTeacherReviews(teacherId){
     publicTeacherReviews.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
   }catch(e){publicTeacherReviews=[];window._myPendingReview=null;}
 }
+// ─── שאלות ותשובות פומביות (Q&A) ──────────────────────────────────────────────
+async function loadTeacherQA(teacherUid){
+  if(!teacherUid)return;
+  try{
+    const snap=await db.ref('teacherQA/'+teacherUid).orderByChild('askedAt').limitToLast(20).get();
+    publicTeacherQA=[];
+    if(snap.exists())snap.forEach(c=>publicTeacherQA.push({id:c.key,...c.val()}));
+    publicTeacherQA.sort((a,b)=>(b.askedAt||0)-(a.askedAt||0));
+  }catch(e){publicTeacherQA=[];}
+}
+
+function showAskQuestionDialog(teacherUid){
+  if(!currentUser){showFireToast('יש להתחבר כדי לשאול שאלה');return;}
+  const teacherObj=TEACHERS.find(x=>x.id===teacherUid)||S.teacher;
+  const teacherName=teacherObj?.name||'המורה';
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px);padding:20px;direction:rtl';
+  ov.innerHTML=`
+    <div class="_qaDlg" style="background:#fff;border-radius:24px;padding:24px;width:100%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <button onclick="this.closest('._qaDlg').parentElement.remove()" style="background:rgba(20,184,166,0.1);border:none;color:#14B8A6;font-size:18px;cursor:pointer;border-radius:50%;width:32px;height:32px">&#x2715;</button>
+        <h3 style="font-weight:900;font-size:18px;margin:0;color:#0F1A1F">${icon("chat",14)} שאל שאלה</h3>
+      </div>
+      <p style="color:#64748B;font-size:13px;margin:0 0 14px;line-height:1.6">שאלתך תפורסם בפרופיל של <b>${escapeHtml(teacherName)}</b> ותהיה גלויה לכולם.</p>
+      <textarea id="_qaQuestionInput" placeholder="מה ברצונך לשאול?" style="width:100%;border:1.5px solid rgba(20,184,166,0.3);border-radius:14px;padding:12px 14px;font-size:14px;font-family:inherit;direction:rtl;outline:none;box-sizing:border-box;resize:none;min-height:100px;margin-bottom:14px" oninput="const b=document.getElementById('_qaSubmitBtn');if(b){b.disabled=!this.value.trim();b.style.opacity=this.value.trim()?'1':'0.5';}"></textarea>
+      <button id="_qaSubmitBtn" disabled onclick="submitTeacherQuestion('${escapeHtml(teacherUid)}',this.closest('._qaDlg').parentElement)" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;opacity:0.5">${icon("send",14)} שלח שאלה</button>
+    </div>`;
+  document.body.appendChild(ov);
+  ov.onclick=e=>{if(e.target===ov)ov.remove();};
+  setTimeout(()=>document.getElementById('_qaQuestionInput')?.focus(),100);
+}
+
+async function submitTeacherQuestion(teacherUid,overlayEl){
+  if(!currentUser){showFireToast('יש להתחבר');return;}
+  const questionText=document.getElementById('_qaQuestionInput')?.value.trim();
+  if(!questionText){showFireToast('אנא כתוב שאלה');return;}
+  try{
+    showFireToast('⏳ שולח שאלה...');
+    const qaRef=db.ref('teacherQA/'+teacherUid).push();
+    await qaRef.set({
+      question:questionText,
+      askerUid:currentUser.uid,
+      askerName:currentUserData?.name||currentUser.email.split('@')[0],
+      askedAt:Date.now(),
+      answer:null,
+      answeredAt:null,
+      isPublic:true
+    });
+    await db.ref('notifications/'+teacherUid).push({
+      type:'newQuestion',
+      from:currentUserData?.name||currentUser.email.split('@')[0],
+      fromUid:currentUser.uid,
+      teacherUid,
+      qaId:qaRef.key,
+      preview:questionText.substring(0,60),
+      read:false,
+      createdAt:Date.now()
+    }).catch(()=>{});
+    overlayEl?.remove();
+    showFireToast('השאלה נשלחה! המורה יענה בקרוב');
+    await loadTeacherQA(teacherUid);
+    if(S.screen==='teacher')render();
+  }catch(e){showFireToast('❌ שגיאה: '+e.message);}
+}
+
+async function answerQA(teacherUid,qaId,askerUid){
+  if(!currentUser||currentUser.uid!==teacherUid){showFireToast('❌ רק המורה יכול לענות');return;}
+  const answerText=document.getElementById('_qaAnswer_'+qaId)?.value.trim();
+  if(!answerText){showFireToast('אנא כתוב תשובה');return;}
+  try{
+    showFireToast('⏳ מפרסם תשובה...');
+    await db.ref('teacherQA/'+teacherUid+'/'+qaId).update({answer:answerText,answeredAt:Date.now()});
+    if(askerUid&&askerUid!==currentUser.uid){
+      await db.ref('notifications/'+askerUid).push({
+        type:'questionAnswered',
+        from:currentUserData?.name||currentUser.email.split('@')[0],
+        teacherUid,
+        qaId,
+        preview:answerText.substring(0,60),
+        read:false,
+        createdAt:Date.now()
+      }).catch(()=>{});
+    }
+    _qaAnsweringId=null;
+    showFireToast('התשובה פורסמה!');
+    await loadTeacherQA(teacherUid);
+    if(S.screen==='teacher')render();
+  }catch(e){showFireToast('❌ שגיאה: '+e.message);}
+}
+
+async function deleteQA(teacherUid,qaId){
+  if(!currentUser||currentUser.uid!==teacherUid){showFireToast('❌ אין הרשאה');return;}
+  if(!await _confirm('למחוק שאלה זו?',{confirmText:'מחק',cancelText:'ביטול',destructive:true}))return;
+  try{
+    await db.ref('teacherQA/'+teacherUid+'/'+qaId).remove();
+    showFireToast('השאלה נמחקה');
+    publicTeacherQA=publicTeacherQA.filter(q=>q.id!==qaId);
+    if(S.screen==='teacher')render();
+  }catch(e){showFireToast('❌ שגיאה: '+e.message);}
+}
+
+function _notifGoToQA(teacherUid){
+  const _t=TEACHERS.find(x=>x.id===teacherUid)||S.teacher;
+  if(_t){S.teacher=_t;loadTeacherQA(teacherUid).then(()=>go('teacher'));}
+}
+
 let communityGroups=[];
 let myGroupStatuses={};
 async function loadCommunityGroups(){
@@ -582,7 +690,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.63';
+const APP_VERSION='4.9.64';
 const APP_BUILD='25-06-2026';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -594,7 +702,7 @@ let S={
   regStep:1, regRole:null, regAgreed:false, regVerifying:false, regVerified:false,
   msgs:[],
   showAttach:false,
-  posts:[],
+  posts:[],parentBriefs:[],
   openPost:null, comFilter:"all", showCompose:false, newPostCat:"general", areaOnly:false,
   pTab:"videos", aTab:"story",
   booked:false, bookStep:1, bookDayIdx:null, bookTime:null, bookType:"single", bookPay:null,
@@ -635,7 +743,7 @@ function go(scr,extra={}){
   if(scr==='register'){S.safetyConfirmed=true;_saveRegSession();if(!S.parentRegData)scr='parentReg';}
   if(scr!=="splash")S.prev=S.screen;
   Object.assign(S,extra,{screen:scr});
-  if(scr==='community')loadCommunityPosts();
+  if(scr==='community'){loadCommunityPosts();loadParentBriefs();}
   if(scr==='chat'&&currentUser&&db&&(extra.chat||S.chat)?.otherUid){
     const ou=(extra.chat||S.chat).otherUid;
     db.ref('userChats/'+currentUser.uid+'/'+ou+'/unread').set(false).catch(()=>{});
@@ -654,6 +762,8 @@ function go(scr,extra={}){
       window._myPendingReview=null;
       loadPublicTeacherVideos(tid);
       loadPublicTeacherReviews(tid).then(()=>render());
+      publicTeacherQA=[];
+      loadTeacherQA(tid).then(()=>render());
     }
   }
   if(scr==='booking'&&(extra.teacher||S.teacher)){
@@ -2699,9 +2809,9 @@ function showNotificationsPanel(){
   const items=notifications.length===0?
     `<div style="text-align:center;padding:40px 20px"><div style="font-size:54px;margin-bottom:12px">${icon("bell",14)}</div><h3 style="font-weight:900;font-size:17px;margin:0 0 6px;color:#0F1A1F">אין התראות חדשות</h3><p style="color:#64748B;font-size:13px;margin:0">כשתקבל הזמנות או הודעות הן יופיעו כאן</p></div>`:
     notifications.map(n=>{
-      const icons={newBooking:'📚',bookingApproved:'✅',bookingRejected:'❌',bookingCancelled:'🚫',newMessage:'💬',newReview:'⭐',newVideo:'📹',newTeacher:'🎓',newReport:'🚨',newUser:'👋',groupJoin:'🙋',groupApproved:'🎉',groupRejected:'😔',rateLesson:'⭐',lessonSummary:'📖',accountApproved:'🎉',teacherApproved:'🎓',adminMessage:'📣',newPost:'📢',lessonCompleted:'✅',newStory:'📸'};
-      const titles={newBooking:'הזמנת שיעור חדשה',bookingApproved:'ההזמנה אושרה!',bookingRejected:'ההזמנה נדחתה',bookingCancelled:'השיעור בוטל',newMessage:'הודעה חדשה',newReview:'דירוג חדש',newVideo:'סרטון חדש לאישור',newTeacher:'מורה חדש נרשם',newReport:'דיווח חדש!',newUser:'משתמש חדש',groupJoin:'בקשת הצטרפות לקבוצה',groupApproved:'התקבלת לקבוצה!',groupRejected:'הבקשה לא אושרה',rateLesson:'דרג את השיעור',lessonSummary:'סיכום שיעור חדש',accountApproved:'החשבון שלך אושר!',teacherApproved:'פרופיל המורה שלך אושר!',adminMessage:'הודעה מהמנהל',newPost:'פוסט חדש בקהילה',lessonCompleted:'השיעור הסתיים',newStory:'סטורי חדש לאישור'};
-      const cols={newBooking:'#14B8A6',bookingApproved:'#10B981',bookingRejected:'#EF4444',bookingCancelled:'#F59E0B',newMessage:'#06B6D4',newReview:'#FBBF24',newVideo:'#06B6D4',newTeacher:'#14B8A6',newReport:'#E74C3C',newUser:'#0EA5E9',groupJoin:'#14B8A6',groupApproved:'#10B981',groupRejected:'#EF4444',rateLesson:'#FBBF24',lessonSummary:'#06B6D4',accountApproved:'#10B981',teacherApproved:'#14B8A6',adminMessage:'#06B6D4',newPost:'#F59E0B',lessonCompleted:'#10B981',newStory:'#8B5CF6'};
+      const icons={newBooking:'📚',bookingApproved:'✅',bookingRejected:'❌',bookingCancelled:'🚫',newMessage:'💬',newReview:'⭐',newVideo:'📹',newTeacher:'🎓',newReport:'🚨',newUser:'👋',groupJoin:'🙋',groupApproved:'🎉',groupRejected:'😔',rateLesson:'⭐',lessonSummary:'📖',accountApproved:'🎉',teacherApproved:'🎓',adminMessage:'📣',newPost:'📢',lessonCompleted:'✅',newStory:'📸',briefProposal:'💼',briefAccepted:'🤝',newQuestion:'❓',questionAnswered:'💡'};
+      const titles={newBooking:'הזמנת שיעור חדשה',bookingApproved:'ההזמנה אושרה!',bookingRejected:'ההזמנה נדחתה',bookingCancelled:'השיעור בוטל',newMessage:'הודעה חדשה',newReview:'דירוג חדש',newVideo:'סרטון חדש לאישור',newTeacher:'מורה חדש נרשם',newReport:'דיווח חדש!',newUser:'משתמש חדש',groupJoin:'בקשת הצטרפות לקבוצה',groupApproved:'התקבלת לקבוצה!',groupRejected:'הבקשה לא אושרה',rateLesson:'דרג את השיעור',lessonSummary:'סיכום שיעור חדש',accountApproved:'החשבון שלך אושר!',teacherApproved:'פרופיל המורה שלך אושר!',adminMessage:'הודעה מהמנהל',newPost:'פוסט חדש בקהילה',lessonCompleted:'השיעור הסתיים',newStory:'סטורי חדש לאישור',briefProposal:'הצעת מורה לבקשתך',briefAccepted:'ההצעה שלך התקבלה!',newQuestion:'שאלה חדשה על הפרופיל',questionAnswered:'המורה ענה על שאלתך'};
+      const cols={newBooking:'#14B8A6',bookingApproved:'#10B981',bookingRejected:'#EF4444',bookingCancelled:'#F59E0B',newMessage:'#06B6D4',newReview:'#FBBF24',newVideo:'#06B6D4',newTeacher:'#14B8A6',newReport:'#E74C3C',newUser:'#0EA5E9',groupJoin:'#14B8A6',groupApproved:'#10B981',groupRejected:'#EF4444',rateLesson:'#FBBF24',lessonSummary:'#06B6D4',accountApproved:'#10B981',teacherApproved:'#14B8A6',adminMessage:'#06B6D4',newPost:'#F59E0B',lessonCompleted:'#10B981',newStory:'#8B5CF6',briefProposal:'#14B8A6',briefAccepted:'#10B981',newQuestion:'#14B8A6',questionAnswered:'#10B981'};
       const ico=icons[n.type]||'🔔';
       const ttl=titles[n.type]||'התראה';
       const col=cols[n.type]||'#14B8A6';
@@ -2725,9 +2835,13 @@ function showNotificationsPanel(){
       else if(n.type==='newTeacher')sub=n.from||'';
       else if(n.type==='newReport')sub=(n.from||'')+(n.targetName?' דיווח על '+n.targetName:'');
       else if(n.type==='newStory')sub=(n.teacherName||'')+(n.teacherName?' • סטורי ממתין לאישור':'סטורי ממתין לאישור');
+      else if(n.type==='briefProposal')sub=(n.from||'מורה')+(n.price?' • ₪'+n.price:'')+(n.preview?' • '+n.preview:'');
+      else if(n.type==='briefAccepted')sub=(n.from||'הורה')+(n.price?' • ₪'+n.price:'')+(n.childName?' עבור '+n.childName:'');
+      else if(n.type==='newQuestion')sub=(n.from||'')+(n.preview?' • '+n.preview:'');
+      else if(n.type==='questionAnswered')sub=(n.from||'המורה')+(n.preview?' • '+n.preview:'');
       else sub=n.message||n.preview||(n.from?'מ-'+n.from:'');
       return `
-        <div onclick="markNotificationRead('${n.id}');document.querySelector('._notifPanel')?.remove();${n.type==='bookingApproved'?"go('messages')":n.type==='newBooking'?"adminTab='bookings';showAdminPanel()":n.type==='newTeacher'||n.type==='newReport'?"adminTab='teachers';showAdminPanel()":n.type==='newVideo'?"adminTab='videos';showAdminPanel()":n.type==='newStory'?"adminTab='stories';showAdminPanel()":n.type==='groupJoin'?"showTeacherGroupsPanel()":n.type==='groupApproved'||n.type==='groupRejected'?"S.comTab='groups';go('community')":n.type==='rateLesson'&&n.bookingId?"showRatingDialog('"+n.bookingId+"','"+n.teacherId+"','"+n.teacherName+"')":n.type==='lessonSummary'?"go('messages')":""}" style="background:${n.read?'rgba(255,255,255,0.7)':'#fff'};border-right:4px solid ${col};border-radius:14px;padding:14px;margin-bottom:8px;cursor:pointer;display:flex;align-items:start;gap:12px;${!n.read?'box-shadow:0 4px 14px rgba(20,184,166,0.15)':''}">
+        <div onclick="markNotificationRead('${n.id}');document.querySelector('._notifPanel')?.remove();${n.type==='bookingApproved'?"go('messages')":n.type==='newBooking'?"adminTab='bookings';showAdminPanel()":n.type==='newTeacher'||n.type==='newReport'?"adminTab='teachers';showAdminPanel()":n.type==='newVideo'?"adminTab='videos';showAdminPanel()":n.type==='newStory'?"adminTab='stories';showAdminPanel()":n.type==='groupJoin'?"showTeacherGroupsPanel()":n.type==='groupApproved'||n.type==='groupRejected'?"S.comTab='groups';go('community')":n.type==='rateLesson'&&n.bookingId?"showRatingDialog('"+n.bookingId+"','"+n.teacherId+"','"+n.teacherName+"')":n.type==='lessonSummary'?"go('messages')":n.type==='briefProposal'?"S.comTab='briefs';go('community')":n.type==='briefAccepted'?"go('messages')":n.type==='newQuestion'?"_notifGoToQA('"+currentUser?.uid+"')":n.type==='questionAnswered'?"_notifGoToQA('"+n.teacherUid+"')":""}" style="background:${n.read?'rgba(255,255,255,0.7)':'#fff'};border-right:4px solid ${col};border-radius:14px;padding:14px;margin-bottom:8px;cursor:pointer;display:flex;align-items:start;gap:12px;${!n.read?'box-shadow:0 4px 14px rgba(20,184,166,0.15)':''}">
           <div style="width:40px;height:40px;border-radius:12px;background:${col}20;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">${ico}</div>
           <div style="flex:1;min-width:0">
             <div style="font-weight:900;font-size:14px;color:#0F1A1F">${ttl}</div>
@@ -3195,6 +3309,10 @@ function setupConvListeners(){
     q.on('child_added',snap=>{
       const m={id:snap.key,...snap.val()};
       if(!m||!m.from||m.from===currentUser.uid)return; // ignore my own messages
+      // מדד תגובה — רשום הודעה ראשונה לשיחה אם המשתמש הנוכחי הוא מורה
+      if(currentUserData?.role==='teacher'){
+        recordFirstMessage(currentUser.uid, m.from).catch(()=>{});
+      }
       const existing=userChats.find(c=>c.otherUid===uc.otherUid);
       if(existing&&(m.createdAt||0)<(existing.lastTime||0))return; // strictly older, skip
       const inChat=S.screen==='chat'&&S.chat?.otherUid===uc.otherUid;
@@ -3331,6 +3449,10 @@ async function _sendVoiceMessage(blob,otherUid,otherName){
           to:otherUid,toName:otherName||'',type:'audio',audioData:reader.result,
           duration:_voiceSecs,text:'🎤 הודעה קולית',createdAt:Date.now()
         });
+        // מדד תגובה — תגובה ראשונה בהודעה קולית
+        if(currentUserData?.role==='teacher'){
+          recordFirstReply(currentUser.uid, otherUid).catch(()=>{});
+        }
         const last={lastMessage:'🎤 הודעה קולית',lastTime:Date.now(),otherUid,otherName};
         await db.ref('userChats/'+currentUser.uid+'/'+otherUid).set({...last,otherUid});
         db.ref('userChats/'+otherUid+'/'+currentUser.uid).set({...last,otherUid:currentUser.uid,otherName:currentUserData?.name||'',unread:true}).catch(()=>{});
@@ -3365,6 +3487,10 @@ async function sendChatMessage(otherUid,otherName){
       text:text,
       createdAt:Date.now()
     });
+    // מדד תגובה — אם המורה שולח הודעה, תעד תגובה ראשונה
+    if(currentUserData?.role==='teacher'){
+      recordFirstReply(currentUser.uid, otherUid).catch(()=>{});
+    }
     // עדכון last message ב-conversations
     const last={
       lastMessage:text,
@@ -3413,6 +3539,105 @@ async function sendAdminNotification(toUid, toName, text){
     await db.ref('userChats/'+currentUser.uid+'/'+toUid).set({...last,otherUid:toUid});
     await db.ref('userChats/'+toUid+'/'+currentUser.uid).set({...last,otherUid:currentUser.uid,otherName:adminName,unread:true});
   }catch(e){console.error('sendAdminNotification error:',e);}
+}
+
+// ─── מדד תגובה (Response Rate & Time) — Feature #5 ──────────────────────────
+
+/**
+ * Record the first time a student messages a teacher.
+ * Called from setupConvListeners when an incoming message arrives and currentUser is teacher.
+ * Uses a get-then-set to avoid overwriting an existing timestamp.
+ */
+async function recordFirstMessage(teacherUid, senderUid) {
+  if (!teacherUid || !senderUid || teacherUid === senderUid) return;
+  try {
+    const ref = db.ref('messageStats/' + teacherUid + '/conversations/' + senderUid + '/firstMessageAt');
+    const snap = await ref.get();
+    if (!snap.exists()) await ref.set(Date.now());
+  } catch (e) { /* silent — never break message flow */ }
+}
+
+/**
+ * Record the first time a teacher replies to a specific conversation.
+ * Only sets firstReplyAt when: (a) student sent first (firstMessageAt exists)
+ * and (b) teacher hasn't replied yet (!firstReplyAt).
+ * Triggers updateResponseStats asynchronously after writing.
+ */
+async function recordFirstReply(teacherUid, studentUid) {
+  if (!teacherUid || !studentUid || teacherUid === studentUid) return;
+  try {
+    const convRef = db.ref('messageStats/' + teacherUid + '/conversations/' + studentUid);
+    const snap = await convRef.get();
+    const data = snap.val() || {};
+    if (data.firstMessageAt && !data.firstReplyAt) {
+      await convRef.child('firstReplyAt').set(Date.now());
+      updateResponseStats(teacherUid).catch(() => {});
+    }
+  } catch (e) { /* silent */ }
+}
+
+/**
+ * Recompute avgResponseHours and responseRate from all tracked conversations
+ * and persist them to teachers/{uid}/responseStats.
+ * Only writes when at least 3 conversations are tracked (privacy + statistical significance).
+ */
+async function updateResponseStats(teacherUid) {
+  if (!teacherUid) return;
+  try {
+    const snap = await db.ref('messageStats/' + teacherUid + '/conversations').get();
+    if (!snap.exists()) return;
+    let totalMs = 0, repliedCount = 0, totalCount = 0;
+    snap.forEach(child => {
+      const d = child.val() || {};
+      if (!d.firstMessageAt) return;
+      totalCount++;
+      if (d.firstReplyAt && d.firstReplyAt > d.firstMessageAt) {
+        totalMs += (d.firstReplyAt - d.firstMessageAt);
+        repliedCount++;
+      }
+    });
+    if (totalCount < 3) return; // not enough data yet
+    const avgHours = repliedCount > 0
+      ? Math.round(totalMs / repliedCount / 3600000 * 10) / 10
+      : null;
+    const rate = Math.round(repliedCount / totalCount * 100);
+    const statsObj = { avgHours, rate, count: totalCount, updatedAt: Date.now() };
+    await db.ref('teachers/' + teacherUid + '/responseStats').set(statsObj);
+    // Reflect in local TEACHERS array so the profile page shows the change immediately
+    const localT = TEACHERS.find(x => x.id === teacherUid);
+    if (localT) localT.responseStats = statsObj;
+  } catch (e) { /* silent */ }
+}
+
+/**
+ * Returns an HTML chip row showing response time and rate for a teacher.
+ * Returns '' when there is insufficient data (fewer than 3 tracked conversations).
+ * @param {object} teacher — any teacher object from TEACHERS / S.teacher
+ */
+function responseStatsBadge(teacher) {
+  const rs = teacher && teacher.responseStats;
+  if (!rs || !rs.count || rs.count < 3) return '';
+  const chips = [];
+  if (rs.avgHours !== null && rs.avgHours !== undefined) {
+    const display = rs.avgHours < 1
+      ? 'פחות משעה'
+      : rs.avgHours < 24
+        ? rs.avgHours + 'ש\''
+        : Math.round(rs.avgHours / 24) + ' ימים';
+    chips.push(
+      `<span style="display:inline-flex;align-items:center;gap:3px;background:rgba(20,184,166,0.10);color:#0d9488;border:1px solid rgba(20,184,166,0.22);padding:3px 9px;border-radius:50px;font-size:11px;font-weight:700;white-space:nowrap">${icon('clock',11)} מגיב תוך ${display}</span>`
+    );
+  }
+  if (rs.rate !== null && rs.rate !== undefined) {
+    const rateColor  = rs.rate >= 80 ? '#059669' : rs.rate >= 50 ? '#d97706' : '#dc2626';
+    const rateBg     = rs.rate >= 80 ? 'rgba(5,150,105,0.10)' : rs.rate >= 50 ? 'rgba(217,119,6,0.10)' : 'rgba(220,38,38,0.10)';
+    const rateBorder = rs.rate >= 80 ? 'rgba(5,150,105,0.22)' : rs.rate >= 50 ? 'rgba(217,119,6,0.22)' : 'rgba(220,38,38,0.22)';
+    chips.push(
+      `<span style="display:inline-flex;align-items:center;gap:3px;background:${rateBg};color:${rateColor};border:1px solid ${rateBorder};padding:3px 9px;border-radius:50px;font-size:11px;font-weight:700;white-space:nowrap">${icon('check-circle',11)} ${rs.rate}% תגובות</span>`
+    );
+  }
+  if (!chips.length) return '';
+  return `<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:6px">${chips.join('')}</div>`;
 }
 
 // ─── סיכומי שיעורים ומעקב התקדמות 📊 ────────────────────────────────────────
@@ -7362,6 +7587,7 @@ function Home(){
                   ${t.freeTrial?`<span style="background:linear-gradient(135deg,#FBBF24,#F59E0B);color:#fff;font-weight:800;font-size:10px;padding:2px 8px;border-radius:50px">${icon("gift",14)} ניסיון חינם</span>`:''}
                   ${t.ageVerified?`<span style="background:rgba(20,184,166,0.15);color:#14B8A6;font-size:10px;font-weight:700;padding:2px 7px;border-radius:50px">✓ גיל מאומת</span>`:''}
                 </div>
+                ${responseStatsBadge(t)}
               </div>
             </button>`).join("")}
         `;
@@ -7385,6 +7611,7 @@ function Home(){
                   ${gTag(t.badge)}
                 </span>
               </div>
+              ${responseStatsBadge(t)}
             </div>
           </button>`).join("");})()}
         <div style="height:14px"></div>
@@ -7413,6 +7640,7 @@ function Home(){
               <span style="font-weight:900;font-size:14px;color:var(--p)">₪${t.price}/שיעור</span>
               <span style="color:#FFD23F;font-weight:700;font-size:12px">${t.rating>0?stars(t.rating):'חדש'}</span>
             </div>
+            ${responseStatsBadge(t)}
           </div>
         </button>`).join("")}
       `:''}
@@ -7448,6 +7676,7 @@ function Home(){
               <span style="font-weight:900;font-size:14px;color:var(--p)">₪${t.price}/שיעור</span>
               ${gTag(t.badge)}
             </div>
+            ${responseStatsBadge(t)}
           </div>
         </button>`).join("")}
     `}
@@ -7531,6 +7760,7 @@ function Nearby(){
                 <span style="color:#FFD23F;font-weight:700;font-size:12px">${t.rating>0?stars(t.rating):'חדש 🆕'}</span>
               </div>
               ${t.freeTrial?`<div style="margin-top:6px"><span style="background:linear-gradient(135deg,#FBBF24,#F59E0B);color:#fff;font-weight:800;font-size:10px;padding:2px 8px;border-radius:50px">${icon("gift",14)} ניסיון חינם</span></div>`:''}
+              ${responseStatsBadge(t)}
             </div>
           </button>`).join("")}
       </div>`;
@@ -7614,6 +7844,8 @@ function Teacher(){
         <div class="card-sm" onclick="document.getElementById('_reviewsSection')?.scrollIntoView({behavior:'smooth'})" style="flex:1;text-align:center;padding:13px 8px;margin-bottom:0;cursor:pointer;border:1.5px solid rgba(20,184,166,0.2)"><div style="width:32px;height:32px;border-radius:10px;background:#14B8A615;display:flex;align-items:center;justify-content:center;margin:0 auto 4px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div style="font-weight:900;font-size:18px">${publicTeacherReviews.length}</div><div style="font-size:11px;color:#14B8A6;font-weight:700">ביקורות ↓</div></div>
         <div class="card-sm" style="flex:1;text-align:center;padding:13px 8px;margin-bottom:0"><div style="width:32px;height:32px;border-radius:10px;background:#14B8A615;display:flex;align-items:center;justify-content:center;margin:0 auto 4px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></div><div style="font-weight:900;font-size:18px">${t.lessons||0}</div><div style="font-size:11px;color:${C.muted};font-weight:600">שיעורים</div></div>
       </div>
+
+      ${(()=>{const _rsb=responseStatsBadge(t);return _rsb?`<div style="margin-bottom:14px">${_rsb}</div>`:''})()}
 
       <!-- Trial -->
       <div class="trial">
@@ -7704,6 +7936,8 @@ function Teacher(){
       </div>`;
       })()}
 
+      ${(()=>{return renderPortfolioGallery(t.id,t.portfolio||[]);})()||''}
+
       <!-- Reviews section -->
       ${(()=>{
         const starsHtml=n=>'⭐'.repeat(n)+'☆'.repeat(5-n);
@@ -7733,6 +7967,52 @@ function Teacher(){
         `}
         </div>`;
       })()}
+      <!-- Q&A section -->
+      ${(()=>{
+        const _isOwner=currentUser?.uid===t.id;
+        const _canAsk=currentUser&&!_isOwner;
+        const _qaAgo=ts=>{const m=Math.round((Date.now()-ts)/60000);return m<60?m+' דק\'':m<1440?Math.floor(m/60)+' שע\'':Math.floor(m/1440)+' ימים';};
+        return `<div id="_qaSection" class="card" style="padding:16px;margin-bottom:16px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:${publicTeacherQA.length?'14px':'10px'}">
+            <span style="background:rgba(20,184,166,0.12);color:#14B8A6;font-size:11px;font-weight:800;padding:4px 10px;border-radius:50px">${publicTeacherQA.length} שאלות</span>
+            <h4 style="margin:0;font-weight:900;font-size:16px;color:#0F1A1F;display:flex;align-items:center;gap:6px">${icon("chat",15)} שאלות ותשובות</h4>
+          </div>
+          ${!publicTeacherQA.length?`<div style="text-align:center;padding:14px 0 8px;color:#94A3B8;font-size:13px">היה הראשון לשאול שאלה!</div>`:''}
+          ${publicTeacherQA.slice(0,10).map(qa=>`
+          <div style="border-bottom:1px solid rgba(0,0,0,0.06);padding-bottom:14px;margin-bottom:14px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+              <span style="font-size:11px;color:#94A3B8">${_qaAgo(qa.askedAt||0)} לפני</span>
+              <div style="display:flex;align-items:center;gap:8px">
+                ${_isOwner?`<button onclick="deleteQA('${t.id}','${qa.id}')" style="background:none;border:none;color:#CBD5E1;font-size:15px;cursor:pointer;padding:0 4px;line-height:1;font-weight:700" title="מחק שאלה">&#x2715;</button>`:''}
+                <span style="font-weight:800;font-size:13px;color:#14B8A6">${escapeHtml(qa.askerName||'משתמש')}</span>
+                <div style="width:30px;height:30px;border-radius:50%;background:rgba(20,184,166,0.15);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:#14B8A6">${(qa.askerName||'?').charAt(0)}</div>
+              </div>
+            </div>
+            <p style="margin:0 0 10px;font-size:14px;color:#0F1A1F;line-height:1.6;text-align:right;font-weight:600">${escapeHtml(qa.question||'')}</p>
+            ${qa.answer?`
+              <div style="border-right:3px solid #14B8A6;padding-right:12px;margin-right:4px;margin-top:8px">
+                <div style="font-size:11px;font-weight:800;color:#14B8A6;margin-bottom:5px">${icon("check-circle",12)} תשובת המורה</div>
+                <p style="margin:0 0 4px;font-size:13px;color:#374151;line-height:1.6;text-align:right">${escapeHtml(qa.answer)}</p>
+                <div style="font-size:10px;color:#94A3B8">${_qaAgo(qa.answeredAt||0)} לפני</div>
+              </div>
+            `:_isOwner?`
+              <div style="margin-top:8px">
+                ${_qaAnsweringId===qa.id?`
+                  <textarea id="_qaAnswer_${qa.id}" placeholder="כתוב תשובה פומבית..." style="width:100%;border:1.5px solid rgba(20,184,166,0.4);border-radius:12px;padding:10px 12px;font-size:13px;font-family:inherit;direction:rtl;outline:none;box-sizing:border-box;resize:none;min-height:80px;margin-bottom:8px"></textarea>
+                  <div style="display:flex;gap:8px">
+                    <button onclick="_qaAnsweringId=null;render()" style="flex:1;background:#F1F5F9;border:none;border-radius:50px;padding:9px;font-weight:700;font-size:13px;cursor:pointer;color:#64748B">ביטול</button>
+                    <button onclick="answerQA('${t.id}','${qa.id}','${qa.askerUid||''}')" style="flex:2;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:9px;font-weight:800;font-size:13px;cursor:pointer">פרסם תשובה</button>
+                  </div>
+                `:`<button onclick="_qaAnsweringId='${qa.id}';render()" style="background:rgba(20,184,166,0.1);border:1.5px solid rgba(20,184,166,0.3);color:#14B8A6;border-radius:50px;padding:8px 16px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:6px">${icon("chat",13)} ענה על שאלה זו</button>`}
+              </div>
+            `:`<div style="margin-top:6px;font-size:12px;color:#94A3B8;font-style:italic">&#x23F3; ממתין לתשובה...</div>`}
+          </div>`).join('')}
+          ${_canAsk?`<button onclick="showAskQuestionDialog('${t.id}')" style="width:100%;background:rgba(20,184,166,0.08);border:1.5px solid rgba(20,184,166,0.25);color:#14B8A6;border-radius:50px;padding:12px;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px">${icon("chat",14)} שאל שאלה</button>`:!currentUser?`<div style="text-align:center;margin-top:4px"><button onclick="go('login')" style="background:none;border:none;color:#14B8A6;font-size:12px;font-weight:700;cursor:pointer;text-decoration:underline">התחבר</button><span style="font-size:12px;color:#94A3B8"> כדי לשאול שאלה</span></div>`:''}
+        </div>`;
+      })()}
+
+      <!-- FAQ section -->
+      ${renderFaq(t.faq||[])}
 
       <!-- Share -->
       <button onclick="shareTeacher(S.teacher)" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);color:#fff;border:none;border-radius:50px;padding:12px 20px;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;margin-bottom:16px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>שתף מורה</button>
@@ -8360,6 +8640,20 @@ function Profile(){
     `}`;
   }
 
+  if(isTeacher&&tab==='portfolio'){
+    const myT2=TEACHERS.find(x=>x.id===currentUser?.uid)||{};
+    const rawPrt=myT2.portfolio||[];
+    const myPortfolio=(Array.isArray(rawPrt)?rawPrt:Object.values(rawPrt)).filter(p=>p&&p.url);
+    const _portUid=currentUser?.uid||'';
+    content=`
+    <div style="text-align:center;margin-bottom:18px">
+      <button onclick="showPortfolioManager()" style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:12px 28px;font-weight:900;font-size:14px;cursor:pointer;box-shadow:0 4px 16px rgba(20,184,166,0.3);display:flex;align-items:center;justify-content:center;gap:8px;width:100%">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> ניהול תיק עבודות (${myPortfolio.length}/5)
+      </button>
+    </div>
+    ${myPortfolio.length===0
+      ?`<div style="background:rgba(255,255,255,0.7);backdrop-filter:blur(10px);border-radius:20px;padding:36px 20px;text-align:center"><div style="font-size:52px;margin-bottom:12px">🖼</div><h3 style="font-weight:900;font-size:16px;margin:0 0 8px;color:#0F1A1F">תיק עבודות ריק</h3><p style="color:#64748B;font-size:13px;margin:0;line-height:1.6">הוסף תמונות שמציגות את העבודה שלך</p></div>`
+      :`<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px">${myPortfolio.map((item,i)=>{const _ip=!!(item.isPdf);return '<div onclick="portfolioLightbox(\''+_portUid+'\','+i+')" style="cursor:pointer;border-radius:18px;overflow:hidden;box-shadow:0 4px 18px rgba(0,0,0,0.10);background:#fff"><div style="aspect-ratio:1;overflow:hidden">'+(_ip?'<div style="width:100%;height:100%;background:linear-gradient(135deg,#EF4444,#DC2626);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span style="color:#fff;font-weight:800;font-size:12px">PDF</span></div>':'<img src="'+escapeHtml(item.url)+'" loading="lazy" style="width:100%;height:100%;object-fit:cover">')+'</div><div style="padding:10px 12px"><div style="font-weight:800;font-size:13px;color:#0F1A1F;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">'+escapeHtml(item.title||'')+'</div>'+(item.desc?'<div style="font-size:11px;color:#64748B;margin-top:3px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">'+escapeHtml(item.desc)+'</div>':'')+'</div></div>';}).join('')}</div>`}`;  }
   if(tab==="ach"){const achArr=isTeacher?ACHIEVEMENTS:STUDENT_ACHIEVEMENTS;content=`
     <p style="color:${C.muted};font-size:14px;margin:0 0 16px;line-height:1.7">הישגים שצברת:</p>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
@@ -8412,7 +8706,7 @@ function Profile(){
   }
 
   const tabItems=isTeacher&&myCats.length
-    ?[...myCats.map(cid=>{const c=CATS.find(x=>x.id===cid)||{em:'🎓',lbl:cid};return [cid,c.lbl];}),...[['bookings','<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>הזמנות'+(teacherPendingBookings.length>0?` (${teacherPendingBookings.length})`:'')],['wallet','<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>ארנק'],['ach','<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M17 5h3a2 2 0 0 1 0 4h-1M7 5H4a2 2 0 0 0 0 4h1"/></svg>הישגים'],['about','<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>אודות']]]
+    ?[...myCats.map(cid=>{const c=CATS.find(x=>x.id===cid)||{em:'🎓',lbl:cid};return [cid,c.lbl];}),...[['bookings','<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>הזמנות'+(teacherPendingBookings.length>0?` (${teacherPendingBookings.length})`:'')],['wallet','<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>ארנק'],['portfolio','🖼 תיק עבודות'],['ach','<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M17 5h3a2 2 0 0 1 0 4h-1M7 5H4a2 2 0 0 0 0 4h1"/></svg>הישגים'],['about','<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>אודות']]]
     :[['lessons','<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>שיעורים'],['ach','<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M17 5h3a2 2 0 0 1 0 4h-1M7 5H4a2 2 0 0 0 0 4h1"/></svg>הישגים'],['about','<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>אודות']];
 
   // ─── STUDENT PROFILE (dedicated design) ─────────────────────────────────────
@@ -8683,6 +8977,43 @@ function Community(){
   const _isTeacherU=currentUserData?.role==='teacher';
   const _groupsHtml=(()=>{const openG=communityGroups.filter(g=>g.status==='open'&&(!S.groupSubj||g.subject===S.groupSubj));const hdr=_isTeacherU?`<div style="display:flex;gap:8px;margin-bottom:16px"><button onclick="showCreateGroupDialog()" style="flex:1;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:14px;padding:12px;font-weight:800;font-size:13px;cursor:pointer">+ צור קבוצה</button><button onclick="showTeacherGroupsPanel()" style="flex:1;background:rgba(20,184,166,0.1);border:1.5px solid rgba(20,184,166,0.3);color:#14B8A6;border-radius:14px;padding:12px;font-weight:800;font-size:13px;cursor:pointer">${icon("users",14)} הקבוצות שלי</button></div>`:currentUser?`<div style="margin-bottom:14px"><button onclick="showStudentGroupsPanel()" style="width:100%;background:rgba(20,184,166,0.08);border:1.5px solid rgba(20,184,166,0.25);color:#14B8A6;border-radius:14px;padding:11px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">${icon("users",14)} הקבוצות שלי${Object.keys(myGroupStatuses).length?' ('+Object.keys(myGroupStatuses).length+')':''}</button></div>`:'';const allSubjs=[...new Set(communityGroups.filter(g=>g.status==='open'&&g.subject).map(g=>g.subject))];const subjFilter=allSubjs.length>1?'<div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px">'+['<button onclick="S.groupSubj=null;render()" style="flex-shrink:0;padding:6px 14px;border-radius:50px;font-size:12px;font-weight:800;cursor:pointer;border:none;background:'+(S.groupSubj?'rgba(100,116,139,0.1)':'linear-gradient(135deg,#14B8A6,#06B6D4)')+';color:'+(S.groupSubj?'#64748B':'#fff')+'">הכל</button>',...allSubjs.map(sid=>{const c=CATS.find(x=>x.id===sid)||{em:'🎓',lbl:sid,col:'#14B8A6'};const on=S.groupSubj===sid;return '<button onclick="S.groupSubj=\''+sid+'\';render()" style="flex-shrink:0;padding:6px 14px;border-radius:50px;font-size:12px;font-weight:800;cursor:pointer;border:none;background:'+(on?c.col:'rgba(100,116,139,0.1)')+';color:'+(on?'#fff':'#64748B')+'">'+catIcon(c,13)+' '+c.lbl+'</button>';})].join('')+'</div>':'';if(!openG.length)return hdr+subjFilter+`<div style="text-align:center;padding:40px 20px"><div style="margin-bottom:14px">${icon("home",64)}</div><h3 style="font-weight:900;font-size:18px;margin:0 0 8px">אין קבוצות פעילות</h3><p style="color:#64748B;font-size:13px">${S.groupSubj?'נסה לשנות את הסינון':_isTeacherU?'היה הראשון ליצור קבוצה!':'בקרוב יהיו קבוצות זמינות...'}</p></div>`;return hdr+subjFilter+openG.map(g=>{const cat=CATS.find(c=>c.id===g.subject)||{em:'🎓',lbl:g.subject||'כללי',col:'#14B8A6'};const spots=Math.max(0,(g.maxStudents||0)-(g.membersCount||0));const spotsHtml=(g.maxStudents||0)>0?spots>0?`<div style="text-align:center;background:rgba(16,185,129,0.1);border-radius:12px;padding:8px 12px;flex-shrink:0"><div style="font-weight:900;font-size:16px;color:#10B981">${spots}</div><div style="font-size:10px;color:#64748B">מקומות</div></div>`:`<div style="background:rgba(239,68,68,0.1);border-radius:12px;padding:8px 12px;flex-shrink:0"><div style="font-size:11px;font-weight:800;color:#EF4444">מלא</div></div>`:'';return `<div class="card" onclick="showGroupDetail('${g.id}')" style="cursor:pointer;margin-bottom:12px;padding:16px 18px"><div style="display:flex;gap:12px;align-items:center"><div style="width:48px;height:48px;border-radius:14px;background:${cat.col}18;display:flex;align-items:center;justify-content:center;flex-shrink:0">${catIcon(cat,26)}</div><div style="flex:1;min-width:0"><div style="font-weight:900;font-size:15px;margin-bottom:3px">${g.title}</div><div style="font-size:12px;color:${cat.col};font-weight:700">${cat.lbl}${g.isMixed?' · 🌈 מעורבת':''}</div></div>${spotsHtml}</div>${g.desc?`<p style="margin:10px 0 0;font-size:13px;color:#64748B;line-height:1.5">${g.desc.substring(0,100)}${g.desc.length>100?'...':''}</p>`:''}<div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">${g.day?`<span style="background:rgba(20,184,166,0.1);color:#14B8A6;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">📅 ${g.day}</span>`:''}${g.time?` <span style="background:rgba(20,184,166,0.1);color:#14B8A6;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">${icon("clock",14)} ${g.time}</span>`:''}${g.location?` <span style="background:rgba(20,184,166,0.1);color:#14B8A6;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">${icon("pin",14)} ${g.location}</span>`:''}${g.price?`<span style="background:rgba(20,184,166,0.1);color:#14B8A6;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">₪${g.price}</span>`:`<span style="background:rgba(16,185,129,0.1);color:#10B981;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">חינם!</span>`}</div></div>`;}).join('');})();
 
+  const _briefsHtml=(()=>{
+    const briefs=S.parentBriefs||[];
+    const hdr=(!_isTeacherU&&currentUser)?`<button onclick="showPostBriefDialog()" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:14px;padding:13px;font-weight:900;font-size:14px;cursor:pointer;margin-bottom:14px;display:flex;align-items:center;justify-content:center;gap:8px">${icon('file-text',16,'#fff')} פרסם בקשת הורה חדשה</button>`
+      :_isTeacherU?`<div style="background:rgba(20,184,166,0.06);border:1.5px solid rgba(20,184,166,0.2);border-radius:14px;padding:12px 14px;margin-bottom:14px;font-size:13px;color:#14B8A6;font-weight:700;text-align:center">${icon('graduation-cap',14,'#14B8A6')} כמורה — ראה בקשות הורים ושלח הצעות</div>`:'';
+    if(!briefs.length)return hdr+`<div style="text-align:center;padding:40px 20px"><div style="margin-bottom:14px">${icon('file-text',48,'#94A3B8')}</div><h3 style="font-weight:900;font-size:18px;margin:0 0 8px">אין בקשות פעילות</h3><p style="color:#64748B;font-size:13px">${(!_isTeacherU&&currentUser)?'פרסם בקשה ומורים יגיבו בהצעות מחיר':'בקרוב יהיו בקשות של הורים לצפייה'}</p></div>`;
+    return hdr+briefs.map(b=>{
+      const cat=CATS.find(c=>c.id===b.subject)||{em:'🎓',lbl:b.subject||'כללי',col:'#14B8A6'};
+      const isMine=currentUser&&b.parentUid===currentUser.uid;
+      const ago=Math.round((Date.now()-(b.createdAt||0))/60000);
+      const agoTxt=ago<1?'עכשיו':ago<60?ago+' דק\'':ago<1440?Math.floor(ago/60)+' שע\'':Math.floor(ago/1440)+' ימים';
+      const actionBtn=isMine
+        ?`<button onclick="showMyBriefProposals('${b.id}')" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:11px;font-weight:900;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">${icon('users',14,'#fff')} הצעות שהתקבלו</button>`
+        :_isTeacherU
+          ?`<button onclick="showBriefProposalDialog('${b.id}')" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:11px;font-weight:900;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">${icon('send',14,'#fff')} הגש הצעה</button>`
+          :currentUser?`<button onclick="showFireToast('להגשת הצעה — יש להיות מורה רשום')" style="width:100%;background:rgba(20,184,166,0.1);border:1.5px solid rgba(20,184,166,0.25);color:#14B8A6;border-radius:50px;padding:10px;font-weight:700;font-size:12px;cursor:pointer">${icon('info',12,'#14B8A6')} רק מורים מגישים הצעות</button>`
+          :`<button onclick="go('login')" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:11px;font-weight:900;font-size:13px;cursor:pointer">התחבר להגשת הצעה</button>`;
+      return `<div class="card" style="margin-bottom:12px;padding:14px 16px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+          <div>
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
+              <span style="font-weight:900;font-size:15px">${escapeHtml(b.parentName||'הורה')}</span>
+              ${isMine?'<span style="background:rgba(20,184,166,0.15);color:#14B8A6;font-size:9px;font-weight:800;padding:2px 6px;border-radius:50px">שלי</span>':''}
+            </div>
+            <div style="font-size:11px;color:#64748B">${agoTxt}</div>
+          </div>
+          <div style="width:42px;height:42px;border-radius:12px;background:${cat.col}18;display:flex;align-items:center;justify-content:center;flex-shrink:0">${catIcon(cat,22)}</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:9px">
+          <span style="background:${cat.col}15;color:${cat.col};font-size:11px;font-weight:700;padding:3px 10px;border-radius:50px">${cat.lbl}</span>
+          <span style="background:rgba(16,185,129,0.12);color:#059669;font-size:11px;font-weight:800;padding:3px 10px;border-radius:50px">${icon('dollar',10,'#059669')} ₪${b.budget} לשיעור</span>
+          <span style="background:rgba(20,184,166,0.1);color:#14B8A6;font-size:11px;font-weight:700;padding:3px 10px;border-radius:50px">${icon('user',10,'#14B8A6')} ${escapeHtml(b.childName)}</span>
+        </div>
+        <p style="margin:0 0 12px;font-size:13px;color:#334155;line-height:1.6">${escapeHtml((b.description||'').substring(0,160))}${(b.description||'').length>160?'...':''}</p>
+        ${actionBtn}
+      </div>`;
+    }).join('');
+  })();
   const memberCount=S.posts.filter(p=>p.authUid).reduce((acc,p)=>{if(p.authUid)acc.add(p.authUid);return acc;},new Set()).size||0;
   const postCount=vis.length||S.posts.length||0;
   return `<div class="screen">
@@ -8691,6 +9022,7 @@ function Community(){
         <div style="display:flex;gap:8px;align-items:center">
           <button onclick="back()" style="background:rgba(255,255,255,.15);border:none;color:#fff;font-size:14px;cursor:pointer;border-radius:50px;padding:8px 14px;font-weight:700">← חזור</button>
           <button onclick="S.showCompose=true;render()" style="background:rgba(255,255,255,.15);border:none;color:#fff;font-weight:800;font-size:13px;cursor:pointer;border-radius:50px;padding:9px 16px;display:flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> שאל/שתף</button>
+          ${!_isTeacherU&&currentUser?`<button onclick="showPostBriefDialog()" style="background:rgba(255,255,255,.15);border:none;color:#fff;font-weight:800;font-size:13px;cursor:pointer;border-radius:50px;padding:9px 16px;display:flex;align-items:center;gap:6px">${icon('file-text',14,'#fff')} בקשה</button>`:''}
         </div>
         <div style="text-align:right;position:relative;z-index:1">
           <h2 style="font-size:22px;font-weight:900;margin:0">קהילה</h2>
@@ -8707,10 +9039,10 @@ function Community(){
           <span style="font-size:12px;color:#fff;font-weight:700">${postCount} פוסטים</span>
         </div>
       </div>
-      ${S.comTab!=='groups'?`<div style="overflow-x:auto;display:flex;gap:8px;padding-bottom:2px;position:relative;z-index:1">
+      ${S.comTab!=='groups'&&S.comTab!=='briefs'?`<div style="overflow-x:auto;display:flex;gap:8px;padding-bottom:2px;position:relative;z-index:1">
         ${CC.map(c=>`<button onclick="S.comFilter='${c.id}';render()" style="flex-shrink:0;padding:7px 13px;border-radius:50px;border:none;font-weight:700;font-size:12px;cursor:pointer;background:${S.comFilter===c.id?"#fff":"rgba(255,255,255,.15)"};color:${S.comFilter===c.id?"#14B8A6":"#fff"};transition:all .2s;display:flex;align-items:center;gap:5px">${icon(c.ico,11)} ${c.l}</button>`).join("")}
       </div>`:''}
-      ${S.comTab!=='groups'&&myArea?`
+      ${S.comTab!=='groups'&&S.comTab!=='briefs'&&myArea?`
         <div style="margin-top:10px;position:relative;z-index:1">
           <button onclick="S.areaOnly=!S.areaOnly;render()" style="background:${S.areaOnly?'#fff':'rgba(255,255,255,.18)'};color:${S.areaOnly?'#14B8A6':'#fff'};border:none;border-radius:50px;padding:7px 14px;font-weight:800;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:6px">
             ${icon("pin",14)} ${S.areaOnly?'מציג רק '+myArea:'הצג רק '+myArea}
@@ -8718,11 +9050,12 @@ function Community(){
         </div>
       `:''}
       <div style="display:flex;gap:4px;background:rgba(255,255,255,0.12);border-radius:12px;padding:3px;margin-top:12px;position:relative;z-index:1">
-        <button onclick="S.comTab='posts';render()" style="flex:1;padding:8px;border:none;border-radius:10px;font-weight:800;font-size:13px;cursor:pointer;transition:all .2s;background:${S.comTab!=='groups'?'rgba(255,255,255,0.9)':'transparent'};color:${S.comTab!=='groups'?'#0F1A1F':'rgba(255,255,255,0.85)'}">פוסטים</button>
+        <button onclick="S.comTab='posts';render()" style="flex:1;padding:8px;border:none;border-radius:10px;font-weight:800;font-size:13px;cursor:pointer;transition:all .2s;background:${S.comTab!=='groups'&&S.comTab!=='briefs'?'rgba(255,255,255,0.9)':'transparent'};color:${S.comTab!=='groups'&&S.comTab!=='briefs'?'#0F1A1F':'rgba(255,255,255,0.85)'}">פוסטים</button>
         <button onclick="S.comTab='groups';render()" style="flex:1;padding:8px;border:none;border-radius:10px;font-weight:800;font-size:13px;cursor:pointer;transition:all .2s;background:${S.comTab==='groups'?'rgba(255,255,255,0.9)':'transparent'};color:${S.comTab==='groups'?'#0F1A1F':'rgba(255,255,255,0.85)'}">קבוצות${communityGroups.length?' ('+communityGroups.length+')':''}</button>
+        <button onclick="S.comTab='briefs';if(!(S.parentBriefs&&S.parentBriefs.length))loadParentBriefs();render()" style="flex:1;padding:8px;border:none;border-radius:10px;font-weight:800;font-size:13px;cursor:pointer;transition:all .2s;background:${S.comTab==='briefs'?'rgba(255,255,255,0.9)':'transparent'};color:${S.comTab==='briefs'?'#0F1A1F':'rgba(255,255,255,0.85)'}">בקשות${(S.parentBriefs&&S.parentBriefs.length)?' ('+S.parentBriefs.length+')':''}</button>
       </div>
     </div>
-    ${currentUser&&S.comTab!=='groups'?`
+    ${currentUser&&S.comTab!=='groups'&&S.comTab!=='briefs'?`
     <div style="background:#fff;margin:14px 16px 0;border-radius:20px;padding:14px 16px;box-shadow:0 2px 12px rgba(0,0,0,0.07);display:flex;align-items:center;gap:12px;cursor:pointer" onclick="S.showCompose=true;render()">
       <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#14B8A6,#06B6D4);display:flex;align-items:center;justify-content:center;flex-shrink:0">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
@@ -8737,7 +9070,7 @@ function Community(){
         </div>
       </div>
     </div>`:''}
-    <div style="padding:15px 16px 100px">${S.comTab==='groups'?_groupsHtml:S.posts.length===0?`<div style="text-align:center;padding:60px 20px">
+    <div style="padding:15px 16px 100px">${S.comTab==='briefs'?_briefsHtml:S.comTab==='groups'?_groupsHtml:S.posts.length===0?`<div style="text-align:center;padding:60px 20px">
     <div style="font-size:48px;margin-bottom:16px">${icon("chat",14)}</div>
     <h3 style="color:#0F1A1F;font-weight:800;margin:0 0 8px">עדיין אין פוסטים</h3>
     <p style="color:#64748B;font-size:14px;margin:0 0 20px">היה הראשון לשתף משהו עם הקהילה!</p>
@@ -8885,6 +9218,229 @@ async function deleteMyPost(id){
     S.posts=S.posts.filter(p=>p.id!==id);
     showFireToast('🗑 נמחק');
     render();
+  }catch(e){showFireToast('❌ '+e.message);}
+}
+
+// ─── PARENT BRIEFS (בקשת הורה) ────────────────────────────────────────────────
+async function loadParentBriefs(){
+  if(!db)return;
+  try{
+    const snap=await db.ref('parentBriefs').limitToLast(60).get();
+    const briefs=[];
+    if(snap.exists())snap.forEach(c=>{
+      const b={id:c.key,...c.val()};
+      if(b.status==='open')briefs.push(b);
+    });
+    briefs.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+    S.parentBriefs=briefs;
+    if(S.screen==='community'&&S.comTab==='briefs')render();
+  }catch(e){console.warn('[loadParentBriefs]',e);}
+}
+
+function showPostBriefDialog(){
+  if(!currentUser){showFireToast('❌ יש להתחבר');return;}
+  if(currentUserData?.role==='teacher'){showFireToast('❌ בקשות הורים — עבור הורים ותלמידים בלבד');return;}
+  const ov=document.createElement('div');
+  ov.id='_pbOv';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(8px);direction:rtl';
+  ov.innerHTML=`<div style="background:#fff;border-radius:24px 24px 0 0;padding:22px 18px 48px;width:100%;max-width:500px;max-height:92vh;overflow-y:auto">
+    <div style="width:40px;height:4px;background:#E2E8F0;border-radius:50px;margin:0 auto 18px"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+      <button onclick="document.getElementById('_pbOv')?.remove()" style="background:rgba(20,184,166,0.1);border:none;color:#14B8A6;font-size:18px;cursor:pointer;border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center">&#x2715;</button>
+      <h3 style="font-weight:900;font-size:18px;margin:0;display:flex;align-items:center;gap:8px">${icon('file-text',18,'#14B8A6')} בקשת הורה חדשה</h3>
+    </div>
+    <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">${icon('user',14)} שם הילד/ה</label>
+    <input id="_pbChild" placeholder="שם הילד/ה" class="inp" style="margin-bottom:12px">
+    <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">${icon('graduation-cap',14)} מקצוע מבוקש</label>
+    <select id="_pbSubject" class="inp" style="margin-bottom:12px">
+      ${CATS.map(c=>`<option value="${c.id}">${c.em} ${c.lbl}</option>`).join('')}
+    </select>
+    <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">${icon('file-text',14)} תאר את הצורך</label>
+    <textarea id="_pbDesc" rows="3" placeholder="ספר על הצרכים של הילד/ה — רמה, מטרות, זמינות מועדפת..." class="inp" style="margin-bottom:12px;resize:none"></textarea>
+    <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">${icon('dollar',14)} תקציב לשיעור (&#x20AA;)</label>
+    <input id="_pbBudget" type="number" min="0" placeholder="לדוגמה: 80" class="inp" style="margin-bottom:20px">
+    <button onclick="_saveParentBrief()" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:14px;font-weight:900;font-size:15px;cursor:pointer;box-shadow:0 6px 20px rgba(20,184,166,0.3);display:flex;align-items:center;justify-content:center;gap:8px">${icon('send',16,'#fff')} פרסם בקשה</button>
+  </div>`;
+  document.body.appendChild(ov);
+  ov.onclick=e=>{if(e.target===ov)ov.remove();};
+}
+
+async function _saveParentBrief(){
+  const childName=(document.getElementById('_pbChild')?.value||'').trim();
+  const subject=document.getElementById('_pbSubject')?.value||'';
+  const description=(document.getElementById('_pbDesc')?.value||'').trim();
+  const budget=parseInt(document.getElementById('_pbBudget')?.value)||0;
+  if(!childName){showFireToast('❌ חסר שם הילד/ה');return;}
+  if(!description){showFireToast('❌ חסר תיאור הצורך');return;}
+  if(!budget||budget<1){showFireToast('❌ הזן תקציב לשיעור');return;}
+  try{
+    showFireToast('⏳ מפרסם בקשה...');
+    const ref=db.ref('parentBriefs').push();
+    const data={
+      parentUid:currentUser.uid,
+      parentName:currentUserData?.name||currentUser.email.split('@')[0],
+      childName,subject,description,budget,
+      status:'open',createdAt:Date.now()
+    };
+    await ref.set(data);
+    S.parentBriefs=[{id:ref.key,...data},...(S.parentBriefs||[])];
+    document.getElementById('_pbOv')?.remove();
+    showFireToast('✅ הבקשה פורסמה! מורים יוכלו לשלוח הצעות');
+    if(S.screen==='community')render();
+  }catch(e){showFireToast('❌ '+e.message);}
+}
+
+function showBriefProposalDialog(briefId){
+  if(!currentUser){showFireToast('❌ יש להתחבר');return;}
+  if(currentUserData?.role!=='teacher'){showFireToast('❌ רק מורים יכולים להגיש הצעות');return;}
+  const brief=(S.parentBriefs||[]).find(b=>b.id===briefId);
+  if(!brief){showFireToast('❌ הבקשה לא נמצאה');return;}
+  if(brief.parentUid===currentUser.uid){showFireToast('❌ לא ניתן להגיש הצעה לבקשה שלך');return;}
+  const catObj=CATS.find(c=>c.id===brief.subject)||{em:'🎓',lbl:brief.subject||'כללי',col:'#14B8A6'};
+  const ov=document.createElement('div');
+  ov.id='_bpOv';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(8px);direction:rtl';
+  ov.innerHTML=`<div style="background:#fff;border-radius:24px 24px 0 0;padding:22px 18px 48px;width:100%;max-width:500px;max-height:92vh;overflow-y:auto">
+    <div style="width:40px;height:4px;background:#E2E8F0;border-radius:50px;margin:0 auto 18px"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+      <button onclick="document.getElementById('_bpOv')?.remove()" style="background:rgba(20,184,166,0.1);border:none;color:#14B8A6;font-size:18px;cursor:pointer;border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center">&#x2715;</button>
+      <h3 style="font-weight:900;font-size:18px;margin:0">הגשת הצעה</h3>
+    </div>
+    <div style="background:rgba(20,184,166,0.06);border:1.5px solid rgba(20,184,166,0.2);border-radius:14px;padding:14px;margin-bottom:16px">
+      <div style="font-size:12px;color:#64748B;margin-bottom:4px">${catObj.em} ${catObj.lbl} • ילד/ה: <strong>${escapeHtml(brief.childName)}</strong></div>
+      <div style="font-size:13px;font-weight:700;line-height:1.6;margin-bottom:6px">${escapeHtml((brief.description||'').substring(0,120))}${(brief.description||'').length>120?'...':''}</div>
+      <div style="font-size:13px;color:#10B981;font-weight:800">${icon('dollar',13,'#10B981')} תקציב הורה: &#x20AA;${brief.budget} לשיעור</div>
+    </div>
+    <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">${icon('dollar',14)} המחיר שלי לשיעור (&#x20AA;)</label>
+    <input id="_bpPrice" type="number" min="0" value="${brief.budget}" class="inp" style="margin-bottom:12px">
+    <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">${icon('chat',14)} הודעה להורה</label>
+    <textarea id="_bpMsg" rows="4" placeholder="ספר/י על ניסיונך, כיצד תוכל/י לעזור לילד/ה ומה כולל השיעור..." class="inp" style="margin-bottom:20px;resize:none"></textarea>
+    <button onclick="_submitBriefProposal('${briefId}')" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:14px;font-weight:900;font-size:15px;cursor:pointer;box-shadow:0 6px 20px rgba(20,184,166,0.3);display:flex;align-items:center;justify-content:center;gap:8px">${icon('send',16,'#fff')} שלח הצעה</button>
+  </div>`;
+  document.body.appendChild(ov);
+  ov.onclick=e=>{if(e.target===ov)ov.remove();};
+}
+
+async function _submitBriefProposal(briefId){
+  const price=parseInt(document.getElementById('_bpPrice')?.value)||0;
+  const message=(document.getElementById('_bpMsg')?.value||'').trim();
+  if(!price||price<1){showFireToast('❌ הזן מחיר לשיעור');return;}
+  if(!message||message.length<10){showFireToast('❌ כתוב הודעה להורה (לפחות 10 תווים)');return;}
+  const brief=(S.parentBriefs||[]).find(b=>b.id===briefId);
+  if(!brief){showFireToast('❌ הבקשה לא נמצאה');return;}
+  try{
+    showFireToast('⏳ שולח הצעה...');
+    const proposal={
+      teacherUid:currentUser.uid,
+      teacherName:currentUserData?.name||currentUser.email.split('@')[0],
+      teacherPhoto:currentUserData?.photo||null,
+      price,message,createdAt:Date.now()
+    };
+    await db.ref('briefProposals/'+briefId+'/'+currentUser.uid).set(proposal);
+    await db.ref('notifications/'+brief.parentUid).push({
+      type:'briefProposal',briefId,
+      from:proposal.teacherName,fromUid:currentUser.uid,
+      price,preview:message.substring(0,80),
+      read:false,createdAt:Date.now()
+    });
+    document.getElementById('_bpOv')?.remove();
+    showFireToast('✅ ההצעה נשלחה! ההורה יקבל התראה');
+  }catch(e){showFireToast('❌ '+e.message);}
+}
+
+async function showMyBriefProposals(briefId){
+  if(!currentUser){showFireToast('❌ יש להתחבר');return;}
+  const brief=(S.parentBriefs||[]).find(b=>b.id===briefId);
+  if(!brief||brief.parentUid!==currentUser.uid){showFireToast('❌ הבקשה לא נמצאה');return;}
+  showFireToast('⏳ טוען הצעות...');
+  let proposals=[];
+  try{
+    const snap=await db.ref('briefProposals/'+briefId).get();
+    if(snap.exists())snap.forEach(c=>proposals.push({id:c.key,...c.val()}));
+    proposals.sort((a,b)=>a.price-b.price);
+  }catch(e){showFireToast('❌ '+e.message);return;}
+  const catObj=CATS.find(c=>c.id===brief.subject)||{em:'🎓',lbl:brief.subject||'כללי',col:'#14B8A6'};
+  const ov=document.createElement('div');
+  ov.id='_mpOv';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(8px);direction:rtl';
+  const propCards=proposals.length===0
+    ?`<div style="text-align:center;padding:40px 20px;color:#64748B">${icon('clock',40,'#94A3B8')}<p style="font-size:14px;font-weight:700;margin-top:12px">אין הצעות עדיין<br>מורים יראו את הבקשה ויגישו הצעות</p></div>`
+    :proposals.map(p=>`
+    <div style="background:#F8FAFC;border:1.5px solid rgba(20,184,166,0.2);border-radius:16px;padding:14px 16px;margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span style="font-weight:900;font-size:15px">${escapeHtml(p.teacherName)}</span>
+        <span style="background:linear-gradient(135deg,#14B8A6,#06B6D4);color:#fff;font-size:14px;font-weight:900;padding:4px 14px;border-radius:50px">&#x20AA;${p.price}</span>
+      </div>
+      <p style="margin:0 0 12px;font-size:13px;color:#334155;line-height:1.6">${escapeHtml(p.message)}</p>
+      <button onclick="_acceptBriefProposal('${briefId}','${p.id}')" style="width:100%;background:linear-gradient(135deg,#10B981,#059669);border:none;color:#fff;border-radius:50px;padding:11px;font-weight:900;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">${icon('check-circle',16,'#fff')} קבל הצעה — &#x20AA;${p.price}</button>
+    </div>`).join('');
+  ov.innerHTML=`<div style="background:#fff;border-radius:24px 24px 0 0;padding:22px 18px 48px;width:100%;max-width:500px;max-height:92vh;overflow-y:auto">
+    <div style="width:40px;height:4px;background:#E2E8F0;border-radius:50px;margin:0 auto 18px"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <button onclick="document.getElementById('_mpOv')?.remove()" style="background:rgba(20,184,166,0.1);border:none;color:#14B8A6;font-size:18px;cursor:pointer;border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center">&#x2715;</button>
+      <h3 style="font-weight:900;font-size:18px;margin:0">הצעות מורים — ${escapeHtml(brief.childName)}</h3>
+    </div>
+    <div style="background:rgba(20,184,166,0.06);border-radius:12px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#64748B">
+      ${catObj.em} ${catObj.lbl} • תקציבך: &#x20AA;${brief.budget} • ${proposals.length} הצעות
+    </div>
+    ${propCards}
+    <button onclick="document.getElementById('_mpOv')?.remove()" style="width:100%;background:rgba(100,116,139,0.1);border:none;color:#64748B;border-radius:50px;padding:12px;font-weight:700;font-size:13px;cursor:pointer;margin-top:8px">סגור</button>
+  </div>`;
+  document.body.appendChild(ov);
+  ov.onclick=e=>{if(e.target===ov)ov.remove();};
+}
+
+async function _acceptBriefProposal(briefId,teacherUid){
+  if(!currentUser)return;
+  const brief=(S.parentBriefs||[]).find(b=>b.id===briefId);
+  if(!brief||brief.parentUid!==currentUser.uid){showFireToast('❌ הבקשה לא נמצאה');return;}
+  try{
+    showFireToast('⏳ יוצר הזמנה...');
+    const snap=await db.ref('briefProposals/'+briefId+'/'+teacherUid).get();
+    if(!snap.exists()){showFireToast('❌ ההצעה לא נמצאה');return;}
+    const proposal=snap.val();
+    const price=proposal.price||brief.budget;
+    const commission=Math.round(price*COMMISSION_RATE);
+    const bookingRef=db.ref('bookings').push();
+    const bookingId=bookingRef.key;
+    const bookingData={
+      id:bookingId,
+      studentId:currentUser.uid,
+      studentName:currentUserData?.name||currentUser.email.split('@')[0],
+      studentEmail:currentUser.email||'',
+      teacherId:teacherUid,
+      teacherName:proposal.teacherName,
+      teacherCat:brief.subject,
+      day:'לתיאום עם המורה',
+      time:'לתיאום',
+      type:'brief',
+      price,grossAmount:price,
+      commission,netToTeacher:price-commission,
+      payMethod:'briefAccepted',
+      payRef:'BRIEF-'+briefId.substring(0,6).toUpperCase(),
+      status:'awaitingPayment',
+      briefId,briefChildName:brief.childName,
+      createdAt:Date.now()
+    };
+    await db.ref().update({
+      ['bookings/'+bookingId]:bookingData,
+      ['userBookings/'+currentUser.uid+'/'+bookingId]:bookingData,
+      ['teacherBookings/'+teacherUid+'/'+bookingId]:bookingData,
+      ['parentBriefs/'+briefId+'/status']:'closed',
+      ['parentBriefs/'+briefId+'/acceptedTeacher']:teacherUid,
+      ['parentBriefs/'+briefId+'/bookingId']:bookingId
+    });
+    await db.ref('notifications/'+teacherUid).push({
+      type:'briefAccepted',briefId,bookingId,
+      from:currentUserData?.name||'הורה',fromUid:currentUser.uid,
+      childName:brief.childName,price,
+      read:false,createdAt:Date.now()
+    });
+    const bIdx=(S.parentBriefs||[]).findIndex(b=>b.id===briefId);
+    if(bIdx>=0)S.parentBriefs.splice(bIdx,1);
+    document.getElementById('_mpOv')?.remove();
+    showFireToast('✅ ההצעה התקבלה! הזמנה נוצרה — פנה/י למורה לתיאום');
+    if(S.screen==='community')render();
   }catch(e){showFireToast('❌ '+e.message);}
 }
 
@@ -9507,8 +10063,50 @@ function showEditTeacherProfileDialog(){
         <p style="font-size:12px;color:#64748B;margin:0 0 10px;line-height:1.6">כאן תקבל הודעות על הזמנות שיעור חדשות. <strong>חשוב:</strong> הכנס מייל אמיתי שלך (לא @kidemy.app).</p>
         <input id="_etNotifEmail" class="inp" type="email" value="${(t.notificationEmail||'').replace(/"/g,'&quot;')}" placeholder="המייל האמיתי שלך למשל: name@gmail.com">
       </div>
+
+      <!-- שאלות נפוצות (FAQ) -->
+      <div style="background:rgba(20,184,166,0.04);border:1.5px solid rgba(20,184,166,0.15);border-radius:18px;padding:16px;margin-bottom:16px">
+        <h3 style="font-weight:900;font-size:15px;margin:0 0 4px;color:#14B8A6">${icon("info",14)} שאלות נפוצות על השיעורים שלי</h3>
+        <p style="color:#64748B;font-size:12px;margin:0 0 12px">עד 5 שאלות ותשובות שיוצגו בפרופיל הציבורי שלך</p>
+        <div id="_etFaqList" style="margin-bottom:12px">${_etRenderFaqList(t.faq||[])}</div>
+        <!-- שבבי הצעות -->
+        <div style="margin-bottom:12px">
+          <div style="font-size:11px;color:#94A3B8;font-weight:700;margin-bottom:7px">הצעות לשאלות:</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            ${["לאיזה גיל מתאים?","כמה עולה שיעור?","האם יש שיעור ניסיון?","מה משך השיעור?","האם מלמד בזום?"].map(q=>`<button type="button" onclick="_etFaqChip(${JSON.stringify(q)})" style="background:rgba(20,184,166,0.08);border:1px solid rgba(20,184,166,0.25);border-radius:50px;padding:6px 13px;font-size:12px;font-weight:700;color:#14B8A6;cursor:pointer">${q}</button>`).join('')}
+          </div>
+        </div>
+        <!-- טופס הוספה -->
+        <div id="_etFaqForm" style="display:none;background:rgba(20,184,166,0.06);border:1px solid rgba(20,184,166,0.2);border-radius:14px;padding:12px;margin-bottom:10px">
+          <div style="margin-bottom:8px">
+            <label style="display:block;font-size:11px;color:#64748B;font-weight:700;margin-bottom:4px">שאלה</label>
+            <input id="_etFaqQ" class="inp" placeholder="לדוגמה: לאיזה גיל מתאים?">
+          </div>
+          <div style="margin-bottom:10px">
+            <label style="display:block;font-size:11px;color:#64748B;font-weight:700;margin-bottom:4px">תשובה</label>
+            <textarea id="_etFaqA" class="inp" placeholder="כתוב תשובה קצרה..." style="min-height:60px;resize:none;border-radius:12px"></textarea>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button type="button" onclick="_etFaqSaveItem()" style="flex:1;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:12px;padding:9px;font-weight:800;font-size:13px;cursor:pointer">${icon("save",13)} הוסף</button>
+            <button type="button" onclick="document.getElementById('_etFaqForm').style.display='none'" style="background:rgba(100,116,139,0.1);border:none;color:#64748B;border-radius:12px;padding:9px 14px;font-weight:700;font-size:13px;cursor:pointer">ביטול</button>
+          </div>
+        </div>
+        <button type="button" id="_etFaqAddBtn" onclick="_etFaqShowForm()" style="width:100%;background:rgba(20,184,166,0.08);border:1.5px dashed rgba(20,184,166,0.4);border-radius:12px;padding:10px;font-weight:800;font-size:13px;color:#14B8A6;cursor:pointer">${icon("info",13)} + הוסף שאלה</button>
+      </div>
+
+      <!-- תיק עבודות -->
+      <div style="background:rgba(20,184,166,0.04);border:1.5px solid rgba(20,184,166,0.2);border-radius:18px;padding:16px;margin-bottom:16px">
+        <h3 style="font-weight:900;font-size:15px;margin:0 0 6px;color:#14B8A6">🖼 תיק עבודות</h3>
+        <p style="font-size:12px;color:#64748B;margin:0 0 12px;line-height:1.6">הצג עד 5 תמונות של ציורי תלמידים, חומרי לימוד, תעודות ועוד.</p>
+        ${(()=>{const _pp=(Array.isArray(t.portfolio)?t.portfolio:Object.values(t.portfolio||{})).filter(p=>p&&p.url);return _pp.length?`<div style="display:flex;gap:8px;overflow-x:auto;margin-bottom:12px;padding-bottom:4px">${_pp.slice(0,5).map(item=>`<div style="flex-shrink:0;width:68px;height:68px;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.12)">${item.isPdf?`<div style="width:100%;height:100%;background:#DC2626;display:flex;align-items:center;justify-content:center;font-size:22px">📄</div>`:`<img src="${escapeHtml(item.url)}" style="width:100%;height:100%;object-fit:cover" loading="lazy">`}</div>`).join('')}</div>`:''})()}
+        <button onclick="document.getElementById('_etOv').remove();showPortfolioManager()" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:11px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> ניהול תיק עבודות (${(Array.isArray(t.portfolio)?t.portfolio:Object.values(t.portfolio||{})).filter(p=>p&&p.url).length}/5)
+        </button>
+      </div>
     </div>`;
   document.body.appendChild(ov);
+  window._etFaq=[...(t.faq||[])];
+  _etFaqRefreshAddBtn();
   ov.onclick=e=>{if(e.target===ov)ov.remove();};
 }
 function _etRenderSubjectDescs(t){
@@ -9570,6 +10168,97 @@ function removeEtCustomCat(val,el){
   window._etCustomCats=(window._etCustomCats||[]).filter(c=>c!==val);
   el.closest('span').remove();
 }
+// ─── FAQ EDITOR HELPERS ───────────────────────────────────────────────────────
+function _etRenderFaqList(faq){
+  if(!faq||!faq.length)return '<p style="color:#94A3B8;font-size:12px;text-align:center;margin:0 0 4px">אין שאלות עדיין</p>';
+  return faq.map((item,i)=>`
+    <div style="background:#fff;border:1px solid rgba(20,184,166,0.18);border-radius:12px;padding:10px 13px;margin-bottom:8px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:800;font-size:13px;color:#0F1A1F;margin-bottom:3px">${escapeHtml(item.q||'')}</div>
+          <div style="font-size:12px;color:#64748B;line-height:1.5">${escapeHtml(item.a||'')}</div>
+        </div>
+        <button type="button" onclick="_etFaqDelete(${i})" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);color:#EF4444;border-radius:8px;padding:4px 9px;font-size:11px;font-weight:800;cursor:pointer;flex-shrink:0">✕</button>
+      </div>
+    </div>`).join('');
+}
+function _etFaqRefreshList(){
+  const el=document.getElementById('_etFaqList');
+  if(el)el.innerHTML=_etRenderFaqList(window._etFaq||[]);
+  _etFaqRefreshAddBtn();
+}
+function _etFaqRefreshAddBtn(){
+  const btn=document.getElementById('_etFaqAddBtn');
+  if(!btn)return;
+  const full=(window._etFaq||[]).length>=5;
+  btn.disabled=full;
+  btn.style.opacity=full?'0.4':'1';
+  btn.style.cursor=full?'not-allowed':'pointer';
+  btn.title=full?'הגעת למגבלה של 5 שאלות':'';
+}
+function _etFaqShowForm(){
+  if((window._etFaq||[]).length>=5){showFireToast('❌ ניתן להוסיף עד 5 שאלות');return;}
+  const form=document.getElementById('_etFaqForm');
+  if(form){form.style.display='block';document.getElementById('_etFaqQ')?.focus();}
+}
+function _etFaqChip(q){
+  if((window._etFaq||[]).length>=5){showFireToast('❌ ניתן להוסיף עד 5 שאלות');return;}
+  const form=document.getElementById('_etFaqForm');
+  if(form)form.style.display='block';
+  const inp=document.getElementById('_etFaqQ');
+  if(inp){inp.value=q;inp.focus();document.getElementById('_etFaqA')?.focus();}
+}
+function _etFaqSaveItem(){
+  const q=(document.getElementById('_etFaqQ')?.value||'').trim();
+  const a=(document.getElementById('_etFaqA')?.value||'').trim();
+  if(!q){showFireToast('❌ יש להכניס שאלה');return;}
+  if(!a){showFireToast('❌ יש להכניס תשובה');return;}
+  if(!window._etFaq)window._etFaq=[];
+  if(window._etFaq.length>=5){showFireToast('❌ ניתן להוסיף עד 5 שאלות');return;}
+  window._etFaq.push({q,a});
+  const qInp=document.getElementById('_etFaqQ');const aInp=document.getElementById('_etFaqA');
+  if(qInp)qInp.value='';if(aInp)aInp.value='';
+  document.getElementById('_etFaqForm').style.display='none';
+  _etFaqRefreshList();
+}
+function _etFaqDelete(i){
+  if(!window._etFaq)return;
+  window._etFaq.splice(i,1);
+  _etFaqRefreshList();
+}
+// ─── FAQ PUBLIC DISPLAY ───────────────────────────────────────────────────────
+function renderFaq(faqArray){
+  if(!faqArray||!faqArray.length)return '';
+  return `<div class="card" style="padding:16px;margin-bottom:16px" id="_faqSection">
+    <h4 style="margin:0 0 14px;font-weight:900;font-size:16px;color:#0F1A1F;display:flex;align-items:center;gap:6px">${icon("info",15)} שאלות נפוצות</h4>
+    ${faqArray.map((item,i)=>`
+    <div style="border-top:${i===0?'none':'1px solid rgba(0,0,0,0.07)'};padding-top:${i===0?'0':'2px'}">
+      <button type="button" onclick="toggleFaq(${i})"
+        style="width:100%;background:none;border:none;padding:12px 0;display:flex;align-items:center;justify-content:space-between;cursor:pointer;text-align:right;gap:8px">
+        <span style="font-weight:800;font-size:14px;color:#0F1A1F;text-align:right;flex:1;line-height:1.4">${escapeHtml(item.q||'')}</span>
+        <span id="_faqChev_${i}" style="flex-shrink:0;transition:transform 0.25s;display:inline-flex;align-items:center;color:#14B8A6">${icon("info",14,'#14B8A6')}</span>
+      </button>
+      <div id="_faqAns_${i}" style="overflow:hidden;max-height:0;transition:max-height 0.3s ease,opacity 0.25s ease;opacity:0">
+        <p style="margin:0 0 12px;font-size:13px;color:#64748B;line-height:1.65;padding-right:2px">${escapeHtml(item.a||'')}</p>
+      </div>
+    </div>`).join('')}
+  </div>`;
+}
+function toggleFaq(i){
+  const ans=document.getElementById('_faqAns_'+i);
+  const chev=document.getElementById('_faqChev_'+i);
+  if(!ans)return;
+  const isOpen=ans.style.maxHeight&&ans.style.maxHeight!=='0px';
+  // close all
+  document.querySelectorAll('[id^="_faqAns_"]').forEach(el=>{el.style.maxHeight='0px';el.style.opacity='0';});
+  document.querySelectorAll('[id^="_faqChev_"]').forEach(el=>{el.style.transform='';});
+  if(!isOpen){
+    ans.style.maxHeight=ans.scrollHeight+'px';
+    ans.style.opacity='1';
+    if(chev)chev.style.transform='rotate(90deg)';
+  }
+}
+// ─────────────────────────────────────────────────────────────────────────────
 function showEditCatProfileDialog(catId){
   if(!currentUser){showFireToast('❌ לא מחובר');return;}
   const cat=CATS.find(x=>x.id===catId)||{em:'🎓',lbl:catId,col:'#14B8A6'};
@@ -9643,7 +10332,8 @@ async function saveTeacherProfileEdits(){
     if(city)userUpdates.city=city;
     await db.ref('users/'+currentUser.uid).update(userUpdates);
     if(currentUserData)Object.assign(currentUserData,userUpdates);
-    const teacherUpdates={desc:firstDesc,price,city,cats:allCats,cat:allCats[0],customCats,name,instagram,tiktok,facebook,notificationEmail,meetingLink};
+    const faq=(window._etFaq||[]).filter(x=>x&&x.q&&x.a).slice(0,5);
+    const teacherUpdates={desc:firstDesc,price,city,cats:allCats,cat:allCats[0],customCats,name,instagram,tiktok,facebook,notificationEmail,meetingLink,faq};
     await db.ref('teachers/'+currentUser.uid).update(teacherUpdates);
     await db.ref('teachers/'+currentUser.uid+'/catProfiles').update(catProfileUpdates);
     for(const cc of customCats){
@@ -9713,6 +10403,247 @@ async function _saveSubjectEdit(catId){
     showFireToast('✅ עודכן!');
     render();
   }catch(e){showFireToast('❌ '+e.message);}
+}
+
+// ─── PORTFOLIO GALLERY ────────────────────────────────────────────────────────
+window._portfolioItems=[];
+
+function showPortfolioManager(){
+  if(!currentUser){showFireToast('❌ לא מחובר');return;}
+  const t=TEACHERS.find(x=>x.id===currentUser.uid)||{};
+  const rawPort=t.portfolio||[];
+  window._portfolioItems=(Array.isArray(rawPort)?rawPort:Object.values(rawPort)).filter(p=>p&&p.url);
+  const ov=document.createElement('div');
+  ov.id='_portOv';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(8px);direction:rtl';
+  ov.innerHTML=`
+    <div id="_portSheet" style="background:#fff;border-radius:28px 28px 0 0;padding:24px 20px 48px;width:100%;max-width:500px;max-height:92vh;overflow-y:auto">
+      <div style="width:40px;height:4px;background:#E2E8F0;border-radius:50px;margin:0 auto 20px"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <button onclick="document.getElementById('_portOv')?.remove()" style="background:rgba(20,184,166,0.1);border:none;color:#14B8A6;font-size:20px;cursor:pointer;border-radius:50%;width:36px;height:36px">✕</button>
+        <h3 style="margin:0;font-weight:900;font-size:18px">🖼 תיק עבודות</h3>
+      </div>
+      <p style="font-size:13px;color:#64748B;margin:0 0 16px;line-height:1.6">הוסף עד 5 תמונות שמציגות את עבודתך — ציורי תלמידים, חומרי לימוד, תעודות ועוד.</p>
+      <div id="_portGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">
+        ${_renderPortfolioGridItems()}
+      </div>
+      <div id="_portProgressWrap" style="display:none;background:rgba(20,184,166,0.07);border:1.5px solid rgba(20,184,166,0.2);border-radius:14px;padding:12px 16px;margin-bottom:14px;text-align:center">
+        <div id="_portProgressText" style="font-size:13px;font-weight:700;color:#14B8A6;margin-bottom:8px">מעלה...</div>
+        <div style="background:#E2E8F0;border-radius:50px;height:6px;overflow:hidden">
+          <div id="_portProgressBar" style="height:100%;background:linear-gradient(90deg,#14B8A6,#06B6D4);border-radius:50px;width:0%;transition:width 0.25s"></div>
+        </div>
+      </div>
+      <div id="_portAddForm" style="display:none;background:rgba(20,184,166,0.04);border:1.5px solid rgba(20,184,166,0.2);border-radius:18px;padding:16px;margin-bottom:14px">
+        <h4 style="margin:0 0 12px;font-weight:900;font-size:14px;color:#14B8A6">פריט חדש</h4>
+        <div style="margin-bottom:10px">
+          <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">📌 כותרת <span style="color:#EF4444">*</span></label>
+          <input id="_portTitle" class="inp" placeholder="למשל: ציור של תלמידה בת 9" maxlength="60">
+        </div>
+        <div style="margin-bottom:12px">
+          <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">📝 תיאור <span style="font-size:11px;color:#94A3B8">(לא חובה)</span></label>
+          <input id="_portDesc" class="inp" placeholder="לדוגמה: עבודה מהסמסטר הראשון" maxlength="120">
+        </div>
+        <div style="display:flex;gap:8px">
+          <button onclick="document.getElementById('_portAddForm').style.display='none'" style="flex:1;background:rgba(100,116,139,0.1);border:1.5px solid rgba(100,116,139,0.2);color:#64748B;border-radius:50px;padding:10px;font-weight:700;font-size:13px;cursor:pointer">ביטול</button>
+          <button onclick="_portPickFile()" style="flex:2;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">📂 בחר קובץ</button>
+        </div>
+        <input type="file" id="_portFileInput" accept="image/jpeg,image/jpg,image/png,image/webp,image/gif,application/pdf" style="display:none" onchange="_portFileSelected(this)">
+      </div>
+      <button id="_portAddBtn" onclick="_portShowAddForm()" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:13px;font-weight:800;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;box-shadow:0 4px 16px rgba(20,184,166,0.3)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> הוסף פריט (${window._portfolioItems.length}/5)
+      </button>
+    </div>`;
+  document.body.appendChild(ov);
+  ov.onclick=e=>{if(e.target===ov)ov.remove();};
+  _portRefreshAddBtn();
+}
+
+function _renderPortfolioGridItems(){
+  if(!window._portfolioItems||!window._portfolioItems.length)
+    return '<div style="grid-column:1/-1;text-align:center;padding:24px 0;color:#94A3B8;font-size:13px">אין פריטים עדיין — לחץ הוסף פריט!</div>';
+  return window._portfolioItems.map((item,i)=>{
+    const isPdf=!!(item.isPdf);
+    return `<div style="position:relative;border-radius:14px;overflow:hidden;box-shadow:0 3px 12px rgba(0,0,0,0.1);aspect-ratio:1">
+      ${isPdf
+        ?`<div style="width:100%;height:100%;background:linear-gradient(135deg,#EF4444,#DC2626);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <span style="font-size:9px;color:#fff;font-weight:800">PDF</span>
+          </div>`
+        :`<img src="${escapeHtml(item.url)}" alt="${escapeHtml(item.title||'')}" style="width:100%;height:100%;object-fit:cover" loading="lazy">`}
+      <div style="position:absolute;bottom:0;right:0;left:0;background:linear-gradient(to top,rgba(0,0,0,0.72),transparent);padding:6px 7px 5px">
+        <div style="font-size:10px;font-weight:800;color:#fff;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${escapeHtml(item.title||'')}</div>
+      </div>
+      <button onclick="_portDeleteItem(${i})" style="position:absolute;top:5px;left:5px;background:rgba(239,68,68,0.9);border:none;color:#fff;border-radius:50%;width:24px;height:24px;font-size:13px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function _portRefreshGrid(){
+  const g=document.getElementById('_portGrid');
+  if(g)g.innerHTML=_renderPortfolioGridItems();
+  _portRefreshAddBtn();
+}
+function _portRefreshAddBtn(){
+  const btn=document.getElementById('_portAddBtn');
+  if(!btn)return;
+  const count=(window._portfolioItems||[]).length;
+  btn.innerHTML=`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> הוסף פריט (${count}/5)`;
+  btn.disabled=count>=5;
+  btn.style.opacity=count>=5?'0.45':'1';
+}
+function _portShowAddForm(){
+  if((window._portfolioItems||[]).length>=5){showFireToast('❌ מקסימום 5 פריטים בתיק עבודות');return;}
+  const form=document.getElementById('_portAddForm');
+  if(form){form.style.display='block';document.getElementById('_portTitle')?.focus();}
+}
+function _portPickFile(){
+  const title=(document.getElementById('_portTitle')?.value||'').trim();
+  if(!title){showFireToast('❌ הכנס כותרת לפני בחירת הקובץ');return;}
+  document.getElementById('_portFileInput')?.click();
+}
+async function _portFileSelected(input){
+  const file=input.files&&input.files[0];
+  if(!file)return;
+  if(file.size>8*1024*1024){showFireToast('❌ קובץ גדול מדי — מקסימום 8MB');input.value='';return;}
+  const allowed=['image/jpeg','image/jpg','image/png','image/webp','image/gif','application/pdf'];
+  if(!allowed.includes(file.type)){showFireToast('❌ סוג קובץ לא נתמך — JPG, PNG, WebP, GIF או PDF');input.value='';return;}
+  const title=(document.getElementById('_portTitle')?.value||'').trim();
+  const desc=(document.getElementById('_portDesc')?.value||'').trim();
+  if(!title){showFireToast('❌ חסרה כותרת');input.value='';return;}
+  const form=document.getElementById('_portAddForm');
+  const progressWrap=document.getElementById('_portProgressWrap');
+  if(form)form.style.display='none';
+  if(progressWrap)progressWrap.style.display='block';
+  await _portUploadAndSave(file,title,desc);
+  if(progressWrap)progressWrap.style.display='none';
+  input.value='';
+  const titleEl=document.getElementById('_portTitle');
+  const descEl=document.getElementById('_portDesc');
+  if(titleEl)titleEl.value='';
+  if(descEl)descEl.value='';
+}
+async function _portUploadAndSave(file,title,desc){
+  try{
+    const isPdf=file.type==='application/pdf';
+    const ts=Date.now();
+    const safeName=file.name.replace(/[^a-zA-Z0-9._-]/g,'_').substring(0,40);
+    const path=`portfolio/${currentUser.uid}/${ts}_${safeName}`;
+    const _setProgress=(pct,msg)=>{
+      const bar=document.getElementById('_portProgressBar');
+      const txt=document.getElementById('_portProgressText');
+      if(bar)bar.style.width=pct+'%';
+      if(txt)txt.textContent=msg||`מעלה... ${pct}%`;
+    };
+    _setProgress(5,'מתחיל העלאה...');
+    const storageRef=storage.ref(path);
+    const uploadTask=storageRef.put(file,{contentType:file.type});
+    await new Promise((resolve,reject)=>{
+      uploadTask.on('state_changed',
+        snap=>{
+          const pct=Math.round(snap.bytesTransferred/snap.totalBytes*88);
+          _setProgress(Math.max(5,pct),'מעלה... '+Math.max(5,pct)+'%');
+        },
+        err=>reject(err),
+        ()=>resolve()
+      );
+    });
+    _setProgress(94,'שומר...');
+    const url=await uploadTask.snapshot.ref.getDownloadURL();
+    const newItem={url,title,desc:desc||'',uploadedAt:ts,isPdf};
+    window._portfolioItems=[...(window._portfolioItems||[]),newItem];
+    await db.ref('teachers/'+currentUser.uid+'/portfolio').set(window._portfolioItems);
+    const t=TEACHERS.find(x=>x.id===currentUser.uid);
+    if(t)t.portfolio=[...window._portfolioItems];
+    _setProgress(100,'הושלם!');
+    setTimeout(()=>_portRefreshGrid(),200);
+    showFireToast('✅ פריט נוסף לתיק העבודות!');
+  }catch(e){
+    const progressWrap=document.getElementById('_portProgressWrap');
+    if(progressWrap)progressWrap.style.display='none';
+    showFireToast('❌ שגיאה בהעלאה: '+e.message);
+  }
+}
+async function _portDeleteItem(index){
+  if(!confirm('למחוק פריט זה מתיק העבודות?'))return;
+  const item=(window._portfolioItems||[])[index];
+  if(item&&item.url&&item.url.includes('firebasestorage')){
+    try{await storage.refFromURL(item.url).delete();}catch(e){console.warn('[Portfolio] storage delete:',e.message);}
+  }
+  window._portfolioItems.splice(index,1);
+  try{
+    await db.ref('teachers/'+currentUser.uid+'/portfolio').set(window._portfolioItems);
+    const t=TEACHERS.find(x=>x.id===currentUser.uid);
+    if(t)t.portfolio=[...window._portfolioItems];
+    _portRefreshGrid();
+    showFireToast('✅ פריט נמחק');
+  }catch(e){showFireToast('❌ '+e.message);}
+}
+
+function renderPortfolioGallery(teacherId,portfolio){
+  const items=(Array.isArray(portfolio)?portfolio:Object.values(portfolio||{})).filter(p=>p&&p.url);
+  if(!items.length)return '';
+  const thumbs=items.map((item,i)=>{
+    const isPdf=!!(item.isPdf);
+    return `<div onclick="portfolioLightbox('${escapeHtml(teacherId)}',${i})" style="flex-shrink:0;width:120px;cursor:pointer">
+      <div style="width:120px;height:120px;border-radius:16px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,0.12);margin-bottom:6px">
+        ${isPdf
+          ?`<div style="width:100%;height:100%;background:linear-gradient(135deg,#EF4444,#DC2626);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              <span style="font-size:10px;color:#fff;font-weight:800">PDF</span>
+            </div>`
+          :`<img src="${escapeHtml(item.url)}" alt="${escapeHtml(item.title||'')}" loading="lazy" style="width:100%;height:100%;object-fit:cover">`}
+      </div>
+      <div style="font-size:11px;font-weight:700;color:#0F1A1F;text-align:center;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;max-width:120px;padding:0 2px">${escapeHtml(item.title||'')}</div>
+    </div>`;
+  }).join('');
+  return `<div class="card" style="padding:16px;margin-bottom:16px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <span style="background:rgba(20,184,166,0.12);color:#14B8A6;font-size:11px;font-weight:800;padding:4px 10px;border-radius:50px">${items.length} פריטים</span>
+      <h4 style="margin:0;font-weight:900;font-size:16px;color:#0F1A1F;display:flex;align-items:center;gap:6px">🖼 דוגמאות עבודה</h4>
+    </div>
+    <div style="display:flex;gap:12px;overflow-x:auto;padding-bottom:6px;-webkit-overflow-scrolling:touch;scrollbar-width:none">
+      ${thumbs}
+    </div>
+  </div>`;
+}
+
+function portfolioLightbox(uid,startIndex){
+  const t=TEACHERS.find(x=>x.id===uid)||{};
+  const rawPort=t.portfolio||[];
+  const items=(Array.isArray(rawPort)?rawPort:Object.values(rawPort)).filter(p=>p&&p.url);
+  if(!items.length)return;
+  let idx=typeof startIndex==='number'?Math.max(0,Math.min(items.length-1,startIndex)):0;
+  const existing=document.getElementById('_portLb');
+  if(existing)existing.remove();
+  const ov=document.createElement('div');
+  ov.id='_portLb';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.96);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;direction:rtl';
+  const draw=()=>{
+    const item=items[idx];
+    const isPdf=!!(item&&item.isPdf);
+    ov.innerHTML=`
+      <button onclick="document.getElementById('_portLb')?.remove()" style="position:absolute;top:16px;right:16px;background:rgba(255,255,255,0.15);border:none;color:#fff;font-size:22px;cursor:pointer;border-radius:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);z-index:2">✕</button>
+      <div style="position:absolute;top:20px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,0.65);font-size:13px;font-weight:700;z-index:2;white-space:nowrap">${idx+1} / ${items.length}</div>
+      <div style="flex:1;display:flex;align-items:center;justify-content:center;width:100%;padding:60px 56px 16px;box-sizing:border-box;position:relative">
+        ${isPdf
+          ?`<div style="width:160px;height:160px;background:linear-gradient(135deg,#EF4444,#DC2626);border-radius:24px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px">
+              <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              <span style="color:#fff;font-weight:900;font-size:16px">PDF</span>
+              <a href="${escapeHtml(item.url)}" target="_blank" rel="noopener noreferrer" style="color:#fff;font-size:12px;background:rgba(255,255,255,0.22);border-radius:50px;padding:7px 16px;font-weight:700;text-decoration:none">פתח קובץ ↗</a>
+            </div>`
+          :`<img src="${escapeHtml(item.url)}" alt="${escapeHtml(item.title||'')}" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:12px;box-shadow:0 8px 40px rgba(0,0,0,0.5)">`}
+        ${idx>0?`<button onclick="window._portLbNav(-1)" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,0.15);border:none;color:#fff;font-size:24px;cursor:pointer;border-radius:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)">→</button>`:''}
+        ${idx<items.length-1?`<button onclick="window._portLbNav(1)" style="position:absolute;left:6px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,0.15);border:none;color:#fff;font-size:24px;cursor:pointer;border-radius:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)">←</button>`:''}
+      </div>
+      <div style="padding:0 20px 36px;text-align:center;max-width:440px;width:100%">
+        <div style="font-weight:900;font-size:17px;color:#fff;margin-bottom:5px">${escapeHtml(item.title||'')}</div>
+        ${item.desc?`<div style="font-size:13px;color:rgba(255,255,255,0.7);line-height:1.6">${escapeHtml(item.desc)}</div>`:''}
+      </div>`;
+  };
+  window._portLbNav=(dir)=>{idx=Math.max(0,Math.min(items.length-1,idx+dir));draw();};
+  document.body.appendChild(ov);
+  draw();
+  ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
 }
 
 // ─── COMMUNITY GROUPS ─────────────────────────────────────────────────────────
@@ -10226,7 +11157,7 @@ async function refreshCurrentScreen(){
     // תמיד טוען מורים (משפיע על רוב הדפים)
     loads.push(loadRealTeachers());
     if(['home','nearby','search'].includes(scr)){}// כבר טוען מורים
-    if(scr==='community')loads.push(loadCommunityPosts());
+    if(scr==='community'){loads.push(loadCommunityPosts());loads.push(loadParentBriefs());}
     if(scr==='messages'){loads.push(loadUserChats());loads.push(loadLessonSummaries());if(currentUserData?.role==='teacher')loads.push(loadTeacherBookings());}
     if(scr==='profile'){
       if(currentUserData?.role==='teacher')loads.push(loadTeacherVideos());
@@ -10235,6 +11166,7 @@ async function refreshCurrentScreen(){
     if(scr==='teacher'&&(S.teacher?.id)){
       loads.push(loadPublicTeacherVideos(S.teacher.id));
       loads.push(loadPublicTeacherReviews(S.teacher.id));
+      loads.push(loadTeacherQA(S.teacher.id));
     }
     if(scr==='notifications')loads.push(loadNotifications());
     if(scr==='admin')loads.push(loadAdminData());
