@@ -927,24 +927,24 @@ function buildMap() {
     const id = tc.getImageData(0, 0, 790, 1845);
     const d = id.data;
 
-    // _applyPixels: only pixel-level processing, returns after putImageData
+    // _applyPixels: pixel-level processing + alpha transparency
     function _applyPixels(texD) {
+      const FADE=55; // feather pixels at all 4 edges
       for (let k = 0; k < d.length; k += 4) {
         const r=d[k], g=d[k+1], b=d[k+2];
+        const px=(k/4)|0;
+        const col=px%790, row=(px/790)|0;
+
+        // Edge feather alpha (0 at border → 255 inside)
+        const ax=Math.min(col, 789-col, FADE)/FADE;
+        const ay=Math.min(row, 1844-row, FADE)/FADE;
+        const edgeA=Math.round(255*Math.min(1,ax)*Math.min(1,ay));
+
         if (r>200 && g>200 && b>200 && Math.max(r,g,b)-Math.min(r,g,b)<40) {
-          const col=(k/4)%790;
-          const cf=Math.min(1,col/300);
-          let sr=Math.round(cf*22), sg=Math.round(48+cf*112), sb=Math.round(118+cf*80);
-          if(texD){
-            const bl=0.62;
-            d[k]  =Math.round(texD[k]  *bl+sr*(1-bl));
-            d[k+1]=Math.round(texD[k+1]*bl+sg*(1-bl));
-            d[k+2]=Math.round(texD[k+2]*bl+sb*(1-bl));
-          } else {
-            d[k]=sr; d[k+1]=sg; d[k+2]=sb;
-          }
+          // Sea pixel → fully transparent (background texture shows through)
+          d[k+3]=0;
         } else {
-          const row=Math.floor((k/4)/790);
+          // Land pixel → latitude toning + edge feather
           const northness=1-row/1845;
           const avg=(r+g+b)/3;
           let nr=Math.min(255,Math.max(0,Math.round(avg+(r-avg)*1.16)));
@@ -953,6 +953,7 @@ function buildMap() {
           ng=Math.min(255,ng+Math.round(northness*9));
           nr=Math.min(255,nr+Math.round((1-northness)*13));
           d[k]=nr; d[k+1]=ng; d[k+2]=nb;
+          d[k+3]=edgeA;
         }
       }
       tc.putImageData(id, 0, 0);
