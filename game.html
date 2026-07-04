@@ -940,7 +940,10 @@ function buildMap() {
         const ay=Math.min(row, 1844-row, FADE)/FADE;
         const edgeA=Math.round(255*Math.min(1,ax)*Math.min(1,ay));
 
-        if (r>200 && g>200 && b>200 && Math.max(r,g,b)-Math.min(r,g,b)<40) {
+        // Strict detection + lenient for Mediterranean (col<320, JPEG compression artifacts)
+        const isSea=(r>180&&g>180&&b>180&&Math.max(r,g,b)-Math.min(r,g,b)<60)
+                  ||(col<320&&(r+g+b)/3>145&&Math.max(r,g,b)-Math.min(r,g,b)<75);
+        if (isSea) {
           // Sea pixel → fully transparent (background texture shows through)
           d[k+3]=0;
         } else {
