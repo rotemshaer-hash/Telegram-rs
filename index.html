@@ -691,7 +691,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.66';
+const APP_VERSION='4.9.67';
 const APP_BUILD='04-07-2026';
 
 // ─── ANALYTICS ────────────────────────────────────────────────────────────────
@@ -703,6 +703,27 @@ function kLog(event,params={}){
     const mo=new Date().toISOString().slice(0,7);
     db.ref('_analytics/'+mo).push({e:event,p:params,uid:currentUser.uid,ts:Date.now()}).catch(()=>{});
   }catch(_){}
+}
+
+// ─── CREDITS (חבר מביא חבר) ───────────────────────────────────────────────────
+let _userCredit=0;
+let _userCreditLoaded=false;
+async function _loadUserCredit(){
+  if(_userCreditLoaded||!currentUser)return;
+  try{
+    const snap=await db.ref('userCredits/'+currentUser.uid).get();
+    _userCredit=snap.val()||0;
+    _userCreditLoaded=true;
+  }catch(_){}
+}
+function _genRefCode(name,uid){
+  const ascii=(name||'').replace(/[^a-zA-Z0-9]/g,'').slice(0,4)||'kid';
+  return ascii.toLowerCase()+uid.slice(-5);
+}
+function _myRefLink(){
+  const code=currentUserData?.refCode||'';
+  if(!code)return window.location.origin;
+  return window.location.origin+'?ref='+code;
 }
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -750,6 +771,8 @@ function _restoreRegSession(){
   }catch(e){}
 }
 _restoreRegSession();
+// שמור קוד הפניה מ-URL לסשן (לפני כל דבר אחר)
+(function(){try{const ref=new URLSearchParams(window.location.search).get('ref');if(ref)sessionStorage.setItem('_kidRefCode',ref);}catch(_){}})();
 // ─── ROUTER ───────────────────────────────────────────────────────────────────
 function go(scr,extra={}){
   if(scr==='register'){S.safetyConfirmed=true;_saveRegSession();if(!S.parentRegData)scr='parentReg';}
@@ -1810,6 +1833,12 @@ function TeacherSetup(){
           <p style="margin:0;font-size:12px;color:#14B8A6;line-height:1.5">${icon("check-circle",14)} <strong>עמלת Kidemy: 15%</strong> – הכי נמוך בשוק!<br>הכסף שלך מוגן – אם השיעור לא התקיים, תקבל החזר מלא.</p>
         </div>
       </div>
+      <div style="background:rgba(20,184,166,.07);border:1.5px solid rgba(20,184,166,.3);border-radius:14px;padding:14px;margin-bottom:14px">
+        <label style="display:flex;gap:10px;align-items:flex-start;cursor:pointer">
+          <input type="checkbox" id="tAgeConfirm" style="width:18px;height:18px;accent-color:#14B8A6;flex-shrink:0;margin-top:2px">
+          <span style="font-size:13px;line-height:1.6;color:#374151">אני מאשר/ת שאני בן/בת <strong>16 ומעלה</strong> ושהורי/אפוטרופסי מסכימים להשתתפותי כמורה ב-Kidemy</span>
+        </label>
+      </div>
       <button class="btn bp" onclick="saveTeacherProfile()">${icon("check-circle",14)} שמור פרופיל ופרסם</button>
     </div>
   </div>`;
@@ -1959,6 +1988,7 @@ async function saveTeacherProfile(){
   if(!price?.value||parseInt(price.value)<20){showFireToast('❌ מחיר מינימלי ₪20');return;}
   if(!desc?.value.trim()||desc.value.length<20){showFireToast('❌ תיאור לפחות 20 תווים');return;}
   if(!_modeOnline&&!_modeFrontal){showFireToast('❌ בחר לפחות אופן הוראה אחד');return;}
+  if(!document.getElementById('tAgeConfirm')?.checked){showFireToast('❌ יש לאשר את תנאי הגיל (16+)');return;}
 
   try{
     showFireToast('⏳ שומר פרופיל...');
@@ -8213,6 +8243,7 @@ function Booking(){
       <div style="display:flex;justify-content:space-between"><span style="font-weight:900;font-size:16px">לתשלום ל-Kidemy</span><span style="font-weight:900;font-size:20px;color:#14B8A6">₪${price}</span></div>
     </div>
 
+    ${(()=>{if(!_userCreditLoaded){_loadUserCredit().then(()=>render());return '';}if(_userCredit>0)return`<div style="background:linear-gradient(135deg,rgba(16,185,129,0.1),rgba(20,184,166,0.08));border:1.5px solid rgba(16,185,129,0.3);border-radius:14px;padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px"><div style="width:36px;height:36px;border-radius:10px;background:rgba(16,185,129,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg></div><div><div style="font-weight:800;font-size:13px;color:#059669">יש לך ₪${_userCredit} קרדיט!</div><div style="font-size:11px;color:#64748B;margin-top:2px">הקרדיט יקוזז מהחשבון לאחר אישור ההזמנה ע"י הצוות.</div></div></div>`;return '';})()}
     <h3 style="font-weight:900;font-size:16px;margin:0 0 12px">בחר אמצעי תשלום:</h3>
 
     <!-- Bit -->
@@ -8717,7 +8748,16 @@ function Profile(){
 
   if(tab==="about") content=`
     <div class="card"><h4 style="margin:0 0 10px;font-weight:800">👋 קצת עליי</h4><p style="margin:0;font-size:14px;line-height:1.7">${currentUserData?.bio||'עדיין לא כתבת קצת על עצמך.'}</p></div>
-    <div class="ref-card"><h4 style="margin:0 0 6px;font-weight:900;font-size:16px">${icon("gift",14)} הפנה חבר – קבל ₪15!</h4><p style="margin:0 0 14px;font-size:13px;opacity:.9;line-height:1.6">על כל חבר שנרשם דרכך תקבל ₪15 לחשבון שלך.</p><button onclick="shareApp()" style="background:rgba(255,255,255,.2);border:1.5px solid rgba(255,255,255,.3);color:#fff;border-radius:50px;padding:10px 20px;font-weight:700;cursor:pointer;font-size:13px">${icon("send",14)} שתף את Kidemy</button></div>
+    <div class="ref-card">
+      <h4 style="margin:0 0 6px;font-weight:900;font-size:16px">${icon("gift",14)} הפנה חבר – קבל ₪15!</h4>
+      <p style="margin:0 0 10px;font-size:13px;opacity:.9;line-height:1.6">על כל חבר שנרשם דרך הלינק האישי שלך תקבל <strong>₪15 קרדיט</strong> לחשבונך, והחבר יקבל <strong>₪5 קרדיט</strong> לשיעור הראשון.</p>
+      ${_userCredit>0?`<div style="background:rgba(255,255,255,.15);border-radius:10px;padding:8px 12px;margin-bottom:10px;font-size:13px;font-weight:800">💰 יתרת קרדיט: ₪${_userCredit}</div>`:''}
+      ${currentUserData?.refCode?`<div style="background:rgba(0,0,0,.2);border-radius:10px;padding:8px 12px;margin-bottom:10px;font-size:12px;font-family:monospace;word-break:break-all;direction:ltr;text-align:left;color:#E0FDF4">${_myRefLink()}</div>`:''}
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${currentUserData?.refCode?`<button onclick="(async()=>{try{await navigator.clipboard.writeText('${_myRefLink()}');showFireToast('📋 הלינק הועתק!');}catch(_){showFireToast('❌ לא ניתן להעתיק');}})();" style="background:rgba(255,255,255,.2);border:1.5px solid rgba(255,255,255,.3);color:#fff;border-radius:50px;padding:9px 16px;font-weight:700;cursor:pointer;font-size:12px">📋 העתק לינק</button>`:''}
+        <button onclick="(()=>{const link='${_myRefLink()}';const text='הצטרף ל-Kidemy דרך הלינק שלי ותקבל ₪5 קרדיט לשיעור הראשון! '+link;if(navigator.share){navigator.share({title:'Kidemy – פלטפורמת מורים',text:text,url:link}).catch(()=>{});}else{window.open('https://wa.me/?text='+encodeURIComponent(text),'_blank');}})()" style="background:rgba(255,255,255,.2);border:1.5px solid rgba(255,255,255,.3);color:#fff;border-radius:50px;padding:9px 16px;font-weight:700;cursor:pointer;font-size:12px">${icon("send",12)} שתף</button>
+      </div>
+    </div>
     ${[[icon("edit",18),"ערוך פרופיל",isTeacher?"showEditTeacherProfileDialog()":`showEditProfileDialog()`],[icon("dollar",18),"ניהול תשלומים","showPaymentManagement()"],[icon("award",18),"ראה לידרבורד","go('leaderboard')"],[icon("x-circle",18),"התנתקות","confirmLogout()"]].map(([e,l,fn])=>`<div class="card-sm" style="display:flex;align-items:center;gap:13px;cursor:pointer" onclick="${fn}"><span style="display:flex;align-items:center">${e}</span><span style="font-weight:700;font-size:15px;color:${l==="התנתקות"?"#E74C3C":"#1A1A2E"}">${l}</span><span style="margin-right:auto;color:#8A94A6">←</span></div>`).join("")}
     <div style="margin-top:12px;text-align:center">
       <button onclick="localStorage.removeItem('_onboardingDone');showFireToast('✅ Tutorial יאופס בכניסה הבאה')" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.7);border-radius:12px;padding:10px 18px;font-size:13px;cursor:pointer;margin-top:8px">${icon("graduation-cap",14)} הצג מדריך מחדש</button>
@@ -11714,6 +11754,7 @@ auth&&auth.onAuthStateChanged(async user=>{
     if(_chatPollInterval){clearInterval(_chatPollInterval);_chatPollInterval=null;}
     currentUser=null;currentUserData=null;userChats=[];
     teacherPendingBookings=[];teacherAllBookings=[];studentBookings=[];
+    _userCredit=0;_userCreditLoaded=false;
   }
 });
 
@@ -11746,6 +11787,28 @@ async function firebaseRegister(email,password,userData){
       if(userData.parentId){
         await db.ref('parentLinks/'+userData.parentId+'/'+cred.user.uid).set({linkedAt:Date.now()});
       }
+      // ── Referral: generate & store refCode ──────────────────────────────────
+      try{
+        const refCode=_genRefCode(userData.name,cred.user.uid);
+        await db.ref('users/'+cred.user.uid+'/refCode').set(refCode);
+        await db.ref('refCodes/'+refCode).set(cred.user.uid);
+        if(currentUserData)currentUserData.refCode=refCode;
+        // Process incoming referral if any
+        const storedRef=sessionStorage.getItem('_kidRefCode');
+        if(storedRef&&storedRef!==refCode){
+          const refSnap=await db.ref('refCodes/'+storedRef).get();
+          if(refSnap.exists()){
+            const referrerUid=refSnap.val();
+            if(referrerUid&&referrerUid!==cred.user.uid){
+              await db.ref('userCredits/'+referrerUid).transaction(v=>(v||0)+15);
+              await db.ref('userCredits/'+cred.user.uid).transaction(v=>(v||0)+5);
+              await db.ref('referrals/'+referrerUid+'/'+cred.user.uid).set({at:Date.now(),code:storedRef});
+              await db.ref('notifications/'+referrerUid).push({type:'adminMessage',createdAt:Date.now(),read:false,msg:'חבר שהפנית נרשם ל-Kidemy! קיבלת ₪15 קרדיט.'});
+              sessionStorage.removeItem('_kidRefCode');
+            }
+          }
+        }
+      }catch(refErr){console.warn('Referral processing error:',refErr);}
     }catch(dbErr){
       // rollback: מחק את חשבון ה-Auth שנוצר, כדי שהרשמה מחדש תהיה אפשרית
       await cred.user.delete().catch(()=>{});
