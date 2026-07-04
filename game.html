@@ -701,6 +701,7 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
     <button class="cat-tab" data-cat="moshavim" onclick="showCat('moshavim')">מושבים</button>
     <button class="cat-tab" data-cat="kibbutzim" onclick="showCat('kibbutzim')">קיבוצים</button>
     <button class="cat-tab" data-cat="rivers" onclick="showCat('rivers')">נחלים</button>
+    <button class="cat-tab" data-cat="mountains" onclick="showCat('mountains')">הרים</button>
   </div>
 
   <!-- PANELS -->
@@ -754,6 +755,17 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
         </button>
         <button class="dbtn hard" onclick="startGame('riv-hard')">
           <span class="de">🏔</span><span class="dn">קשה</span><span class="dd">כולם</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="cat-panel" id="cat-mountains">
+      <div class="dgrid2">
+        <button class="dbtn easy" onclick="startGame('mount-easy')">
+          <span class="de">⛰️</span><span class="dn">קל</span><span class="dd">5 הרים מפורסמים</span>
+        </button>
+        <button class="dbtn medium" onclick="startGame('mount-hard')">
+          <span class="de">🏔️</span><span class="dn">קשה</span><span class="dd">11 הרים</span>
         </button>
       </div>
     </div>
@@ -845,6 +857,7 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
     <button class="cat-tab" data-cat="moshavim" onclick="showMpCat('moshavim')">מושבים</button>
     <button class="cat-tab" data-cat="kibbutzim" onclick="showMpCat('kibbutzim')">קיבוצים</button>
     <button class="cat-tab" data-cat="rivers" onclick="showMpCat('rivers')">נחלים</button>
+    <button class="cat-tab" data-cat="mountains" onclick="showMpCat('mountains')">הרים</button>
   </div>
 
   <div class="mp-sec-label">רמת קושי</div>
@@ -1391,6 +1404,24 @@ const KIBBUTZIM_T2=[
   {name:"בית זרע",        lat:32.718,lng:35.587,r:1.5,f:["1,300","שפת הכנרת","קיבוץ על שפת ים כנרת","בית זרע — בית הזרעים"]},
 ];
 
+// ════════════════════════════════════════
+//  MOUNTAINS DATA
+// ════════════════════════════════════════
+const MOUNTAINS_T1=[
+  {name:"הר חרמון",   lat:33.18, lng:35.74, r:3,   f:["2,814 מ׳","רמת הגולן","הפסגה הגבוהה ביותר בישראל, אתר סקי","חרמון — קדוש, מקודש, מקרא"]},
+  {name:"הר מירון",   lat:32.986,lng:35.427,r:2.5, f:["1,208 מ׳","גליל עליון","הפסגה הגבוהה ביותר בישראל הריבונית","מירון — שם עברי עתיק, ייתכן מלשון מרום"]},
+  {name:"הר תבור",    lat:32.688,lng:35.391,r:2.5, f:["575 מ׳","גליל תחתון","הר מבודד ועגול בעמק יזרעאל, מקרא","תבור — שם מקראי, ייתכן ממקור שמי קדום"]},
+  {name:"הר הכרמל",  lat:32.737,lng:35.054,r:2.5, f:["546 מ׳","כרמל","רכס הר בצפון מערב ישראל, חיפה","כרמל — כרם אל, גן יהוה, מקרא"]},
+  {name:"הר גלבוע",   lat:32.49, lng:35.37, r:2.5, f:["508 מ׳","עמק יזרעאל","רכס בדרום מזרח עמק יזרעאל","גלבוע — ייתכן גל-בוע, גל המתגלגל"]},
+];
+const MOUNTAINS_T2=[
+  {name:"הר אדיר",    lat:32.984,lng:35.302,r:2,   f:["1,006 מ׳","גליל עליון","פסגה גבוהה בגליל העליון","אדיר — עצום, כביר, עברית"]},
+  {name:"הר כנען",    lat:32.969,lng:35.497,r:2,   f:["940 מ׳","גליל עליון","פסגה ליד צפת, בגליל העליון","כנען — השם הקדום לארץ ישראל"]},
+  {name:"הר עצמון",   lat:32.961,lng:35.167,r:2,   f:["929 מ׳","גליל עליון","רכס בגליל העליון המערבי","עצמון — עצמה, עוצמה, עברית"]},
+  {name:"גבעת המורה", lat:32.624,lng:35.385,r:2,   f:["515 מ׳","גליל תחתון","גבעה בולטת ליד עמק יזרעאל","מורה — מורה, מלמד, מקרא"]},
+  {name:"הר רמון",    lat:30.605,lng:34.806,r:2,   f:["1,036 מ׳","הנגב","הפסגה הגבוהה ביותר בהר הנגב","רמון — רמה, גובה, ייתכן מלשון רמה"]},
+  {name:"הר שחרות",   lat:29.837,lng:34.977,r:2,   f:["636 מ׳","אילת","הר בנגב הדרומי ליד אילת","שחרות — צבע שחור, מלשון שחר"]},
+];
 
 const LVLS={
   easy:          {name:"ערים קל",      em:"🌱", cities:[...T1],                                          mode:'city'},
@@ -1404,6 +1435,8 @@ const LVLS={
   'riv-easy':    {name:"נחלים קל",    em:"💧", cities:[...RIVERS_T1],                                   mode:'river'},
   'riv-medium':  {name:"נחלים בינוני",em:"🌊", cities:[...RIVERS_T1,...RIVERS_T2],                      mode:'river'},
   'riv-hard':    {name:"נחלים קשה",   em:"🏔️", cities:[...RIVERS_T1,...RIVERS_T2,...RIVERS_T3],         mode:'river'},
+  'mount-easy':  {name:"הרים קל",    em:"⛰️",  cities:[...MOUNTAINS_T1],                                 mode:'mountain'},
+  'mount-hard':  {name:"הרים קשה",   em:"🏔️",  cities:[...MOUNTAINS_T1,...MOUNTAINS_T2],                 mode:'mountain'},
 };
 
 // ════════════════════════════════════════
@@ -1441,15 +1474,15 @@ function startGame(lvl){
   const cfg=LVLS[lvl];
   pool=shuffle([...cfg.cities]);
   used=[]; score=0; qNum=0;
-  _markerColor = {city:'gold',moshav:'lime',kibbutz:'orange',river:'cyan'}[cfg.mode]||'gold';
+  _markerColor = {city:'gold',moshav:'lime',kibbutz:'orange',river:'cyan',mountain:'gold'}[cfg.mode]||'gold';
   const lt=document.getElementById('levelTag');
   lt.textContent=cfg.em+' '+cfg.name;
-  const _ltcls={easy:'easy',medium:'medium',hard:'hard',expert:'expert','moshav-easy':'easy','moshav-hard':'medium','kib-easy':'easy','kib-hard':'medium','riv-easy':'easy','riv-medium':'medium','riv-hard':'hard'};
+  const _ltcls={easy:'easy',medium:'medium',hard:'hard',expert:'expert','moshav-easy':'easy','moshav-hard':'medium','kib-easy':'easy','kib-hard':'medium','riv-easy':'easy','riv-medium':'medium','riv-hard':'hard','mount-easy':'easy','mount-hard':'medium'};
   lt.className='glt '+(_ltcls[lvl]||'easy');
   document.getElementById('scoreVal').textContent='0';
   document.getElementById('progressFill').style.width='0%';
   const qtxt=document.getElementById('qtxt');
-  const _qtxts={city:'מה שם העיר המסומנת? 🤔',moshav:'מה שם המושב המסומן? 🏡',kibbutz:'מה שם הקיבוץ המסומן? 🌾',river:'מה שם הנחל המסומן? 🌊'};
+  const _qtxts={city:'מה שם העיר המסומנת? 🤔',moshav:'מה שם המושב המסומן? 🏡',kibbutz:'מה שם הקיבוץ המסומן? 🌾',river:'מה שם הנחל המסומן? 🌊',mountain:'מה שם ההר המסומן? ⛰️'};
   if(qtxt) qtxt.textContent = _qtxts[cfg.mode]||'מה שם הישוב המסומן? 🤔';
   show('screen-game');
   // Double rAF — map-wrap has correct dimensions after paint
@@ -1542,17 +1575,22 @@ function checkAnswer(idx){
 
 const _FACT_ICONS=['👥','🗺️','📊','📖'];
 const _FACT_LABELS=['אוכלוסייה','אזור','דירוג גודל','מקור השם'];
+const _FACT_ICONS_MTN=['🏔️','🗺️','📋','📖'];
+const _FACT_LABELS_MTN=['גובה','אזור','תיאור','מקור השם'];
 
 function showFacts(item){
   document.getElementById('fm-name').textContent=item.name;
-  const _tagMap={city:'עיר',moshav:'מושב',kibbutz:'קיבוץ',river:'נחל'};
+  const _tagMap={city:'עיר',moshav:'מושב',kibbutz:'קיבוץ',river:'נחל',mountain:'הר'};
   document.getElementById('fm-tag').textContent=_tagMap[LVLS[level].mode]||'';
+  const isMtn = LVLS[level].mode==='mountain';
+  const factIcons  = isMtn ? _FACT_ICONS_MTN  : _FACT_ICONS;
+  const factLabels = isMtn ? _FACT_LABELS_MTN : _FACT_LABELS;
   const fd=document.getElementById('fm-facts');
   fd.innerHTML='';
   (item.f||[]).forEach((val,i)=>{
     const row=document.createElement('div');
     row.className='fact-row';
-    row.innerHTML=`<span class="fr-icon">${_FACT_ICONS[i]}</span><span class="fr-label">${_FACT_LABELS[i]}</span><span class="fr-val">${val}</span>`;
+    row.innerHTML=`<span class="fr-icon">${factIcons[i]}</span><span class="fr-label">${factLabels[i]}</span><span class="fr-val">${val}</span>`;
     fd.appendChild(row);
   });
   document.getElementById('facts-modal').classList.add('show');
@@ -1623,6 +1661,7 @@ const MP_LEVELS={
   moshavim:[{k:'moshav-easy',n:'קל'},{k:'moshav-hard',n:'קשה'}],
   kibbutzim:[{k:'kib-easy',n:'קל'},{k:'kib-hard',n:'קשה'}],
   rivers:[{k:'riv-easy',n:'קל'},{k:'riv-medium',n:'בינוני'},{k:'riv-hard',n:'קשה'}],
+  mountains:[{k:'mount-easy',n:'קל'},{k:'mount-hard',n:'קשה'}],
 };
 
 function updateMpLevels(){
@@ -1657,10 +1696,10 @@ function startMultiplayer(){
   const cfg2=LVLS[level];
   pool=shuffle([...cfg2.cities]);
   used=[]; score=0; qNum=0;
-  _markerColor={city:'gold',moshav:'lime',kibbutz:'orange',river:'cyan'}[cfg2.mode]||'gold';
+  _markerColor={city:'gold',moshav:'lime',kibbutz:'orange',river:'cyan',mountain:'gold'}[cfg2.mode]||'gold';
 
   const qtxt=document.getElementById('qtxt');
-  const _qtxts={city:'מה שם העיר המסומנת? 🤔',moshav:'מה שם המושב המסומן? 🏡',kibbutz:'מה שם הקיבוץ המסומן? 🌾',river:'מה שם הנחל המסומן? 🌊'};
+  const _qtxts={city:'מה שם העיר המסומנת? 🤔',moshav:'מה שם המושב המסומן? 🏡',kibbutz:'מה שם הקיבוץ המסומן? 🌾',river:'מה שם הנחל המסומן? 🌊',mountain:'מה שם ההר המסומן? ⛰️'};
   if(qtxt) qtxt.textContent=_qtxts[cfg2.mode]||'מה שם הישוב המסומן? 🤔';
 
   document.getElementById('progressFill').style.width='0%';
@@ -2068,9 +2107,9 @@ async function olHostStart(){
   level  = olLevelKey;
   score  = 0;
 
-  _markerColor = {city:'gold',moshav:'lime',kibbutz:'orange',river:'cyan'}[cfg.mode]||'gold';
+  _markerColor = {city:'gold',moshav:'lime',kibbutz:'orange',river:'cyan',mountain:'gold'}[cfg.mode]||'gold';
   const qtxt  = document.getElementById('qtxt');
-  const qtxts = {city:'מה שם העיר המסומנת? 🤔',moshav:'מה שם המושב המסומן? 🏡',kibbutz:'מה שם הקיבוץ המסומן? 🌾',river:'מה שם הנחל המסומן? 🌊'};
+  const qtxts = {city:'מה שם העיר המסומנת? 🤔',moshav:'מה שם המושב המסומן? 🏡',kibbutz:'מה שם הקיבוץ המסומן? 🌾',river:'מה שם הנחל המסומן? 🌊',mountain:'מה שם ההר המסומן? ⛰️'};
   if(qtxt) qtxt.textContent = qtxts[cfg.mode]||'מה שם הישוב המסומן? 🤔';
   document.getElementById('scoreVal').textContent = '0';
   document.getElementById('progressFill').style.width = '0%';
@@ -2144,7 +2183,7 @@ function olShowQuestion(room){
 
   level        = room.levelKey||'easy';
   const cfg    = LVLS[level];
-  if(cfg) _markerColor={city:'gold',moshav:'lime',kibbutz:'orange',river:'cyan'}[cfg.mode]||'gold';
+  if(cfg) _markerColor={city:'gold',moshav:'lime',kibbutz:'orange',river:'cyan',mountain:'gold'}[cfg.mode]||'gold';
 
   // correctIdx used by checkAnswer visual feedback
   correctIdx  = q.ok;
@@ -2163,7 +2202,7 @@ function olShowQuestion(room){
   document.getElementById('scoreVal').textContent = myScore;
 
   const qtxt  = document.getElementById('qtxt');
-  const qtxts = {city:'מה שם העיר המסומנת? 🤔',moshav:'מה שם המושב המסומן? 🏡',kibbutz:'מה שם הקיבוץ המסומן? 🌾',river:'מה שם הנחל המסומן? 🌊'};
+  const qtxts = {city:'מה שם העיר המסומנת? 🤔',moshav:'מה שם המושב המסומן? 🏡',kibbutz:'מה שם הקיבוץ המסומן? 🌾',river:'מה שם הנחל המסומן? 🌊',mountain:'מה שם ההר המסומן? ⛰️'};
   if(qtxt && cfg) qtxt.textContent = qtxts[cfg.mode]||'מה שם הישוב המסומן? 🤔';
 
   olMode = true;
@@ -2934,6 +2973,7 @@ function _seaShimmer(ctx,cx,cy,r,t,colorBase,maxAl){
     <button class="cat-tab" data-cat="moshavim" onclick="showOlCat('moshavim')">מושבים</button>
     <button class="cat-tab" data-cat="kibbutzim" onclick="showOlCat('kibbutzim')">קיבוצים</button>
     <button class="cat-tab" data-cat="rivers" onclick="showOlCat('rivers')">נחלים</button>
+    <button class="cat-tab" data-cat="mountains" onclick="showOlCat('mountains')">הרים</button>
   </div>
 
   <div class="ol-sec-label" style="margin-top:10px">רמת קושי</div>
