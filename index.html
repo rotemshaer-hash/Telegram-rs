@@ -15,6 +15,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-analytics-compat.js"></script>
 <script>
 const firebaseConfig = {
   apiKey: "AIzaSyAH_mPUppf6_4nTz450N-doDSXUSgigwtE",
@@ -27,8 +28,8 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 // var (not const/let) prevents TDZ issues if Firebase CDN fails to load
-var auth=null,db=null,storage=null;
-try{auth=firebase.auth();db=firebase.database();storage=firebase.storage();}catch(e){console.error('Firebase init failed:',e);}
+var auth=null,db=null,storage=null,analytics=null;
+try{auth=firebase.auth();db=firebase.database();storage=firebase.storage();try{analytics=firebase.analytics();}catch(_ae){}}catch(e){console.error('Firebase init failed:',e);}
 </script>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
@@ -690,8 +691,19 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.64';
-const APP_BUILD='25-06-2026';
+const APP_VERSION='4.9.65';
+const APP_BUILD='04-07-2026';
+
+// ─── ANALYTICS ────────────────────────────────────────────────────────────────
+// kLog: שולח אירוע ל-Firebase Analytics (כשיש measurementId) + שומר ב-DB כגיבוי
+function kLog(event,params={}){
+  try{if(analytics)analytics.logEvent(event,params);}catch(_){}
+  try{
+    if(!db||!currentUser)return;
+    const mo=new Date().toISOString().slice(0,7);
+    db.ref('_analytics/'+mo).push({e:event,p:params,uid:currentUser.uid,ts:Date.now()}).catch(()=>{});
+  }catch(_){}
+}
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
 let S={
@@ -743,6 +755,7 @@ function go(scr,extra={}){
   if(scr==='register'){S.safetyConfirmed=true;_saveRegSession();if(!S.parentRegData)scr='parentReg';}
   if(scr!=="splash")S.prev=S.screen;
   Object.assign(S,extra,{screen:scr});
+  if(scr!=='splash')kLog('screen_view',{screen_name:scr});
   if(scr==='community'){loadCommunityPosts();loadParentBriefs();}
   if(scr==='chat'&&currentUser&&db&&(extra.chat||S.chat)?.otherUid){
     const ou=(extra.chat||S.chat).otherUid;
@@ -2112,6 +2125,7 @@ async function processPayment(payMethod,totalAmount){
     S.lastBookingId=bookingId;
     S.lastPayRef=bookingData.payRef;
     S.bookStep=3;
+    kLog('booking_created',{teacher_id:t.id,teacher_cat:t.cat||'',price:totalAmount,method:payMethod,type:S.bookType||'single'});
     showFireToast('🎉 מעולה! עשית צעד גדול — ההזמנה נשמרה ומחכה לאישור תשלום');
     render();
   }catch(e){
@@ -11723,6 +11737,7 @@ async function firebaseRegister(email,password,userData){
     }
     // עדכון currentUserData מיד
     currentUserData={...userData,email,uid:cred.user.uid,role:userData.role||'student'};
+    kLog('sign_up',{method:'email',role:userData.role||'student'});
     // התראה למנהל על משתמש/מורה חדש
     try{
       const roleHe=(userData.role||'student')==='teacher'?'מורה':'תלמיד/ה';
@@ -12024,6 +12039,7 @@ async function firebaseLogin(usernameOrEmail,password){
     // אם הוזן שם משתמש בלבד (לא מייל), הוסף @kidemy.app
     const email=usernameOrEmail.includes('@')?usernameOrEmail:usernameOrEmail.toLowerCase()+'@kidemy.app';
     await auth.signInWithEmailAndPassword(email,password);
+    kLog('login',{method:'email'});
     showFireToast('✅ ברוך הבא!');
     // Safety net: if onAuthStateChanged doesn't navigate within 1.5s, force navigate
     setTimeout(async()=>{
