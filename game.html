@@ -1009,7 +1009,7 @@ function _drawMarker() {
   const ctx = oc.getContext('2d');
   ctx.clearRect(0, 0, oc.width, oc.height);
   const {cx, cy, baseR} = _markerXY;
-  const _MC={gold:[255,210,0],cyan:[0,210,255],lime:[0,230,100],orange:[255,140,0]};
+  const _MC={gold:[220,40,40],cyan:[0,210,255],lime:[0,230,100],orange:[255,140,0]};
   const [cr,cg,cb]=_MC[_markerColor]||_MC.gold;
   const t = Date.now() / 1000;
   const PERIOD = 1.8;
