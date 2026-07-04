@@ -191,6 +191,12 @@
         ".read": "auth != null && auth.uid == $uid",
         ".write": "auth != null && auth.uid == $uid"
       }
+    },
+    "_analytics": {
+      ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'",
+      "$month": {
+        ".write": "auth != null"
+      }
     }
   }
 }
