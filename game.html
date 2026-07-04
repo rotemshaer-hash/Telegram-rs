@@ -938,16 +938,15 @@ function buildMap() {
     const id = tc.getImageData(0, 0, 790, 1845);
     const d = id.data;
 
+    // _applyPixels: only pixel-level processing, returns after putImageData
     function _applyPixels(texD) {
       for (let k = 0; k < d.length; k += 4) {
         const r=d[k], g=d[k+1], b=d[k+2];
         if (r>200 && g>200 && b>200 && Math.max(r,g,b)-Math.min(r,g,b)<40) {
-          // Sea pixel — depth gradient base
           const col=(k/4)%790;
           const cf=Math.min(1,col/300);
           let sr=Math.round(cf*22), sg=Math.round(48+cf*112), sb=Math.round(118+cf*80);
           if(texD){
-            // Blend real water texture photo into sea pixel
             const bl=0.62;
             d[k]  =Math.round(texD[k]  *bl+sr*(1-bl));
             d[k+1]=Math.round(texD[k+1]*bl+sg*(1-bl));
@@ -956,7 +955,6 @@ function buildMap() {
             d[k]=sr; d[k+1]=sg; d[k+2]=sb;
           }
         } else {
-          // Land pixel — latitude toning
           const row=Math.floor((k/4)/790);
           const northness=1-row/1845;
           const avg=(r+g+b)/3;
@@ -969,9 +967,21 @@ function buildMap() {
         }
       }
       tc.putImageData(id, 0, 0);
+    }
+
+    function _drawMapToCanvas(seaTexImg) {
       const mctx = mc.getContext('2d');
-      mctx.fillStyle = '#0A5FAF';
-      mctx.fillRect(0, 0, W, H);
+      if(seaTexImg){
+        // Full canvas: water texture background (covers left/right margins too)
+        mctx.drawImage(seaTexImg, 0, 0, W, H);
+        // Subtle deep-blue tint over the whole background
+        mctx.fillStyle='rgba(0,40,110,0.28)';
+        mctx.fillRect(0,0,W,H);
+      } else {
+        mctx.fillStyle='#0A5FAF';
+        mctx.fillRect(0,0,W,H);
+      }
+      // Draw processed map image on top (center)
       mctx.drawImage(tmp, offsetX, offsetY, dispW, dispH);
       setTimeout(()=>{
         drawMapDecorations();
@@ -981,7 +991,7 @@ function buildMap() {
       },300);
     }
 
-    // Load water texture and blend at pixel level (only sea pixels affected)
+    // Load water texture, blend into sea pixels, draw full background
     const seaTex = new Image();
     seaTex.onload = function() {
       try {
@@ -991,8 +1001,9 @@ function buildMap() {
         tx.drawImage(seaTex, 0, 0, 790, 1845);
         _applyPixels(tx.getImageData(0, 0, 790, 1845).data);
       } catch(e) { _applyPixels(null); }
+      _drawMapToCanvas(seaTex);
     };
-    seaTex.onerror = () => _applyPixels(null);
+    seaTex.onerror = function(){ _applyPixels(null); _drawMapToCanvas(null); };
     seaTex.src = _SEA_TEX_B64;
   };
   mi.src = _MAP_B64;
