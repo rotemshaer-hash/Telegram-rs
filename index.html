@@ -691,7 +691,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.68';
+const APP_VERSION='4.9.69';
 const APP_BUILD='04-07-2026';
 
 // ─── ANALYTICS ────────────────────────────────────────────────────────────────
@@ -2196,7 +2196,7 @@ async function processSubscriptionPayment(payMethod){
       id:subId,uid:currentUser.uid,
       name:currentUserData?.name||currentUser.email.split('@')[0],
       email:currentUser.email,
-      plan:'premium',amount:29,payMethod,payRef,
+      plan:'premium',amount:79,payMethod,payRef,
       status:'awaitingPayment',createdAt:Date.now()
     };
     await subRef.set(subData);
@@ -2204,9 +2204,9 @@ async function processSubscriptionPayment(payMethod){
     await db.ref('users/'+currentUser.uid+'/subscription').set(subRecord);
     if(currentUserData)currentUserData.subscription=subRecord;
     sendEmail(ADMIN_EMAIL,'💳 מנוי פרימיום ממתין לאימות — Kidemy',
-      `בקשת מנוי חדשה!\n\n👤 ${subData.name}\n📧 ${subData.email}\n💰 ₪29 (${payMethod})\n📌 קוד: ${payRef}\n\nאשר בפאנל מנהל → מנויים.`).catch(()=>{});
+      `בקשת מנוי חדשה!\n\n👤 ${subData.name}\n📧 ${subData.email}\n💰 ₪79 (${payMethod})\n📌 קוד: ${payRef}\n\nאשר בפאנל מנהל → מנויים.`).catch(()=>{});
     S.subStep=2;S.subPayRef=payRef;render();
-    kLog('subscription_requested',{plan:'premium',method:payMethod,amount:29});
+    kLog('subscription_requested',{plan:'premium',method:payMethod,amount:79});
   }catch(e){showFireToast('❌ '+(e.message||'שגיאה'));}
 }
 
@@ -2234,7 +2234,7 @@ async function adminRejectSubscription(subId,uid){
 function Subscribe(){
   const C=COLORS();
   const step=S.subStep||1;
-  const PLAN_PRICE=29;
+  const PLAN_PRICE=79;
   const payRef=S.subPayRef||'';
   const hasPending=currentUserData?.subscription?.status==='pending';
 
@@ -8950,7 +8950,7 @@ function Profile(){
     </div>`;}
 
   if(tab==="about") content=`
-    ${isActiveSubscription()?`<div style="background:linear-gradient(135deg,rgba(139,47,201,0.12),rgba(6,182,212,0.08));border:1.5px solid rgba(139,47,201,0.3);border-radius:16px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:10px"><div style="font-size:22px">💎</div><div><div style="font-weight:800;font-size:14px;color:#8B5CF6">מנוי פרימיום פעיל</div><div style="font-size:11px;color:#64748B;margin-top:1px">תוקף עד: ${new Date(currentUserData.subscription.expiresAt).toLocaleDateString('he-IL')}</div></div></div>`:currentUserData?.subscription?.status==='pending'?`<div style="background:rgba(245,158,11,0.08);border:1.5px solid rgba(245,158,11,0.25);border-radius:16px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:10px;cursor:pointer" onclick="go('subscribe')"><div style="font-size:22px">⏳</div><div><div style="font-weight:800;font-size:14px;color:#D97706">מנוי ממתין לאישור</div><div style="font-size:11px;color:#64748B;margin-top:1px">הצוות מאמת את התשלום — לחץ לפרטים</div></div></div>`:`<div style="background:linear-gradient(135deg,rgba(139,47,201,0.06),rgba(6,182,212,0.04));border:1.5px dashed rgba(139,47,201,0.25);border-radius:16px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="go('subscribe')"><div style="display:flex;align-items:center;gap:10px"><div style="font-size:22px">💎</div><div><div style="font-weight:800;font-size:13px;color:#8B5CF6">שדרג לפרימיום — ₪29/חודש</div><div style="font-size:11px;color:#64748B;margin-top:1px">הזמנות ללא הגבלה + תג מועדף</div></div></div><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></div>`}
+    ${isActiveSubscription()?`<div style="background:linear-gradient(135deg,rgba(139,47,201,0.12),rgba(6,182,212,0.08));border:1.5px solid rgba(139,47,201,0.3);border-radius:16px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:10px"><div style="font-size:22px">💎</div><div><div style="font-weight:800;font-size:14px;color:#8B5CF6">מנוי פרימיום פעיל</div><div style="font-size:11px;color:#64748B;margin-top:1px">תוקף עד: ${new Date(currentUserData.subscription.expiresAt).toLocaleDateString('he-IL')}</div></div></div>`:currentUserData?.subscription?.status==='pending'?`<div style="background:rgba(245,158,11,0.08);border:1.5px solid rgba(245,158,11,0.25);border-radius:16px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:10px;cursor:pointer" onclick="go('subscribe')"><div style="font-size:22px">⏳</div><div><div style="font-weight:800;font-size:14px;color:#D97706">מנוי ממתין לאישור</div><div style="font-size:11px;color:#64748B;margin-top:1px">הצוות מאמת את התשלום — לחץ לפרטים</div></div></div>`:`<div style="background:linear-gradient(135deg,rgba(139,47,201,0.06),rgba(6,182,212,0.04));border:1.5px dashed rgba(139,47,201,0.25);border-radius:16px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="go('subscribe')"><div style="display:flex;align-items:center;gap:10px"><div style="font-size:22px">💎</div><div><div style="font-weight:800;font-size:13px;color:#8B5CF6">שדרג לפרימיום — ₪79/חודש</div><div style="font-size:11px;color:#64748B;margin-top:1px">הזמנות ללא הגבלה + תג מועדף</div></div></div><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></div>`}
     <div class="card"><h4 style="margin:0 0 10px;font-weight:800">👋 קצת עליי</h4><p style="margin:0;font-size:14px;line-height:1.7">${currentUserData?.bio||'עדיין לא כתבת קצת על עצמך.'}</p></div>
     <div class="ref-card">
       <h4 style="margin:0 0 6px;font-weight:900;font-size:16px">${icon("gift",14)} הפנה חבר – קבל ₪15!</h4>
