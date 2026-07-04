@@ -673,21 +673,10 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
 }
 
 
-/* ── OCEAN WAVES (feature 6) ── */
-@keyframes wave-drift{from{transform:translateY(0)}to{transform:translateY(82px)}}
-#map-wrap::before{
-  content:'';position:absolute;inset:0;z-index:3;pointer-events:none;
-  background:repeating-linear-gradient(
-    0deg,
-    transparent 0px,transparent 40px,
-    rgba(255,255,255,.055) 40px,rgba(255,255,255,.055) 43px
-  );
-  animation:wave-drift 6s linear infinite;
-}
 
 /* ── MAP OCEAN COLOUR ── */
 #map-wrap{animation:ocean-pulse 5s ease-in-out infinite;}
-@keyframes ocean-pulse{0%,100%{background-color:#083D7A}50%{background-color:#1470CC}}
+@keyframes ocean-pulse{0%,100%{background-color:#052B6E}50%{background-color:#0E6BAF}}
 
 /* ── +1 SCORE FLOAT (feature 8) ── */
 .score-float{
@@ -712,6 +701,7 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
     <button class="cat-tab" data-cat="moshavim" onclick="showCat('moshavim')">מושבים</button>
     <button class="cat-tab" data-cat="kibbutzim" onclick="showCat('kibbutzim')">קיבוצים</button>
     <button class="cat-tab" data-cat="rivers" onclick="showCat('rivers')">נחלים</button>
+    <button class="cat-tab" data-cat="mountains" onclick="showCat('mountains')">הרים</button>
   </div>
 
   <!-- PANELS -->
@@ -765,6 +755,17 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
         </button>
         <button class="dbtn hard" onclick="startGame('riv-hard')">
           <span class="de">🏔</span><span class="dn">קשה</span><span class="dd">כולם</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="cat-panel" id="cat-mountains">
+      <div class="dgrid2">
+        <button class="dbtn easy" onclick="startGame('mount-easy')">
+          <span class="de">⛰️</span><span class="dn">קל</span><span class="dd">5 הרים מפורסמים</span>
+        </button>
+        <button class="dbtn medium" onclick="startGame('mount-hard')">
+          <span class="de">🏔️</span><span class="dn">קשה</span><span class="dd">21 הרים</span>
         </button>
       </div>
     </div>
@@ -856,6 +857,7 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
     <button class="cat-tab" data-cat="moshavim" onclick="showMpCat('moshavim')">מושבים</button>
     <button class="cat-tab" data-cat="kibbutzim" onclick="showMpCat('kibbutzim')">קיבוצים</button>
     <button class="cat-tab" data-cat="rivers" onclick="showMpCat('rivers')">נחלים</button>
+    <button class="cat-tab" data-cat="mountains" onclick="showMpCat('mountains')">הרים</button>
   </div>
 
   <div class="mp-sec-label">רמת קושי</div>
@@ -924,10 +926,10 @@ function buildMap() {
   const offsetX = (W - dispW) / 2;
   const offsetY = (H - dispH) / 2;
   _mapRect = { dispW, dispH, offsetX, offsetY };
-  wrap.style.backgroundColor = '#0A5FAF';
+  wrap.style.backgroundColor = '#0A5FAF'; // fallback until texture loads
   const mc = document.createElement('canvas');
   mc.width = W; mc.height = H;
-  mc.style.cssText = 'position:absolute;inset:0;z-index:1;display:block;background:#0A5FAF';
+  mc.style.cssText = 'position:absolute;inset:0;z-index:1;display:block;background:transparent';
   wrap.appendChild(mc);
   const mi = new Image();
   mi.onload = function() {
@@ -937,34 +939,77 @@ function buildMap() {
     tc.drawImage(mi, 0, 0, 790, 1845);
     const id = tc.getImageData(0, 0, 790, 1845);
     const d = id.data;
-    for (let k = 0; k < d.length; k += 4) {
-      const r=d[k], g=d[k+1], b=d[k+2];
-      if (r>200 && g>200 && b>200 && Math.max(r,g,b)-Math.min(r,g,b)<40) {
-        d[k]=10; d[k+1]=95; d[k+2]=175;
-      } else {
-        // Latitude-based toning: greener north (Galilee), warmer south (Negev)
-        const row=Math.floor((k/4)/790);
-        const northness=1-row/1845; // 1=north, 0=south
-        const avg=(r+g+b)/3;
-        let nr=Math.min(255,Math.max(0,Math.round(avg+(r-avg)*1.16)));
-        let ng=Math.min(255,Math.max(0,Math.round(avg+(g-avg)*1.16)));
-        let nb=Math.min(255,Math.max(0,Math.round(avg+(b-avg)*1.16)));
-        ng=Math.min(255,ng+Math.round(northness*9));
-        nr=Math.min(255,nr+Math.round((1-northness)*13));
-        d[k]=nr; d[k+1]=ng; d[k+2]=nb;
+
+    // _applyPixels: pixel-level processing + alpha transparency
+    function _applyPixels(texD) {
+      const FADE_R=55, FADE_L=140, FADE_TB=55; // left side wider fade to hide sea artifacts
+      for (let k = 0; k < d.length; k += 4) {
+        const r=d[k], g=d[k+1], b=d[k+2];
+        const px=(k/4)|0;
+        const col=px%790, row=(px/790)|0;
+
+        // Edge feather alpha — stronger on left (Mediterranean) to blend non-white sea pixels
+        const axL=Math.min(col/FADE_L, 1);
+        const axR=Math.min((789-col)/FADE_R, 1);
+        const ay=Math.min(row, 1844-row, FADE_TB)/FADE_TB;
+        const edgeA=Math.round(255*axL*axR*Math.min(1,ay));
+
+        if (r>200 && g>200 && b>200 && Math.max(r,g,b)-Math.min(r,g,b)<40) {
+          // Sea pixel → transparent, CSS background shows through
+          d[k+3]=0;
+        } else {
+          // Land pixel → latitude toning + edge feather
+          const northness=1-row/1845;
+          const avg=(r+g+b)/3;
+          let nr=Math.min(255,Math.max(0,Math.round(avg+(r-avg)*1.16)));
+          let ng=Math.min(255,Math.max(0,Math.round(avg+(g-avg)*1.16)));
+          let nb=Math.min(255,Math.max(0,Math.round(avg+(b-avg)*1.16)));
+          ng=Math.min(255,ng+Math.round(northness*9));
+          nr=Math.min(255,nr+Math.round((1-northness)*13));
+          d[k]=nr; d[k+1]=ng; d[k+2]=nb;
+          d[k+3]=edgeA;
+        }
       }
+      tc.putImageData(id, 0, 0);
     }
-    tc.putImageData(id, 0, 0);
-    const mctx = mc.getContext('2d');
-    mctx.fillStyle = '#0A5FAF';
-    mctx.fillRect(0, 0, W, H);
-    mctx.drawImage(tmp, offsetX, offsetY, dispW, dispH);
-    setTimeout(()=>{
-      drawMapDecorations();
-      const dcEl=document.getElementById('deco-canvas');
-      if(dcEl) dcEl.style.opacity='1';
-      animateMapDecorations();
-    },300);
+
+    function _drawMapToCanvas(seaTexImg) {
+      const mctx = mc.getContext('2d');
+      // Set water texture as CSS background of the wrap div — seamless, no canvas border
+      if(seaTexImg){
+        wrap.style.backgroundImage=`url('${_SEA_TEX_B64}')`;
+        wrap.style.backgroundSize='cover';
+        wrap.style.backgroundPosition='center';
+        wrap.style.backgroundColor='rgba(0,40,110,0.22)';
+      } else {
+        wrap.style.backgroundImage='none';
+        wrap.style.backgroundColor='#0A5FAF';
+      }
+      // Canvas is transparent — just draw the land (sea pixels are alpha=0)
+      mctx.clearRect(0, 0, W, H);
+      mctx.drawImage(tmp, offsetX, offsetY, dispW, dispH);
+      setTimeout(()=>{
+        drawMapDecorations();
+        const dcEl=document.getElementById('deco-canvas');
+        if(dcEl) dcEl.style.opacity='1';
+        animateMapDecorations();
+      },300);
+    }
+
+    // Load water texture, blend into sea pixels, draw full background
+    const seaTex = new Image();
+    seaTex.onload = function() {
+      try {
+        const texC = document.createElement('canvas');
+        texC.width = 790; texC.height = 1845;
+        const tx = texC.getContext('2d');
+        tx.drawImage(seaTex, 0, 0, 790, 1845);
+        _applyPixels(tx.getImageData(0, 0, 790, 1845).data);
+      } catch(e) { _applyPixels(null); }
+      _drawMapToCanvas(seaTex);
+    };
+    seaTex.onerror = function(){ _applyPixels(null); _drawMapToCanvas(null); };
+    seaTex.src = _SEA_TEX_B64;
   };
   mi.src = _MAP_B64;
 
@@ -1009,7 +1054,7 @@ function _drawMarker() {
   const ctx = oc.getContext('2d');
   ctx.clearRect(0, 0, oc.width, oc.height);
   const {cx, cy, baseR} = _markerXY;
-  const _MC={gold:[255,210,0],cyan:[0,210,255],lime:[0,230,100],orange:[255,140,0]};
+  const _MC={gold:[220,40,40],cyan:[220,40,40],lime:[220,40,40],orange:[220,40,40]};
   const [cr,cg,cb]=_MC[_markerColor]||_MC.gold;
   const t = Date.now() / 1000;
   const PERIOD = 1.8;
@@ -1359,6 +1404,34 @@ const KIBBUTZIM_T2=[
   {name:"בית זרע",        lat:32.718,lng:35.587,r:1.5,f:["1,300","שפת הכנרת","קיבוץ על שפת ים כנרת","בית זרע — בית הזרעים"]},
 ];
 
+// ════════════════════════════════════════
+//  MOUNTAINS DATA
+// ════════════════════════════════════════
+const MOUNTAINS_T1=[
+  {name:"הר חרמון",   lat:33.18, lng:35.74, r:3,   f:["2,814 מ׳","רמת הגולן","הפסגה הגבוהה ביותר בישראל, אתר סקי","חרמון — קדוש, מקודש, מקרא"]},
+  {name:"הר מירון",   lat:32.986,lng:35.427,r:2.5, f:["1,208 מ׳","גליל עליון","הפסגה הגבוהה ביותר בישראל הריבונית","מירון — שם עברי עתיק, ייתכן מלשון מרום"]},
+  {name:"הר תבור",    lat:32.688,lng:35.391,r:2.5, f:["575 מ׳","גליל תחתון","הר מבודד ועגול בעמק יזרעאל, מקרא","תבור — שם מקראי, ייתכן ממקור שמי קדום"]},
+  {name:"הר הכרמל",  lat:32.737,lng:35.054,r:2.5, f:["546 מ׳","כרמל","רכס הר בצפון מערב ישראל, חיפה","כרמל — כרם אל, גן יהוה, מקרא"]},
+  {name:"הר גלבוע",   lat:32.49, lng:35.37, r:2.5, f:["508 מ׳","עמק יזרעאל","רכס בדרום מזרח עמק יזרעאל","גלבוע — ייתכן גל-בוע, גל המתגלגל"]},
+];
+const MOUNTAINS_T2=[
+  {name:"הר אדיר",    lat:32.984,lng:35.302,r:2,   f:["1,006 מ׳","גליל עליון","פסגה גבוהה בגליל העליון","אדיר — עצום, כביר, עברית"]},
+  {name:"הר כנען",    lat:32.969,lng:35.497,r:2,   f:["940 מ׳","גליל עליון","פסגה ליד צפת, בגליל העליון","כנען — השם הקדום לארץ ישראל"]},
+  {name:"הר עצמון",   lat:32.961,lng:35.167,r:2,   f:["929 מ׳","גליל עליון","רכס בגליל העליון המערבי","עצמון — עצמה, עוצמה, עברית"]},
+  {name:"גבעת המורה", lat:32.624,lng:35.385,r:2,   f:["515 מ׳","גליל תחתון","גבעה בולטת ליד עמק יזרעאל","מורה — מורה, מלמד, מקרא"]},
+  {name:"הר רמון",    lat:30.605,lng:34.806,r:2,   f:["1,036 מ׳","הנגב","הפסגה הגבוהה ביותר בהר הנגב","רמון — רמה, גובה, ייתכן מלשון רמה"]},
+  {name:"הר שחרות",   lat:29.837,lng:34.977,r:2,   f:["636 מ׳","אילת","הר בנגב הדרומי ליד אילת","שחרות — צבע שחור, מלשון שחר"]},
+  {name:"הר אביטל",   lat:32.903,lng:35.790,r:2,   f:["1,204 מ׳","רמת הגולן","הפסגה הגבוהה בגולן בשליטת ישראל","אביטל — אב הטל, שם מקראי"]},
+  {name:"הר בנטל",    lat:33.101,lng:35.778,r:2,   f:["1,171 מ׳","רמת הגולן","נקודת תצפית בגולן הצפוני","בנטל — שם ערבי, ייתכן בעל-טל"]},
+  {name:"הר ארבל",    lat:32.812,lng:35.503,r:2,   f:["181 מ׳","גליל תחתון","מצוק דרמטי מעל ים כנרת","ארבל — שם עברי עתיק מהמקרא"]},
+  {name:"הר עמיר",    lat:33.017,lng:35.307,r:2,   f:["931 מ׳","גליל עליון","פסגה בגליל העליון המערבי","עמיר — פסגת עץ, שיא, עברית"]},
+  {name:"הר כמון",    lat:32.791,lng:35.406,r:2,   f:["598 מ׳","גליל תחתון","הר ביישוב כמון, גליל תחתון","כמון — תבלין, שם צמח, מקרא"]},
+  {name:"הר הצופים",  lat:31.793,lng:35.242,r:2,   f:["826 מ׳","ירושלים","מיקום האוניברסיטה העברית","הצופים — מקום תצפית על ירושלים"]},
+  {name:"הר הזיתים",  lat:31.779,lng:35.244,r:2,   f:["818 מ׳","ירושלים","הר מקרא ממול ירושלים העתיקה","הזיתים — כרם הזיתים, מקרא"]},
+  {name:"הר גריזים",  lat:32.195,lng:35.271,r:2,   f:["881 מ׳","שומרון","הר קדוש לשומרונים בשכם","גריזים — שם מקראי, ייתכן גרזן"]},
+  {name:"הר ירוחם",   lat:30.988,lng:34.930,r:2,   f:["735 מ׳","נגב מרכזי","הר ליד עיר ירוחם בנגב","ירוחם — על שם ירוחם, מקרא"]},
+  {name:"הר בוקר",    lat:30.878,lng:34.793,r:2,   f:["1,018 מ׳","הנגב","ליד שדה בוקר, נגב עליון","בוקר — על שם קיבוץ שדה בוקר"]},
+];
 
 const LVLS={
   easy:          {name:"ערים קל",      em:"🌱", cities:[...T1],                                          mode:'city'},
@@ -1372,6 +1445,8 @@ const LVLS={
   'riv-easy':    {name:"נחלים קל",    em:"💧", cities:[...RIVERS_T1],                                   mode:'river'},
   'riv-medium':  {name:"נחלים בינוני",em:"🌊", cities:[...RIVERS_T1,...RIVERS_T2],                      mode:'river'},
   'riv-hard':    {name:"נחלים קשה",   em:"🏔️", cities:[...RIVERS_T1,...RIVERS_T2,...RIVERS_T3],         mode:'river'},
+  'mount-easy':  {name:"הרים קל",    em:"⛰️",  cities:[...MOUNTAINS_T1],                                 mode:'mountain'},
+  'mount-hard':  {name:"הרים קשה",   em:"🏔️",  cities:[...MOUNTAINS_T1,...MOUNTAINS_T2],                 mode:'mountain'},
 };
 
 // ════════════════════════════════════════
@@ -1409,15 +1484,15 @@ function startGame(lvl){
   const cfg=LVLS[lvl];
   pool=shuffle([...cfg.cities]);
   used=[]; score=0; qNum=0;
-  _markerColor = {city:'gold',moshav:'lime',kibbutz:'orange',river:'cyan'}[cfg.mode]||'gold';
+  _markerColor = {city:'gold',moshav:'lime',kibbutz:'orange',river:'cyan',mountain:'gold'}[cfg.mode]||'gold';
   const lt=document.getElementById('levelTag');
   lt.textContent=cfg.em+' '+cfg.name;
-  const _ltcls={easy:'easy',medium:'medium',hard:'hard',expert:'expert','moshav-easy':'easy','moshav-hard':'medium','kib-easy':'easy','kib-hard':'medium','riv-easy':'easy','riv-medium':'medium','riv-hard':'hard'};
+  const _ltcls={easy:'easy',medium:'medium',hard:'hard',expert:'expert','moshav-easy':'easy','moshav-hard':'medium','kib-easy':'easy','kib-hard':'medium','riv-easy':'easy','riv-medium':'medium','riv-hard':'hard','mount-easy':'easy','mount-hard':'medium'};
   lt.className='glt '+(_ltcls[lvl]||'easy');
   document.getElementById('scoreVal').textContent='0';
   document.getElementById('progressFill').style.width='0%';
   const qtxt=document.getElementById('qtxt');
-  const _qtxts={city:'מה שם העיר המסומנת? 🤔',moshav:'מה שם המושב המסומן? 🏡',kibbutz:'מה שם הקיבוץ המסומן? 🌾',river:'מה שם הנחל המסומן? 🌊'};
+  const _qtxts={city:'מה שם העיר המסומנת? 🤔',moshav:'מה שם המושב המסומן? 🏡',kibbutz:'מה שם הקיבוץ המסומן? 🌾',river:'מה שם הנחל המסומן? 🌊',mountain:'מה שם ההר המסומן? ⛰️'};
   if(qtxt) qtxt.textContent = _qtxts[cfg.mode]||'מה שם הישוב המסומן? 🤔';
   show('screen-game');
   // Double rAF — map-wrap has correct dimensions after paint
@@ -1510,17 +1585,22 @@ function checkAnswer(idx){
 
 const _FACT_ICONS=['👥','🗺️','📊','📖'];
 const _FACT_LABELS=['אוכלוסייה','אזור','דירוג גודל','מקור השם'];
+const _FACT_ICONS_MTN=['🏔️','🗺️','📋','📖'];
+const _FACT_LABELS_MTN=['גובה','אזור','תיאור','מקור השם'];
 
 function showFacts(item){
   document.getElementById('fm-name').textContent=item.name;
-  const _tagMap={city:'עיר',moshav:'מושב',kibbutz:'קיבוץ',river:'נחל'};
+  const _tagMap={city:'עיר',moshav:'מושב',kibbutz:'קיבוץ',river:'נחל',mountain:'הר'};
   document.getElementById('fm-tag').textContent=_tagMap[LVLS[level].mode]||'';
+  const isMtn = LVLS[level].mode==='mountain';
+  const factIcons  = isMtn ? _FACT_ICONS_MTN  : _FACT_ICONS;
+  const factLabels = isMtn ? _FACT_LABELS_MTN : _FACT_LABELS;
   const fd=document.getElementById('fm-facts');
   fd.innerHTML='';
   (item.f||[]).forEach((val,i)=>{
     const row=document.createElement('div');
     row.className='fact-row';
-    row.innerHTML=`<span class="fr-icon">${_FACT_ICONS[i]}</span><span class="fr-label">${_FACT_LABELS[i]}</span><span class="fr-val">${val}</span>`;
+    row.innerHTML=`<span class="fr-icon">${factIcons[i]}</span><span class="fr-label">${factLabels[i]}</span><span class="fr-val">${val}</span>`;
     fd.appendChild(row);
   });
   document.getElementById('facts-modal').classList.add('show');
@@ -1591,6 +1671,7 @@ const MP_LEVELS={
   moshavim:[{k:'moshav-easy',n:'קל'},{k:'moshav-hard',n:'קשה'}],
   kibbutzim:[{k:'kib-easy',n:'קל'},{k:'kib-hard',n:'קשה'}],
   rivers:[{k:'riv-easy',n:'קל'},{k:'riv-medium',n:'בינוני'},{k:'riv-hard',n:'קשה'}],
+  mountains:[{k:'mount-easy',n:'קל'},{k:'mount-hard',n:'קשה'}],
 };
 
 function updateMpLevels(){
@@ -1625,10 +1706,10 @@ function startMultiplayer(){
   const cfg2=LVLS[level];
   pool=shuffle([...cfg2.cities]);
   used=[]; score=0; qNum=0;
-  _markerColor={city:'gold',moshav:'lime',kibbutz:'orange',river:'cyan'}[cfg2.mode]||'gold';
+  _markerColor={city:'gold',moshav:'lime',kibbutz:'orange',river:'cyan',mountain:'gold'}[cfg2.mode]||'gold';
 
   const qtxt=document.getElementById('qtxt');
-  const _qtxts={city:'מה שם העיר המסומנת? 🤔',moshav:'מה שם המושב המסומן? 🏡',kibbutz:'מה שם הקיבוץ המסומן? 🌾',river:'מה שם הנחל המסומן? 🌊'};
+  const _qtxts={city:'מה שם העיר המסומנת? 🤔',moshav:'מה שם המושב המסומן? 🏡',kibbutz:'מה שם הקיבוץ המסומן? 🌾',river:'מה שם הנחל המסומן? 🌊',mountain:'מה שם ההר המסומן? ⛰️'};
   if(qtxt) qtxt.textContent=_qtxts[cfg2.mode]||'מה שם הישוב המסומן? 🤔';
 
   document.getElementById('progressFill').style.width='0%';
@@ -2036,9 +2117,9 @@ async function olHostStart(){
   level  = olLevelKey;
   score  = 0;
 
-  _markerColor = {city:'gold',moshav:'lime',kibbutz:'orange',river:'cyan'}[cfg.mode]||'gold';
+  _markerColor = {city:'gold',moshav:'lime',kibbutz:'orange',river:'cyan',mountain:'gold'}[cfg.mode]||'gold';
   const qtxt  = document.getElementById('qtxt');
-  const qtxts = {city:'מה שם העיר המסומנת? 🤔',moshav:'מה שם המושב המסומן? 🏡',kibbutz:'מה שם הקיבוץ המסומן? 🌾',river:'מה שם הנחל המסומן? 🌊'};
+  const qtxts = {city:'מה שם העיר המסומנת? 🤔',moshav:'מה שם המושב המסומן? 🏡',kibbutz:'מה שם הקיבוץ המסומן? 🌾',river:'מה שם הנחל המסומן? 🌊',mountain:'מה שם ההר המסומן? ⛰️'};
   if(qtxt) qtxt.textContent = qtxts[cfg.mode]||'מה שם הישוב המסומן? 🤔';
   document.getElementById('scoreVal').textContent = '0';
   document.getElementById('progressFill').style.width = '0%';
@@ -2112,7 +2193,7 @@ function olShowQuestion(room){
 
   level        = room.levelKey||'easy';
   const cfg    = LVLS[level];
-  if(cfg) _markerColor={city:'gold',moshav:'lime',kibbutz:'orange',river:'cyan'}[cfg.mode]||'gold';
+  if(cfg) _markerColor={city:'gold',moshav:'lime',kibbutz:'orange',river:'cyan',mountain:'gold'}[cfg.mode]||'gold';
 
   // correctIdx used by checkAnswer visual feedback
   correctIdx  = q.ok;
@@ -2131,7 +2212,7 @@ function olShowQuestion(room){
   document.getElementById('scoreVal').textContent = myScore;
 
   const qtxt  = document.getElementById('qtxt');
-  const qtxts = {city:'מה שם העיר המסומנת? 🤔',moshav:'מה שם המושב המסומן? 🏡',kibbutz:'מה שם הקיבוץ המסומן? 🌾',river:'מה שם הנחל המסומן? 🌊'};
+  const qtxts = {city:'מה שם העיר המסומנת? 🤔',moshav:'מה שם המושב המסומן? 🏡',kibbutz:'מה שם הקיבוץ המסומן? 🌾',river:'מה שם הנחל המסומן? 🌊',mountain:'מה שם ההר המסומן? ⛰️'};
   if(qtxt && cfg) qtxt.textContent = qtxts[cfg.mode]||'מה שם הישוב המסומן? 🤔';
 
   olMode = true;
@@ -2584,7 +2665,7 @@ function drawMapDecorations(){
     const sy=offsetY+sr+Math.max(4,6*scl);
     ctx.globalAlpha=.88;
     // Rays
-    ctx.strokeStyle='#E06000'; ctx.lineWidth=Math.max(1.5,sr*.14);
+    ctx.strokeStyle='#FFB800'; ctx.lineWidth=Math.max(1.5,sr*.14);
     for(let i=0;i<8;i++){
       const a=i*Math.PI/4;
       ctx.beginPath();
@@ -2592,13 +2673,13 @@ function drawMapDecorations(){
       ctx.lineTo(sx+Math.cos(a)*sr*1.60,sy+Math.sin(a)*sr*1.60);
       ctx.stroke();
     }
-    // Sun body gradient — deep amber-orange, clearly visible
+    // Sun body gradient — bright yellow
     const sg=ctx.createRadialGradient(sx-sr*.25,sy-sr*.25,0,sx,sy,sr);
-    sg.addColorStop(0,'#FF9A00');
-    sg.addColorStop(1,'#D04000');
+    sg.addColorStop(0,'#FFF06A');
+    sg.addColorStop(1,'#FFB800');
     ctx.fillStyle=sg;
-    ctx.strokeStyle='rgba(80,20,0,.55)'; ctx.lineWidth=Math.max(1,sr*.10);
-    ctx.shadowColor='rgba(220,80,0,.7)'; ctx.shadowBlur=10;
+    ctx.strokeStyle='rgba(200,120,0,.40)'; ctx.lineWidth=Math.max(1,sr*.10);
+    ctx.shadowColor='rgba(255,190,0,.65)'; ctx.shadowBlur=10;
     ctx.beginPath(); ctx.arc(sx,sy,sr,0,Math.PI*2); ctx.fill(); ctx.stroke();
     ctx.shadowBlur=0;
     // Face
@@ -2621,10 +2702,12 @@ function drawMapDecorations(){
 // ════════════════════════════════════════
 let _animMapRaf=null;
 let _animMapVisHandler=null;
+const _SEA_TEX_B64='data:image/jpeg;base64,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';
 function animateMapDecorations(){
   if(_animMapRaf){cancelAnimationFrame(_animMapRaf);_animMapRaf=null;}
   const ac=document.getElementById('anim-canvas');
   if(!ac||!_mapRect) return;
+
   const ctx=ac.getContext('2d');
   const {dispW,dispH,offsetX,offsetY}=_mapRect;
   const scl=dispW/790;
@@ -2664,25 +2747,29 @@ function animateMapDecorations(){
     ctx.clearRect(0,0,ac.width,ac.height);
     t+=0.010;
 
-    // ── Mediterranean wave lines (horizontal bands drifting down) ──
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(offsetX,offsetY,Math.max(seaW,20),dispH);
-    ctx.clip();
-    for(let i=0;i<8;i++){
-      const yt=offsetY+((t*40+i*dispH/8)%dispH);
-      const al=0.10+i*.012;  // clearly visible
-      ctx.strokeStyle=`rgba(255,255,255,${al*.6})`;
-      ctx.lineWidth=Math.max(1,1.5*scl);
+
+    // ── Mediterranean depth gradient overlay ──
+    {
+      ctx.save();
       ctx.beginPath();
-      ctx.moveTo(offsetX,yt);
-      for(let xi=0;xi<=seaW;xi+=4){
-        const wy=Math.sin(xi/(20*scl+8)+t*2.2+i*.9)*(3+2*scl);
-        ctx.lineTo(offsetX+xi,yt+wy);
-      }
-      ctx.stroke();
+      ctx.rect(offsetX,offsetY,Math.max(seaW,20),dispH);
+      ctx.clip();
+      const dg=ctx.createLinearGradient(offsetX,offsetY,offsetX+seaW,offsetY);
+      dg.addColorStop(0,   'rgba(0,20,70,0.30)');   // deep west: dark navy
+      dg.addColorStop(0.35,'rgba(0,60,140,0.12)');  // mid: blue
+      dg.addColorStop(0.70,'rgba(0,130,200,0.08)'); // near coast: blue
+      dg.addColorStop(1,   'rgba(0,200,220,0.14)'); // coast edge: teal
+      ctx.fillStyle=dg;
+      ctx.fillRect(offsetX,offsetY,seaW,dispH);
+      // Subtle vertical depth bands (north=warmer blue, south=cooler)
+      const vg=ctx.createLinearGradient(offsetX,offsetY,offsetX,offsetY+dispH);
+      vg.addColorStop(0,   'rgba(0,100,200,0.06)');
+      vg.addColorStop(0.5, 'rgba(0,60,160,0.04)');
+      vg.addColorStop(1,   'rgba(0,150,180,0.09)');
+      ctx.fillStyle=vg;
+      ctx.fillRect(offsetX,offsetY,seaW,dispH);
+      ctx.restore();
     }
-    ctx.restore();
 
     // ── Kinneret shimmer ──
     _seaShimmer(ctx,KIN.x,KIN.y,KIN.r,t,  'rgba(60,160,255,',0.72);
@@ -2896,6 +2983,7 @@ function _seaShimmer(ctx,cx,cy,r,t,colorBase,maxAl){
     <button class="cat-tab" data-cat="moshavim" onclick="showOlCat('moshavim')">מושבים</button>
     <button class="cat-tab" data-cat="kibbutzim" onclick="showOlCat('kibbutzim')">קיבוצים</button>
     <button class="cat-tab" data-cat="rivers" onclick="showOlCat('rivers')">נחלים</button>
+    <button class="cat-tab" data-cat="mountains" onclick="showOlCat('mountains')">הרים</button>
   </div>
 
   <div class="ol-sec-label" style="margin-top:10px">רמת קושי</div>
