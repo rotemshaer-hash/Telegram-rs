@@ -703,7 +703,7 @@ let S={
   msgs:[],
   showAttach:false,
   posts:[],parentBriefs:[],
-  openPost:null, comFilter:"all", showCompose:false, newPostCat:"general", areaOnly:false,
+  openPost:null, comFilter:"all", showCompose:false, newPostCat:"general", areaOnly:false, comPostType:'text',
   pTab:"videos", aTab:"story",
   booked:false, bookStep:1, bookDayIdx:null, bookTime:null, bookType:"single", bookPay:null,
   nearbyR:2,
@@ -8940,7 +8940,8 @@ function Community(){
           <span style="background:rgba(20,184,166,.1);color:#14B8A6;font-size:11px;font-weight:700;padding:3px 9px;border-radius:50px">${icon(CC.find(c=>c.id===p.pcat)?.ico||'chat',11)} ${CC.find(c=>c.id===p.pcat)?.l||""}</span>
         </div>
       </div>
-      <div style="padding:0 15px 13px"><p style="margin:0;font-size:14px;line-height:1.7">${escapeHtml(p.text)}</p></div>
+      <div style="padding:0 15px ${p.mediaUrl?'8':'13'}px"><p style="margin:0;font-size:14px;line-height:1.7">${escapeHtml(p.text)}</p></div>
+      ${p.mediaUrl?`<div style="padding:0 15px 13px">${p.mediaType==='video'?`<video src="${p.mediaUrl}" controls playsinline style="width:100%;max-height:260px;border-radius:14px;display:block;background:#000"></video>`:`<img src="${p.mediaUrl}" alt="" style="width:100%;max-height:300px;object-fit:cover;border-radius:14px;display:block;cursor:pointer" onclick="window.open('${p.mediaUrl}','_blank')">`}</div>`:''}
       <div class="p-acts">
         <button onclick="toggleLike('${p.id}')" style="color:${p.liked?"#E74C3C":C.muted}">${p.liked?"❤️":"🤍"} ${p.likes||0}</button>
         <button onclick="openPost('${p.id}')">${icon("chat",14)} ${(p.reps||[]).length}</button>
@@ -8959,18 +8960,29 @@ function Community(){
       </div>`:""}
     </div>`;}).join("");
 
-  const compose=S.showCompose?`<div class="modal-ov" onclick="if(event.target===this){S.showCompose=false;render()}">
+  const _cpt=S.comPostType||'text';
+  const compose=S.showCompose?`<div class="modal-ov" onclick="if(event.target===this){S.showCompose=false;window._comMediaFile=null;render()}">
     <div class="modal-box">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px">
         <button onclick="postNew()" class="btn bg" style="width:auto;padding:10px 20px">פרסם</button>
         <h3 style="margin:0;font-weight:900;font-size:17px">פוסט חדש</h3>
-        <button onclick="S.showCompose=false;render()" style="background:rgba(20,184,166,.08);border:none;border-radius:50px;padding:8px 13px;cursor:pointer;font-weight:700">✕</button>
+        <button onclick="S.showCompose=false;window._comMediaFile=null;render()" style="background:rgba(20,184,166,.08);border:none;border-radius:50px;padding:8px 13px;cursor:pointer;font-weight:700">✕</button>
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:13px;background:rgba(20,184,166,0.06);border-radius:14px;padding:5px">
+        ${[['text','edit','טקסט'],['image','image','תמונה'],['video','video','וידאו']].map(([tp,ic,lbl])=>`<button onclick="S.comPostType='${tp}';window._comMediaFile=null;document.getElementById('_comPreview')&&(document.getElementById('_comPreview').innerHTML='');render()" style="flex:1;padding:8px;border:none;border-radius:10px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;transition:all .2s;background:${_cpt===tp?'#fff':'transparent'};color:${_cpt===tp?'#14B8A6':'#64748B'};box-shadow:${_cpt===tp?'0 2px 8px rgba(0,0,0,0.08)':'none'}">${icon(ic,13)} ${lbl}</button>`).join('')}
       </div>
       <div style="display:flex;gap:8px;margin-bottom:13px;overflow-x:auto;padding-bottom:4px">
         ${CC.filter(c=>c.id!=="all").map(c=>`<button onclick="S.newPostCat='${c.id}';document.querySelectorAll('.cc').forEach(b=>{b.style.background='rgba(20,184,166,.06)';b.style.color='#1A1A2E'});this.style.background='linear-gradient(135deg,#14B8A6,#06B6D4)';this.style.color='#fff'"
           class="cc" style="flex-shrink:0;padding:7px 13px;border-radius:50px;border:none;font-weight:700;font-size:12px;cursor:pointer;background:rgba(20,184,166,.06)">${icon(c.ico,11)} ${c.l}</button>`).join("")}
       </div>
-      <textarea id="ptxt" class="inp" placeholder="שאל שאלה, שתף טיפ, הצע שיעור חינם..." maxlength="5000" style="min-height:110px;resize:none;border-radius:16px"></textarea>
+      <textarea id="ptxt" class="inp" placeholder="${_cpt==='text'?'שאל שאלה, שתף טיפ, הצע שיעור חינם...':_cpt==='image'?'תיאור לתמונה (אופציונלי)...':`תיאור לוידאו (אופציונלי)...`}" maxlength="5000" style="min-height:${_cpt==='text'?110:60}px;resize:none;border-radius:16px"></textarea>
+      ${_cpt!=='text'?`<div style="margin-top:10px">
+        <input type="file" id="_comFileInput" accept="${_cpt==='image'?'image/*':'video/*'}" style="display:none" onchange="_comFileSelected(this)">
+        <button onclick="document.getElementById('_comFileInput').click()" style="width:100%;border:2px dashed rgba(20,184,166,0.4);background:rgba(20,184,166,0.04);border-radius:16px;padding:20px;cursor:pointer;color:#14B8A6;font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:center;gap:8px">
+          ${icon(_cpt==='image'?'image':'video',18,'#14B8A6')} ${_cpt==='image'?'בחר תמונה':'בחר וידאו'}
+        </button>
+        <div id="_comPreview" style="margin-top:10px;border-radius:14px;overflow:hidden"></div>
+      </div>`:''}
       <div class="warn" style="margin-top:11px"><span>${icon("search",14)}</span><span>כל פוסט עובר סינון אוטומטי. אל תשתף מידע אישי.</span></div>
     </div>
   </div>`:"";
@@ -9056,16 +9068,16 @@ function Community(){
       </div>
     </div>
     ${currentUser&&S.comTab!=='groups'&&S.comTab!=='briefs'?`
-    <div style="background:#fff;margin:14px 16px 0;border-radius:20px;padding:14px 16px;box-shadow:0 2px 12px rgba(0,0,0,0.07);display:flex;align-items:center;gap:12px;cursor:pointer" onclick="S.showCompose=true;render()">
+    <div style="background:#fff;margin:14px 16px 0;border-radius:20px;padding:14px 16px;box-shadow:0 2px 12px rgba(0,0,0,0.07);display:flex;align-items:center;gap:12px;cursor:pointer" onclick="S.showCompose=true;S.comPostType='text';render()">
       <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#14B8A6,#06B6D4);display:flex;align-items:center;justify-content:center;flex-shrink:0">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
       </div>
       <span style="flex:1;font-size:13px;color:#94A3B8">שתף עם הקהילה...</span>
       <div style="display:flex;gap:8px">
-        <div style="width:30px;height:30px;border-radius:10px;background:rgba(20,184,166,.1);display:flex;align-items:center;justify-content:center">
+        <div onclick="event.stopPropagation();S.showCompose=true;S.comPostType='image';window._comMediaFile=null;render()" style="width:34px;height:34px;border-radius:10px;background:rgba(20,184,166,.1);display:flex;align-items:center;justify-content:center;cursor:pointer" title="פרסם תמונה">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
         </div>
-        <div style="width:30px;height:30px;border-radius:10px;background:rgba(20,184,166,.1);display:flex;align-items:center;justify-content:center">
+        <div onclick="event.stopPropagation();S.showCompose=true;S.comPostType='video';window._comMediaFile=null;render()" style="width:34px;height:34px;border-radius:10px;background:rgba(20,184,166,.1);display:flex;align-items:center;justify-content:center;cursor:pointer" title="פרסם וידאו">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2" stroke-linecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
         </div>
       </div>
@@ -9128,14 +9140,29 @@ async function sendReply(id){
   render();
 }
 
+window._comMediaFile=null;
+function _comFileSelected(input){
+  const file=input.files&&input.files[0];
+  if(!file)return;
+  const maxMB=S.comPostType==='video'?50:10;
+  if(file.size>maxMB*1024*1024){showFireToast(`❌ קובץ גדול מדי (מקסימום ${maxMB}MB)`);input.value='';return;}
+  window._comMediaFile=file;
+  const prev=document.getElementById('_comPreview');
+  if(!prev)return;
+  const url=URL.createObjectURL(file);
+  prev.innerHTML=S.comPostType==='image'
+    ?`<div style="position:relative"><img src="${url}" style="width:100%;max-height:220px;object-fit:cover;border-radius:12px"><button onclick="window._comMediaFile=null;document.getElementById('_comPreview').innerHTML='';document.getElementById('_comFileInput').value=''" style="position:absolute;top:6px;left:6px;background:rgba(0,0,0,0.6);border:none;color:#fff;border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:13px;font-weight:900;display:flex;align-items:center;justify-content:center">✕</button></div>`
+    :`<div style="position:relative"><video src="${url}" controls style="width:100%;max-height:220px;border-radius:12px"></video><button onclick="window._comMediaFile=null;document.getElementById('_comPreview').innerHTML='';document.getElementById('_comFileInput').value=''" style="position:absolute;top:6px;left:6px;background:rgba(0,0,0,0.6);border:none;color:#fff;border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:13px;font-weight:900;display:flex;align-items:center;justify-content:center">✕</button></div>`;
+}
+
 async function postNew(){
   const t=document.getElementById("ptxt");
-  if(!t||!t.value.trim()){showFireToast('❌ כתוב משהו');return;}
-  const postText=t.value.trim();
-  if(!postText || postText.trim().length === 0) return;
+  const postText=(t?.value||'').trim();
+  const mediaFile=window._comMediaFile;
+  const postType=S.comPostType||'text';
+  if(!postText&&!mediaFile){showFireToast('❌ הוסף טקסט או מדיה');return;}
   if(postText.length > 5000){ showFireToast('❌ פוסט ארוך מדי (מקסימום 5000 תווים)'); return; }
   if(!currentUser){showFireToast('❌ צריך להתחבר');return;}
-  // בדיקה: תלמיד שטרם אושר לא יכול לפרסם
   if(currentUserData?.role==='student'&&currentUserData?.verified!==true&&!isAdmin()){
     showFireToast('🔒 חכה לאישור מנהל לפני פרסום');return;
   }
@@ -9149,7 +9176,8 @@ async function postNew(){
     role:currentUserData?.role==='teacher'?"מורה":"תלמיד",
     area:currentUserData?.area||currentUserData?.city||'',
     pcat:S.newPostCat||"general",
-    text:t.value.trim(),
+    text:postText,
+    postType:postType,
     likes:0,
     likedBy:{},
     reps:[],
@@ -9158,6 +9186,13 @@ async function postNew(){
   };
   try{
     showFireToast('⏳ שולח...');
+    if(mediaFile){
+      const ext=mediaFile.name.split('.').pop().toLowerCase();
+      const path=`communityMedia/${currentUser.uid}/${Date.now()}.${ext}`;
+      const snap=await storage.ref(path).put(mediaFile,{contentType:mediaFile.type});
+      post.mediaUrl=await snap.ref.getDownloadURL();
+      post.mediaType=postType;
+    }
     const ref=await db.ref('communityPosts').push(post);
     if(!isAdmin()){
       db.ref('adminAlerts/posts/'+ref.key).set({author:post.author,text:(post.text||'').substring(0,60),createdAt:Date.now()}).catch(()=>{});
@@ -9168,7 +9203,8 @@ async function postNew(){
       sendEmail(currentUserData.parentEmail,`📝 ${currentUserData?.name||'ילדך'} פרסם/ה פוסט בקהילת Kidemy`,
         `שלום ${currentUserData?.parentName||'הורה יקר'} 👋\n\n${currentUserData?.name||'ילדך'} פרסם/ה פוסט חדש בקהילת Kidemy.\n\n📝 תוכן הפוסט:\n"${(post.text||'').substring(0,200)}${(post.text||'').length>200?'...':''}"\n\n${!isAdmin()?'הפוסט ממתין לאישור הצוות לפני פרסום.':''}\n\nלצפייה בפעילות הקהילה:\nhttps://kidemy-app.netlify.app\n\n– צוות Kidemy 💙`).catch(()=>{});
     }
-    t.value='';
+    if(t)t.value='';
+    window._comMediaFile=null;
     S.showCompose=false;
     showFireToast(isAdmin()?'✅ הפוסט פורסם!':'✅ הפוסט נשלח לאישור מנהל');
     await loadCommunityPosts();
