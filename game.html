@@ -673,17 +673,6 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
 }
 
 
-/* ── OCEAN WAVES (feature 6) ── */
-@keyframes wave-drift{from{transform:translateY(0)}to{transform:translateY(82px)}}
-#map-wrap::before{
-  content:'';position:absolute;inset:0;z-index:3;pointer-events:none;
-  background:repeating-linear-gradient(
-    0deg,
-    transparent 0px,transparent 40px,
-    rgba(255,255,255,.055) 40px,rgba(255,255,255,.055) 43px
-  );
-  animation:wave-drift 6s linear infinite;
-}
 
 /* ── MAP OCEAN COLOUR ── */
 #map-wrap{animation:ocean-pulse 5s ease-in-out infinite;}
@@ -2706,25 +2695,6 @@ function animateMapDecorations(){
     ctx.clearRect(0,0,ac.width,ac.height);
     t+=0.010;
 
-    // ── Mediterranean wave lines (horizontal bands drifting down) ──
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(offsetX,offsetY,Math.max(seaW,20),dispH);
-    ctx.clip();
-    for(let i=0;i<8;i++){
-      const yt=offsetY+((t*40+i*dispH/8)%dispH);
-      const al=0.10+i*.012;  // clearly visible
-      ctx.strokeStyle=`rgba(255,255,255,${al*.6})`;
-      ctx.lineWidth=Math.max(1,1.5*scl);
-      ctx.beginPath();
-      ctx.moveTo(offsetX,yt);
-      for(let xi=0;xi<=seaW;xi+=4){
-        const wy=Math.sin(xi/(20*scl+8)+t*2.2+i*.9)*(3+2*scl);
-        ctx.lineTo(offsetX+xi,yt+wy);
-      }
-      ctx.stroke();
-    }
-    ctx.restore();
 
     // ── Mediterranean depth gradient overlay ──
     {
