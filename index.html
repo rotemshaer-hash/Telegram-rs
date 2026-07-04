@@ -691,7 +691,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.65';
+const APP_VERSION='4.9.66';
 const APP_BUILD='04-07-2026';
 
 // ─── ANALYTICS ────────────────────────────────────────────────────────────────
@@ -6867,85 +6867,126 @@ function renderAdminTab(){
       ${read.length>0?`<h4 style="font-weight:900;font-size:14px;margin:${unread.length>0?'16px':'0'} 0 10px;color:#64748B">📂 נקראו (${read.length})</h4>${read.map(m=>renderMsg(m,false)).join('')}`:''}`;
   }
   if(adminTab==='stats'){
-    const studentCount=adminAllUsers.filter(u=>u.role==='student').length;
-    const teacherCount=adminAllUsers.filter(u=>u.role==='teacher').length;
-    const verifiedTeachers=adminAllTeachers.filter(t=>t.verified).length;
-    const blockedUsers=adminAllUsers.filter(u=>u.blocked).length;
-    const totalVideos=adminAllVideos.length;
-    const approvedVideos=adminAllVideos.filter(v=>v.approved).length;
-    const cats={};
-    adminAllTeachers.forEach(t=>{if(t.cat)cats[t.cat]=(cats[t.cat]||0)+1;});
-    const topCats=Object.entries(cats).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    // ─── KPI חישובים ──────────────────────────────────────────────────────────
+    const _now=Date.now();
+    const _thisMonStart=new Date();_thisMonStart.setDate(1);_thisMonStart.setHours(0,0,0,0);
+    const _lastMonStart=new Date(_thisMonStart);_lastMonStart.setMonth(_lastMonStart.getMonth()-1);
+    const _weekAgo=_now-7*86400000;
+    const _confirmedBks=adminAllBookings.filter(b=>b.status==='approved'||b.status==='completed');
+    // Financial
+    const _gmvTotal=_confirmedBks.reduce((s,b)=>s+(b.grossAmount||b.price||0),0);
+    const _revTotal=_confirmedBks.reduce((s,b)=>s+(b.commission||0),0);
+    const _gmvThisMon=_confirmedBks.filter(b=>b.createdAt>=_thisMonStart.getTime()).reduce((s,b)=>s+(b.grossAmount||b.price||0),0);
+    const _gmvLastMon=_confirmedBks.filter(b=>b.createdAt>=_lastMonStart.getTime()&&b.createdAt<_thisMonStart.getTime()).reduce((s,b)=>s+(b.grossAmount||b.price||0),0);
+    const _avgPrice=_confirmedBks.length>0?Math.round(_gmvTotal/_confirmedBks.length):0;
+    const _pendingGmv=adminAlertPayments.reduce((s,p)=>s+(p.amount||0),0);
+    // Activity
+    const _completedLessons=adminAllBookings.filter(b=>b.status==='completed').length;
+    const _activeTeachers=new Set(_confirmedBks.map(b=>b.teacherId)).size;
+    // Growth
+    const _studentCount=adminAllUsers.filter(u=>u.role==='student').length;
+    const _teacherCount=adminAllUsers.filter(u=>u.role==='teacher').length;
+    const _newUsersWeek=adminAllUsers.filter(u=>u.createdAt&&u.createdAt>=_weekAgo).length;
+    const _studentsWithBk=new Set(_confirmedBks.map(b=>b.studentId)).size;
+    const _convPct=_studentCount>0?Math.round((_studentsWithBk/_studentCount)*100):0;
+    // Month trend
+    const _gmvChange=_gmvLastMon>0?Math.round(((_gmvThisMon-_gmvLastMon)/_gmvLastMon)*100):null;
+    // Categories by revenue
+    const _catRev={};
+    _confirmedBks.forEach(b=>{if(b.teacherCat)_catRev[b.teacherCat]=(_catRev[b.teacherCat]||0)+(b.grossAmount||b.price||0);});
+    const _topCatRev=Object.entries(_catRev).sort((a,b)=>b[1]-a[1]).slice(0,5);
     const notifGranted='Notification' in window&&Notification.permission==='granted';
-    return resetBtn+`
+    return `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <button onclick="loadAdminData().then(()=>renderAdminPanel())" style="background:rgba(20,184,166,0.1);border:1px solid rgba(20,184,166,0.3);color:#14B8A6;border-radius:50px;padding:7px 14px;font-size:12px;font-weight:800;cursor:pointer">${icon("refresh",14)} רענן</button>
+        <h3 style="font-weight:900;font-size:17px;margin:0;color:#0F1A1F">${icon("bar-chart",16)} לוח מדדים KPI</h3>
+      </div>
+
+      <!-- GMV Banner -->
+      <div style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border-radius:20px;padding:20px;color:#fff;margin-bottom:10px">
+        <div style="font-size:11px;opacity:.8;font-weight:700;margin-bottom:4px">סה"כ GMV (הכנסות ברוטו מאושרות)</div>
+        <div style="font-size:34px;font-weight:900;letter-spacing:-0.03em">₪${_gmvTotal.toLocaleString()}</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px">
+          <span style="font-size:12px;opacity:.85">החודש: ₪${_gmvThisMon.toLocaleString()}</span>
+          ${_gmvChange!==null?`<span style="font-size:12px;font-weight:800;color:${_gmvChange>=0?'#A7F3D0':'#FCA5A5'}">${_gmvChange>=0?'▲ +':'▼ '}${Math.abs(_gmvChange)}% מהחודש שעבר</span>`:'<span style="font-size:11px;opacity:.6">אין נתון מהחודש שעבר</span>'}
+        </div>
+      </div>
+
+      <!-- Revenue + Pending row -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+        <div style="background:#fff;border:1.5px solid rgba(139,47,201,.2);border-radius:16px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,.04)">
+          <div style="font-size:10px;color:#64748B;font-weight:700;margin-bottom:4px">הכנסות Kidemy (15%)</div>
+          <div style="font-size:24px;font-weight:900;color:#8b2fc9">₪${_revTotal.toLocaleString()}</div>
+        </div>
+        <div style="background:#fff;border:1.5px solid rgba(217,119,6,.2);border-radius:16px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,.04)">
+          <div style="font-size:10px;color:#64748B;font-weight:700;margin-bottom:4px">ממתין לאימות תשלום</div>
+          <div style="font-size:24px;font-weight:900;color:#D97706">₪${_pendingGmv.toLocaleString()}</div>
+          <div style="font-size:10px;color:#94A3B8;margin-top:2px">${adminAlertPayments.length} הזמנות</div>
+        </div>
+      </div>
+
+      <!-- Activity KPIs -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px">
+        ${[['שיעורים הושלמו',_completedLessons,'#10B981'],['מורים פעילים',_activeTeachers,'#14B8A6'],['מחיר ממוצע','₪'+_avgPrice,'#06B6D4']].map(([lbl,val,col])=>`
+          <div style="background:#fff;border:1.5px solid ${col}30;border-radius:14px;padding:12px;text-align:center;box-shadow:0 1px 6px rgba(0,0,0,.04)">
+            <div style="font-size:20px;font-weight:900;color:${col}">${val}</div>
+            <div style="font-size:9px;color:#64748B;margin-top:3px;font-weight:700;line-height:1.3">${lbl}</div>
+          </div>`).join('')}
+      </div>
+
+      <!-- Growth KPIs -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
+        ${[['תלמידים',_studentCount,'#06B6D4'],['מורים',_teacherCount,'#14B8A6'],['הצטרפו השבוע',_newUsersWeek,'#A855F7']].map(([lbl,val,col])=>`
+          <div style="background:#fff;border:1.5px solid ${col}30;border-radius:14px;padding:12px;text-align:center;box-shadow:0 1px 6px rgba(0,0,0,.04)">
+            <div style="font-size:20px;font-weight:900;color:${col}">${val}</div>
+            <div style="font-size:9px;color:#64748B;margin-top:3px;font-weight:700;line-height:1.3">${lbl}</div>
+          </div>`).join('')}
+      </div>
+
+      <!-- Conversion funnel -->
+      <div style="background:#fff;border:1.5px solid rgba(20,184,166,.15);border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 2px 8px rgba(0,0,0,.04)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <span style="font-size:26px;font-weight:900;color:${_convPct>=30?'#10B981':_convPct>=15?'#F59E0B':'#EF4444'}">${_convPct}%</span>
+          <span style="font-size:13px;font-weight:900;color:#0F1A1F">Conversion — רישום → הזמנה</span>
+        </div>
+        <div style="height:10px;background:#F1F5F9;border-radius:50px;overflow:hidden">
+          <div style="width:${Math.min(_convPct,100)}%;height:100%;background:linear-gradient(90deg,#14B8A6,#06B6D4);border-radius:50px"></div>
+        </div>
+        <div style="font-size:11px;color:#94A3B8;margin-top:6px;text-align:left">${_studentsWithBk} מתוך ${_studentCount} תלמידים הזמינו שיעור</div>
+      </div>
+
+      ${_topCatRev.length>0?`
+      <!-- Categories by revenue -->
+      <div style="background:#fff;border:1.5px solid rgba(20,184,166,.15);border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 2px 8px rgba(0,0,0,.04)">
+        <h4 style="margin:0 0 12px;font-weight:900;font-size:14px;color:#14B8A6">${icon("award",14)} קטגוריות לפי הכנסה</h4>
+        ${_topCatRev.map(([cId,rev])=>{
+          const cat=CATS.find(c=>c.id===cId);
+          const pct=_gmvTotal>0?Math.round((rev/_gmvTotal)*100):0;
+          return `<div style="margin-bottom:10px">
+            <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;margin-bottom:4px">
+              <span style="color:#14B8A6">₪${rev.toLocaleString()} (${pct}%)</span>
+              <span style="color:#0F1A1F;display:inline-flex;align-items:center;gap:4px">${cat?catIcon(cat,13):''}${cat?.lbl||cId}</span>
+            </div>
+            <div style="height:8px;background:#F1F5F9;border-radius:50px;overflow:hidden">
+              <div style="width:${pct}%;height:100%;background:linear-gradient(90deg,#14B8A6,#8b2fc9);border-radius:50px"></div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>`:''}
+
+      <!-- Notifications -->
       <div style="background:rgba(16,185,129,0.07);border:1.5px solid rgba(16,185,129,0.3);border-radius:16px;padding:14px;margin-bottom:12px">
-        <h4 style="margin:0 0 6px;font-weight:900;font-size:14px;color:#10B981">${icon("bell",14)} התראות דפדפן (מומלץ!)</h4>
-        <p style="margin:0 0 10px;font-size:12px;color:#64748B;line-height:1.5">קבל התראה ישירה בדפדפן כשמורה חדש נרשם — ללא צורך במייל. עובד מיד, ללא הגדרות.</p>
+        <h4 style="margin:0 0 6px;font-weight:900;font-size:14px;color:#10B981">${icon("bell",14)} התראות דפדפן</h4>
+        <p style="margin:0 0 10px;font-size:12px;color:#64748B;line-height:1.5">קבל התראה ישירה בדפדפן כשמורה חדש נרשם — ללא צורך במייל.</p>
         ${notifGranted
           ?`<div style="background:rgba(16,185,129,0.1);border-radius:10px;padding:8px 12px;font-size:12px;font-weight:800;color:#10B981">${icon("check-circle",14)} התראות פעילות!</div>`
           :`<button onclick="_requestBrowserNotifPermission()" style="width:100%;background:linear-gradient(135deg,#10B981,#14B8A6);border:none;color:#fff;border-radius:50px;padding:11px;font-weight:900;font-size:13px;cursor:pointer">${icon("bell",14)} הפעל התראות דפדפן</button>`}
       </div>
       <div style="background:rgba(239,68,68,0.07);border:1.5px solid rgba(239,68,68,0.25);border-radius:16px;padding:14px;margin-bottom:14px">
         <h4 style="margin:0 0 8px;font-weight:900;font-size:14px;color:#EF4444">${icon("lock",14)} אבטחת מנהל (2FA PIN)</h4>
-        <p style="margin:0 0 10px;font-size:12px;color:#64748B">קוד PIN נוסף מעל האימות של Google — מוגן ב-Firebase</p>
         <button onclick="_adminPinVerified=false;_verifyAdminPin(()=>{showFireToast('✅ PIN עודכן');_adminPinVerified=true;})" style="width:100%;background:linear-gradient(135deg,#EF4444,#DC2626);border:none;color:#fff;border-radius:50px;padding:11px;font-weight:800;font-size:13px;cursor:pointer">${icon("key",14)} שנה PIN מנהל</button>
       </div>
-      ${EMAILJS_SERVICE_ID&&EMAILJS_TEMPLATE_ID&&EMAILJS_PUBLIC_KEY
-        ?`<div style="background:rgba(20,184,166,0.07);border:1.5px solid rgba(20,184,166,0.3);border-radius:16px;padding:14px;margin-bottom:14px">
-            <h4 style="margin:0 0 6px;font-weight:900;font-size:14px;color:#14B8A6">${icon("mail",14)} מיילים ${icon("check-circle",14)} מוגדר</h4>
-            <button onclick="adminSendTestEmail()" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:11px;font-weight:800;font-size:13px;cursor:pointer;margin-bottom:8px">${icon("send",14)} שלח מייל בדיקה</button>
-            <button onclick="adminSendWeeklyReports()" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:11px;font-weight:800;font-size:13px;cursor:pointer">${icon("bar-chart",14)} שלח דוחות שבועיים להורים</button>
-          </div>`
-        :`<div style="background:rgba(239,68,68,0.05);border:2px solid rgba(239,68,68,0.3);border-radius:16px;padding:14px;margin-bottom:14px">
-            <h4 style="margin:0 0 8px;font-weight:900;font-size:14px;color:#EF4444">${icon("mail",14)} מיילים — טרם הוגדר</h4>
-            <div style="font-size:12px;color:#374151;line-height:1.8;background:rgba(0,0,0,0.03);border-radius:10px;padding:10px">
-              <b>4 צעדים להגדרה:</b><br>
-              1. כנס ל-<b>emailjs.com</b> → צור חשבון חינם<br>
-              2. <b>Email Services</b> → Add New Service → <b>Gmail</b> → קבל Service ID<br>
-              3. <b>Email Templates</b> → Create New Template<br>
-              &nbsp;&nbsp;&nbsp;• To: <code>{{to_email}}</code><br>
-              &nbsp;&nbsp;&nbsp;• Subject: <code>{{subject}}</code><br>
-              &nbsp;&nbsp;&nbsp;• Content: <code>{{message}}</code><br>
-              &nbsp;&nbsp;&nbsp;→ Save → קבל Template ID<br>
-              4. <b>Account → API Keys</b> → קבל Public Key<br>
-              <br>
-              5. שלח את 3 הערכים לקלוד ובקש לעדכן
-            </div>
-          </div>`
-      }
-      <div style="background:#fff;border:1.5px solid rgba(20,184,166,0.15);border-radius:20px;padding:18px;margin-bottom:14px;box-shadow:0 4px 16px rgba(20,184,166,0.1)">
-        <h4 style="margin:0 0 14px;font-weight:900;font-size:16px;color:#14B8A6">${icon("bar-chart",14)} סקירה כללית</h4>
-        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">
-          <div><div style="font-size:11px;color:#64748B">תלמידים</div><div style="font-size:22px;font-weight:900;color:#06B6D4">${studentCount}</div></div>
-          <div><div style="font-size:11px;color:#64748B">מורים</div><div style="font-size:22px;font-weight:900;color:#14B8A6">${teacherCount}</div></div>
-          <div><div style="font-size:11px;color:#64748B">מאושרים</div><div style="font-size:22px;font-weight:900;color:#10B981">${verifiedTeachers}</div></div>
-          <div><div style="font-size:11px;color:#64748B">חסומים</div><div style="font-size:22px;font-weight:900;color:#EF4444">${blockedUsers}</div></div>
-          <div><div style="font-size:11px;color:#64748B">סרטונים</div><div style="font-size:22px;font-weight:900;color:#FBBF24">${totalVideos}</div></div>
-          <div><div style="font-size:11px;color:#64748B">מאושרים</div><div style="font-size:22px;font-weight:900;color:#14B8A6">${approvedVideos}</div></div>
-        </div>
-      </div>
-      ${topCats.length>0?`
-      <div style="background:#fff;border:1.5px solid rgba(20,184,166,0.15);border-radius:18px;padding:16px;margin-bottom:14px">
-        <h4 style="margin:0 0 12px;font-weight:900;font-size:15px;color:#14B8A6">${icon("award",14)} קטגוריות פופולריות</h4>
-        ${topCats.map(([cId,count])=>{
-          const cat=CATS.find(c=>c.id===cId);
-          const pct=Math.round((count/adminAllTeachers.length)*100);
-          return `<div style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;margin-bottom:3px"><span style="color:#64748B">${count} מורים</span><span style="color:#0F1A1F;display:inline-flex;align-items:center;gap:4px">${cat?catIcon(cat,13):''}${cat?.lbl||cId}</span></div><div style="height:8px;background:rgba(20,184,166,0.1);border-radius:50px;overflow:hidden"><div style="width:${pct}%;height:100%;background:linear-gradient(90deg,#14B8A6,#06B6D4);border-radius:50px"></div></div></div>`;
-        }).join('')}
-      </div>`:''}
-      <div style="background:rgba(239,68,68,0.05);border:1.5px solid rgba(239,68,68,0.2);border-radius:16px;padding:14px;margin-bottom:14px">
-        <h4 style="margin:0 0 10px;font-weight:900;font-size:13px;color:#EF4444">🔬 דיאגנוסטיקה — נתוני Firebase אמיתיים</h4>
-        <div style="font-size:12px;color:#374151;line-height:2">
-          <div>${icon("clipboard",14)} <b>users/ כל הנרשמים:</b> ${adminAllUsers.length}</div>
-          <div style="padding-right:12px;color:#64748B">${adminAllUsers.map(u=>`• ${u.name||'ללא שם'} [${u.role||'?'}]${u.verified===false?' ⏳':u.verified?' ✅':''}`).join('<br>')}</div>
-          <div>${icon("alert-triangle",14)} <b>adminAlerts/students:</b> ${adminAlertStudents.length}</div>
-          <div style="padding-right:12px;color:#64748B">${adminAlertStudents.map(s=>`• ${s.name||s.uid}`).join('<br>')}</div>
-          <div>${icon("bar-chart",14)} <b>realStats.students:</b> ${realStats.students}</div>
-          <div>${icon("graduation-cap",14)} <b>TEACHERS רשומים:</b> ${TEACHERS.length}</div>
-        </div>
-        <button onclick="adminRestoreStudents()" style="margin-top:10px;width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:10px;font-weight:800;font-size:12px;cursor:pointer">♻️ שחזר תלמידים מהזמנות</button>
-        <button onclick="adminDeleteAllStudents()" style="margin-top:8px;width:100%;background:linear-gradient(135deg,#EF4444,#B91C1C);border:none;color:#fff;border-radius:50px;padding:10px;font-weight:800;font-size:12px;cursor:pointer">${icon("trash",14)} מחק כל התלמידים מ-Firebase</button>
-      </div>`;
+      ${resetBtn}`;
   }
   return '';
 }
