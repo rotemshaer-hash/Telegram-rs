@@ -1836,7 +1836,7 @@ function TeacherSetup(){
       <div style="background:rgba(20,184,166,.07);border:1.5px solid rgba(20,184,166,.3);border-radius:14px;padding:14px;margin-bottom:14px">
         <label style="display:flex;gap:10px;align-items:flex-start;cursor:pointer">
           <input type="checkbox" id="tAgeConfirm" style="width:18px;height:18px;accent-color:#14B8A6;flex-shrink:0;margin-top:2px">
-          <span style="font-size:13px;line-height:1.6;color:#374151">אני מאשר/ת שאני בן/בת <strong>16 ומעלה</strong> ושהורי/אפוטרופסי מסכימים להשתתפותי כמורה ב-Kidemy</span>
+          <span style="font-size:13px;line-height:1.6;color:#374151">אני מאשר/ת שאני בין גיל <strong>14 ל-18</strong> ושהורי/אפוטרופסי מסכימים להשתתפותי כמורה ב-Kidemy</span>
         </label>
       </div>
       <button class="btn bp" onclick="saveTeacherProfile()">${icon("check-circle",14)} שמור פרופיל ופרסם</button>
@@ -1988,7 +1988,9 @@ async function saveTeacherProfile(){
   if(!price?.value||parseInt(price.value)<20){showFireToast('❌ מחיר מינימלי ₪20');return;}
   if(!desc?.value.trim()||desc.value.length<20){showFireToast('❌ תיאור לפחות 20 תווים');return;}
   if(!_modeOnline&&!_modeFrontal){showFireToast('❌ בחר לפחות אופן הוראה אחד');return;}
-  if(!document.getElementById('tAgeConfirm')?.checked){showFireToast('❌ יש לאשר את תנאי הגיל (16+)');return;}
+  if(!document.getElementById('tAgeConfirm')?.checked){showFireToast('❌ יש לאשר שאתה/ת בין גיל 14 ל-18');return;}
+  const _ageVal=parseInt(document.getElementById('tAge')?.value||0);
+  if(_ageVal&&(_ageVal<14||_ageVal>18)){showFireToast('❌ גיל המורה חייב להיות בין 14 ל-18');return;}
 
   try{
     showFireToast('⏳ שומר פרופיל...');
