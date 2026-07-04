@@ -24,7 +24,8 @@ const firebaseConfig = {
   projectId: "kidemy-83a17",
   storageBucket: "kidemy-83a17.firebasestorage.app",
   messagingSenderId: "799651449632",
-  appId: "1:799651449632:web:3e16d3e8e28029f58aa545"
+  appId: "1:799651449632:web:3e16d3e8e28029f58aa545",
+  measurementId: "G-9S1J6XPL8B"
 };
 firebase.initializeApp(firebaseConfig);
 // var (not const/let) prevents TDZ issues if Firebase CDN fails to load
@@ -691,7 +692,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.69';
+const APP_VERSION='4.9.70';
 const APP_BUILD='04-07-2026';
 
 // ─── ANALYTICS ────────────────────────────────────────────────────────────────
