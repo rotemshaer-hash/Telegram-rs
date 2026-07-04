@@ -941,8 +941,10 @@ function buildMap() {
         const ay=Math.min(row, 1844-row, FADE_TB)/FADE_TB;
         const edgeA=Math.round(255*axL*axR*Math.min(1,ay));
 
-        if (r>200 && g>200 && b>200 && Math.max(r,g,b)-Math.min(r,g,b)<40) {
-          // Sea pixel → fully transparent (background texture shows through)
+        // col<210 = deep Mediterranean (no Israeli land there), always transparent
+        const isSea = col<210
+          || (r>200 && g>200 && b>200 && Math.max(r,g,b)-Math.min(r,g,b)<40);
+        if (isSea) {
           d[k+3]=0;
         } else {
           // Land pixel → latitude toning + edge feather
