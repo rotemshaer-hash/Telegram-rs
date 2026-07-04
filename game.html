@@ -687,7 +687,7 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
 
 /* ── MAP OCEAN COLOUR ── */
 #map-wrap{animation:ocean-pulse 5s ease-in-out infinite;}
-@keyframes ocean-pulse{0%,100%{background-color:#083D7A}50%{background-color:#1470CC}}
+@keyframes ocean-pulse{0%,100%{background-color:#052B6E}50%{background-color:#0E6BAF}}
 
 /* ── +1 SCORE FLOAT (feature 8) ── */
 .score-float{
@@ -940,7 +940,12 @@ function buildMap() {
     for (let k = 0; k < d.length; k += 4) {
       const r=d[k], g=d[k+1], b=d[k+2];
       if (r>200 && g>200 && b>200 && Math.max(r,g,b)-Math.min(r,g,b)<40) {
-        d[k]=10; d[k+1]=95; d[k+2]=175;
+        // Depth gradient: deep navy west → teal near coast
+        const col=(k/4)%790;
+        const cf=Math.min(1,col/300);  // 0=deep west, 1=near coast
+        d[k]=Math.round(cf*22);              // 0→22   (R)
+        d[k+1]=Math.round(48+cf*112);       // 48→160 (G)
+        d[k+2]=Math.round(118+cf*80);       // 118→198 (B)
       } else {
         // Latitude-based toning: greener north (Galilee), warmer south (Negev)
         const row=Math.floor((k/4)/790);
@@ -2584,7 +2589,7 @@ function drawMapDecorations(){
     const sy=offsetY+sr+Math.max(4,6*scl);
     ctx.globalAlpha=.88;
     // Rays
-    ctx.strokeStyle='#CC0000'; ctx.lineWidth=Math.max(1.5,sr*.14);
+    ctx.strokeStyle='#FFB800'; ctx.lineWidth=Math.max(1.5,sr*.14);
     for(let i=0;i<8;i++){
       const a=i*Math.PI/4;
       ctx.beginPath();
@@ -2592,13 +2597,13 @@ function drawMapDecorations(){
       ctx.lineTo(sx+Math.cos(a)*sr*1.60,sy+Math.sin(a)*sr*1.60);
       ctx.stroke();
     }
-    // Sun body gradient — red
+    // Sun body gradient — bright yellow
     const sg=ctx.createRadialGradient(sx-sr*.25,sy-sr*.25,0,sx,sy,sr);
-    sg.addColorStop(0,'#FF4444');
-    sg.addColorStop(1,'#AA0000');
+    sg.addColorStop(0,'#FFF06A');
+    sg.addColorStop(1,'#FFB800');
     ctx.fillStyle=sg;
-    ctx.strokeStyle='rgba(80,0,0,.55)'; ctx.lineWidth=Math.max(1,sr*.10);
-    ctx.shadowColor='rgba(200,0,0,.7)'; ctx.shadowBlur=10;
+    ctx.strokeStyle='rgba(200,120,0,.40)'; ctx.lineWidth=Math.max(1,sr*.10);
+    ctx.shadowColor='rgba(255,190,0,.65)'; ctx.shadowBlur=10;
     ctx.beginPath(); ctx.arc(sx,sy,sr,0,Math.PI*2); ctx.fill(); ctx.stroke();
     ctx.shadowBlur=0;
     // Face
@@ -2683,6 +2688,29 @@ function animateMapDecorations(){
       ctx.stroke();
     }
     ctx.restore();
+
+    // ── Mediterranean depth gradient overlay ──
+    {
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(offsetX,offsetY,Math.max(seaW,20),dispH);
+      ctx.clip();
+      const dg=ctx.createLinearGradient(offsetX,offsetY,offsetX+seaW,offsetY);
+      dg.addColorStop(0,   'rgba(0,20,70,0.30)');   // deep west: dark navy
+      dg.addColorStop(0.35,'rgba(0,60,140,0.12)');  // mid: blue
+      dg.addColorStop(0.70,'rgba(0,130,200,0.08)'); // near coast: blue
+      dg.addColorStop(1,   'rgba(0,200,220,0.14)'); // coast edge: teal
+      ctx.fillStyle=dg;
+      ctx.fillRect(offsetX,offsetY,seaW,dispH);
+      // Subtle vertical depth bands (north=warmer blue, south=cooler)
+      const vg=ctx.createLinearGradient(offsetX,offsetY,offsetX,offsetY+dispH);
+      vg.addColorStop(0,   'rgba(0,100,200,0.06)');
+      vg.addColorStop(0.5, 'rgba(0,60,160,0.04)');
+      vg.addColorStop(1,   'rgba(0,150,180,0.09)');
+      ctx.fillStyle=vg;
+      ctx.fillRect(offsetX,offsetY,seaW,dispH);
+      ctx.restore();
+    }
 
     // ── Kinneret shimmer ──
     _seaShimmer(ctx,KIN.x,KIN.y,KIN.r,t,  'rgba(60,160,255,',0.72);
