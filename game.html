@@ -929,21 +929,19 @@ function buildMap() {
 
     // _applyPixels: pixel-level processing + alpha transparency
     function _applyPixels(texD) {
-      const FADE=55; // feather pixels at all 4 edges
+      const FADE_R=55, FADE_L=140, FADE_TB=55; // left side wider fade to hide sea artifacts
       for (let k = 0; k < d.length; k += 4) {
         const r=d[k], g=d[k+1], b=d[k+2];
         const px=(k/4)|0;
         const col=px%790, row=(px/790)|0;
 
-        // Edge feather alpha (0 at border → 255 inside)
-        const ax=Math.min(col, 789-col, FADE)/FADE;
-        const ay=Math.min(row, 1844-row, FADE)/FADE;
-        const edgeA=Math.round(255*Math.min(1,ax)*Math.min(1,ay));
+        // Edge feather alpha — stronger on left (Mediterranean) to blend non-white sea pixels
+        const axL=Math.min(col/FADE_L, 1);
+        const axR=Math.min((789-col)/FADE_R, 1);
+        const ay=Math.min(row, 1844-row, FADE_TB)/FADE_TB;
+        const edgeA=Math.round(255*axL*axR*Math.min(1,ay));
 
-        // Strict detection + lenient for Mediterranean (col<320, JPEG compression artifacts)
-        const isSea=(r>180&&g>180&&b>180&&Math.max(r,g,b)-Math.min(r,g,b)<60)
-                  ||(col<320&&(r+g+b)/3>145&&Math.max(r,g,b)-Math.min(r,g,b)<75);
-        if (isSea) {
+        if (r>200 && g>200 && b>200 && Math.max(r,g,b)-Math.min(r,g,b)<40) {
           // Sea pixel → fully transparent (background texture shows through)
           d[k+3]=0;
         } else {
