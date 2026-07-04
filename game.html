@@ -2676,28 +2676,22 @@ function animateMapDecorations(){
     ctx.clearRect(0,0,ac.width,ac.height);
     t+=0.010;
 
-    // ── Sea texture pattern (tiling turquoise water photo, slow drift) ──
+    // ── Sea texture (real water photo, drawImage — works on all browsers) ──
     if(_seaTexImg && _seaTexImg.complete && _seaTexImg.naturalWidth>0){
       ctx.save();
       ctx.beginPath();
       ctx.rect(offsetX,offsetY,Math.max(seaW,20),dispH);
       ctx.clip();
-      const pat=ctx.createPattern(_seaTexImg,'repeat');
-      if(pat){
-        const tw=_seaTexImg.naturalWidth, th=_seaTexImg.naturalHeight;
-        const ps=dispW/tw*0.72;  // scale pattern to map
-        const ox2=(t*3)%tw, oy2=(t*1.5)%th;  // slow drift
-        const mat=new DOMMatrix([ps,0,0,ps, offsetX+ox2*ps, offsetY+oy2*ps]);
-        pat.setTransform(mat);
-        ctx.globalAlpha=0.52;
-        ctx.fillStyle=pat;
-        ctx.fillRect(offsetX,offsetY,seaW,dispH);
-        // Teal color tint on top to unify tone
-        ctx.globalAlpha=0.18;
-        ctx.fillStyle='rgba(0,100,160,1)';
-        ctx.fillRect(offsetX,offsetY,seaW,dispH);
-        ctx.globalAlpha=1;
-      }
+      // Draw texture twice (top + bottom half) with slow vertical drift for motion
+      const drift=(t*8)%dispH;
+      ctx.globalAlpha=0.58;
+      ctx.drawImage(_seaTexImg, offsetX, offsetY-dispH+drift, seaW, dispH);
+      ctx.drawImage(_seaTexImg, offsetX, offsetY+drift,       seaW, dispH);
+      // Subtle deep-blue tint to blend with map palette
+      ctx.globalAlpha=0.22;
+      ctx.fillStyle='rgba(0,60,140,1)';
+      ctx.fillRect(offsetX,offsetY,seaW,dispH);
+      ctx.globalAlpha=1;
       ctx.restore();
     }
 
