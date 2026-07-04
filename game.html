@@ -913,10 +913,10 @@ function buildMap() {
   const offsetX = (W - dispW) / 2;
   const offsetY = (H - dispH) / 2;
   _mapRect = { dispW, dispH, offsetX, offsetY };
-  wrap.style.backgroundColor = '#0A5FAF';
+  wrap.style.backgroundColor = '#0A5FAF'; // fallback until texture loads
   const mc = document.createElement('canvas');
   mc.width = W; mc.height = H;
-  mc.style.cssText = 'position:absolute;inset:0;z-index:1;display:block;background:#0A5FAF';
+  mc.style.cssText = 'position:absolute;inset:0;z-index:1;display:block;background:transparent';
   wrap.appendChild(mc);
   const mi = new Image();
   mi.onload = function() {
@@ -941,10 +941,8 @@ function buildMap() {
         const ay=Math.min(row, 1844-row, FADE_TB)/FADE_TB;
         const edgeA=Math.round(255*axL*axR*Math.min(1,ay));
 
-        // col<210 = deep Mediterranean (no Israeli land there), always transparent
-        const isSea = col<210
-          || (r>200 && g>200 && b>200 && Math.max(r,g,b)-Math.min(r,g,b)<40);
-        if (isSea) {
+        if (r>200 && g>200 && b>200 && Math.max(r,g,b)-Math.min(r,g,b)<40) {
+          // Sea pixel → transparent, CSS background shows through
           d[k+3]=0;
         } else {
           // Land pixel → latitude toning + edge feather
@@ -964,17 +962,18 @@ function buildMap() {
 
     function _drawMapToCanvas(seaTexImg) {
       const mctx = mc.getContext('2d');
+      // Set water texture as CSS background of the wrap div — seamless, no canvas border
       if(seaTexImg){
-        // Full canvas: water texture background (covers left/right margins too)
-        mctx.drawImage(seaTexImg, 0, 0, W, H);
-        // Subtle deep-blue tint over the whole background
-        mctx.fillStyle='rgba(0,40,110,0.28)';
-        mctx.fillRect(0,0,W,H);
+        wrap.style.backgroundImage=`url('${_SEA_TEX_B64}')`;
+        wrap.style.backgroundSize='cover';
+        wrap.style.backgroundPosition='center';
+        wrap.style.backgroundColor='rgba(0,40,110,0.22)';
       } else {
-        mctx.fillStyle='#0A5FAF';
-        mctx.fillRect(0,0,W,H);
+        wrap.style.backgroundImage='none';
+        wrap.style.backgroundColor='#0A5FAF';
       }
-      // Draw processed map image on top (center)
+      // Canvas is transparent — just draw the land (sea pixels are alpha=0)
+      mctx.clearRect(0, 0, W, H);
       mctx.drawImage(tmp, offsetX, offsetY, dispW, dispH);
       setTimeout(()=>{
         drawMapDecorations();
