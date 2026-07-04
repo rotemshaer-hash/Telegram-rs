@@ -691,7 +691,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.67';
+const APP_VERSION='4.9.68';
 const APP_BUILD='04-07-2026';
 
 // ─── ANALYTICS ────────────────────────────────────────────────────────────────
@@ -2163,6 +2163,167 @@ async function processPayment(payMethod,totalAmount){
   }catch(e){
     showFireToast('❌ שגיאה: '+e.message);
   }
+}
+
+// ─── SUBSCRIPTION ─────────────────────────────────────────────────────────────
+function isActiveSubscription(){
+  const sub=currentUserData?.subscription;
+  if(!sub)return false;
+  if(sub.status!=='active')return false;
+  if(sub.expiresAt&&sub.expiresAt<Date.now())return false;
+  return true;
+}
+
+function checkSubAndAdvance(){
+  // מורים לא צריכים מנוי לצורך הזמנות
+  if(currentUserData?.role==='teacher'){S.bookStep=2;render();return;}
+  const usedFree=studentBookings.filter(b=>b.status!=='rejected').length;
+  if(usedFree>=1&&!isActiveSubscription()){
+    go('subscribe');
+    return;
+  }
+  S.bookStep=2;render();
+}
+
+async function processSubscriptionPayment(payMethod){
+  if(!currentUser)return;
+  try{
+    showFireToast('⏳ שולח בקשת מנוי...');
+    const subRef=db.ref('adminAlerts/subscriptions').push();
+    const subId=subRef.key;
+    const payRef='SUB-'+Math.random().toString(36).slice(2,8).toUpperCase();
+    const subData={
+      id:subId,uid:currentUser.uid,
+      name:currentUserData?.name||currentUser.email.split('@')[0],
+      email:currentUser.email,
+      plan:'premium',amount:29,payMethod,payRef,
+      status:'awaitingPayment',createdAt:Date.now()
+    };
+    await subRef.set(subData);
+    const subRecord={plan:'premium',status:'pending',subId,payRef,requestedAt:Date.now()};
+    await db.ref('users/'+currentUser.uid+'/subscription').set(subRecord);
+    if(currentUserData)currentUserData.subscription=subRecord;
+    sendEmail(ADMIN_EMAIL,'💳 מנוי פרימיום ממתין לאימות — Kidemy',
+      `בקשת מנוי חדשה!\n\n👤 ${subData.name}\n📧 ${subData.email}\n💰 ₪29 (${payMethod})\n📌 קוד: ${payRef}\n\nאשר בפאנל מנהל → מנויים.`).catch(()=>{});
+    S.subStep=2;S.subPayRef=payRef;render();
+    kLog('subscription_requested',{plan:'premium',method:payMethod,amount:29});
+  }catch(e){showFireToast('❌ '+(e.message||'שגיאה'));}
+}
+
+async function adminApproveSubscription(subId,uid){
+  try{
+    const expiresAt=Date.now()+30*24*3600*1000;
+    await db.ref('users/'+uid+'/subscription').set({plan:'premium',status:'active',expiresAt,approvedAt:Date.now(),subId});
+    await db.ref('adminAlerts/subscriptions/'+subId+'/status').set('approved');
+    await db.ref('notifications/'+uid).push({type:'accountApproved',createdAt:Date.now(),read:false}).catch(()=>{});
+    showFireToast('✅ מנוי אושר!');
+    await loadAdminData();renderAdminPanel();
+  }catch(e){showFireToast('❌ '+e.message);}
+}
+
+async function adminRejectSubscription(subId,uid){
+  try{
+    await db.ref('adminAlerts/subscriptions/'+subId+'/status').set('rejected');
+    await db.ref('users/'+uid+'/subscription/status').set('rejected');
+    showFireToast('🚫 מנוי נדחה');
+    await loadAdminData();renderAdminPanel();
+  }catch(e){showFireToast('❌ '+e.message);}
+}
+
+// ─── Subscribe Screen ──────────────────────────────────────────────────────────
+function Subscribe(){
+  const C=COLORS();
+  const step=S.subStep||1;
+  const PLAN_PRICE=29;
+  const payRef=S.subPayRef||'';
+  const hasPending=currentUserData?.subscription?.status==='pending';
+
+  if(step===2||hasPending) return `
+  <div class="screen" style="background:linear-gradient(165deg,#CCFBF1 0%,#A5F3FC 50%,#7DD3FC 100%);min-height:100dvh;padding:0;direction:rtl">
+    <div style="padding:24px 20px 20px;text-align:center;background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);border-radius:0 0 28px 28px">
+      <button onclick="go('home')" style="position:absolute;top:20px;right:20px;background:rgba(255,255,255,0.15);border:none;color:#fff;border-radius:50px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer">← חזרה</button>
+      <div style="font-size:36px;margin-bottom:8px">⏳</div>
+      <h2 style="color:#fff;font-weight:900;font-size:20px;margin:0 0 4px">ממתין לאישור</h2>
+      <p style="color:rgba(255,255,255,0.7);font-size:13px;margin:0">הבקשה נשלחה לצוות Kidemy</p>
+    </div>
+    <div style="padding:20px 16px">
+      <div style="background:#fff;border-radius:20px;padding:20px;box-shadow:0 4px 20px rgba(0,0,0,0.08);margin-bottom:14px">
+        <div style="font-weight:800;font-size:15px;color:#0F1A1F;margin-bottom:8px">מה קורה עכשיו?</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;gap:10px;align-items:flex-start"><div style="width:26px;height:26px;border-radius:50%;background:#14B8A6;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;flex-shrink:0">1</div><span style="font-size:13px;line-height:1.6">שלחת ₪${PLAN_PRICE} ל-Kidemy דרך אמצעי התשלום שבחרת</span></div>
+          <div style="display:flex;gap:10px;align-items:flex-start"><div style="width:26px;height:26px;border-radius:50%;background:#06B6D4;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;flex-shrink:0">2</div><span style="font-size:13px;line-height:1.6">הצוות מאמת את התשלום בד"כ תוך <strong>2–4 שעות</strong></span></div>
+          <div style="display:flex;gap:10px;align-items:flex-start"><div style="width:26px;height:26px;border-radius:50%;background:#10B981;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;flex-shrink:0">3</div><span style="font-size:13px;line-height:1.6">תקבל/י גישה פרימיום מלאה ל-<strong>30 ימים</strong></span></div>
+        </div>
+      </div>
+      ${payRef?`<div style="background:rgba(20,184,166,0.08);border:1.5px solid rgba(20,184,166,0.25);border-radius:16px;padding:14px;text-align:center;margin-bottom:14px">
+        <div style="font-size:11px;color:#64748B;margin-bottom:4px">קוד לאימות תשלום</div>
+        <div style="font-size:22px;font-weight:900;color:#14B8A6;font-family:monospace;letter-spacing:2px">${payRef}</div>
+        <button onclick="navigator.clipboard?.writeText('${payRef}').then(()=>showFireToast('📋 קוד הועתק!'))" style="margin-top:8px;background:rgba(20,184,166,0.12);border:1px solid rgba(20,184,166,0.3);color:#14B8A6;border-radius:50px;padding:6px 16px;font-size:12px;font-weight:700;cursor:pointer">📋 העתק קוד</button>
+      </div>`:''}
+      <button onclick="go('home')" class="btn bp" style="margin-top:4px">חזרה לדף הבית</button>
+    </div>
+  </div>`;
+
+  // Step 1 — plan + payment
+  return `
+  <div class="screen" style="background:linear-gradient(165deg,#F0FDFA 0%,#CCFBF1 100%);min-height:100dvh;padding:0;direction:rtl">
+    <div style="padding:24px 20px 20px;background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);border-radius:0 0 28px 28px;position:relative">
+      <button onclick="go(S.prev||'home')" style="position:absolute;top:20px;right:20px;background:rgba(255,255,255,0.15);border:none;color:#fff;border-radius:50px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer">← חזרה</button>
+      <div style="text-align:center">
+        <div style="font-size:44px;margin-bottom:8px">💎</div>
+        <h2 style="color:#fff;font-weight:900;font-size:22px;margin:0 0 4px">Kidemy פרימיום</h2>
+        <p style="color:rgba(255,255,255,0.7);font-size:13px;margin:0">גישה בלתי מוגבלת לכל המורות</p>
+      </div>
+    </div>
+    <div style="padding:20px 16px">
+
+      <!-- כרטיס תוכנית -->
+      <div style="background:#fff;border-radius:22px;padding:20px;box-shadow:0 4px 20px rgba(0,0,0,0.08);margin-bottom:16px;border:2px solid rgba(139,47,201,0.15)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <div><div style="font-weight:900;font-size:18px;color:#0F1A1F">מנוי חודשי</div><div style="font-size:12px;color:#64748B;margin-top:2px">מתחדש כל 30 יום</div></div>
+          <div style="text-align:left"><span style="font-size:34px;font-weight:900;color:#8B5CF6">₪${PLAN_PRICE}</span><span style="font-size:12px;color:#94A3B8">/חודש</span></div>
+        </div>
+        <div style="height:1px;background:#F1F5F9;margin-bottom:14px"></div>
+        ${[['הזמנות ללא הגבלה','שיעורים ממורות שונות בלי מכסה'],['סינון מתקדם','לפי מחיר, אזור, דירוג, קטגוריה'],['תג תלמיד מועדף','מורות רואות את ההזמנה שלך ראשונה'],['תמיכה מהירה','עדיפות בשירות לקוחות']].map(([t,d])=>`
+        <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:10px">
+          <div style="width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,#8B5CF6,#06B6D4);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div><div style="font-weight:700;font-size:13px;color:#0F1A1F">${t}</div><div style="font-size:11px;color:#64748B;margin-top:1px">${d}</div></div>
+        </div>`).join('')}
+      </div>
+
+      <!-- אמצעי תשלום -->
+      <h3 style="font-weight:900;font-size:15px;margin:0 0 12px;color:#0F1A1F">בחר אמצעי תשלום:</h3>
+
+      <div class="pay-m ${S.subPay==='bit'?'on':''}" onclick="S.subPay='bit';render()" style="border-color:${S.subPay==='bit'?'#14B8A6':'rgba(20,184,166,.1)'};background:${S.subPay==='bit'?'rgba(20,184,166,0.1)':'rgba(255,255,255,0.7)'}">
+        <div style="font-size:28px;width:44px;height:44px;border-radius:12px;background:rgba(20,184,166,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0">💜</div>
+        <div style="flex:1"><div style="font-weight:800;font-size:15px;color:#14B8A6">Bit</div><div style="font-size:12px;color:#64748B">שלח ל: ${ADMIN_PAYMENT.bit}</div></div>
+        ${S.subPay==='bit'?`<div style="width:22px;height:22px;border-radius:50%;background:#14B8A6;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;flex-shrink:0">✓</div>`:''}
+      </div>
+
+      <div class="pay-m ${S.subPay==='paypal'?'on':''}" onclick="S.subPay='paypal';render()" style="border-color:${S.subPay==='paypal'?'#003087':'rgba(20,184,166,.1)'};background:${S.subPay==='paypal'?'rgba(0,48,135,0.08)':'rgba(255,255,255,0.7)'}">
+        <div style="font-size:28px;width:44px;height:44px;border-radius:12px;background:rgba(0,48,135,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0">🅿️</div>
+        <div style="flex:1"><div style="font-weight:800;font-size:15px;color:#003087">PayPal</div><div style="font-size:12px;color:#64748B">שלח ל: ${ADMIN_PAYMENT.paypal}</div></div>
+        ${S.subPay==='paypal'?`<div style="width:22px;height:22px;border-radius:50%;background:#003087;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;flex-shrink:0">✓</div>`:''}
+      </div>
+
+      <div class="pay-m ${S.subPay==='paybox'?'on':''}" onclick="S.subPay='paybox';render()" style="border-color:${S.subPay==='paybox'?'#0066CC':'rgba(20,184,166,.1)'};background:${S.subPay==='paybox'?'rgba(0,102,204,0.08)':'rgba(255,255,255,0.7)'}">
+        <div style="font-size:28px;width:44px;height:44px;border-radius:12px;background:rgba(0,102,204,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0">🔵</div>
+        <div style="flex:1"><div style="font-weight:800;font-size:15px;color:#0066CC">PayBox</div><div style="font-size:12px;color:#64748B">שלח ל: ${ADMIN_PAYMENT.paybox}</div></div>
+        ${S.subPay==='paybox'?`<div style="width:22px;height:22px;border-radius:50%;background:#0066CC;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;flex-shrink:0">✓</div>`:''}
+      </div>
+
+      ${S.subPay?`<div style="background:linear-gradient(135deg,rgba(139,47,201,0.08),rgba(6,182,212,0.06));border:1.5px solid rgba(139,47,201,0.25);border-radius:14px;padding:14px;margin-bottom:14px">
+        <div style="font-weight:800;font-size:13px;color:#8B5CF6;margin-bottom:8px">כיצד לשלם:</div>
+        <div style="font-size:13px;color:#374151;line-height:1.8">1. שלח <strong>₪${PLAN_PRICE}</strong> ל: <strong>${S.subPay==='paypal'?ADMIN_PAYMENT.paypal:S.subPay==='bit'?ADMIN_PAYMENT.bit:ADMIN_PAYMENT.paybox}</strong><br>2. בהערה כתוב: <strong>"Kidemy Premium"</strong><br>3. לחץ "אישור – שילמתי!" למטה</div>
+        ${S.subPay==='bit'?`<button onclick="navigator.clipboard?.writeText('${ADMIN_PAYMENT.bit}').then(()=>showFireToast('✅ הועתק!'))" style="display:block;width:100%;margin-top:10px;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:12px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">💜 העתק מספר Bit</button>`:S.subPay==='paypal'?`<a href="https://paypal.me/rotemshaer/${PLAN_PRICE}USD" target="_blank" style="display:block;width:100%;margin-top:10px;background:linear-gradient(135deg,#003087,#009CDE);color:#fff;border-radius:12px;padding:10px;font-weight:800;font-size:13px;text-align:center;text-decoration:none">🅿️ פתח PayPal.me</a>`:`<button onclick="navigator.clipboard?.writeText('${ADMIN_PAYMENT.paybox}').then(()=>showFireToast('✅ הועתק!'))" style="display:block;width:100%;margin-top:10px;background:linear-gradient(135deg,#0066CC,#0052A3);border:none;color:#fff;border-radius:12px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">🔵 העתק מספר PayBox</button>`}
+      </div>`:''}
+
+      <button class="btn" ${!S.subPay?'disabled':`onclick="processSubscriptionPayment('${S.subPay}')"`} style="${S.subPay?'background:linear-gradient(135deg,#8B5CF6,#06B6D4);border:none;color:#fff;':''}border-radius:16px;padding:14px;font-weight:900;font-size:15px;width:100%;cursor:${S.subPay?'pointer':'not-allowed'};opacity:${S.subPay?1:0.5}">
+        ${S.subPay?'✅ אישור — שילמתי!':'בחר אמצעי תשלום תחילה'}
+      </button>
+      <p style="text-align:center;font-size:11px;color:#94A3B8;margin-top:10px">המנוי יופעל לאחר אימות התשלום ע"י צוות Kidemy</p>
+    </div>
+  </div>`;
 }
 
 // טוען הזמנות של מורה (לתצוגה ב-Home)
@@ -3937,7 +4098,7 @@ async function _requestBrowserNotifPermission(){
 }
 
 let adminAllUsers=[],adminAllTeachers=[],adminAllVideos=[],adminAllReports=[],adminAllBookings=[],adminIncompleteTeachers=[],adminAllPosts=[],adminAllReviews=[],adminAllStories=[];
-let adminAlertStudents=[],adminAlertPosts=[],adminAlertPayments=[],adminContactMessages=[],adminAlertStoriesPending=0; // מקור ראשי לממתינים
+let adminAlertStudents=[],adminAlertPosts=[],adminAlertPayments=[],adminAlertSubscriptions=[],adminContactMessages=[],adminAlertStoriesPending=0; // מקור ראשי לממתינים
 let adminTab='users';
 let _adminPendingCount=0;
 
@@ -4019,10 +4180,11 @@ async function loadAdminData(){
   try{
     // קרא users דרך REST API (עוקף קאש SDK) + adminAlerts במקביל
     const token=await firebase.auth().currentUser.getIdToken(false);
-    const [usersRes,alertsSnap,payAlertsSnap,msgsSnap]=await Promise.all([
+    const [usersRes,alertsSnap,payAlertsSnap,subAlertsSnap,msgsSnap]=await Promise.all([
       fetch('https://kidemy-83a17-default-rtdb.firebaseio.com/users.json?auth='+token,{cache:'no-store'}),
       db.ref('adminAlerts/students').get(),
       db.ref('adminAlerts/payments').get(),
+      db.ref('adminAlerts/subscriptions').get(),
       db.ref('contactMessages').get()
     ]);
     const usersData=await usersRes.json();
@@ -4037,6 +4199,9 @@ async function loadAdminData(){
     adminAlertPayments=[];
     if(payAlertsSnap.exists())payAlertsSnap.forEach(c=>{const v={id:c.key,...c.val()};if(v.status==='awaitingPayment')adminAlertPayments.push(v);});
     adminAlertPayments.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+    adminAlertSubscriptions=[];
+    if(subAlertsSnap.exists())subAlertsSnap.forEach(c=>{const v={id:c.key,...c.val()};if(v.status==='awaitingPayment')adminAlertSubscriptions.push(v);});
+    adminAlertSubscriptions.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
     // סנכרן הודעות ישירות
     adminContactMessages=[];
     if(msgsSnap.exists())msgsSnap.forEach(c=>adminContactMessages.push({id:c.key,...c.val()}));
@@ -6298,6 +6463,7 @@ function renderAdminPanel(){
       ${_adminCommunityOrphans.length>0?`<div onclick="adminTab='students';renderAdminPanel()" style="margin-top:8px;background:rgba(239,68,68,0.75);border-radius:12px;padding:10px 14px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:8px;position:relative;z-index:2">${icon("alert-triangle",14)} <span>${_adminCommunityOrphans.length} משתמשים פרסמו בקהילה ללא אישור — לחץ לטיפול</span></div>`:''}
       ${adminAlertPayments.length>0?`<div onclick="adminSwitchTab('payments')" style="margin-top:8px;background:rgba(245,158,11,0.9);border-radius:12px;padding:10px 14px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:8px;position:relative;z-index:2">${icon("dollar",14)} <span>${adminAlertPayments.length} תשלומים ממתינים לאימות — לחץ לאישור</span></div>`:''}
       ${adminContactMessages.filter(m=>!m.read).length>0?`<div onclick="adminSwitchTab('messages')" style="margin-top:8px;background:rgba(6,182,212,0.9);border-radius:12px;padding:10px 14px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:8px;position:relative;z-index:2">${icon("chat",14)} <span>${adminContactMessages.filter(m=>!m.read).length} הודעות חדשות מהאפליקציה — לחץ לצפייה</span></div>`:''}
+      ${adminAlertSubscriptions.length>0?`<div onclick="adminSwitchTab('subscriptions')" style="margin-top:8px;background:rgba(139,47,201,0.85);border-radius:12px;padding:10px 14px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:8px;position:relative;z-index:2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg> <span>${adminAlertSubscriptions.length} מנויים ממתינים לאימות תשלום — לחץ לאישור</span></div>`:''}
     </div>
     ${!adminAllTeachers.find(t=>t.uid===currentUser?.uid)?`
     <div style="margin:12px 16px 0;background:linear-gradient(135deg,rgba(245,158,11,0.12),rgba(239,68,68,0.1));border:2px solid rgba(245,158,11,0.5);border-radius:16px;padding:14px">
@@ -6318,6 +6484,7 @@ function renderAdminPanel(){
            ['videos','סרטונים','#EF4444','<polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>',pendingVideos.length,null],
            ['reviews','ביקורות','#FBBF24','<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>',adminAllReviews.filter(r=>!r.approved).length,null],
            ['stories','סטוריז','#F59E0B','<rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>',adminAllStories.length,adminAllStories.length>0?adminAllStories.length:null],
+           ['subscriptions','מנויים','#8B5CF6','<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>',adminAlertSubscriptions.length,adminAlertSubscriptions.length>0?adminAlertSubscriptions.length:null],
            ['stats','סטטיסטיקות','#10B981','<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>',null,null]
           ].map(([id,lbl,col,svg,num,badge])=>`
           <div onclick="adminSwitchTab('${id}')" style="background:${adminTab===id?col+'14':'#fff'};border:1.5px solid ${adminTab===id?col:'transparent'};border-radius:20px;padding:16px;display:flex;align-items:center;gap:12px;box-shadow:0 2px 10px rgba(0,0,0,0.05);cursor:pointer;position:relative">
@@ -6897,6 +7064,33 @@ function renderAdminTab(){
       ${unread.length===0&&read.length===0?`<div style="text-align:center;padding:48px;color:#64748B"><div style="font-size:48px;margin-bottom:10px">${icon("chat",14)}</div><div style="font-size:15px;font-weight:700">אין הודעות עדיין</div></div>`:''}
       ${unread.length>0?`<h4 style="font-weight:900;font-size:14px;margin:0 0 10px;color:#14B8A6">📬 חדשות (${unread.length})</h4>${unread.map(m=>renderMsg(m,true)).join('')}`:''}
       ${read.length>0?`<h4 style="font-weight:900;font-size:14px;margin:${unread.length>0?'16px':'0'} 0 10px;color:#64748B">📂 נקראו (${read.length})</h4>${read.map(m=>renderMsg(m,false)).join('')}`:''}`;
+  }
+  if(adminTab==='subscriptions'){
+    const pending=adminAlertSubscriptions;
+    if(pending.length===0)return`<div style="text-align:center;padding:40px 20px"><div style="font-size:48px;margin-bottom:12px">💎</div><h3 style="font-weight:900;font-size:16px;margin:0 0 6px;color:#0F1A1F">אין מנויים ממתינים</h3><p style="color:#64748B;font-size:13px;margin:0">כל המנויים אושרו</p></div>`;
+    return`<div>
+      <h3 style="font-weight:900;font-size:16px;margin:0 0 14px;color:#8B5CF6">💎 מנויים ממתינים לאישור (${pending.length})</h3>
+      ${pending.map(sub=>`
+      <div style="background:#fff;border-radius:18px;padding:16px;margin-bottom:12px;box-shadow:0 2px 12px rgba(0,0,0,0.07);border-right:4px solid #8B5CF6">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+          <div>
+            <div style="font-weight:800;font-size:15px;color:#0F1A1F">${escapeHtml(sub.name||'—')}</div>
+            <div style="font-size:12px;color:#64748B;margin-top:2px">${escapeHtml(sub.email||'')}</div>
+          </div>
+          <div style="text-align:left">
+            <div style="font-weight:900;font-size:16px;color:#8B5CF6">₪${sub.amount||29}</div>
+            <div style="font-size:11px;color:#94A3B8;margin-top:1px">${sub.payMethod||'—'}</div>
+          </div>
+        </div>
+        <div style="background:rgba(139,47,201,0.08);border-radius:10px;padding:8px 10px;margin-bottom:10px;font-size:12px;color:#7C3AED">
+          📌 קוד: <strong>${sub.payRef||'—'}</strong> · ${sub.createdAt?new Date(sub.createdAt).toLocaleString('he-IL'):''}
+        </div>
+        <div style="display:flex;gap:8px">
+          <button onclick="adminApproveSubscription('${sub.id}','${sub.uid}')" style="flex:1;background:linear-gradient(135deg,#8B5CF6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">✅ אשר מנוי (30 יום)</button>
+          <button onclick="adminRejectSubscription('${sub.id}','${sub.uid}')" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#EF4444;border-radius:50px;padding:10px 14px;font-weight:700;font-size:12px;cursor:pointer">✕ דחה</button>
+        </div>
+      </div>`).join('')}
+    </div>`;
   }
   if(adminTab==='stats'){
     // ─── KPI חישובים ──────────────────────────────────────────────────────────
@@ -8215,7 +8409,7 @@ function Booking(){
       <div style="display:flex;justify-content:space-between;font-size:13px"><span style="font-weight:700">${S.bookTime}</span><span style="color:${C.muted}">שעה</span></div>
     </div>`:''}
 
-    <button class="btn bs" ${!selDay||!S.bookTime?"disabled":"onclick='S.bookStep=2;render()'"}>${!selDay||!S.bookTime?"בחר תאריך ושעה":"המשך לתשלום →"}</button>`;
+    <button class="btn bs" ${!selDay||!S.bookTime?"disabled":"onclick='checkSubAndAdvance()'"}>${!selDay||!S.bookTime?"בחר תאריך ושעה":"המשך לתשלום →"}</button>`;
 
   if(step===2) body=`
     <!-- הסבר מודל התשלום -->
@@ -8245,7 +8439,14 @@ function Booking(){
       <div style="display:flex;justify-content:space-between"><span style="font-weight:900;font-size:16px">לתשלום ל-Kidemy</span><span style="font-weight:900;font-size:20px;color:#14B8A6">₪${price}</span></div>
     </div>
 
-    ${(()=>{if(!_userCreditLoaded){_loadUserCredit().then(()=>render());return '';}if(_userCredit>0)return`<div style="background:linear-gradient(135deg,rgba(16,185,129,0.1),rgba(20,184,166,0.08));border:1.5px solid rgba(16,185,129,0.3);border-radius:14px;padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px"><div style="width:36px;height:36px;border-radius:10px;background:rgba(16,185,129,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg></div><div><div style="font-weight:800;font-size:13px;color:#059669">יש לך ₪${_userCredit} קרדיט!</div><div style="font-size:11px;color:#64748B;margin-top:2px">הקרדיט יקוזז מהחשבון לאחר אישור ההזמנה ע"י הצוות.</div></div></div>`;return '';})()}
+    ${(()=>{
+      if(!_userCreditLoaded){_loadUserCredit().then(()=>render());return '';}
+      const subStatus=currentUserData?.subscription?.status;
+      let out='';
+      if(_userCredit>0)out+=`<div style="background:linear-gradient(135deg,rgba(16,185,129,0.1),rgba(20,184,166,0.08));border:1.5px solid rgba(16,185,129,0.3);border-radius:14px;padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px"><div style="width:36px;height:36px;border-radius:10px;background:rgba(16,185,129,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg></div><div><div style="font-weight:800;font-size:13px;color:#059669">יש לך ₪${_userCredit} קרדיט!</div><div style="font-size:11px;color:#64748B;margin-top:2px">הקרדיט יקוזז מהחשבון לאחר אישור ההזמנה ע"י הצוות.</div></div></div>`;
+      if(subStatus==='pending')out+=`<div style="background:rgba(139,47,201,0.08);border:1.5px solid rgba(139,47,201,0.25);border-radius:14px;padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px"><div style="font-size:20px">⏳</div><div><div style="font-weight:800;font-size:13px;color:#8B5CF6">מנוי פרימיום ממתין לאישור</div><div style="font-size:11px;color:#64748B;margin-top:1px">הצוות מאמת את התשלום — בד"כ תוך 2–4 שעות</div></div></div>`;
+      return out;
+    })()}
     <h3 style="font-weight:900;font-size:16px;margin:0 0 12px">בחר אמצעי תשלום:</h3>
 
     <!-- Bit -->
@@ -8749,6 +8950,7 @@ function Profile(){
     </div>`;}
 
   if(tab==="about") content=`
+    ${isActiveSubscription()?`<div style="background:linear-gradient(135deg,rgba(139,47,201,0.12),rgba(6,182,212,0.08));border:1.5px solid rgba(139,47,201,0.3);border-radius:16px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:10px"><div style="font-size:22px">💎</div><div><div style="font-weight:800;font-size:14px;color:#8B5CF6">מנוי פרימיום פעיל</div><div style="font-size:11px;color:#64748B;margin-top:1px">תוקף עד: ${new Date(currentUserData.subscription.expiresAt).toLocaleDateString('he-IL')}</div></div></div>`:currentUserData?.subscription?.status==='pending'?`<div style="background:rgba(245,158,11,0.08);border:1.5px solid rgba(245,158,11,0.25);border-radius:16px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:10px;cursor:pointer" onclick="go('subscribe')"><div style="font-size:22px">⏳</div><div><div style="font-weight:800;font-size:14px;color:#D97706">מנוי ממתין לאישור</div><div style="font-size:11px;color:#64748B;margin-top:1px">הצוות מאמת את התשלום — לחץ לפרטים</div></div></div>`:`<div style="background:linear-gradient(135deg,rgba(139,47,201,0.06),rgba(6,182,212,0.04));border:1.5px dashed rgba(139,47,201,0.25);border-radius:16px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="go('subscribe')"><div style="display:flex;align-items:center;gap:10px"><div style="font-size:22px">💎</div><div><div style="font-weight:800;font-size:13px;color:#8B5CF6">שדרג לפרימיום — ₪29/חודש</div><div style="font-size:11px;color:#64748B;margin-top:1px">הזמנות ללא הגבלה + תג מועדף</div></div></div><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></div>`}
     <div class="card"><h4 style="margin:0 0 10px;font-weight:800">👋 קצת עליי</h4><p style="margin:0;font-size:14px;line-height:1.7">${currentUserData?.bio||'עדיין לא כתבת קצת על עצמך.'}</p></div>
     <div class="ref-card">
       <h4 style="margin:0 0 6px;font-weight:900;font-size:16px">${icon("gift",14)} הפנה חבר – קבל ₪15!</h4>
@@ -11197,7 +11399,7 @@ function EmailVerify(){
   </div>`;
 }
 
-const SCREENS={splash:Splash,safety:Safety,parentReg:ParentReg,register:Register,login:Login,regSuccess:RegSuccess,emailVerify:EmailVerify,teacherSetup:TeacherSetup,teacherPending:TeacherPending,studentPending:StudentPending,home:Home,nearby:Nearby,teacher:Teacher,booking:Booking,messages:Messages,chat:Chat,profile:Profile,community:Community,leaderboard:Leaderboard,about:About,parentPortal:ParentPortal,weeklySchedule:WeeklySchedule};
+const SCREENS={splash:Splash,safety:Safety,parentReg:ParentReg,register:Register,login:Login,regSuccess:RegSuccess,emailVerify:EmailVerify,teacherSetup:TeacherSetup,teacherPending:TeacherPending,studentPending:StudentPending,home:Home,nearby:Nearby,teacher:Teacher,booking:Booking,messages:Messages,chat:Chat,profile:Profile,community:Community,leaderboard:Leaderboard,about:About,parentPortal:ParentPortal,weeklySchedule:WeeklySchedule,subscribe:Subscribe};
 
 function _hs(inp){
   S.search=inp.value;
