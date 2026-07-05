@@ -496,7 +496,7 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
   background-size:200% auto;animation:shimmer 3s linear infinite;
   color:#fff;font-size:16px;font-weight:900;cursor:pointer;font-family:inherit;
   box-shadow:0 6px 28px rgba(0,100,255,.4);transition:transform .15s;
-  position:relative;z-index:1;margin-top:6px;
+  position:relative;z-index:1;margin-top:6px;touch-action:manipulation;
 }
 .ol-launch-btn:active{transform:scale(.95)}
 .share-fab{
@@ -2110,7 +2110,10 @@ let olUsed            = [];
 
 // ── Firebase helpers ──────────────────────────────
 function olGetDbUrl(){
-  return (localStorage.getItem('ol-firebase-url')||'').replace(/\/+$/,'');
+  try{ return (localStorage.getItem('ol-firebase-url')||'').replace(/\/+$/,''); }catch(_){ return ''; }
+}
+function olSaveDbUrl(url){
+  try{ localStorage.setItem('ol-firebase-url', url); }catch(_){}
 }
 async function olFetch(path, method, body){
   method = method || 'GET';
@@ -2124,9 +2127,11 @@ async function olFetch(path, method, body){
 
 // ── Entry points ──────────────────────────────────
 function goOnline(){
-  const url = olGetDbUrl();
-  if(!url){ show('screen-ol-setup'); return; }
-  show('screen-ol-hub');
+  try{
+    const url = olGetDbUrl();
+    if(!url){ show('screen-ol-setup'); return; }
+    show('screen-ol-hub');
+  }catch(_){ show('screen-ol-setup'); }
 }
 
 function olSetupSave(){
@@ -2138,7 +2143,7 @@ function olSetupSave(){
     return;
   }
   inp.style.borderColor='';
-  localStorage.setItem('ol-firebase-url', url);
+  olSaveDbUrl(url);
   show('screen-ol-hub');
 }
 
