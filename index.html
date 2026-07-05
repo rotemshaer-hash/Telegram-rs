@@ -1194,10 +1194,10 @@ function Safety(){
   return `<div class="screen" style="background:linear-gradient(165deg,#CCFBF1 0%,#A5F3FC 50%,#7DD3FC 100%);min-height:100dvh;display:flex;flex-direction:column;align-items:center;padding:0 0 40px;overflow-y:auto">
 
     <!-- Header -->
-    <div style="width:100%;background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);padding:28px 20px 24px;text-align:center;position:relative">
+    <div style="width:100%;background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);padding:28px 20px 24px;text-align:center;position:relative;color:#fff">
       <div style="margin-bottom:8px"><svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
-      <h1 style="font-size:24px;font-weight:900;margin:0 0 6px;text-shadow:0 2px 8px rgba(0,0,0,.3)">בטיחות ילדים ב-Kidemy</h1>
-      <p style="font-size:13px;opacity:.9;margin:0;line-height:1.6">לפני ההרשמה – חשוב שתקרא את כל השורות הבאות</p>
+      <h1 style="font-size:24px;font-weight:900;margin:0 0 6px;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.3)">בטיחות ילדים ב-Kidemy</h1>
+      <p style="font-size:13px;color:rgba(255,255,255,.85);margin:0;line-height:1.6">לפני ההרשמה – חשוב שתקרא את כל השורות הבאות</p>
     </div>
 
     <div style="width:100%;max-width:420px;padding:20px 16px;display:flex;flex-direction:column;gap:14px">
@@ -1315,33 +1315,33 @@ function ParentReg(){
     <div style="width:100%;background:rgba(15,26,31,0.08);height:4px"><div style="width:50%;height:4px;background:linear-gradient(90deg,#14B8A6,#06B6D4);border-radius:2px"></div></div>
 
     <!-- header -->
-    <div style="width:100%;background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);padding:26px 20px 22px;text-align:center">
+    <div style="width:100%;background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);padding:26px 20px 22px;text-align:center;color:#fff">
       <div style="display:flex;justify-content:center;gap:6px;margin-bottom:14px">
-        <div style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900">1</div>
+        <div style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:#fff">1</div>
         <div style="height:2px;background:rgba(255,255,255,.15);width:40px;align-self:center;border-radius:2px"></div>
-        <div style="background:rgba(255,255,255,.15);border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:#94A3B8">2</div>
+        <div style="background:rgba(255,255,255,.15);border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:rgba(255,255,255,.5)">2</div>
       </div>
       <div style="width:60px;height:60px;margin:0 auto 10px;border-radius:50%;background:rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
       </div>
-      <h2 style="font-size:22px;font-weight:900;margin:0 0 5px">שלב 1 – רישום הורה</h2>
-      <p style="font-size:12px;color:#94A3B8;margin:0;line-height:1.6">ההורה חייב להירשם ראשון.<br>חובה להיות מעל גיל 18 ולספק תעודת זהות.</p>
+      <h2 style="font-size:22px;font-weight:900;margin:0 0 5px;color:#fff">שלב 1 – רישום הורה</h2>
+      <p style="font-size:12px;color:rgba(255,255,255,.7);margin:0;line-height:1.6">ההורה חייב להירשם ראשון.<br>חובה להיות מעל גיל 18 ולספק תעודת זהות.</p>
     </div>
 
     <div style="width:100%;max-width:400px;padding:20px 16px;display:flex;flex-direction:column;gap:14px">
 
       <!-- safety summary -->
       <div style="background:rgba(20,184,166,.08);border:1.5px solid rgba(20,184,166,.25);border-radius:16px;padding:12px 15px">
-        <div style="font-size:12px;font-weight:800;color:#5EEAD4;margin-bottom:8px">${icon("shield",14)} בטיחות Kidemy – בקצרה:</div>
+        <div style="font-size:12px;font-weight:800;color:#0F766E;margin-bottom:8px">${icon("shield",14)} בטיחות Kidemy – בקצרה:</div>
         <div style="display:flex;flex-direction:column;gap:5px">
-          ${[['👨‍👩‍👧','פיקוח הורים מלא – ההורה מאשר כל שיעור'],['🎓','כל מורה עובר בדיקה לפני שמופיע בחיפוש'],['📹','שיעורים אונליין דרך קישור Zoom / Google Meet מאובטח'],['🚨','מערכת דיווח – אפס סבלנות לתוכן פוגעני']].map(([e,t])=>`<div style="display:flex;gap:8px;align-items:center"><span style="font-size:13px">${e}</span><span style="font-size:11px;color:#475569">${t}</span></div>`).join('')}
+          ${[['👨‍👩‍👧','פיקוח הורים מלא – ההורה מאשר כל שיעור'],['🎓','כל מורה עובר בדיקה לפני שמופיע בחיפוש'],['📹','שיעורים אונליין דרך קישור Zoom / Google Meet מאובטח'],['🚨','מערכת דיווח – אפס סבלנות לתוכן פוגעני']].map(([e,t])=>`<div style="display:flex;gap:8px;align-items:center"><span style="font-size:13px">${e}</span><span style="font-size:11px;color:#1E293B">${t}</span></div>`).join('')}
         </div>
       </div>
 
       <!-- warning banner -->
       <div style="background:rgba(20,184,166,.12);border:1.5px solid rgba(20,184,166,.35);border-radius:16px;padding:13px 15px;display:flex;gap:10px;align-items:center">
         <span style="font-size:22px">${icon("lock",14)}</span>
-        <span style="font-size:12px;color:#5EEAD4;line-height:1.6">פרטי ההורה ישמרו בצורה מוצפנת ויהיו גלויים <strong style="color:#CCFBF1">למנהל האפליקציה בלבד</strong>. לא יוצגו לאף ילד או מורה.</span>
+        <span style="font-size:12px;color:#0F766E;line-height:1.6">פרטי ההורה ישמרו בצורה מוצפנת ויהיו גלויים <strong style="color:#134E4A">למנהל האפליקציה בלבד</strong>. לא יוצגו לאף ילד או מורה.</span>
       </div>
 
       <!-- form card -->
