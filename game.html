@@ -627,6 +627,7 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
   background:linear-gradient(135deg,#1A50D0,#0099EE);
   color:#fff;font-size:18px;font-weight:900;cursor:pointer;font-family:inherit;
   box-shadow:0 6px 28px rgba(0,100,220,.4);transition:transform .15s;margin-bottom:14px;
+  touch-action:manipulation;
 }
 .ol-create-btn:active{transform:scale(.95)}
 .ol-join-card{
@@ -2154,6 +2155,7 @@ function olGetMyName(){
 
 // ── Create room (host) ────────────────────────────
 async function olCreateRoom(){
+  if(document.activeElement) document.activeElement.blur();
   const name = olGetMyName();
   olPlayerId  = Math.random().toString(36).slice(2,10);
   olCode      = String(Math.floor(1000 + Math.random()*9000));
