@@ -2120,8 +2120,8 @@ async function processPayment(payMethod,totalAmount){
       price:totalAmount,
       payRef:genPayRef(bookingId),
       grossAmount:totalAmount,
-      commission:Math.round(totalAmount*COMMISSION_RATE),
-      netToTeacher:totalAmount-Math.round(totalAmount*COMMISSION_RATE),
+      commission:0,
+      netToTeacher:totalAmount,
       status:'awaitingPayment',
       jitsiRoom:jitsiRoom,
       jitsiUrl:t.meetingLink||'',
@@ -4070,10 +4070,9 @@ const ADMIN_PAYMENT={
   name:'Kidemy',          // שם לתשלום
   note:'Kidemy – תשלום שיעור' // הערה לתשלום
 };
-const COMMISSION_RATE=0.15; // 15% עמלת פלטפורמה
+const COMMISSION_RATE=0; // ללא עמלה — הכנסה ממנויים
 function calcCommission(gross){
-  const commission=Math.round(gross*COMMISSION_RATE);
-  return{gross,commission,net:gross-commission};
+  return{gross,commission:0,net:gross};
 }
 function genPayRef(bookingId){
   // קוד הפניה קצר ייחודי לכל הזמנה: KID-XXXXX
@@ -6526,8 +6525,7 @@ function renderAdminTab(){
     // חישוב סיכום פיננסי מהזמנות מאושרות ומושלמות
     const confirmedBookings=adminAllBookings.filter(b=>b.status==='pending'||b.status==='approved'||b.status==='completed');
     const totalGross=confirmedBookings.reduce((s,b)=>s+(b.grossAmount||b.price||0),0);
-    const totalCommission=confirmedBookings.reduce((s,b)=>s+(b.commission||Math.round((b.grossAmount||b.price||0)*COMMISSION_RATE)),0);
-    const totalNet=confirmedBookings.reduce((s,b)=>s+(b.netToTeacher||((b.grossAmount||b.price||0)-Math.round((b.grossAmount||b.price||0)*COMMISSION_RATE))),0);
+    const totalSubRevenue=(adminAlertSubscriptions||[]).filter(s=>s.status==='approved').reduce((s,b)=>s+(b.amount||79),0);
     const pendingPay=adminAlertPayments; // awaitingPayment
     return `
       <!-- כפתור רענון -->
@@ -6537,18 +6535,14 @@ function renderAdminTab(){
       </div>
 
       <!-- סיכום פיננסי -->
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px">
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:18px">
         <div style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border-radius:16px;padding:14px;color:#fff;text-align:center">
           <div style="font-size:20px;font-weight:900">₪${totalGross.toLocaleString()}</div>
-          <div style="font-size:10px;opacity:0.9;margin-top:3px">סה"כ הכנסות</div>
+          <div style="font-size:10px;opacity:0.9;margin-top:3px">סה"כ שווי הזמנות</div>
         </div>
-        <div style="background:linear-gradient(135deg,#06B6D4,#8b2fc9);border-radius:16px;padding:14px;color:#fff;text-align:center">
-          <div style="font-size:20px;font-weight:900">₪${totalCommission.toLocaleString()}</div>
-          <div style="font-size:10px;opacity:0.8;margin-top:3px">עמלות Kidemy</div>
-        </div>
-        <div style="background:linear-gradient(135deg,#065F46,#10B981);border-radius:16px;padding:14px;color:#fff;text-align:center">
-          <div style="font-size:20px;font-weight:900">₪${totalNet.toLocaleString()}</div>
-          <div style="font-size:10px;opacity:0.8;margin-top:3px">לתשלום למורים</div>
+        <div style="background:linear-gradient(135deg,#8b2fc9,#06B6D4);border-radius:16px;padding:14px;color:#fff;text-align:center">
+          <div style="font-size:20px;font-weight:900">₪${totalSubRevenue.toLocaleString()}</div>
+          <div style="font-size:10px;opacity:0.9;margin-top:3px">הכנסות ממנויים</div>
         </div>
       </div>
 
@@ -7102,7 +7096,7 @@ function renderAdminTab(){
     const _confirmedBks=adminAllBookings.filter(b=>b.status==='approved'||b.status==='completed');
     // Financial
     const _gmvTotal=_confirmedBks.reduce((s,b)=>s+(b.grossAmount||b.price||0),0);
-    const _revTotal=_confirmedBks.reduce((s,b)=>s+(b.commission||0),0);
+    const _revTotal=(adminAlertSubscriptions||[]).filter(s=>s.status==='approved').reduce((s,b)=>s+(b.amount||79),0);
     const _gmvThisMon=_confirmedBks.filter(b=>b.createdAt>=_thisMonStart.getTime()).reduce((s,b)=>s+(b.grossAmount||b.price||0),0);
     const _gmvLastMon=_confirmedBks.filter(b=>b.createdAt>=_lastMonStart.getTime()&&b.createdAt<_thisMonStart.getTime()).reduce((s,b)=>s+(b.grossAmount||b.price||0),0);
     const _avgPrice=_confirmedBks.length>0?Math.round(_gmvTotal/_confirmedBks.length):0;
@@ -7142,7 +7136,7 @@ function renderAdminTab(){
       <!-- Revenue + Pending row -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
         <div style="background:#fff;border:1.5px solid rgba(139,47,201,.2);border-radius:16px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,.04)">
-          <div style="font-size:10px;color:#64748B;font-weight:700;margin-bottom:4px">הכנסות Kidemy (15%)</div>
+          <div style="font-size:10px;color:#64748B;font-weight:700;margin-bottom:4px">הכנסות ממנויים</div>
           <div style="font-size:24px;font-weight:900;color:#8b2fc9">₪${_revTotal.toLocaleString()}</div>
         </div>
         <div style="background:#fff;border:1.5px solid rgba(217,119,6,.2);border-radius:16px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,.04)">
@@ -7337,9 +7331,9 @@ function _teacherStreak(){
 
 function _teacherEarnings(){
   const done=teacherAllBookings.filter(b=>b.status==='completed');
-  const total=done.reduce((s,b)=>s+(b.netToTeacher||Math.round((b.grossAmount||b.price||0)*0.85)),0);
+  const total=done.reduce((s,b)=>s+(b.grossAmount||b.price||0),0);
   const startOfMonth=new Date(new Date().getFullYear(),new Date().getMonth(),1).getTime();
-  const monthly=done.filter(b=>(b.createdAt||0)>=startOfMonth).reduce((s,b)=>s+(b.netToTeacher||Math.round((b.grossAmount||b.price||0)*0.85)),0);
+  const monthly=done.filter(b=>(b.createdAt||0)>=startOfMonth).reduce((s,b)=>s+(b.grossAmount||b.price||0),0);
   return{total,monthly,count:done.length};
 }
 
@@ -8924,7 +8918,7 @@ function Profile(){
     <h4 style="font-size:14px;font-weight:800;margin:0 0 10px;color:#0F1A1F">תשלומים אחרונים</h4>
     ${done.slice(0,15).map(b=>`
       <div style="background:#fff;border-radius:16px;padding:13px 15px;margin-bottom:8px;box-shadow:0 2px 10px rgba(0,0,0,0.06);display:flex;align-items:center;justify-content:space-between">
-        <div style="text-align:left"><div style="font-weight:900;font-size:15px;color:#10B981">+₪${b.netToTeacher||Math.round((b.grossAmount||b.price||0)*0.85)}</div><div style="font-size:10px;color:#94A3B8;margin-top:2px">ממחיר ₪${b.grossAmount||b.price||0}</div></div>
+        <div style="text-align:left"><div style="font-weight:900;font-size:15px;color:#10B981">+₪${b.grossAmount||b.price||0}</div></div>
         <div style="text-align:right"><div style="font-weight:700;font-size:13px;color:#0F1A1F">${escapeHtml(b.studentName||'תלמיד')}</div><div style="font-size:11px;color:#64748B">${b.day||''} ${b.time||''}</div></div>
       </div>`).join('')}
     `}`;
@@ -9736,7 +9730,6 @@ async function _acceptBriefProposal(briefId,teacherUid){
     if(!snap.exists()){showFireToast('❌ ההצעה לא נמצאה');return;}
     const proposal=snap.val();
     const price=proposal.price||brief.budget;
-    const commission=Math.round(price*COMMISSION_RATE);
     const bookingRef=db.ref('bookings').push();
     const bookingId=bookingRef.key;
     const bookingData={
@@ -9751,7 +9744,7 @@ async function _acceptBriefProposal(briefId,teacherUid){
       time:'לתיאום',
       type:'brief',
       price,grossAmount:price,
-      commission,netToTeacher:price-commission,
+      commission:0,netToTeacher:price,
       payMethod:'briefAccepted',
       payRef:'BRIEF-'+briefId.substring(0,6).toUpperCase(),
       status:'awaitingPayment',
