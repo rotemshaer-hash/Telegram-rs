@@ -2139,10 +2139,6 @@ async function olFetch(path, method, body){
 
 // ── Entry points ──────────────────────────────────
 function goOnline(){
-  if(!location.href.startsWith('https://')){
-    show('screen-ol-no-https');
-    return;
-  }
   show('screen-ol-hub');
 }
 
@@ -2199,7 +2195,10 @@ async function olCreateRoom(){
     await olFetch('/rooms/'+olCode+'.json','PUT',room);
   } catch(e) {
     if(btn){btn.disabled=false;btn.textContent='🎯 צור משחק חדש';}
-    if(errEl) errEl.innerHTML='⚠️ '+e.message+'<br><span style="color:rgba(255,255,255,.4);font-size:11px">לחץ "שנה כתובת Firebase" ותדביק את ה-URL הנכון</span>';
+    const isLocal = !location.href.startsWith('https://');
+    if(errEl) errEl.innerHTML= isLocal
+      ? '⚠️ פתח דרך הקישור:<br><span style="color:#00E5FF;font-size:11px;word-break:break-all">rotemshaer-hash.github.io/Telegram-rs/game.html</span>'
+      : '⚠️ '+e.message+'<br><span style="color:rgba(255,255,255,.4);font-size:11px">לחץ "שנה כתובת Firebase" ותדביק URL נכון</span>';
     return;
   }
   olRoom = room;
