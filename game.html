@@ -2158,6 +2158,8 @@ function olGetMyName(){
 // ── Create room (host) ────────────────────────────
 async function olCreateRoom(){
   if(document.activeElement) document.activeElement.blur();
+  const btn=document.querySelector('.ol-create-btn');
+  if(btn){btn.disabled=true;btn.textContent='⏳ יוצר חדר...';}
   const name = olGetMyName();
   olPlayerId  = Math.random().toString(36).slice(2,10);
   olCode      = String(Math.floor(1000 + Math.random()*9000));
@@ -2173,7 +2175,8 @@ async function olCreateRoom(){
   try {
     await olFetch('/rooms/'+olCode+'.json','PUT',room);
   } catch(e) {
-    alert('שגיאת חיבור. בדוק כתובת Firebase.');
+    if(btn){btn.disabled=false;btn.textContent='🎯 צור משחק חדש';}
+    alert('שגיאת חיבור: '+e.message);
     return;
   }
   olRoom = room;
