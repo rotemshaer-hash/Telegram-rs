@@ -2158,8 +2158,10 @@ function olGetMyName(){
 // ── Create room (host) ────────────────────────────
 async function olCreateRoom(){
   if(document.activeElement) document.activeElement.blur();
-  const btn=document.querySelector('.ol-create-btn');
-  if(btn){btn.disabled=true;btn.textContent='⏳ יוצר חדר...';}
+  const btn=document.getElementById('ol-hub-create');
+  const errEl=document.getElementById('ol-hub-err');
+  if(errEl) errEl.textContent='';
+  if(btn){btn.disabled=true;btn.textContent='⏳ מתחבר לשרת...';}
   const name = olGetMyName();
   olPlayerId  = Math.random().toString(36).slice(2,10);
   olCode      = String(Math.floor(1000 + Math.random()*9000));
@@ -2176,7 +2178,7 @@ async function olCreateRoom(){
     await olFetch('/rooms/'+olCode+'.json','PUT',room);
   } catch(e) {
     if(btn){btn.disabled=false;btn.textContent='🎯 צור משחק חדש';}
-    alert('שגיאת חיבור: '+e.message);
+    if(errEl) errEl.textContent='⚠️ '+e.message+'\nURL: '+olGetDbUrl();
     return;
   }
   olRoom = room;
@@ -3200,6 +3202,7 @@ function _seaShimmer(ctx,cx,cy,r,t,colorBase,maxAl){
   </div>
   <div style="width:100%;padding:10px 20px max(14px,env(safe-area-inset-bottom));flex-shrink:0">
     <button class="ol-create-btn" id="ol-hub-create" onclick="olCreateRoom()">🎯 צור משחק חדש</button>
+    <div id="ol-hub-err" style="color:#ff6b6b;font-size:12px;text-align:center;margin-top:8px;word-break:break-all;line-height:1.5"></div>
   </div>
 </div>
 
