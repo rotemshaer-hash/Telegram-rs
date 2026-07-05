@@ -2129,11 +2129,28 @@ async function olFetch(path, method, body){
 }
 
 // ── Entry points ──────────────────────────────────
+function _bindOlHub(){
+  const hub=document.getElementById('screen-ol-hub');
+  if(!hub||hub._bound) return;
+  hub._bound=true;
+  const on=(id,fn)=>{
+    const el=document.getElementById(id);
+    if(!el) return;
+    el.addEventListener('touchend',e=>{e.preventDefault();fn();},{passive:false});
+    el.addEventListener('click',fn);
+  };
+  on('ol-hub-back', goHome);
+  on('ol-hub-create', olCreateRoom);
+  on('ol-hub-join', olJoinRoom);
+  on('ol-hub-reset', ()=>{olSaveDbUrl('');show('screen-ol-setup');});
+}
+
 function goOnline(){
   if(location.protocol==='file:'){
     alert('משחק אונליין עובד רק מהקישור:\nhttps://rotemshaer-hash.github.io/Telegram-rs/game.html');
     return;
   }
+  _bindOlHub();
   show('screen-ol-hub');
 }
 
@@ -3173,23 +3190,23 @@ function _seaShimmer(ctx,cx,cy,r,t,colorBase,maxAl){
 </div>
 
 <!-- ══ OL HUB ══════════════════════════════ -->
-<div id="screen-ol-hub" class="screen">
-  <div class="ol-back" onclick="goHome()">← חזרה</div>
+<div id="screen-ol-hub" class="screen" ontouchstart="">
+  <div class="ol-back" id="ol-hub-back">← חזרה</div>
   <div style="font-size:48px;text-align:center;line-height:1;margin-bottom:8px">🌐</div>
   <div class="ol-hub-title">משחק אונליין</div>
   <div class="ol-hub-sub">כל שחקן ממכשיר שלו — בזמן אמת</div>
   <div class="ol-sec-label">השם שלך במשחק</div>
   <input class="ol-name-input" id="ol-hub-name" placeholder="הכנס שם..." maxlength="14" autocomplete="off">
-  <button class="ol-create-btn" onclick="olCreateRoom()">🎯 צור משחק חדש</button>
+  <button class="ol-create-btn" id="ol-hub-create">🎯 צור משחק חדש</button>
   <div class="ol-join-card">
     <div class="ol-join-card-title">הצטרף למשחק קיים</div>
     <input class="ol-code-input" id="ol-join-code" type="tel" inputmode="numeric"
       maxlength="4" placeholder="קוד" autocomplete="off">
-    <button class="ol-join-btn" onclick="olJoinRoom()">הצטרף</button>
+    <button class="ol-join-btn" id="ol-hub-join">הצטרף</button>
     <div class="ol-err" id="ol-join-err"></div>
   </div>
-  <button onclick="localStorage.removeItem('ol-firebase-url');show('screen-ol-setup')"
-    style="background:none;border:none;color:rgba(255,255,255,.3);font-size:11px;margin-top:18px;cursor:pointer;text-decoration:underline">
+  <button id="ol-hub-reset"
+    style="background:none;border:none;color:rgba(255,255,255,.3);font-size:11px;margin-top:18px;cursor:pointer;text-decoration:underline;touch-action:manipulation">
     שנה כתובת Firebase
   </button>
 </div>
