@@ -2130,8 +2130,8 @@ async function olFetch(path, method, body){
 
 // ── Entry points ──────────────────────────────────
 function goOnline(){
-  if(location.protocol==='file:'){
-    alert('משחק אונליין עובד רק מהקישור:\nhttps://rotemshaer-hash.github.io/Telegram-rs/game.html');
+  if(!location.href.startsWith('https://')){
+    show('screen-ol-no-https');
     return;
   }
   show('screen-ol-hub');
@@ -3152,6 +3152,19 @@ function _seaShimmer(ctx,cx,cy,r,t,colorBase,maxAl){
 }
 
 </script>
+
+<!-- ══ OL NO-HTTPS ════════════════════════ -->
+<div id="screen-ol-no-https" class="screen" style="justify-content:center;padding:32px 24px;background:linear-gradient(160deg,#1C0060 0%,#0E1F7A 55%,#083560 100%)">
+  <div style="font-size:52px;text-align:center;margin-bottom:16px">🔗</div>
+  <div style="font-size:20px;font-weight:900;color:#fff;text-align:center;margin-bottom:12px">פתח דרך הקישור</div>
+  <div style="font-size:14px;color:rgba(255,255,255,.6);text-align:center;margin-bottom:28px;line-height:1.6">
+    לא ניתן לשחק אונליין<br>מקובץ מורד.<br>יש לפתוח דרך הדפדפן:
+  </div>
+  <div style="background:rgba(255,255,255,.08);border-radius:14px;padding:14px 16px;width:100%;text-align:center;margin-bottom:24px;word-break:break-all;font-size:13px;color:#00E5FF;font-weight:700">
+    rotemshaer-hash.github.io/<br>Telegram-rs/game.html
+  </div>
+  <button onclick="goHome()" style="background:rgba(255,255,255,.12);border:none;border-radius:18px;color:#fff;font-size:16px;font-weight:700;padding:14px 32px;cursor:pointer;font-family:inherit;touch-action:none">← חזרה</button>
+</div>
 
 <!-- ══ OL SETUP ════════════════════════════ -->
 <div id="screen-ol-setup" class="screen">
