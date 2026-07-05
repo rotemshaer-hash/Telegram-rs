@@ -1000,23 +1000,27 @@ function buildMap() {
 
     // _applyPixels: pixel-level processing + alpha transparency
     function _applyPixels(texD) {
-      const FADE_R=55, FADE_L=140, FADE_TB=55; // left side wider fade to hide sea artifacts
+      const FADE_R=55, FADE_L=140, FADE_TB=55;
       for (let k = 0; k < d.length; k += 4) {
         const r=d[k], g=d[k+1], b=d[k+2];
         const px=(k/4)|0;
         const col=px%790, row=(px/790)|0;
 
-        // Edge feather alpha — stronger on left (Mediterranean) to blend non-white sea pixels
         const axL=Math.min(col/FADE_L, 1);
         const axR=Math.min((789-col)/FADE_R, 1);
         const ay=Math.min(row, 1844-row, FADE_TB)/FADE_TB;
         const edgeA=Math.round(255*axL*axR*Math.min(1,ay));
 
-        if (r>200 && g>200 && b>200 && Math.max(r,g,b)-Math.min(r,g,b)<40) {
-          // Sea pixel → transparent, CSS background shows through
+        // Standard sea detection (pure white/light satellite sea pixels)
+        const isStdSea = r>200 && g>200 && b>200 && Math.max(r,g,b)-Math.min(r,g,b)<40;
+        // Left-zone Mediterranean: satellite grey-blue sea where b is dominant channel.
+        // Land in this zone (Gaza/coastal plain) is brownish — b is lowest, so b>=r&&b>=g
+        // safely excludes land while catching the grey-blue Mediterranean.
+        const isMedSea = col<300 && r>135 && g>145 && b>150 && b>=r && b>=g;
+
+        if (isStdSea || isMedSea) {
           d[k+3]=0;
         } else {
-          // Land pixel → latitude toning + edge feather
           const northness=1-row/1845;
           const avg=(r+g+b)/3;
           let nr=Math.min(255,Math.max(0,Math.round(avg+(r-avg)*1.16)));
