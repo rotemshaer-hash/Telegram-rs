@@ -11754,6 +11754,12 @@ auth&&auth.onAuthStateChanged(async user=>{
         }
       }
 
+      // בזמן הרשמה — DB עדיין לא נכתב, firebaseRegister מנהל את הניווט
+      if(S._registering && !snap.exists() && !isAdmin()){
+        currentUser=user;
+        return;
+      }
+
       // ── בדיקת מורה שלא אושר עדיין ──────────────────────────────
       if(currentUserData?.role==='teacher'){
         try{
@@ -11854,15 +11860,15 @@ auth&&auth.onAuthStateChanged(async user=>{
           userChats.sort((a,b)=>(b.lastTime||0)-(a.lastTime||0));
         }
         // טען מחדש רק להתראות חדשות אמיתיות
-        loadNotifications().then(()=>{if(S.screen)render();});
+        loadNotifications().then(()=>{if(S.screen&&!['register','parentReg','safety','teacherSetup'].includes(S.screen))render();});
       });
       // האזנה בזמן אמת לשיחות (לעדכון תג הודעות שלא נקראו)
       db.ref('userChats/'+user.uid).on('value',snap=>{
         userChats=[];
         if(snap.exists())snap.forEach(c=>userChats.push(c.val()));
         userChats.sort((a,b)=>(b.lastTime||0)-(a.lastTime||0));
-        setupConvListeners(); // spin up background listeners for any new conversations
-        render();
+        setupConvListeners();
+        if(!['register','parentReg','safety','teacherSetup'].includes(S.screen))render();
       });
       // האזנה ל-adminNotifs (מורים חדשים, סרטונים, משתמשים) – ללא חיפוש UID
       if(isAdmin()){
@@ -11877,7 +11883,7 @@ auth&&auth.onAuthStateChanged(async user=>{
             else if(n.type==='newStory')_sendBrowserNotif('📸 סטורי חדש ממתין לאישור',n.teacherName||'');
             else if(n.type==='newUser')_sendBrowserNotif('👋 משתמש חדש',`${n.from||''} · ${n.userEmail||''}`);
           }
-          loadNotifications().then(()=>{if(S.screen)render();});
+          loadNotifications().then(()=>{if(S.screen&&!['register','parentReg','safety','teacherSetup'].includes(S.screen))render();});
         });
       }
 
