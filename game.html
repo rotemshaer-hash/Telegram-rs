@@ -1712,6 +1712,7 @@ function startGame(lvl){
 }
 
 function nextQ(){
+  resetMapZoom();
   if(qNum>=TOTAL){ if(mpMode) endMultiplayer(); else endGame(); return; }
   if(used.length>=pool.length) used=[];
 
