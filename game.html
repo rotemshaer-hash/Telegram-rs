@@ -2112,7 +2112,14 @@ let olUsed            = [];
 // ── Firebase helpers ──────────────────────────────
 const _OL_DEFAULT_URL='https://israel-know-default-rtdb.firebaseio.com';
 function olGetDbUrl(){
-  try{ return (localStorage.getItem('ol-firebase-url')||_OL_DEFAULT_URL).replace(/\/+$/,''); }
+  try{
+    const saved = localStorage.getItem('ol-firebase-url')||'';
+    if(!saved || !saved.startsWith('https://') || saved.includes('your-project') || saved.includes('my-project')){
+      localStorage.removeItem('ol-firebase-url');
+      return _OL_DEFAULT_URL;
+    }
+    return saved.replace(/\/+$/,'');
+  }
   catch(_){ return _OL_DEFAULT_URL; }
 }
 function olSaveDbUrl(url){
