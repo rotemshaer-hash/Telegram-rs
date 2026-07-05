@@ -509,6 +509,46 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
   font-size:15px;font-weight:800;z-index:9999;pointer-events:none;
   animation:pop-in .22s ease-out;
 }
+#share-modal{
+  position:fixed;inset:0;z-index:300;
+  background:rgba(10,0,40,.88);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  display:none;align-items:center;justify-content:center;padding:20px;
+}
+.share-card{
+  background:linear-gradient(145deg,rgba(70,15,150,.97),rgba(30,5,100,.98));
+  border:1.5px solid rgba(160,80,255,.35);border-radius:28px;
+  padding:28px 22px 22px;width:100%;max-width:360px;
+  display:flex;flex-direction:column;align-items:center;gap:14px;
+}
+.share-card-title{font-size:19px;font-weight:900;color:#fff;text-align:center;}
+.share-card-sub{font-size:12px;color:rgba(255,255,255,.45);text-align:center;line-height:1.5;}
+.share-url-box{
+  width:100%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);
+  border-radius:14px;padding:10px 14px;
+  font-size:12px;color:#aad4ff;direction:ltr;text-align:left;
+  word-break:break-all;cursor:text;user-select:all;
+}
+.share-url-inp{
+  width:100%;background:transparent;border:none;outline:none;
+  font-size:12px;color:#aad4ff;direction:ltr;text-align:left;
+  font-family:inherit;cursor:text;
+}
+.share-btns{display:flex;gap:10px;width:100%;}
+.share-btn-copy{
+  flex:1;padding:13px;border:none;border-radius:16px;
+  background:linear-gradient(135deg,#00C853,#00E676);
+  color:#003a10;font-size:15px;font-weight:900;cursor:pointer;font-family:inherit;
+}
+.share-btn-native{
+  flex:1;padding:13px;border:none;border-radius:16px;
+  background:linear-gradient(135deg,#7C4DFF,#E040FB);
+  color:#fff;font-size:15px;font-weight:900;cursor:pointer;font-family:inherit;
+}
+.share-btn-close{
+  width:100%;padding:11px;border:1.5px solid rgba(255,255,255,.18);border-radius:16px;
+  background:transparent;color:rgba(255,255,255,.5);
+  font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;
+}
 .ol-back{
   align-self:flex-start;padding:8px 14px;border-radius:14px;
   background:rgba(255,255,255,.08);color:rgba(255,255,255,.7);
@@ -1486,33 +1526,43 @@ function show(id){
   document.getElementById(id).classList.add('active');
 }
 
-async function shareGame(){
+function shareGame(){
+  document.getElementById('share-modal').style.display='flex';
+}
+function closeShareModal(){
+  document.getElementById('share-modal').style.display='none';
+}
+async function copyShareUrl(e){
+  e&&e.stopPropagation();
   const url='https://rotemshaer-hash.github.io/Telegram-rs/game.html';
-  const title='ידיעת הארץ 🗺️';
-  const text='משחק גאוגרפיה ישראל — נסה לזהות ערים, קיבוצים, נחלים והרים על המפה!';
+  let ok=false;
+  try{ await navigator.clipboard.writeText(url); ok=true; }catch(_){}
+  if(!ok){
+    try{
+      const inp=document.getElementById('share-url-inp');
+      inp.select(); inp.setSelectionRange(0,9999);
+      ok=document.execCommand('copy');
+    }catch(_){}
+  }
+  closeShareModal();
+  _shareToast(ok?'הקישור הועתק! 📋':'העתק ידנית את הקישור');
+}
+async function nativeShare(e){
+  e&&e.stopPropagation();
+  const url='https://rotemshaer-hash.github.io/Telegram-rs/game.html';
+  closeShareModal();
   if(navigator.share){
     try{
-      await navigator.share({title,text,url});
+      await navigator.share({
+        title:'ידיעת הארץ 🗺️',
+        text:'משחק גאוגרפיה ישראל — נסה לזהות ערים, קיבוצים, נחלים והרים על המפה!',
+        url
+      });
       return;
-    }catch(e){
-      if(e.name==='AbortError') return;
-    }
+    }catch(e){ if(e.name==='AbortError') return; }
   }
-  try{
-    const html='<!DOCTYPE html>\n'+document.documentElement.outerHTML;
-    const blob=new Blob([html],{type:'text/html'});
-    const file=new File([blob],'ידיעת_הארץ.html',{type:'text/html'});
-    if(navigator.canShare&&navigator.canShare({files:[file]})){
-      await navigator.share({files:[file],title});
-      return;
-    }
-  }catch(e){}
-  try{
-    await navigator.clipboard.writeText(url);
-    _shareToast('הקישור הועתק! 📋');
-  }catch(e){
-    prompt('העתק את הקישור:',url);
-  }
+  _shareToast('שיתוף לא נתמך — הקישור הועתק');
+  try{ await navigator.clipboard.writeText(url); }catch(_){}
 }
 function _shareToast(msg){
   const t=document.createElement('div');
@@ -3059,6 +3109,23 @@ function _seaShimmer(ctx,cx,cy,r,t,colorBase,maxAl){
     <div class="ol-guest-msg" id="ol-guest-msg">ממתין לתחילת המשחק...</div>
     <div class="ol-guest-sub" id="ol-guest-sub">המארח יתחיל בקרוב</div>
     <div class="ol-guest-players" id="ol-guest-player-list"></div>
+  </div>
+</div>
+
+<!-- ══ SHARE MODAL ══════════════════════ -->
+<div id="share-modal" onclick="closeShareModal()">
+  <div class="share-card" onclick="event.stopPropagation()">
+    <div class="share-card-title">📤 שתף את המשחק</div>
+    <div class="share-card-sub">שלח לחברים ושחקו יחד במשחק גאוגרפיה ישראל!</div>
+    <div class="share-url-box">
+      <input class="share-url-inp" id="share-url-inp" readonly
+        value="https://rotemshaer-hash.github.io/Telegram-rs/game.html">
+    </div>
+    <div class="share-btns">
+      <button class="share-btn-copy" onclick="copyShareUrl(event)">📋 העתק</button>
+      <button class="share-btn-native" onclick="nativeShare(event)">📤 שתף</button>
+    </div>
+    <button class="share-btn-close" onclick="closeShareModal()">סגור</button>
   </div>
 </div>
 
