@@ -2137,15 +2137,27 @@ function goOnline(){
   show('screen-ol-hub');
 }
 
+function olShowSetup(){
+  const cur = document.getElementById('ol-setup-current-url');
+  if(cur) cur.textContent = olGetDbUrl();
+  const inp = document.getElementById('ol-setup-url');
+  if(inp) inp.value = '';
+  const err = document.getElementById('ol-setup-err');
+  if(err) err.textContent = '';
+  show('screen-ol-setup');
+}
+
 function olSetupSave(){
   const inp = document.getElementById('ol-setup-url');
+  const err = document.getElementById('ol-setup-err');
   const url = (inp.value||'').trim().replace(/\/+$/,'');
-  if(!url.startsWith('https://')){
+  if(!url.startsWith('https://') || !url.includes('firebaseio.com')){
     inp.style.borderColor='#FF5555';
-    inp.focus();
+    if(err) err.textContent='URL חייב להיות מסוג https://...firebaseio.com';
     return;
   }
   inp.style.borderColor='';
+  if(err) err.textContent='';
   olSaveDbUrl(url);
   show('screen-ol-hub');
 }
@@ -2178,7 +2190,7 @@ async function olCreateRoom(){
     await olFetch('/rooms/'+olCode+'.json','PUT',room);
   } catch(e) {
     if(btn){btn.disabled=false;btn.textContent='🎯 צור משחק חדש';}
-    if(errEl) errEl.textContent='⚠️ '+e.message+'\nURL: '+olGetDbUrl();
+    if(errEl) errEl.innerHTML='⚠️ '+e.message+'<br><span style="color:rgba(255,255,255,.4);font-size:11px">לחץ "שנה כתובת Firebase" ותדביק את ה-URL הנכון</span>';
     return;
   }
   olRoom = room;
@@ -3170,21 +3182,30 @@ function _seaShimmer(ctx,cx,cy,r,t,colorBase,maxAl){
 <div id="screen-ol-setup" class="screen">
   <div class="ol-back" onclick="goHome()">← חזרה</div>
   <div class="ol-setup-icon">🔥</div>
-  <div class="ol-setup-title">הגדרת שרת אונליין</div>
-  <div class="ol-setup-desc">
-    כדי לשחק אונליין נדרשת מסד נתונים של Firebase.<br>
-    הגדרה פעם אחת — ואז המשחק עובד על כל המכשירים.
+  <div class="ol-setup-title">כתובת Firebase</div>
+
+  <div style="width:100%;background:rgba(255,200,0,.1);border:1px solid rgba(255,200,0,.3);border-radius:14px;padding:14px 16px;margin-bottom:18px;box-sizing:border-box">
+    <div style="font-size:13px;font-weight:800;color:#FFD600;margin-bottom:6px">⚠️ ה-URL הנוכחי שגוי</div>
+    <div id="ol-setup-current-url" style="font-size:11px;color:rgba(255,255,255,.5);word-break:break-all;font-family:monospace"></div>
   </div>
-  <div class="ol-sec-label">כתובת Firebase Realtime Database</div>
+
+  <div style="width:100%;margin-bottom:16px;box-sizing:border-box">
+    <div style="font-size:12px;font-weight:800;color:rgba(255,255,255,.5);letter-spacing:2px;margin-bottom:10px">איך מוצאים את הURL הנכון:</div>
+    <div style="font-size:13px;color:rgba(255,255,255,.7);line-height:1.8">
+      1️⃣ פתח: <span style="color:#00E5FF;font-weight:700">console.firebase.google.com</span><br>
+      2️⃣ בחר את הפרויקט שלך<br>
+      3️⃣ Realtime Database ← Build<br>
+      4️⃣ העתק את ה-URL מהחלק העליון<br>
+      <span style="font-size:11px;color:rgba(255,255,255,.35)">(נראה כך: https://שם-הפרויקט-default-rtdb.firebaseio.com)</span>
+    </div>
+  </div>
+
+  <div class="ol-sec-label">הדבק את ה-URL כאן:</div>
   <input class="ol-url-input" id="ol-setup-url" type="url"
-    placeholder="https://my-project-default-rtdb.firebaseio.com"
-    autocomplete="off" autocorrect="off" spellcheck="false">
-  <button class="ol-save-btn" onclick="olSetupSave()">שמור והמשך</button>
-  <div class="ol-setup-hint">
-    📋 יצור פרויקט ב־console.firebase.google.com<br>
-    הוסף Realtime Database → בחר "Start in test mode"<br>
-    העתק את ה-URL שמופיע בחלק העליון של הדף
-  </div>
+    placeholder="https://שם-הפרויקט-default-rtdb.firebaseio.com"
+    autocomplete="off" autocorrect="off" spellcheck="false" dir="ltr">
+  <div id="ol-setup-err" style="color:#ff6b6b;font-size:12px;text-align:center;margin-bottom:8px;min-height:16px"></div>
+  <button class="ol-save-btn" onclick="olSetupSave()">✅ שמור והמשך</button>
 </div>
 
 <!-- ══ OL HUB ══════════════════════════════ -->
@@ -3205,7 +3226,7 @@ function _seaShimmer(ctx,cx,cy,r,t,colorBase,maxAl){
       <button class="ol-join-btn" id="ol-hub-join" onclick="olJoinRoom()">הצטרף</button>
       <div class="ol-err" id="ol-join-err"></div>
     </div>
-    <button id="ol-hub-reset" onclick="olSaveDbUrl('');show('screen-ol-setup')"
+    <button id="ol-hub-reset" onclick="olShowSetup()"
       style="background:none;border:none;color:rgba(255,255,255,.3);font-size:11px;
              margin-top:16px;cursor:pointer;text-decoration:underline;
              touch-action:none;display:block;width:100%;text-align:center">
