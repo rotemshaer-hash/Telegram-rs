@@ -197,6 +197,24 @@
       "$month": {
         ".write": "auth != null"
       }
+    },
+    "refCodes": {
+      "$code": {
+        ".read": "auth != null",
+        ".write": "auth != null && (!data.exists() || data.val() == auth.uid)"
+      }
+    },
+    "userCredits": {
+      "$uid": {
+        ".read": "auth != null && auth.uid == $uid",
+        ".write": "auth.uid == $uid || auth.token.email == 'rotemshaer@gmail.com'"
+      }
+    },
+    "referrals": {
+      "$referrerUid": {
+        ".read": "auth != null && auth.uid == $referrerUid",
+        ".write": "auth != null"
+      }
     }
   }
 }
