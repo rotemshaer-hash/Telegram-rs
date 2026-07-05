@@ -2111,6 +2111,8 @@ let olUsed            = [];
 
 // ── Firebase helpers ──────────────────────────────
 const _OL_DEFAULT_URL='https://israel-know-default-rtdb.firebaseio.com';
+// Clean up any placeholder URLs saved from setup screen
+(function(){try{const u=localStorage.getItem('ol-firebase-url')||'';if(u&&(!u.startsWith('https://')||u.includes('your-project')||u.includes('my-project')))localStorage.removeItem('ol-firebase-url');}catch(_){}})();
 function olGetDbUrl(){
   try{
     const saved = localStorage.getItem('ol-firebase-url')||'';
