@@ -559,7 +559,7 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
 .ol-back{
   align-self:flex-start;padding:8px 14px;border-radius:14px;
   background:rgba(255,255,255,.08);color:rgba(255,255,255,.7);
-  font-size:13px;font-weight:700;cursor:pointer;margin-bottom:16px;
+  font-size:13px;font-weight:700;cursor:pointer;margin-bottom:16px;touch-action:none;
 }
 .ol-sec-label{
   font-size:11px;font-weight:800;color:rgba(255,255,255,.4);
@@ -627,7 +627,7 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
   background:linear-gradient(135deg,#1A50D0,#0099EE);
   color:#fff;font-size:18px;font-weight:900;cursor:pointer;font-family:inherit;
   box-shadow:0 6px 28px rgba(0,100,220,.4);transition:transform .15s;margin-bottom:14px;
-  touch-action:manipulation;
+  touch-action:none;
 }
 .ol-create-btn:active{transform:scale(.95)}
 .ol-join-card{
@@ -648,7 +648,7 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
   padding:14px 32px;border:none;border-radius:18px;
   background:linear-gradient(135deg,#00BFFF,#00E5FF);
   color:#000;font-size:16px;font-weight:900;cursor:pointer;font-family:inherit;
-  transition:transform .15s;
+  transition:transform .15s;touch-action:none;
 }
 .ol-join-btn:active{transform:scale(.95)}
 .ol-err{font-size:13px;color:#FF5555;text-align:center;min-height:18px;font-weight:700;margin-top:4px}
@@ -2136,8 +2136,17 @@ function _bindOlHub(){
   const on=(id,fn)=>{
     const el=document.getElementById(id);
     if(!el) return;
-    el.addEventListener('touchend',e=>{e.preventDefault();fn();},{passive:false});
-    el.addEventListener('click',fn);
+    let fired=false;
+    el.addEventListener('touchstart',e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      fired=true;
+      fn();
+    },{passive:false});
+    el.addEventListener('click',e=>{
+      if(fired){fired=false;return;}
+      fn();
+    });
   };
   on('ol-hub-back', goHome);
   on('ol-hub-create', olCreateRoom);
