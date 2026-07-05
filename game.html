@@ -2110,8 +2110,10 @@ let olPool            = [];
 let olUsed            = [];
 
 // ── Firebase helpers ──────────────────────────────
+const _OL_DEFAULT_URL='https://israel-know-default-rtdb.firebaseio.com';
 function olGetDbUrl(){
-  try{ return (localStorage.getItem('ol-firebase-url')||'').replace(/\/+$/,''); }catch(_){ return ''; }
+  try{ return (localStorage.getItem('ol-firebase-url')||_OL_DEFAULT_URL).replace(/\/+$/,''); }
+  catch(_){ return _OL_DEFAULT_URL; }
 }
 function olSaveDbUrl(url){
   try{ localStorage.setItem('ol-firebase-url', url); }catch(_){}
@@ -2128,11 +2130,11 @@ async function olFetch(path, method, body){
 
 // ── Entry points ──────────────────────────────────
 function goOnline(){
-  try{
-    const url = olGetDbUrl();
-    if(!url){ show('screen-ol-setup'); return; }
-    show('screen-ol-hub');
-  }catch(_){ show('screen-ol-setup'); }
+  if(location.protocol==='file:'){
+    alert('משחק אונליין עובד רק מהקישור:\nhttps://rotemshaer-hash.github.io/Telegram-rs/game.html');
+    return;
+  }
+  show('screen-ol-hub');
 }
 
 function olSetupSave(){
