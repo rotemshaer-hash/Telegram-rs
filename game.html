@@ -1000,27 +1000,25 @@ function buildMap() {
 
     // _applyPixels: pixel-level processing + alpha transparency
     function _applyPixels(texD) {
-      // First 200 cols = open Mediterranean sea: force transparent regardless of JPEG color
-      // to eliminate any border/frame artifact line on the left edge.
-      // The Israeli coast (Tel Aviv) only starts at ~col 280, so no land is affected.
-      const SEA_FORCE_L=200, FADE_L=90, FADE_R=55, FADE_TB=55;
+      const FADE_R=55, FADE_L=140, FADE_TB=55;
       for (let k = 0; k < d.length; k += 4) {
         const r=d[k], g=d[k+1], b=d[k+2];
         const px=(k/4)|0;
         const col=px%790, row=(px/790)|0;
 
-        if (col < SEA_FORCE_L) {
-          // Deep sea zone — always transparent, no border lines ever visible
-          d[k+3]=0;
-          continue;
-        }
-
-        const axL=Math.min((col-SEA_FORCE_L)/FADE_L, 1);
+        const axL=Math.min(col/FADE_L, 1);
         const axR=Math.min((789-col)/FADE_R, 1);
         const ay=Math.min(row, 1844-row, FADE_TB)/FADE_TB;
         const edgeA=Math.round(255*axL*axR*Math.min(1,ay));
 
-        if (r>200 && g>200 && b>200 && Math.max(r,g,b)-Math.min(r,g,b)<40) {
+        // Standard sea detection (pure white/light satellite sea pixels)
+        const isStdSea = r>200 && g>200 && b>200 && Math.max(r,g,b)-Math.min(r,g,b)<40;
+        // Left-zone Mediterranean: satellite grey-blue sea where b is dominant channel.
+        // Land in this zone (Gaza/coastal plain) is brownish — b is lowest, so b>=r&&b>=g
+        // safely excludes land while catching the grey-blue Mediterranean.
+        const isMedSea = col<300 && r>135 && g>145 && b>150 && b>=r && b>=g;
+
+        if (isStdSea || isMedSea) {
           d[k+3]=0;
         } else {
           const northness=1-row/1845;
