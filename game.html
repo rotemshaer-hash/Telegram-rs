@@ -603,7 +603,7 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
 }
 /* hub */
 #screen-ol-hub{
-  overflow-y:auto;padding:24px 20px max(24px,env(safe-area-inset-bottom));
+  overflow:hidden;padding:0;
   background:radial-gradient(ellipse at 35% 18%,rgba(0,110,255,.48) 0%,transparent 50%),
              radial-gradient(ellipse at 72% 82%,rgba(0,200,255,.32) 0%,transparent 50%),
              linear-gradient(160deg,#0A0050 0%,#071A70 100%);
@@ -2129,37 +2129,11 @@ async function olFetch(path, method, body){
 }
 
 // ── Entry points ──────────────────────────────────
-function _bindOlHub(){
-  const hub=document.getElementById('screen-ol-hub');
-  if(!hub||hub._bound) return;
-  hub._bound=true;
-  const on=(id,fn)=>{
-    const el=document.getElementById(id);
-    if(!el) return;
-    let fired=false;
-    el.addEventListener('touchstart',e=>{
-      e.preventDefault();
-      e.stopPropagation();
-      fired=true;
-      fn();
-    },{passive:false});
-    el.addEventListener('click',e=>{
-      if(fired){fired=false;return;}
-      fn();
-    });
-  };
-  on('ol-hub-back', goHome);
-  on('ol-hub-create', olCreateRoom);
-  on('ol-hub-join', olJoinRoom);
-  on('ol-hub-reset', ()=>{olSaveDbUrl('');show('screen-ol-setup');});
-}
-
 function goOnline(){
   if(location.protocol==='file:'){
     alert('משחק אונליין עובד רק מהקישור:\nhttps://rotemshaer-hash.github.io/Telegram-rs/game.html');
     return;
   }
-  _bindOlHub();
   show('screen-ol-hub');
 }
 
@@ -3199,25 +3173,34 @@ function _seaShimmer(ctx,cx,cy,r,t,colorBase,maxAl){
 </div>
 
 <!-- ══ OL HUB ══════════════════════════════ -->
-<div id="screen-ol-hub" class="screen" ontouchstart="">
-  <div class="ol-back" id="ol-hub-back">← חזרה</div>
-  <div style="font-size:48px;text-align:center;line-height:1;margin-bottom:8px">🌐</div>
-  <div class="ol-hub-title">משחק אונליין</div>
-  <div class="ol-hub-sub">כל שחקן ממכשיר שלו — בזמן אמת</div>
-  <div class="ol-sec-label">השם שלך במשחק</div>
-  <input class="ol-name-input" id="ol-hub-name" placeholder="הכנס שם..." maxlength="14" autocomplete="off">
-  <button class="ol-create-btn" id="ol-hub-create">🎯 צור משחק חדש</button>
-  <div class="ol-join-card">
-    <div class="ol-join-card-title">הצטרף למשחק קיים</div>
-    <input class="ol-code-input" id="ol-join-code" type="tel" inputmode="numeric"
-      maxlength="4" placeholder="קוד" autocomplete="off">
-    <button class="ol-join-btn" id="ol-hub-join">הצטרף</button>
-    <div class="ol-err" id="ol-join-err"></div>
+<div id="screen-ol-hub" class="screen">
+  <div style="width:100%;padding:16px 20px 0;flex-shrink:0">
+    <div class="ol-back" onclick="goHome()">← חזרה</div>
   </div>
-  <button id="ol-hub-reset"
-    style="background:none;border:none;color:rgba(255,255,255,.3);font-size:11px;margin-top:18px;cursor:pointer;text-decoration:underline;touch-action:manipulation">
-    שנה כתובת Firebase
-  </button>
+  <div style="flex:1;overflow-y:auto;width:100%;padding:4px 20px 0">
+    <div style="font-size:44px;text-align:center;line-height:1;margin-top:8px;margin-bottom:6px">🌐</div>
+    <div class="ol-hub-title">משחק אונליין</div>
+    <div class="ol-hub-sub">כל שחקן ממכשיר שלו — בזמן אמת</div>
+    <div class="ol-sec-label">השם שלך במשחק</div>
+    <input class="ol-name-input" id="ol-hub-name" placeholder="הכנס שם..." maxlength="14" autocomplete="off">
+    <div class="ol-join-card">
+      <div class="ol-join-card-title">הצטרף למשחק קיים</div>
+      <input class="ol-code-input" id="ol-join-code" type="tel" inputmode="numeric"
+        maxlength="4" placeholder="קוד" autocomplete="off">
+      <button class="ol-join-btn" id="ol-hub-join" onclick="olJoinRoom()">הצטרף</button>
+      <div class="ol-err" id="ol-join-err"></div>
+    </div>
+    <button id="ol-hub-reset" onclick="olSaveDbUrl('');show('screen-ol-setup')"
+      style="background:none;border:none;color:rgba(255,255,255,.3);font-size:11px;
+             margin-top:16px;cursor:pointer;text-decoration:underline;
+             touch-action:none;display:block;width:100%;text-align:center">
+      שנה כתובת Firebase
+    </button>
+    <div style="height:4px"></div>
+  </div>
+  <div style="width:100%;padding:10px 20px max(14px,env(safe-area-inset-bottom));flex-shrink:0">
+    <button class="ol-create-btn" id="ol-hub-create" onclick="olCreateRoom()">🎯 צור משחק חדש</button>
+  </div>
 </div>
 
 <!-- ══ OL HOST LOBBY ════════════════════════ -->
