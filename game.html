@@ -768,6 +768,7 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
     <button class="cat-tab" data-cat="kibbutzim" onclick="showCat('kibbutzim')">קיבוצים</button>
     <button class="cat-tab" data-cat="rivers" onclick="showCat('rivers')">נחלים</button>
     <button class="cat-tab" data-cat="mountains" onclick="showCat('mountains')">הרים</button>
+    <button class="cat-tab" data-cat="mixed" onclick="showCat('mixed')">מעורבב</button>
   </div>
 
   <!-- PANELS -->
@@ -832,6 +833,17 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
         </button>
         <button class="dbtn medium" onclick="startGame('mount-hard')">
           <span class="de">🏔️</span><span class="dn">קשה</span><span class="dd">21 הרים</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="cat-panel" id="cat-mixed">
+      <div class="dgrid2">
+        <button class="dbtn easy" onclick="startGame('mixed-easy')">
+          <span class="de">🎲</span><span class="dn">קל</span><span class="dd">ערים, מושבים, קיבוצים, נחלים, הרים</span>
+        </button>
+        <button class="dbtn hard" onclick="startGame('mixed-hard')">
+          <span class="de">🎲</span><span class="dn">קשה</span><span class="dd">כל הקטגוריות — מאתגר!</span>
         </button>
       </div>
     </div>
@@ -924,6 +936,7 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
     <button class="cat-tab" data-cat="kibbutzim" onclick="showMpCat('kibbutzim')">קיבוצים</button>
     <button class="cat-tab" data-cat="rivers" onclick="showMpCat('rivers')">נחלים</button>
     <button class="cat-tab" data-cat="mountains" onclick="showMpCat('mountains')">הרים</button>
+    <button class="cat-tab" data-cat="mixed" onclick="showMpCat('mixed')">מעורבב</button>
   </div>
 
   <div class="mp-sec-label">רמת קושי</div>
@@ -1611,6 +1624,8 @@ const LVLS={
   'riv-hard':    {name:"נחלים קשה",   em:"🏔️", cities:[...RIVERS_T1,...RIVERS_T2,...RIVERS_T3],         mode:'river'},
   'mount-easy':  {name:"הרים קל",    em:"⛰️",  cities:[...MOUNTAINS_T1],                                 mode:'mountain'},
   'mount-hard':  {name:"הרים קשה",   em:"🏔️",  cities:[...MOUNTAINS_T1,...MOUNTAINS_T2],                 mode:'mountain'},
+  'mixed-easy':  {name:"מעורבב קל",  em:"🎲",  cities:[...T1,...MOSHAVIM_T1,...KIBBUTZIM_T1,...RIVERS_T1,...MOUNTAINS_T1], mode:'mixed'},
+  'mixed-hard':  {name:"מעורבב קשה", em:"🎲",  cities:[...T1,...T2,...T3,...MOSHAVIM_T1,...MOSHAVIM_T2,...KIBBUTZIM_T1,...KIBBUTZIM_T2,...RIVERS_T1,...RIVERS_T2,...RIVERS_T3,...MOUNTAINS_T1,...MOUNTAINS_T2], mode:'mixed'},
 };
 
 // ════════════════════════════════════════
@@ -1694,15 +1709,15 @@ function startGame(lvl){
   const cfg=LVLS[lvl];
   pool=shuffle([...cfg.cities]);
   used=[]; score=0; qNum=0;
-  _markerColor = {city:'gold',moshav:'lime',kibbutz:'orange',river:'cyan',mountain:'gold'}[cfg.mode]||'gold';
+  _markerColor = {city:'gold',moshav:'lime',kibbutz:'orange',river:'cyan',mountain:'gold',mixed:'gold'}[cfg.mode]||'gold';
   const lt=document.getElementById('levelTag');
   lt.textContent=cfg.em+' '+cfg.name;
-  const _ltcls={easy:'easy',medium:'medium',hard:'hard',expert:'expert','moshav-easy':'easy','moshav-hard':'medium','kib-easy':'easy','kib-hard':'medium','riv-easy':'easy','riv-medium':'medium','riv-hard':'hard','mount-easy':'easy','mount-hard':'medium'};
+  const _ltcls={easy:'easy',medium:'medium',hard:'hard',expert:'expert','moshav-easy':'easy','moshav-hard':'medium','kib-easy':'easy','kib-hard':'medium','riv-easy':'easy','riv-medium':'medium','riv-hard':'hard','mount-easy':'easy','mount-hard':'medium','mixed-easy':'easy','mixed-hard':'hard'};
   lt.className='glt '+(_ltcls[lvl]||'easy');
   document.getElementById('scoreVal').textContent='0';
   document.getElementById('progressFill').style.width='0%';
   const qtxt=document.getElementById('qtxt');
-  const _qtxts={city:'מה שם העיר המסומנת? 🤔',moshav:'מה שם המושב המסומן? 🏡',kibbutz:'מה שם הקיבוץ המסומן? 🌾',river:'מה שם הנחל המסומן? 🌊',mountain:'מה שם ההר המסומן? ⛰️'};
+  const _qtxts={city:'מה שם העיר המסומנת? 🤔',moshav:'מה שם המושב המסומן? 🏡',kibbutz:'מה שם הקיבוץ המסומן? 🌾',river:'מה שם הנחל המסומן? 🌊',mountain:'מה שם ההר המסומן? ⛰️',mixed:'מה שם המקום המסומן? 🗺️'};
   if(qtxt) qtxt.textContent = _qtxts[cfg.mode]||'מה שם הישוב המסומן? 🤔';
   show('screen-game');
   // Double rAF — map-wrap has correct dimensions after paint
@@ -1883,6 +1898,7 @@ const MP_LEVELS={
   kibbutzim:[{k:'kib-easy',n:'קל'},{k:'kib-hard',n:'קשה'}],
   rivers:[{k:'riv-easy',n:'קל'},{k:'riv-medium',n:'בינוני'},{k:'riv-hard',n:'קשה'}],
   mountains:[{k:'mount-easy',n:'קל'},{k:'mount-hard',n:'קשה'}],
+  mixed:[{k:'mixed-easy',n:'קל'},{k:'mixed-hard',n:'קשה'}],
 };
 
 function updateMpLevels(){
@@ -1920,7 +1936,7 @@ function startMultiplayer(){
   _markerColor={city:'gold',moshav:'lime',kibbutz:'orange',river:'cyan',mountain:'gold'}[cfg2.mode]||'gold';
 
   const qtxt=document.getElementById('qtxt');
-  const _qtxts={city:'מה שם העיר המסומנת? 🤔',moshav:'מה שם המושב המסומן? 🏡',kibbutz:'מה שם הקיבוץ המסומן? 🌾',river:'מה שם הנחל המסומן? 🌊',mountain:'מה שם ההר המסומן? ⛰️'};
+  const _qtxts={city:'מה שם העיר המסומנת? 🤔',moshav:'מה שם המושב המסומן? 🏡',kibbutz:'מה שם הקיבוץ המסומן? 🌾',river:'מה שם הנחל המסומן? 🌊',mountain:'מה שם ההר המסומן? ⛰️',mixed:'מה שם המקום המסומן? 🗺️'};
   if(qtxt) qtxt.textContent=_qtxts[cfg2.mode]||'מה שם הישוב המסומן? 🤔';
 
   document.getElementById('progressFill').style.width='0%';
@@ -2361,7 +2377,7 @@ async function olHostStart(){
   level  = olLevelKey;
   score  = 0;
 
-  _markerColor = {city:'gold',moshav:'lime',kibbutz:'orange',river:'cyan',mountain:'gold'}[cfg.mode]||'gold';
+  _markerColor = {city:'gold',moshav:'lime',kibbutz:'orange',river:'cyan',mountain:'gold',mixed:'gold'}[cfg.mode]||'gold';
   const qtxt  = document.getElementById('qtxt');
   const qtxts = {city:'מה שם העיר המסומנת? 🤔',moshav:'מה שם המושב המסומן? 🏡',kibbutz:'מה שם הקיבוץ המסומן? 🌾',river:'מה שם הנחל המסומן? 🌊',mountain:'מה שם ההר המסומן? ⛰️'};
   if(qtxt) qtxt.textContent = qtxts[cfg.mode]||'מה שם הישוב המסומן? 🤔';
@@ -3271,6 +3287,7 @@ function _seaShimmer(ctx,cx,cy,r,t,colorBase,maxAl){
     <button class="cat-tab" data-cat="kibbutzim" onclick="showOlCat('kibbutzim')">קיבוצים</button>
     <button class="cat-tab" data-cat="rivers" onclick="showOlCat('rivers')">נחלים</button>
     <button class="cat-tab" data-cat="mountains" onclick="showOlCat('mountains')">הרים</button>
+    <button class="cat-tab" data-cat="mixed" onclick="showOlCat('mixed')">מעורבב</button>
   </div>
 
   <div class="ol-sec-label" style="margin-top:10px">רמת קושי</div>
