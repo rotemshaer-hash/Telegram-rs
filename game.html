@@ -7,7 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;700;800;900&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;user-select:none;background:linear-gradient(160deg,#1C0060 0%,#0E1F7A 55%,#083560 100%)}
+html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;user-select:none;background:linear-gradient(160deg,#001852 0%,#002FA0 55%,#003FAA 100%)}
 .screen{position:absolute;inset:0;display:none;flex-direction:column;align-items:center}
 .screen.active{display:flex}
 
@@ -22,7 +22,7 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
 @keyframes orb1{0%,100%{transform:translate(0,0)}50%{transform:translate(30px,-20px)}}
 @keyframes orb2{0%,100%{transform:translate(0,0)}50%{transform:translate(-20px,30px)}}
 @keyframes star-spin{0%{transform:rotate(0deg) scale(1)}50%{transform:rotate(180deg) scale(1.15)}100%{transform:rotate(360deg) scale(1)}}
-@keyframes pulse-btn{0%,100%{box-shadow:0 6px 28px rgba(140,60,255,.45)}50%{box-shadow:0 6px 40px rgba(140,60,255,.75)}}
+@keyframes pulse-btn{0%,100%{box-shadow:0 6px 28px rgba(0,100,255,.45)}50%{box-shadow:0 6px 40px rgba(0,120,255,.75)}}
 
 /* ── START ── */
 #screen-start{
@@ -192,9 +192,9 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
 }
 .fbo.show{opacity:1}
 .fbx{
-  background:linear-gradient(145deg,rgba(60,15,130,.97),rgba(20,8,80,.98));
+  background:linear-gradient(145deg,rgba(0,30,110,.97),rgba(0,15,70,.98));
   backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);
-  border:2px solid rgba(200,130,255,.5);border-radius:30px;
+  border:2px solid rgba(80,170,255,.55);border-radius:30px;
   padding:26px 44px;text-align:center;
   box-shadow:0 30px 80px rgba(0,0,0,.6),0 0 60px rgba(140,50,255,.2);
   transform:scale(.65);transition:transform .35s cubic-bezier(.34,1.56,.64,1);
@@ -212,7 +212,7 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
 /* ── MODE TOGGLES ── */
 .mode-row{display:flex;gap:10px;width:100%;max-width:360px;margin:14px 0 4px;position:relative;z-index:1}
 .mode-btn{flex:1;padding:10px 6px;border-radius:14px;border:1.5px solid rgba(120,180,255,0.45);background:rgba(10,45,170,0.48);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);color:rgba(255,255,255,0.92);font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;transition:all .2s;box-shadow:0 4px 18px rgba(0,30,120,0.3),inset 0 1px 0 rgba(255,255,255,0.2)}
-.mode-btn.active{background:rgba(100,30,240,0.72);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-color:rgba(200,140,255,0.85);color:#fff;box-shadow:0 0 22px rgba(140,60,255,0.55),inset 0 1px 0 rgba(255,255,255,0.22)}
+.mode-btn.active{background:rgba(0,70,220,0.82);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-color:rgba(120,200,255,0.85);color:#fff;box-shadow:0 0 22px rgba(0,100,255,0.55),inset 0 1px 0 rgba(255,255,255,0.22)}
 /* ── TIMER RING ── */
 #timer-ring{display:none;flex-shrink:0}
 #timer-arc{transition:stroke .25s}
@@ -220,7 +220,7 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
 #map-wrap.rev-mode{cursor:crosshair}
 .rev-name-badge{
   position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:15;
-  background:rgba(10,5,50,0.88);border:2px solid rgba(200,160,255,0.6);
+  background:rgba(0,20,80,0.90);border:2px solid rgba(80,170,255,0.65);
   border-radius:18px;padding:7px 20px;font-size:18px;font-weight:900;color:#FFD700;
   white-space:nowrap;pointer-events:none;
   box-shadow:0 4px 18px rgba(0,0,0,0.6);
@@ -229,16 +229,16 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
 /* ── END ── */
 #screen-end{
   justify-content:center;align-items:center;padding:28px 20px;position:relative;overflow:hidden;
-  background:radial-gradient(ellipse at 25% 18%,rgba(220,80,255,.55) 0%,transparent 48%),
-             radial-gradient(ellipse at 80% 80%,rgba(0,220,255,.48) 0%,transparent 48%),
-             radial-gradient(ellipse at 52% 50%,rgba(255,110,40,.22) 0%,transparent 52%),
-             linear-gradient(160deg,#1C0060 0%,#0E1F7A 55%,#083560 100%);
+  background:radial-gradient(ellipse at 25% 18%,rgba(0,100,255,.45) 0%,transparent 48%),
+             radial-gradient(ellipse at 80% 80%,rgba(0,200,255,.35) 0%,transparent 48%),
+             linear-gradient(160deg,#001852 0%,#002FA0 55%,#003FAA 100%);
 }
 .eico{font-size:80px;line-height:1;margin-bottom:14px;animation:bounce 0.7s ease-in-out infinite}
 .etit{
   font-size:30px;font-weight:900;text-align:center;margin-bottom:8px;
-  background:linear-gradient(135deg,#00E5FF,#B400FF);
-  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  background:linear-gradient(90deg,#FFFFFF,#70D8FF,#0070FF,#FFFFFF);
+  background-size:250% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  animation:shimmer 4s linear infinite;
 }
 .enum{
   font-size:72px;font-weight:900;text-align:center;line-height:1;
@@ -259,7 +259,7 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
 }
 .ebm:active{transform:scale(.95)}
 .ebs{
-  background:linear-gradient(#0d0d22,#0d0d22) padding-box,
+  background:linear-gradient(#001040,#001040) padding-box,
              linear-gradient(135deg,rgba(255,255,255,.25),rgba(255,255,255,.08)) border-box;
   border:1.5px solid transparent;
   color:rgba(255,255,255,.75);border-radius:22px;
@@ -273,21 +273,22 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
 /* ── FACTS MODAL ── */
 #facts-modal{
   position:fixed;inset:0;z-index:200;
-  background:rgba(10,0,40,.82);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  background:rgba(0,10,60,.85);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
   display:none;align-items:center;justify-content:center;padding:18px;
 }
 #facts-modal.show{display:flex}
 .fm-card{
-  background:linear-gradient(145deg,rgba(70,15,150,.97),rgba(30,5,100,.98));
-  border:2px solid rgba(210,130,255,.65);border-radius:28px;
+  background:linear-gradient(145deg,rgba(0,30,120,.97),rgba(0,12,70,.98));
+  border:2px solid rgba(80,170,255,.65);border-radius:28px;
   padding:24px 20px;width:100%;max-width:360px;
-  box-shadow:0 30px 90px rgba(0,0,0,.7),0 0 70px rgba(160,60,255,.3);
+  box-shadow:0 30px 90px rgba(0,0,0,.7),0 0 70px rgba(0,100,255,.3);
   animation:pop-in .35s cubic-bezier(.34,1.56,.64,1) both;
 }
 .fm-name{
   font-size:26px;font-weight:900;text-align:center;margin-bottom:4px;
-  background:linear-gradient(135deg,#00E5FF,#B400FF);
-  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  background:linear-gradient(90deg,#FFFFFF,#70D8FF,#0070FF,#FFFFFF);
+  background-size:250% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  animation:shimmer 4s linear infinite;
 }
 .fm-tag{
   font-size:13px;font-weight:700;text-align:center;color:rgba(255,255,255,.45);
@@ -297,10 +298,10 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
   display:flex;align-items:center;gap:10px;
   padding:11px 13px;margin-bottom:9px;
   background:rgba(255,255,255,.09);border-radius:14px;
-  border:1px solid rgba(210,160,255,.22);
+  border:1px solid rgba(80,160,255,.25);
 }
 .fr-icon{font-size:20px;flex-shrink:0;width:28px;text-align:center}
-.fr-label{font-size:12px;color:rgba(220,180,255,.8);font-weight:700;letter-spacing:.5px;flex:1}
+.fr-label{font-size:12px;color:rgba(140,200,255,.85);font-weight:700;letter-spacing:.5px;flex:1}
 .fr-val{font-size:14px;color:#fff;font-weight:800;text-align:left;max-width:55%}
 .fm-next{
   width:100%;margin-top:18px;padding:16px;border:none;border-radius:20px;
@@ -325,8 +326,8 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
   transition:background .2s,color .2s;line-height:1.2;
 }
 .cat-tab.active{
-  background:linear-gradient(135deg,rgba(123,32,255,0.88),rgba(0,153,238,0.88));
-  color:#fff;box-shadow:0 3px 18px rgba(120,50,255,.55),inset 0 1px 0 rgba(255,255,255,0.22);
+  background:linear-gradient(135deg,rgba(0,80,220,0.88),rgba(0,160,255,0.88));
+  color:#fff;box-shadow:0 3px 18px rgba(0,100,255,.55),inset 0 1px 0 rgba(255,255,255,0.22);
 }
 .cat-panels{width:100%;max-width:360px;position:relative;z-index:1}
 .cat-panel{display:none}
@@ -442,9 +443,9 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
 #screen-pass{
   justify-content:center;align-items:center;cursor:pointer;
   overflow:hidden;
-  background:radial-gradient(ellipse at 40% 30%,rgba(200,60,255,.45) 0%,transparent 55%),
-             radial-gradient(ellipse at 70% 75%,rgba(0,200,255,.38) 0%,transparent 55%),
-             linear-gradient(160deg,#1C0060 0%,#0E1F7A 100%);
+  background:radial-gradient(ellipse at 40% 30%,rgba(0,100,255,.45) 0%,transparent 55%),
+             radial-gradient(ellipse at 70% 75%,rgba(0,200,255,.35) 0%,transparent 55%),
+             linear-gradient(160deg,#001852 0%,#002FA0 100%);
 }
 @keyframes pass-in{0%{transform:scale(.7) translateY(30px);opacity:0}100%{transform:scale(1) translateY(0);opacity:1}}
 @keyframes pulse-glow{0%,100%{opacity:.6}50%{opacity:1}}
@@ -474,9 +475,9 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
 /* ══ MP GAME SCORE BAR ══ */
 #mp-score-bar{
   display:none;width:100%;
-  background:linear-gradient(90deg,rgba(50,10,120,.7),rgba(10,30,100,.7));
+  background:linear-gradient(90deg,rgba(0,30,120,.7),rgba(0,20,80,.7));
   padding:6px 14px;flex-shrink:0;
-  border-bottom:1px solid rgba(180,100,255,.2);z-index:20;
+  border-bottom:1px solid rgba(80,160,255,.25);z-index:20;
 }
 #mp-score-bar.active{display:flex;align-items:center;justify-content:center;gap:12px}
 .mp-sb-item{
@@ -493,9 +494,9 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
 /* ══ MP END SCREEN ══ */
 #screen-mp-end{
   justify-content:center;padding:24px 20px;overflow-y:auto;
-  background:radial-gradient(ellipse at 30% 20%,rgba(210,60,255,.5) 0%,transparent 50%),
-             radial-gradient(ellipse at 78% 80%,rgba(255,100,40,.35) 0%,transparent 50%),
-             linear-gradient(160deg,#1C0060 0%,#0E1F7A 100%);
+  background:radial-gradient(ellipse at 30% 20%,rgba(0,100,255,.45) 0%,transparent 50%),
+             radial-gradient(ellipse at 78% 80%,rgba(0,200,255,.3) 0%,transparent 50%),
+             linear-gradient(160deg,#001852 0%,#002FA0 100%);
 }
 .mp-end-trophy{font-size:72px;line-height:1;margin-bottom:8px;animation:bounce .7s ease-in-out infinite}
 .mp-winner-name{
@@ -599,7 +600,7 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
   overflow-y:auto;padding:24px 20px max(24px,env(safe-area-inset-bottom));
   background:radial-gradient(ellipse at 40% 20%,rgba(0,100,255,.45) 0%,transparent 50%),
              radial-gradient(ellipse at 70% 80%,rgba(0,200,255,.3) 0%,transparent 50%),
-             linear-gradient(160deg,#0A0050 0%,#071A70 100%);
+             linear-gradient(160deg,#001852 0%,#002FA0 100%);
 }
 .ol-setup-icon{font-size:52px;line-height:1;text-align:center;margin-bottom:10px}
 .ol-setup-title{
@@ -635,7 +636,7 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
   overflow:hidden;padding:0;
   background:radial-gradient(ellipse at 35% 18%,rgba(0,110,255,.48) 0%,transparent 50%),
              radial-gradient(ellipse at 72% 82%,rgba(0,200,255,.32) 0%,transparent 50%),
-             linear-gradient(160deg,#0A0050 0%,#071A70 100%);
+             linear-gradient(160deg,#001852 0%,#002FA0 100%);
 }
 .ol-hub-title{
   font-size:26px;font-weight:900;text-align:center;margin-bottom:6px;
@@ -686,7 +687,7 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
   overflow-y:auto;padding:16px 16px max(16px,env(safe-area-inset-bottom));
   background:radial-gradient(ellipse at 35% 18%,rgba(0,110,255,.48) 0%,transparent 50%),
              radial-gradient(ellipse at 72% 82%,rgba(0,200,255,.32) 0%,transparent 50%),
-             linear-gradient(160deg,#0A0050 0%,#071A70 100%);
+             linear-gradient(160deg,#001852 0%,#002FA0 100%);
 }
 .ol-host-title{font-size:15px;font-weight:700;color:rgba(255,255,255,.55);text-align:center;margin-bottom:2px}
 .ol-code-display{
@@ -733,7 +734,7 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
   justify-content:center;align-items:center;
   background:radial-gradient(ellipse at 35% 25%,rgba(0,120,255,.48) 0%,transparent 55%),
              radial-gradient(ellipse at 72% 75%,rgba(0,200,255,.32) 0%,transparent 55%),
-             linear-gradient(160deg,#0A0050 0%,#071A70 100%);
+             linear-gradient(160deg,#001852 0%,#002FA0 100%);
 }
 .ol-guest-inner{
   display:flex;flex-direction:column;align-items:center;gap:12px;
@@ -2251,7 +2252,7 @@ function showPassScreen(){
   glow.style.cssText=`position:absolute;width:360px;height:360px;border-radius:50%;top:50%;left:50%;transform:translate(-50%,-50%);background:radial-gradient(circle,${p.glow} 0%,transparent 70%);animation:pulse-glow 2s ease-in-out infinite;pointer-events:none;`;
 
   const ps=document.getElementById('screen-pass');
-  ps.style.background=`radial-gradient(ellipse at 50% 45%,${p.glow.replace('0.25','0.45')} 0%,transparent 60%),radial-gradient(ellipse at 25% 20%,rgba(200,80,255,.35) 0%,transparent 50%),linear-gradient(160deg,#1C0060 0%,#0E1F7A 55%,#083560 100%)`;
+  ps.style.background=`radial-gradient(ellipse at 50% 45%,${p.glow.replace('0.25','0.45')} 0%,transparent 60%),radial-gradient(ellipse at 25% 20%,rgba(0,80,200,.35) 0%,transparent 50%),linear-gradient(160deg,#001852 0%,#002FA0 55%,#003FAA 100%)`;
 
   show('screen-pass');
 }
@@ -3453,7 +3454,7 @@ function _seaShimmer(ctx,cx,cy,r,t,colorBase,maxAl){
 </script>
 
 <!-- ══ OL NO-HTTPS ════════════════════════ -->
-<div id="screen-ol-no-https" class="screen" style="justify-content:center;padding:32px 24px;background:linear-gradient(160deg,#1C0060 0%,#0E1F7A 55%,#083560 100%)">
+<div id="screen-ol-no-https" class="screen" style="justify-content:center;padding:32px 24px;background:linear-gradient(160deg,#001852 0%,#002FA0 55%,#003FAA 100%)">
   <div style="font-size:52px;text-align:center;margin-bottom:16px">🔗</div>
   <div style="font-size:20px;font-weight:900;color:#fff;text-align:center;margin-bottom:12px">פתח דרך הקישור</div>
   <div style="font-size:14px;color:rgba(255,255,255,.6);text-align:center;margin-bottom:24px;line-height:1.6">
