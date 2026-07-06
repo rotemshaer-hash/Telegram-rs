@@ -597,6 +597,14 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
   background:transparent;color:rgba(255,255,255,.5);
   font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;
 }
+#exit-modal{position:fixed;inset:0;z-index:400;background:rgba(5,0,30,.82);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);display:none;align-items:center;justify-content:center;padding:20px}
+.exit-card{background:linear-gradient(145deg,rgba(20,10,70,.97),rgba(8,4,50,.98));border:1.5px solid rgba(100,160,255,.3);border-radius:26px;padding:28px 22px 20px;width:100%;max-width:320px;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center}
+.exit-card-icon{font-size:38px;line-height:1}
+.exit-card-title{font-size:17px;font-weight:900;color:#fff}
+.exit-card-sub{font-size:13px;color:rgba(255,255,255,.5);line-height:1.5}
+.exit-card-btns{display:flex;gap:10px;width:100%}
+.exit-card-yes{flex:1;padding:12px;border:none;border-radius:16px;background:linear-gradient(135deg,#1E90FF,#0055DD);color:#fff;font-size:15px;font-weight:900;cursor:pointer;font-family:inherit}
+.exit-card-no{flex:1;padding:12px;border:1.5px solid rgba(255,255,255,.18);border-radius:16px;background:transparent;color:rgba(255,255,255,.6);font-size:15px;font-weight:700;cursor:pointer;font-family:inherit}
 .ol-back{
   align-self:flex-start;padding:8px 14px;border-radius:14px;
   background:rgba(255,255,255,.08);color:rgba(255,255,255,.7);
@@ -1852,8 +1860,14 @@ function _shareToast(msg){
 }
 
 function exitGameHome(){
-  if(!confirm('לצאת מהמשחק וחזור לדף הבית?')) return;
+  document.getElementById('exit-modal').style.display='flex';
+}
+function confirmExit(){
+  document.getElementById('exit-modal').style.display='none';
   goHome();
+}
+function cancelExit(){
+  document.getElementById('exit-modal').style.display='none';
 }
 function goHome(){
   clearTimer();
@@ -3518,6 +3532,17 @@ function _seaShimmer(ctx,cx,cy,r,t,colorBase,maxAl){
 </div>
 
 <!-- ══ SHARE MODAL ══════════════════════ -->
+<div id="exit-modal" onclick="cancelExit()">
+  <div class="exit-card" onclick="event.stopPropagation()">
+    <div class="exit-card-icon">🏠</div>
+    <div class="exit-card-title">לצאת מהמשחק?</div>
+    <div class="exit-card-sub">ההתקדמות שלך תאבד</div>
+    <div class="exit-card-btns">
+      <button class="exit-card-yes" onclick="confirmExit()">כן, צא</button>
+      <button class="exit-card-no" onclick="cancelExit()">המשך לשחק</button>
+    </div>
+  </div>
+</div>
 <div id="share-modal" onclick="closeShareModal()">
   <div class="share-card" onclick="event.stopPropagation()">
     <div class="share-card-title">📤 שתף את המשחק</div>
