@@ -13,6 +13,7 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
 
 /* ── ANIMATIONS ── */
 @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-14px)}}
+@keyframes float-sat{0%,100%{transform:translateY(0)}50%{transform:translateY(80px)}}
 @keyframes bounce{0%{transform:translateY(0)}50%{transform:translateY(-16px)}100%{transform:translateY(0)}}
 @keyframes shimmer{0%{background-position:200% center}100%{background-position:-200% center}}
 @keyframes pop-in{0%{transform:scale(0.6);opacity:0}80%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}
@@ -41,9 +42,9 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
   background:radial-gradient(circle,rgba(80,170,255,.22),transparent 68%);
   bottom:-72px;right:-72px;animation:orb2 10s ease-in-out infinite;pointer-events:none;
 }
-.s-icon{font-size:36px;line-height:1;animation:float 3s ease-in-out infinite;filter:drop-shadow(0 0 10px rgba(0,220,150,.45));position:absolute;top:10px;z-index:2;pointer-events:none;user-select:none}
+.s-icon{font-size:36px;line-height:1;animation:float-sat 4s ease-in-out infinite;filter:drop-shadow(0 0 10px rgba(0,220,150,.45));position:absolute;top:15px;z-index:2;pointer-events:none;user-select:none}
 .s-icon-l{left:12px}
-.s-icon-r{right:12px;animation-delay:.9s}
+.s-icon-r{right:12px;animation-delay:2s}
 .s-title{
   font-size:26px;font-weight:900;text-align:center;margin-bottom:2px;letter-spacing:1px;
   display:flex;align-items:flex-start;justify-content:center;gap:6px;
