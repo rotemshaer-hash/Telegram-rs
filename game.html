@@ -211,6 +211,23 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
 .fbt.no{color:#FF8A80}
 .fbs{font-size:14px;color:rgba(255,255,255,.5);margin-top:6px}
 
+/* ── MODE TOGGLES ── */
+.mode-row{display:flex;gap:10px;width:100%;max-width:360px;margin:14px 0 4px;position:relative;z-index:1}
+.mode-btn{flex:1;padding:10px 6px;border-radius:14px;border:1.5px solid rgba(255,255,255,0.18);background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.45);font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;transition:all .2s}
+.mode-btn.active{background:rgba(140,60,255,0.35);border-color:rgba(180,100,255,0.7);color:#fff;box-shadow:0 0 18px rgba(140,60,255,0.4)}
+/* ── TIMER RING ── */
+#timer-ring{display:none;flex-shrink:0}
+#timer-arc{transition:stroke .25s}
+/* ── REVERSE MODE ── */
+#map-wrap.rev-mode{cursor:crosshair}
+.rev-name-badge{
+  position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:15;
+  background:rgba(10,5,50,0.88);border:2px solid rgba(200,160,255,0.6);
+  border-radius:18px;padding:7px 20px;font-size:18px;font-weight:900;color:#FFD700;
+  white-space:nowrap;pointer-events:none;
+  box-shadow:0 4px 18px rgba(0,0,0,0.6);
+}
+
 /* ── END ── */
 #screen-end{
   justify-content:center;align-items:center;padding:28px 20px;position:relative;overflow:hidden;
@@ -849,6 +866,11 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
     </div>
   </div>
 
+  <div class="mode-row">
+    <button class="mode-btn" id="btn-reverse" onclick="toggleReverseMode()">🔄 מצב הפוך</button>
+    <button class="mode-btn" id="btn-timer" onclick="toggleTimerMode()">⏱️ טיימר 10 שנ'</button>
+  </div>
+
   <div class="mp-or"><span>או</span></div>
   <button class="mp-launch-btn" onclick="goMultiplayer()">🎮 משחק קבוצתי</button>
   <button class="ol-launch-btn" onclick="goOnline()">🌐 משחק אונליין</button>
@@ -859,6 +881,16 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
   <div class="ghdr">
     <div class="gsc"><span class="gsc-star">⭐</span><span id="scoreVal">0</span></div>
     <div class="gqc" id="qCounter">שאלה 1 / 10</div>
+    <div id="timer-ring">
+      <svg width="42" height="42" viewBox="0 0 42 42">
+        <circle cx="21" cy="21" r="17" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="3.5"/>
+        <circle id="timer-arc" cx="21" cy="21" r="17" fill="none" stroke="#00E676" stroke-width="3.5"
+          stroke-dasharray="106.8" stroke-dashoffset="0" stroke-linecap="round"
+          transform="rotate(-90 21 21)"/>
+        <text x="21" y="21" text-anchor="middle" dominant-baseline="middle"
+          fill="white" font-size="13" font-weight="900" font-family="Rubik,Arial" id="timer-num">10</text>
+      </svg>
+    </div>
     <div class="glt" id="levelTag">קל</div>
   </div>
   <div class="pbar"><div class="pfill" id="progressFill" style="width:0%"></div></div>
@@ -1654,6 +1686,130 @@ const TOTAL=10;
 const OKP=["כל הכבוד!","נכון! ⭐","מצוין! 🌟","אדיר! 💪","מושלם! 🏆","יפה מאוד!"];
 const NOP=["לא נכון...","נסה שוב","כמעט!","אופס!"];
 
+// ══════════════════════════════════════════
+//  REVERSE MODE + TIMER
+// ══════════════════════════════════════════
+let reverseMode=false, timerMode=false;
+let _timerRaf=null, _timerStart=null;
+const TIMER_SECS=10;
+
+function toggleReverseMode(){
+  reverseMode=!reverseMode;
+  document.getElementById('btn-reverse').classList.toggle('active',reverseMode);
+}
+function toggleTimerMode(){
+  timerMode=!timerMode;
+  document.getElementById('btn-timer').classList.toggle('active',timerMode);
+}
+
+// Inverse Mercator: pixel % → lat/lng
+function pct2geo(px_pct,py_pct){
+  const lng=px_pct/100*(IMG_MAX_LNG-IMG_MIN_LNG)+IMG_MIN_LNG;
+  const myVal=MY_MIN+(1-py_pct/100)*(MY_MAX-MY_MIN);
+  const lat=(Math.atan(Math.exp(myVal))-Math.PI/4)*360/Math.PI;
+  return [lat,lng];
+}
+function haversineKm(lat1,lng1,lat2,lng2){
+  const R=6371, dL=(lat2-lat1)*Math.PI/180, dG=(lng2-lng1)*Math.PI/180;
+  const a=Math.sin(dL/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dG/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+// Timer
+function startTimer(onExpire){
+  clearTimer();
+  _timerStart=Date.now();
+  const ring=document.getElementById('timer-ring');
+  const lt=document.getElementById('levelTag');
+  if(ring) ring.style.display='block';
+  if(lt) lt.style.display='none';
+  function tick(){
+    const rem=Math.max(0,TIMER_SECS-(Date.now()-_timerStart)/1000);
+    const arc=document.getElementById('timer-arc');
+    const num=document.getElementById('timer-num');
+    if(arc){
+      arc.style.strokeDashoffset=106.8*(1-rem/TIMER_SECS);
+      arc.style.stroke=rem>TIMER_SECS*0.5?'#00E676':rem>TIMER_SECS*0.25?'#FFD700':'#FF5252';
+    }
+    if(num) num.textContent=Math.ceil(rem);
+    if(rem<=0){clearTimer();onExpire();return;}
+    _timerRaf=requestAnimationFrame(tick);
+  }
+  _timerRaf=requestAnimationFrame(tick);
+}
+function clearTimer(){
+  if(_timerRaf){cancelAnimationFrame(_timerRaf);_timerRaf=null;}
+  const ring=document.getElementById('timer-ring');
+  const lt=document.getElementById('levelTag');
+  if(ring) ring.style.display='none';
+  if(lt) lt.style.display='';
+}
+
+// Timeout feedback (shared between normal and reverse)
+function _onTimerExpire(){
+  if(locked) return;
+  locked=true;
+  _playSound('wrong');
+  if(!reverseMode){
+    for(let i=0;i<3;i++) document.getElementById('btn'+i).disabled=true;
+    document.getElementById('btn'+correctIdx).classList.add('ok');
+  } else {
+    const _r=correctItem.r!==undefined?correctItem.r:8;
+    placeMarker(correctItem.lat,correctItem.lng,_r);
+  }
+  document.getElementById('fbe').textContent='⏰';
+  const ft=document.getElementById('fbt');
+  ft.textContent='פג הזמן!'; ft.className='fbt no';
+  document.getElementById('fbs').textContent=reverseMode
+    ?'המקום: '+correctItem.name
+    :'התשובה: '+document.getElementById('btn'+correctIdx).textContent;
+  document.getElementById('fbo').classList.add('show');
+  setTimeout(()=>{
+    document.getElementById('fbo').classList.remove('show');
+    setTimeout(afterAnswer,180);
+  },1400);
+}
+
+// Reverse mode tap
+function _handleRevTap(e){
+  if(!reverseMode||locked||!_mapRect) return;
+  locked=true;
+  clearTimer();
+  const wrap=document.getElementById('map-wrap');
+  const rect=wrap.getBoundingClientRect();
+  const relX=e.clientX-rect.left, relY=e.clientY-rect.top;
+  const mapX=(relX-_mPX)/_mZ, mapY=(relY-_mPY)/_mZ;
+  const px_pct=(mapX-_mapRect.offsetX)/_mapRect.dispW*100;
+  const py_pct=(mapY-_mapRect.offsetY)/_mapRect.dispH*100;
+  const [tapLat,tapLng]=pct2geo(px_pct,py_pct);
+  const dist=haversineKm(tapLat,tapLng,correctItem.lat,correctItem.lng);
+  const ok=dist<25;
+  // Reveal actual marker
+  const _r=correctItem.r!==undefined?correctItem.r:8;
+  placeMarker(correctItem.lat,correctItem.lng,_r);
+  if(ok){
+    score++;
+    document.getElementById('scoreVal').textContent=score;
+    _playSound('correct');
+    setTimeout(_spawnMapParticles,60);
+    if(score%3===0) confetti();
+  } else {
+    _playSound('wrong');
+  }
+  const distStr=dist<1?'פגיעה מושלמת! 🎯':`מרחק: ${Math.round(dist)} ק"מ`;
+  document.getElementById('fbe').textContent=ok?'🎯':'❌';
+  const ft=document.getElementById('fbt');
+  ft.textContent=ok?(dist<5?'מדויק להפליא! 🏆':'כל הכבוד!'):'לא מדויק';
+  ft.className='fbt '+(ok?'ok':'no');
+  document.getElementById('fbs').textContent=ok?distStr:correctItem.name+' — '+distStr;
+  document.getElementById('fbo').classList.add('show');
+  setTimeout(()=>{
+    document.getElementById('fbo').classList.remove('show');
+    if(ok&&correctItem&&correctItem.f) setTimeout(()=>showFacts(correctItem),180);
+    else setTimeout(afterAnswer,180);
+  },1400);
+}
+
 function showCat(id){
   document.querySelectorAll('.cat-tab').forEach(t=>t.classList.toggle('active',t.dataset.cat===id));
   document.querySelectorAll('.cat-panel').forEach(p=>p.classList.toggle('active',p.id==='cat-'+id));
@@ -1711,6 +1867,9 @@ function _shareToast(msg){
 }
 
 function goHome(){
+  clearTimer();
+  const badge=document.getElementById('rev-name-badge');
+  if(badge) badge.remove();
   olStopPolling();
   olStopTimer();
   if(olIsHost && olCode){
@@ -1736,6 +1895,17 @@ function startGame(lvl){
   const qtxt=document.getElementById('qtxt');
   const _qtxts={city:'מה שם העיר המסומנת? 🤔',moshav:'מה שם המושב המסומן? 🏡',kibbutz:'מה שם הקיבוץ המסומן? 🌾',river:'מה שם הנחל המסומן? 🌊',mountain:'מה שם ההר המסומן? ⛰️',mixed:'מה שם המקום המסומן? 🗺️'};
   if(qtxt) qtxt.textContent = _qtxts[cfg.mode]||'מה שם הישוב המסומן? 🤔';
+  // Reverse mode setup
+  const apan=document.querySelector('.apan');
+  const mapWrap=document.getElementById('map-wrap');
+  if(reverseMode){
+    if(apan) apan.style.display='none';
+    mapWrap.classList.add('rev-mode');
+    if(!mapWrap._revOn){ mapWrap._revOn=true; mapWrap.addEventListener('click',_handleRevTap); }
+  } else {
+    if(apan) apan.style.display='';
+    mapWrap.classList.remove('rev-mode');
+  }
   show('screen-game');
   // Double rAF — map-wrap has correct dimensions after paint
   requestAnimationFrame(()=>requestAnimationFrame(()=>{
@@ -1745,6 +1915,7 @@ function startGame(lvl){
 }
 
 function nextQ(){
+  clearTimer();
   resetMapZoom();
   if(qNum>=TOTAL){ if(mpMode) endMultiplayer(); else endGame(); return; }
   if(used.length>=pool.length) used=[];
@@ -1755,6 +1926,31 @@ function nextQ(){
   const correct=pool[ci];
   correctItem=correct;
 
+  qNum++;
+  document.getElementById('qCounter').textContent=`שאלה ${qNum} / ${TOTAL}`;
+  document.getElementById('progressFill').style.width=`${(qNum-1)/TOTAL*100}%`;
+
+  if(reverseMode){
+    // Clear any previous marker
+    const oc=document.getElementById('city-canvas');
+    if(oc){const ctx=oc.getContext('2d');ctx.clearRect(0,0,oc.width,oc.height);}
+    // Remove old name badge if any
+    const old=document.getElementById('rev-name-badge');
+    if(old) old.remove();
+    // Show name badge on map
+    const badge=document.createElement('div');
+    badge.id='rev-name-badge'; badge.className='rev-name-badge';
+    badge.textContent=correct.name;
+    document.getElementById('map-wrap').appendChild(badge);
+    // Update question text
+    const _qr={city:'לחץ על המפה 👆 איפה העיר?',moshav:'לחץ על המפה 👆 איפה המושב?',kibbutz:'לחץ על המפה 👆 איפה הקיבוץ?',river:'לחץ על המפה 👆 איפה הנחל?',mountain:'לחץ על המפה 👆 איפה ההר?',mixed:'לחץ על המפה 👆 איפה המקום?'};
+    const qtxt=document.getElementById('qtxt');
+    if(qtxt) qtxt.textContent=_qr[LVLS[level].mode]||'לחץ על המפה 👆';
+    locked=false;
+    if(timerMode) startTimer(_onTimerExpire);
+    return;
+  }
+
   const wrongs=[];
   while(wrongs.length<2){
     const wi=Math.floor(Math.random()*pool.length);
@@ -1764,10 +1960,6 @@ function nextQ(){
   const opts=[correct.name,pool[wrongs[0]].name,pool[wrongs[1]].name];
   shuffle(opts);
   correctIdx=opts.indexOf(correct.name);
-
-  qNum++;
-  document.getElementById('qCounter').textContent=`שאלה ${qNum} / ${TOTAL}`;
-  document.getElementById('progressFill').style.width=`${(qNum-1)/TOTAL*100}%`;
 
   for(let i=0;i<3;i++){
     const b=document.getElementById('btn'+i);
@@ -1780,11 +1972,13 @@ function nextQ(){
               T3.some(c=>c.name===correct.name)?3.5:2);
   placeMarker(correct.lat, correct.lng, _r);
   locked=false;
+  if(timerMode) startTimer(_onTimerExpire);
 }
 
 function checkAnswer(idx){
   if(locked) return;
   locked=true;
+  clearTimer();
   for(let i=0;i<3;i++) document.getElementById('btn'+i).disabled=true;
   const ok=idx===correctIdx;
   document.getElementById('btn'+idx).classList.add(ok?'ok':'no');
