@@ -4100,6 +4100,7 @@ async function _requestBrowserNotifPermission(){
 let adminAllUsers=[],adminAllTeachers=[],adminAllVideos=[],adminAllReports=[],adminAllBookings=[],adminIncompleteTeachers=[],adminAllPosts=[],adminAllReviews=[],adminAllStories=[];
 let adminAlertStudents=[],adminAlertPosts=[],adminAlertPayments=[],adminAlertSubscriptions=[],adminContactMessages=[],adminAlertStoriesPending=0; // מקור ראשי לממתינים
 let adminTab='users';
+let _adminPg={};
 let _adminPendingCount=0;
 
 function _updateAdminBadge(n){
@@ -6334,6 +6335,7 @@ function showAdminPanel(forceTab=null){
 }
 
 async function adminSwitchTab(id){
+  delete _adminPg[id];
   adminTab=id;
   if(id==='messages'){
     // auto-mark all contact messages as read so the badge clears
@@ -6722,8 +6724,10 @@ function renderAdminTab(){
       studentListHtml+=displayPending.map(_renderStudentCard).join('');
     }
     if(displayApproved.length>0){
+      const _pgS=_adminPg.students||20;
       studentListHtml+=`<h4 style="font-weight:800;font-size:14px;color:#10B981;margin:${displayPending.length>0||communityOrphans.length>0?'14px':0} 0 10px">${icon("check-circle",14)} מאושרים (${displayApproved.length})</h4>`;
-      studentListHtml+=displayApproved.map(_renderStudentCard).join('');
+      studentListHtml+=displayApproved.slice(0,_pgS).map(_renderStudentCard).join('');
+      if(displayApproved.length>_pgS)studentListHtml+=`<button onclick="_adminPg.students=${_pgS+20};renderAdminPanel()" style="width:100%;background:rgba(16,185,129,0.08);border:1.5px dashed rgba(16,185,129,0.4);color:#10B981;border-radius:12px;padding:10px;font-weight:800;font-size:13px;cursor:pointer;margin-top:4px">טען עוד (${displayApproved.length-_pgS} נותרו)</button>`;
     }
     if(communityOrphans.length===0&&displayPending.length===0&&displayApproved.length===0){
       studentListHtml='<div style="text-align:center;padding:40px;color:#64748B"><div style="font-size:48px;margin-bottom:10px">🎒</div>אין עדיין תלמידים</div>';
@@ -6732,7 +6736,10 @@ function renderAdminTab(){
   }
   if(adminTab==='users'){
     if(adminAllUsers.length===0)return '<div style="text-align:center;padding:40px;color:#64748B">אין משתמשים</div>';
-    return adminAllUsers.map(u=>`
+    const _pgU=_adminPg.users||20;
+    const _visU=adminAllUsers.slice(0,_pgU);
+    const _moreU=adminAllUsers.length>_pgU?`<button onclick="_adminPg.users=${_pgU+20};renderAdminPanel()" style="width:100%;background:rgba(20,184,166,0.08);border:1.5px dashed rgba(20,184,166,0.4);color:#14B8A6;border-radius:12px;padding:10px;font-weight:800;font-size:13px;cursor:pointer;margin-top:4px">טען עוד (${adminAllUsers.length-_pgU} נותרו)</button>`:'';
+    return _visU.map(u=>`
       <div style="background:${u.blocked?'rgba(239,68,68,0.05)':'#fff'};border:1.5px solid ${u.blocked?'rgba(239,68,68,0.3)':'rgba(20,184,166,0.15)'};border-radius:16px;padding:14px;margin-bottom:10px">
         <div style="display:flex;justify-content:space-between;align-items:start;gap:10px">
           <div style="flex:1;min-width:0">
@@ -6757,7 +6764,7 @@ function renderAdminTab(){
         <div style="margin-top:8px">
           <button onclick="showFullRegistrationDetails('${u.uid}','${u.role||'student'}')" style="width:100%;background:rgba(20,184,166,0.08);border:1.5px solid rgba(20,184,166,0.3);color:#14B8A6;border-radius:10px;padding:8px;font-weight:800;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg> צפה בכל פרטי ההרשמה</button>
         </div>
-      </div>`).join('');
+      </div>`).join('')+_moreU;
   }
   if(adminTab==='teachers'){
     const pending=adminAllTeachers.filter(t=>!t.verified);
@@ -6810,8 +6817,9 @@ function renderAdminTab(){
         </div>`).join('');
     }
     if(verified.length>0){
+      const _pgT=_adminPg.teachers||20;
       html+=`<h4 style="font-weight:800;font-size:14px;color:#10B981;margin:14px 0 10px">${icon("check-circle",14)} מאושרים (${verified.length})</h4>`;
-      html+=verified.map(t=>`
+      html+=verified.slice(0,_pgT).map(t=>`
         <div style="background:rgba(16,185,129,0.05);border:1px solid rgba(16,185,129,0.2);border-radius:14px;padding:11px;margin-bottom:8px">
           <div style="display:flex;justify-content:space-between;align-items:center">
             <div style="flex:1"><div style="font-weight:800;font-size:13px;color:#0F1A1F">${escapeHtml(t.name||'ללא שם')}</div><div style="font-size:11px;color:#64748B">${escapeHtml(CATS.find(c=>c.id===t.cat)?.lbl||t.cat)} • ${t.lessons||0} שיעורים • ${t.rating||0}${icon("star",14)}</div></div>
@@ -6821,6 +6829,7 @@ function renderAdminTab(){
             <button onclick="showFullRegistrationDetails('${t.uid}','teacher')" style="width:100%;background:rgba(20,184,166,0.08);border:1.5px solid rgba(20,184,166,0.3);color:#14B8A6;border-radius:10px;padding:8px;font-weight:800;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg> צפה בכל פרטי ההרשמה</button>
           </div>
         </div>`).join('');
+      if(verified.length>_pgT)html+=`<button onclick="_adminPg.teachers=${_pgT+20};renderAdminPanel()" style="width:100%;background:rgba(16,185,129,0.08);border:1.5px dashed rgba(16,185,129,0.4);color:#10B981;border-radius:12px;padding:10px;font-weight:800;font-size:13px;cursor:pointer;margin-top:4px">טען עוד (${verified.length-_pgT} נותרו)</button>`;
     }
     return html;
   }
@@ -11990,6 +11999,17 @@ auth&&auth.onAuthStateChanged(async user=>{
 
 async function firebaseRegister(email,password,userData){
   if(typeof auth==='undefined'||!auth){showFireToast('❌ Firebase לא נטען — רענן את הדף (F5)');return;}
+  try{
+    const _rlNow=Date.now();
+    const _rlRaw=JSON.parse(localStorage.getItem('_regRL')||'[]');
+    const _rlRecent=_rlRaw.filter(t=>_rlNow-t<600000); // 10-minute window
+    if(_rlRecent.length>=3){
+      const _waitMin=Math.ceil((600000-(_rlNow-Math.min(..._rlRecent)))/60000);
+      showFireToast('⛔ יותר מדי ניסיונות הרשמה. נסה שוב עוד '+_waitMin+' דקות.');
+      return;
+    }
+    localStorage.setItem('_regRL',JSON.stringify([..._rlRecent,_rlNow]));
+  }catch(e){}
   try{
     showFireToast('⏳ יוצר חשבון...');
     S._registering=true;
