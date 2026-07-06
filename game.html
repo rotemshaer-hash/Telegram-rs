@@ -41,7 +41,9 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
   background:radial-gradient(circle,rgba(80,170,255,.22),transparent 68%);
   bottom:-72px;right:-72px;animation:orb2 10s ease-in-out infinite;pointer-events:none;
 }
-.s-icon{font-size:52px;line-height:1;margin-bottom:4px;animation:float 3s ease-in-out infinite;filter:drop-shadow(0 0 14px rgba(0,220,150,.5))}
+.s-icon{font-size:36px;line-height:1;animation:float 3s ease-in-out infinite;filter:drop-shadow(0 0 10px rgba(0,220,150,.45));position:absolute;top:10px;z-index:2;pointer-events:none;user-select:none}
+.s-icon-l{left:12px}
+.s-icon-r{right:12px;animation-delay:.9s}
 .s-title{
   font-size:26px;font-weight:900;text-align:center;margin-bottom:2px;letter-spacing:1px;
   display:flex;align-items:flex-start;justify-content:center;gap:6px;
@@ -317,7 +319,7 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
 .fm-next:active{transform:scale(.95)}
 
 /* ── CATEGORY TABS ── */
-#screen-start{overflow:hidden;padding:20px 16px 16px}
+#screen-start{overflow:hidden;padding:12px 16px 16px}
 .s-label{display:none}
 .cat-tabs{
   display:flex;width:100%;max-width:360px;
@@ -535,15 +537,16 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
 }
 .ol-launch-btn:active{transform:scale(.95)}
 .share-fab{
-  position:absolute;top:14px;right:14px;
-  background:rgba(255,255,255,.13);border:1.5px solid rgba(255,255,255,.25);
-  border-radius:50%;width:44px;height:44px;
-  display:flex;align-items:center;justify-content:center;
-  font-size:21px;cursor:pointer;z-index:20;
+  background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.22);
+  border-radius:22px;padding:5px 18px;
+  display:flex;align-items:center;justify-content:center;gap:5px;
+  font-size:13px;font-weight:700;font-family:inherit;
+  cursor:pointer;z-index:20;
   backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
-  transition:background .15s,transform .12s;color:#fff;
+  transition:background .15s,transform .12s;color:rgba(255,255,255,.88);
+  margin:2px auto 8px;
 }
-.share-fab:active{background:rgba(255,255,255,.28);transform:scale(.9);}
+.share-fab:active{background:rgba(255,255,255,.25);transform:scale(.95);}
 .share-toast{
   position:fixed;bottom:88px;left:50%;transform:translateX(-50%);
   background:rgba(0,230,118,.93);color:#003a12;
@@ -791,9 +794,10 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
 
 <!-- ══ START ══════════════════════════ -->
 <div id="screen-start" class="screen active">
-  <button class="share-fab" onclick="shareGame()" aria-label="שתף משחק">📤</button>
-  <div class="s-icon">🛰️</div>
+  <div class="s-icon s-icon-l">🛰️</div>
+  <div class="s-icon s-icon-r">🛰️</div>
   <h1 class="s-title"><span class="st-or">או</span><span class="st-pin"><svg viewBox="0 0 100 137" width="68" height="94" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="tpg" x1="25%" y1="0%" x2="75%" y2="100%"><stop offset="0%" stop-color="#A4E4FF"/><stop offset="55%" stop-color="#5BB8FF"/><stop offset="100%" stop-color="#2A6AEF"/></linearGradient><radialGradient id="tph" cx="38%" cy="26%" r="52%"><stop offset="0%" stop-color="rgba(255,255,255,.5)"/><stop offset="100%" stop-color="rgba(255,255,255,0)"/></radialGradient></defs><path d="M50,3C24,3,3,24,3,50c0,34,47,84,47,84s47-50,47-84C97,24,76,3,50,3z" fill="url(#tpg)"/><path d="M50,3C24,3,3,24,3,50c0,34,47,84,47,84s47-50,47-84C97,24,76,3,50,3z" fill="url(#tph)"/><circle cx="50" cy="43" r="40" fill="white"/></svg><span class="st-dot-lbl">Dot</span></span><span class="st-israel">ישראל</span></h1>
+  <button class="share-fab" onclick="shareGame()" aria-label="שתף משחק">📤 שתף</button>
   <p class="s-sub" style="display:none">נחש את שם הישוב על מפת הלוויין!</p>
 
   <!-- CATEGORY TABS -->
