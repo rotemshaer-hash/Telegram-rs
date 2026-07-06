@@ -1787,21 +1787,22 @@ function _onTimerExpire(){
   if(!reverseMode){
     for(let i=0;i<3;i++) document.getElementById('btn'+i).disabled=true;
     document.getElementById('btn'+correctIdx).classList.add('ok');
+    document.getElementById('fbe').textContent='⏰';
+    const ft=document.getElementById('fbt');
+    ft.textContent='פג הזמן!'; ft.className='fbt no';
+    document.getElementById('fbs').textContent='התשובה: '+document.getElementById('btn'+correctIdx).textContent;
+    document.getElementById('fbo').classList.add('show');
+    setTimeout(()=>{
+      document.getElementById('fbo').classList.remove('show');
+      setTimeout(afterAnswer,180);
+    },1400);
   } else {
     const _r=correctItem.r!==undefined?correctItem.r:8;
     placeMarker(correctItem.lat,correctItem.lng,_r);
+    const qtxt=document.getElementById('qtxt');
+    if(qtxt) qtxt.innerHTML='<span style="color:#FF5252">⏰ פג הזמן!</span> &nbsp;|&nbsp; המקום: <span style="color:#FFD700">'+correctItem.name+'</span>';
+    setTimeout(afterAnswer,1500);
   }
-  document.getElementById('fbe').textContent='⏰';
-  const ft=document.getElementById('fbt');
-  ft.textContent='פג הזמן!'; ft.className='fbt no';
-  document.getElementById('fbs').textContent=reverseMode
-    ?'המקום: '+correctItem.name
-    :'התשובה: '+document.getElementById('btn'+correctIdx).textContent;
-  document.getElementById('fbo').classList.add('show');
-  setTimeout(()=>{
-    document.getElementById('fbo').classList.remove('show');
-    setTimeout(afterAnswer,180);
-  },1400);
 }
 
 // Reverse mode tap
@@ -1817,7 +1818,7 @@ function _handleRevTap(e){
   const py_pct=(mapY-_mapRect.offsetY)/_mapRect.dispH*100;
   const [tapLat,tapLng]=pct2geo(px_pct,py_pct);
   const dist=haversineKm(tapLat,tapLng,correctItem.lat,correctItem.lng);
-  const ok=dist<25;
+  const ok=dist<5;
   // Store tap canvas coords for drawing
   _tapXY={cx:mapX, cy:mapY};
   // Reveal actual marker
@@ -1833,17 +1834,17 @@ function _handleRevTap(e){
     _playSound('wrong');
   }
   const distStr=dist<1?'פגיעה מושלמת! 🎯':`מרחק: ${Math.round(dist)} ק"מ`;
-  document.getElementById('fbe').textContent=ok?'🎯':'❌';
-  const ft=document.getElementById('fbt');
-  ft.textContent=ok?(dist<5?'מדויק להפליא! 🏆':'כל הכבוד!'):'לא מדויק';
-  ft.className='fbt '+(ok?'ok':'no');
-  document.getElementById('fbs').textContent=ok?distStr:correctItem.name+' — '+distStr;
-  document.getElementById('fbo').classList.add('show');
+  const label=ok?(dist<1?'מדויק להפליא! 🏆':'כל הכבוד! ✅'):'לא מדויק ❌';
+  const color=ok?'#00E676':'#FF5252';
+  const qtxt=document.getElementById('qtxt');
+  if(qtxt) qtxt.innerHTML=
+    '<span style="color:'+color+'">'+label+'</span>'
+    +(ok?'':' &nbsp;<span style="color:#FFD700">'+correctItem.name+'</span>')
+    +' &nbsp;|&nbsp; <span style="color:#fff">'+distStr+'</span>';
   setTimeout(()=>{
-    document.getElementById('fbo').classList.remove('show');
-    if(ok&&correctItem&&correctItem.f) setTimeout(()=>showFacts(correctItem),180);
-    else setTimeout(afterAnswer,180);
-  },1400);
+    if(ok&&correctItem&&correctItem.f) showFacts(correctItem);
+    else afterAnswer();
+  },1500);
 }
 
 function showCat(id){
