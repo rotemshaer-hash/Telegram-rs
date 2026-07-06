@@ -970,7 +970,10 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
   <div class="estr" id="estr">⭐⭐⭐</div>
   <div class="emsg" id="emsg">מצוין!</div>
   <div class="ebtns">
-    <button class="ebm" onclick="restartSame()">🔄 שחק שוב</button>
+    <div style="display:flex;gap:10px;width:100%">
+      <button class="ebm" style="flex:1" onclick="restartSame()">🔄 שחק שוב</button>
+      <button class="ebm" style="flex:1;background:linear-gradient(135deg,#1E90FF,#0055DD);box-shadow:0 8px 32px rgba(0,100,255,.35)" onclick="shareResult()">📤 שתף</button>
+    </div>
     <button class="ebs" onclick="goHome()">🏠 החלף רמה</button>
   </div>
 </div>
@@ -2311,6 +2314,31 @@ function endGame(){
 }
 
 function restartSame(){startGame(level);}
+
+function shareResult(){
+  const url='https://rotemshaer-hash.github.io/Telegram-rs/game.html';
+  const scoreEl=document.getElementById('enum');
+  const stars=document.getElementById('estr');
+  const sc=scoreEl?scoreEl.textContent:'';
+  const st=stars?stars.textContent:'';
+  const txt=`שיחקתי או Dot ישראל 🗺️ וקיבלתי ${sc} ${st}\nנסה גם אתה!`;
+  if(window.Telegram?.WebApp?.openLink){
+    window.Telegram.WebApp.openLink('https://t.me/share/url?url='+encodeURIComponent(url)+'&text='+encodeURIComponent(txt));
+    return;
+  }
+  if(navigator.share){
+    navigator.share({title:'או Dot ישראל',text:txt,url}).catch(()=>{});
+    return;
+  }
+  const a=document.createElement('a');
+  a.href='tg://msg_url?url='+encodeURIComponent(url)+'&text='+encodeURIComponent(txt);
+  a.style.display='none';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(()=>document.body.removeChild(a),1000);
+  navigator.clipboard.writeText(txt+'\n'+url).catch(()=>{});
+  _shareToast('הועתק לשיתוף! 📋');
+}
 
 function shuffle(a){
   for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}
