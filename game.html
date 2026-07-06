@@ -1969,6 +1969,8 @@ function nextQ(){
 
   if(reverseMode){
     _tapXY=null;
+    _markerXY=null;
+    if(_animRaf){cancelAnimationFrame(_animRaf);_animRaf=null;}
     // Clear any previous marker
     const oc=document.getElementById('city-canvas');
     if(oc){const ctx=oc.getContext('2d');ctx.clearRect(0,0,oc.width,oc.height);}
