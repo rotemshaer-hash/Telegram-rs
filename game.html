@@ -1839,18 +1839,26 @@ async function nativeShare(e){
   const url='https://rotemshaer-hash.github.io/Telegram-rs/game.html';
   const txt='משחק גאוגרפיה ישראל 🗺️ — נסה לזהות ערים על המפה!';
   closeShareModal();
-  // Try Web Share API (works in some contexts)
-  if(navigator.share){
-    try{
-      await navigator.share({title:'או Dot ישראל 🗺️',text:txt,url});
-      return;
-    }catch(err){ if(err.name==='AbortError') return; }
+  // Telegram Mini App SDK
+  if(window.Telegram?.WebApp?.openLink){
+    const tgUrl='https://t.me/share/url?url='+encodeURIComponent(url)+'&text='+encodeURIComponent(txt);
+    window.Telegram.WebApp.openLink(tgUrl);
+    return;
   }
-  // Try Telegram deep link (works inside Telegram app)
-  const tgDeep='tg://msg_url?url='+encodeURIComponent(url)+'&text='+encodeURIComponent(txt);
-  location.href=tgDeep;
-  // Clipboard copy as backup (after brief delay to let deep link fire)
-  await new Promise(r=>setTimeout(r,400));
+  // Web Share API
+  if(navigator.share){
+    try{ await navigator.share({title:'או Dot ישראל 🗺️',text:txt,url}); return; }
+    catch(err){ if(err.name==='AbortError') return; }
+  }
+  // Telegram tg:// deep link via anchor (doesn't navigate the page)
+  const a=document.createElement('a');
+  a.href='tg://msg_url?url='+encodeURIComponent(url)+'&text='+encodeURIComponent(txt);
+  a.style.display='none';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(()=>document.body.removeChild(a),1000);
+  // Copy to clipboard as backup
+  await new Promise(r=>setTimeout(r,300));
   try{ await navigator.clipboard.writeText(url); }catch(_){}
   _shareToast('הקישור הועתק! 📋');
 }
