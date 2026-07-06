@@ -116,6 +116,8 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
   border-radius:20px;padding:5px 14px;font-size:13px;font-weight:700;color:#c8e8ff;white-space:nowrap;
 }
 .glt{border-radius:20px;padding:5px 13px;font-size:12px;font-weight:800;color:#fff;letter-spacing:.3px}
+.exit-game-btn{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.13);border:1.5px solid rgba(120,180,255,.4);color:rgba(255,255,255,.9);font-size:17px;cursor:pointer;font-family:inherit;transition:background .18s,border-color .18s,transform .15s;flex-shrink:0;padding:0;line-height:1}
+.exit-game-btn:active{background:rgba(255,60,60,.32);border-color:rgba(255,110,110,.65);transform:scale(.9)}
 .glt.easy  {background:linear-gradient(90deg,#60D8FF,#00AAFF)}
 .glt.medium{background:linear-gradient(90deg,#1E90FF,#0055DD)}
 .glt.hard  {background:linear-gradient(90deg,#0044CC,#002FA8)}
@@ -905,7 +907,10 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
           fill="white" font-size="13" font-weight="900" font-family="Rubik,Arial" id="timer-num">10</text>
       </svg>
     </div>
-    <div class="glt" id="levelTag">קל</div>
+    <div style="display:flex;align-items:center;gap:7px;flex-shrink:0;">
+      <div class="glt" id="levelTag">קל</div>
+      <button class="exit-game-btn" onclick="exitGameHome()" title="יציאה לדף הבית">🏠</button>
+    </div>
   </div>
   <div class="pbar"><div class="pfill" id="progressFill" style="width:0%"></div></div>
   <div id="ol-timer-bar-wrap"><div id="ol-timer-bar"></div></div>
@@ -1917,6 +1922,10 @@ function _shareToast(msg){
   setTimeout(()=>t.remove(),2500);
 }
 
+function exitGameHome(){
+  if(!confirm('לצאת מהמשחק וחזור לדף הבית?')) return;
+  goHome();
+}
 function goHome(){
   clearTimer();
   const badge=document.getElementById('rev-name-badge');
