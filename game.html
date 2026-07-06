@@ -45,16 +45,10 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
 .s-title{
   font-size:38px;font-weight:900;text-align:center;margin-bottom:4px;letter-spacing:1px;
   display:flex;align-items:center;justify-content:center;gap:9px;
-  direction:ltr;
   filter:drop-shadow(0 0 18px rgba(0,120,255,.55));
 }
 .st-or{color:#fff;-webkit-text-fill-color:#fff;line-height:1}
-.st-dot-wrap{
-  display:inline-flex;align-items:center;justify-content:center;
-  width:58px;height:58px;border-radius:50%;background:#fff;flex-shrink:0;
-  box-shadow:0 3px 14px rgba(0,80,220,.5),0 0 0 2.5px rgba(200,230,255,.4);
-}
-.st-dot-text{font-size:19px;font-weight:900;letter-spacing:.5px;color:#0055DD;-webkit-text-fill-color:#0055DD;line-height:1}
+.st-pin{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;filter:drop-shadow(0 5px 14px rgba(0,80,220,.55))}
 .st-israel{color:#0055DD;-webkit-text-fill-color:#0055DD;line-height:1}
 .s-sub{font-size:13px;color:rgba(220,200,255,.85);margin-bottom:14px;text-align:center;letter-spacing:.3px}
 .s-label{
@@ -798,7 +792,7 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
 <div id="screen-start" class="screen active">
   <button class="share-fab" onclick="shareGame()" aria-label="שתף משחק">📤</button>
   <div class="s-icon">🛰️</div>
-  <h1 class="s-title"><span class="st-or">או</span><span class="st-dot-wrap"><span class="st-dot-text">Dot</span></span><span class="st-israel">ישראל</span></h1>
+  <h1 class="s-title"><span class="st-or">או</span><span class="st-pin"><svg viewBox="0 0 60 82" width="48" height="65" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="tpg" x1="25%" y1="0%" x2="75%" y2="100%"><stop offset="0%" stop-color="#72CAFF"/><stop offset="55%" stop-color="#1A70FF"/><stop offset="100%" stop-color="#0030BB"/></linearGradient><radialGradient id="tph" cx="38%" cy="26%" r="52%"><stop offset="0%" stop-color="rgba(255,255,255,.44)"/><stop offset="100%" stop-color="rgba(255,255,255,0)"/></radialGradient></defs><path d="M30,2C14.5,2,2,14.5,2,30c0,20.5,28,50,28,50s28-29.5,28-50C58,14.5,45.5,2,30,2z" fill="url(#tpg)"/><path d="M30,2C14.5,2,2,14.5,2,30c0,20.5,28,50,28,50s28-29.5,28-50C58,14.5,45.5,2,30,2z" fill="url(#tph)"/><circle cx="30" cy="27" r="14.5" fill="white"/><text x="30" y="32" text-anchor="middle" font-size="11" font-weight="900" font-family="Rubik,Arial,sans-serif" fill="#0044CC">Dot</text></svg></span><span class="st-israel">ישראל</span></h1>
   <p class="s-sub" style="display:none">נחש את שם הישוב על מפת הלוויין!</p>
 
   <!-- CATEGORY TABS -->
