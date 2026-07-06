@@ -59,30 +59,31 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
   display:flex;flex-direction:column;align-items:center;gap:7px;
   transition:transform .18s,box-shadow .18s;font-family:inherit;
   border:1.5px solid transparent;
+  backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
 }
 .dbtn:active{transform:scale(.93)}
 .dbtn.easy{
   background:linear-gradient(145deg,#00C875,#00B8D9);
-  border-color:transparent;
-  box-shadow:0 6px 28px rgba(0,200,120,.5);
+  border-color:rgba(255,255,255,0.2);
+  box-shadow:0 6px 28px rgba(0,200,120,.5),inset 0 1.5px 0 rgba(255,255,255,0.28);
 }
 .dbtn.easy:active{transform:scale(.93);box-shadow:0 0 36px rgba(0,220,140,.6)}
 .dbtn.medium{
   background:linear-gradient(145deg,#FF9500,#FFD000);
-  border-color:transparent;
-  box-shadow:0 6px 28px rgba(255,160,0,.5);
+  border-color:rgba(255,255,255,0.2);
+  box-shadow:0 6px 28px rgba(255,160,0,.5),inset 0 1.5px 0 rgba(255,255,255,0.28);
 }
 .dbtn.medium:active{transform:scale(.93);box-shadow:0 0 36px rgba(255,180,0,.6)}
 .dbtn.hard{
   background:linear-gradient(145deg,#FF2055,#FF7000);
-  border-color:transparent;
-  box-shadow:0 6px 28px rgba(255,50,80,.5);
+  border-color:rgba(255,255,255,0.2);
+  box-shadow:0 6px 28px rgba(255,50,80,.5),inset 0 1.5px 0 rgba(255,255,255,0.28);
 }
 .dbtn.hard:active{transform:scale(.93);box-shadow:0 0 36px rgba(255,60,80,.6)}
 .dbtn.expert{
   background:linear-gradient(145deg,#9B00FF,#5C1FFF);
-  border-color:transparent;
-  box-shadow:0 6px 28px rgba(150,0,255,.5);
+  border-color:rgba(255,255,255,0.2);
+  box-shadow:0 6px 28px rgba(150,0,255,.5),inset 0 1.5px 0 rgba(255,255,255,0.28);
 }
 .dbtn.expert:active{transform:scale(.93);box-shadow:0 0 36px rgba(160,0,255,.6)}
 .de{font-size:32px;line-height:1}
@@ -212,8 +213,8 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
 
 /* ── MODE TOGGLES ── */
 .mode-row{display:flex;gap:10px;width:100%;max-width:360px;margin:14px 0 4px;position:relative;z-index:1}
-.mode-btn{flex:1;padding:10px 6px;border-radius:14px;border:1.5px solid rgba(255,255,255,0.35);background:rgba(0,12,55,0.72);color:rgba(255,255,255,0.85);font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;transition:all .2s}
-.mode-btn.active{background:rgba(100,30,240,0.88);border-color:rgba(180,100,255,0.9);color:#fff;box-shadow:0 0 18px rgba(140,60,255,0.55)}
+.mode-btn{flex:1;padding:10px 6px;border-radius:14px;border:1.5px solid rgba(120,180,255,0.45);background:rgba(10,45,170,0.48);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);color:rgba(255,255,255,0.92);font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;transition:all .2s;box-shadow:0 4px 18px rgba(0,30,120,0.3),inset 0 1px 0 rgba(255,255,255,0.2)}
+.mode-btn.active{background:rgba(100,30,240,0.72);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-color:rgba(200,140,255,0.85);color:#fff;box-shadow:0 0 22px rgba(140,60,255,0.55),inset 0 1px 0 rgba(255,255,255,0.22)}
 /* ── TIMER RING ── */
 #timer-ring{display:none;flex-shrink:0}
 #timer-arc{transition:stroke .25s}
@@ -316,8 +317,8 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
 .s-label{display:none}
 .cat-tabs{
   display:flex;width:100%;max-width:360px;
-  background:rgba(0,12,55,0.68);border-radius:18px;
-  padding:4px;gap:3px;margin-bottom:16px;position:relative;z-index:1;flex-shrink:0;
+  background:rgba(10,45,170,0.42);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(120,180,255,0.35);border-radius:18px;
+  padding:4px;gap:3px;margin-bottom:16px;position:relative;z-index:1;flex-shrink:0;box-shadow:0 6px 28px rgba(0,20,90,0.3),inset 0 1px 0 rgba(255,255,255,0.18);
 }
 .cat-tab{
   flex:1;padding:9px 2px;border:none;border-radius:14px;
@@ -326,8 +327,8 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
   transition:background .2s,color .2s;line-height:1.2;
 }
 .cat-tab.active{
-  background:linear-gradient(135deg,#7B20FF,#0099EE);
-  color:#fff;box-shadow:0 3px 18px rgba(120,50,255,.5);
+  background:linear-gradient(135deg,rgba(123,32,255,0.88),rgba(0,153,238,0.88));
+  color:#fff;box-shadow:0 3px 18px rgba(120,50,255,.55),inset 0 1px 0 rgba(255,255,255,0.22);
 }
 .cat-panels{width:100%;max-width:360px;position:relative;z-index:1}
 .cat-panel{display:none}
