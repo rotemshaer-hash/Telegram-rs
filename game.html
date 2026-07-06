@@ -868,6 +868,28 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
   <div id="map-wrap">
     <div id="zoom-inner"></div>
     <button id="zoom-reset-btn" onclick="resetMapZoom()">⊖ 1:1</button>
+    <div id="compass-rose" style="position:absolute;right:6px;bottom:18%;z-index:10;pointer-events:none;filter:drop-shadow(0 2px 8px rgba(0,0,0,0.65))">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="-5 -5 120 120" width="92" height="92">
+        <circle cx="55" cy="55" r="50" fill="rgba(3,15,50,0.72)" stroke="rgba(200,180,100,0.55)" stroke-width="1.5"/>
+        <line x1="55" y1="13" x2="55" y2="97" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+        <line x1="13" y1="55" x2="97" y2="55" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+        <!-- North (red) -->
+        <polygon points="55,13 51,48 55,43 59,48" fill="#FF4444"/>
+        <!-- South -->
+        <polygon points="55,97 51,62 55,67 59,62" fill="rgba(255,255,255,0.88)"/>
+        <!-- East -->
+        <polygon points="97,55 62,51 67,55 62,59" fill="rgba(255,255,255,0.88)"/>
+        <!-- West -->
+        <polygon points="13,55 48,51 43,55 48,59" fill="rgba(255,255,255,0.88)"/>
+        <!-- Center dot -->
+        <circle cx="55" cy="55" r="5" fill="white" stroke="#FF4444" stroke-width="1.5"/>
+        <!-- Labels -->
+        <text x="55" y="4" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="10" font-weight="700" font-family="Rubik,Arial,sans-serif">צפון</text>
+        <text x="55" y="107" text-anchor="middle" dominant-baseline="middle" fill="rgba(255,255,255,0.88)" font-size="10" font-weight="700" font-family="Rubik,Arial,sans-serif">דרום</text>
+        <text x="107" y="55" text-anchor="middle" dominant-baseline="middle" fill="rgba(255,255,255,0.88)" font-size="9" font-weight="700" font-family="Rubik,Arial,sans-serif">מזרח</text>
+        <text x="3" y="55" text-anchor="middle" dominant-baseline="middle" fill="rgba(255,255,255,0.88)" font-size="9" font-weight="700" font-family="Rubik,Arial,sans-serif">מערב</text>
+      </svg>
+    </div>
   </div>
   <div class="apan">
     <button class="abtn" id="btn0" onclick="checkAnswer(0)"></button>
