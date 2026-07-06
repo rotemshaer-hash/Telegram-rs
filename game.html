@@ -1837,20 +1837,20 @@ async function copyShareUrl(e){
 async function nativeShare(e){
   e&&e.stopPropagation();
   const url='https://rotemshaer-hash.github.io/Telegram-rs/game.html';
+  const txt='משחק גאוגרפיה ישראל 🗺️ — נסה לזהות ערים על המפה!';
   closeShareModal();
+  // Try Web Share API (works in some contexts)
   if(navigator.share){
     try{
-      await navigator.share({
-        title:'או Dot ישראל 🗺️',
-        text:'משחק גאוגרפיה ישראל — נסה לזהות ערים, קיבוצים, נחלים והרים על המפה!',
-        url
-      });
+      await navigator.share({title:'או Dot ישראל 🗺️',text:txt,url});
       return;
-    }catch(e){ if(e.name==='AbortError') return; }
+    }catch(err){ if(err.name==='AbortError') return; }
   }
-  // Telegram fallback: open Telegram's share dialog
-  const tgUrl='https://t.me/share/url?url='+encodeURIComponent(url)+'&text='+encodeURIComponent('משחק גאוגרפיה ישראל 🗺️ — נסה לזהות ערים על המפה!');
-  window.open(tgUrl,'_blank');
+  // Try Telegram deep link (works inside Telegram app)
+  const tgDeep='tg://msg_url?url='+encodeURIComponent(url)+'&text='+encodeURIComponent(txt);
+  location.href=tgDeep;
+  // Clipboard copy as backup (after brief delay to let deep link fire)
+  await new Promise(r=>setTimeout(r,400));
   try{ await navigator.clipboard.writeText(url); }catch(_){}
   _shareToast('הקישור הועתק! 📋');
 }
