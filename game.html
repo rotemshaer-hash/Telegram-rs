@@ -1259,7 +1259,7 @@ function buildMap() {
   _initMapZoom();
 }
 
-let _markerXY = null, _animRaf = null;
+let _markerXY = null, _animRaf = null, _tapXY = null;
 
 function placeMarker(lat, lng, radiusKm) {
   if (!_mapRect) return;
@@ -1367,6 +1367,40 @@ function _drawMarker() {
   ctx.arc(cx, cy, INNER_R * 0.38, 0, Math.PI * 2);
   ctx.fillStyle = '#ffffff';
   ctx.fill();
+
+  // ── TAP MARKER + DASHED LINE (reverse mode) ──
+  if (_tapXY) {
+    const tx = _tapXY.cx, ty = _tapXY.cy;
+    // Dashed line tap → correct
+    ctx.save();
+    ctx.setLineDash([7, 5]);
+    ctx.strokeStyle = 'rgba(255,255,255,0.82)';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(cx, cy); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+    // Tap glow
+    ctx.beginPath();
+    ctx.arc(tx, ty, 22, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(30,120,255,0.18)';
+    ctx.fill();
+    // Tap circle
+    ctx.beginPath();
+    ctx.arc(tx, ty, 13, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(20,100,230,0.88)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.95)';
+    ctx.lineWidth = 2.2;
+    ctx.stroke();
+    // X inside
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2;
+    const xl = 6;
+    ctx.beginPath();
+    ctx.moveTo(tx-xl, ty-xl); ctx.lineTo(tx+xl, ty+xl);
+    ctx.moveTo(tx+xl, ty-xl); ctx.lineTo(tx-xl, ty+xl);
+    ctx.stroke();
+  }
 
   _animRaf = requestAnimationFrame(_drawMarker);
 }
@@ -1784,6 +1818,8 @@ function _handleRevTap(e){
   const [tapLat,tapLng]=pct2geo(px_pct,py_pct);
   const dist=haversineKm(tapLat,tapLng,correctItem.lat,correctItem.lng);
   const ok=dist<25;
+  // Store tap canvas coords for drawing
+  _tapXY={cx:mapX, cy:mapY};
   // Reveal actual marker
   const _r=correctItem.r!==undefined?correctItem.r:8;
   placeMarker(correctItem.lat,correctItem.lng,_r);
@@ -1931,6 +1967,7 @@ function nextQ(){
   document.getElementById('progressFill').style.width=`${(qNum-1)/TOTAL*100}%`;
 
   if(reverseMode){
+    _tapXY=null;
     // Clear any previous marker
     const oc=document.getElementById('city-canvas');
     if(oc){const ctx=oc.getContext('2d');ctx.clearRect(0,0,oc.width,oc.height);}
