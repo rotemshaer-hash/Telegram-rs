@@ -14,6 +14,7 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
 /* ── ANIMATIONS ── */
 @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-14px)}}
 @keyframes float-sat{0%,100%{transform:translateY(0)}50%{transform:translateY(80px)}}
+@keyframes pin-pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.25)}}
 @keyframes bounce{0%{transform:translateY(0)}50%{transform:translateY(-16px)}100%{transform:translateY(0)}}
 @keyframes shimmer{0%{background-position:200% center}100%{background-position:-200% center}}
 @keyframes pop-in{0%{transform:scale(0.6);opacity:0}80%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}
@@ -123,6 +124,7 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
 .glt{border-radius:20px;padding:5px 13px;font-size:12px;font-weight:800;color:#fff;letter-spacing:.3px}
 .exit-game-btn{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.13);border:1.5px solid rgba(120,180,255,.4);color:rgba(255,255,255,.9);font-size:17px;cursor:pointer;font-family:inherit;transition:background .18s,border-color .18s,transform .15s;flex-shrink:0;padding:0;line-height:1}
 .exit-game-btn:active{background:rgba(255,60,60,.32);border-color:rgba(255,110,110,.65);transform:scale(.9)}
+#city-pin{position:absolute;z-index:6;pointer-events:none;transform-origin:50% 97.8%;animation:pin-pulse 1.6s ease-in-out infinite;filter:drop-shadow(0 6px 14px rgba(0,60,200,.7));display:none;width:38px;height:52px}
 .glt.easy  {background:linear-gradient(90deg,#60D8FF,#00AAFF)}
 .glt.medium{background:linear-gradient(90deg,#1E90FF,#0055DD)}
 .glt.hard  {background:linear-gradient(90deg,#0044CC,#002FA8)}
@@ -1282,6 +1284,11 @@ function buildMap() {
   ac.width = W; ac.height = H;
   ac.style.cssText = 'position:absolute;inset:0;z-index:4;pointer-events:none;display:block';
   inner.appendChild(ac);
+  // SVG location pin (replaces canvas red marker)
+  const cp = document.createElement('div');
+  cp.id = 'city-pin';
+  cp.innerHTML = '<svg viewBox="0 0 100 137" width="38" height="52" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="mpg" x1="25%" y1="0%" x2="75%" y2="100%"><stop offset="0%" stop-color="#A4E4FF"/><stop offset="55%" stop-color="#5BB8FF"/><stop offset="100%" stop-color="#2A6AEF"/></linearGradient><radialGradient id="mph" cx="38%" cy="26%" r="52%"><stop offset="0%" stop-color="rgba(255,255,255,.5)"/><stop offset="100%" stop-color="rgba(255,255,255,0)"/></radialGradient></defs><path d="M50,3C24,3,3,24,3,50c0,34,47,84,47,84s47-50,47-84C97,24,76,3,50,3z" fill="url(#mpg)"/><path d="M50,3C24,3,3,24,3,50c0,34,47,84,47,84s47-50,47-84C97,24,76,3,50,3z" fill="url(#mph)"/><circle cx="50" cy="43" r="40" fill="white"/></svg>';
+  inner.appendChild(cp);
   _initMapZoom();
 }
 
@@ -1297,138 +1304,53 @@ function placeMarker(lat, lng, radiusKm) {
   _markerXY = {cx, cy, baseR};
   if (_animRaf) { cancelAnimationFrame(_animRaf); _animRaf = null; }
   _playSound('ping');
-  _drawMarker();
+  // Position SVG pin with tip anchored at city location
+  const pin = document.getElementById('city-pin');
+  if (pin) {
+    pin.style.left = (cx - 19) + 'px';
+    pin.style.top = (cy - 51) + 'px';
+    pin.style.display = 'block';
+  }
+  // Draw tap indicator line if in reverse mode
+  if (_tapXY) _drawMarker();
 }
 
 function _drawMarker() {
   const oc = document.getElementById('city-canvas');
-  if (!oc || !_markerXY) return;
+  if (!oc || !_markerXY || !_tapXY) return;
   const ctx = oc.getContext('2d');
   ctx.clearRect(0, 0, oc.width, oc.height);
-  const {cx, cy, baseR} = _markerXY;
-  const _MC={gold:[220,40,40],cyan:[220,40,40],lime:[220,40,40],orange:[220,40,40]};
-  const [cr,cg,cb]=_MC[_markerColor]||_MC.gold;
-  const t = Date.now() / 1000;
-  const PERIOD = 1.8;
-  const NUM_RINGS = 3;
-  const INNER_R = Math.max(4, baseR * 0.48);
-  const MAX_R = INNER_R + baseR * 2.8;
-
-  // ── FEATURE 4: Area zone hint ──
-  const ZONE_R = Math.max(INNER_R * 5, 55);
-  const zoneGrd = ctx.createRadialGradient(cx, cy, ZONE_R * 0.25, cx, cy, ZONE_R);
-  zoneGrd.addColorStop(0, `rgba(${cr},${cg},${cb},0.10)`);
-  zoneGrd.addColorStop(1, `rgba(${cr},${cg},${cb},0)`);
-  ctx.beginPath();
-  ctx.arc(cx, cy, ZONE_R, 0, Math.PI * 2);
-  ctx.fillStyle = zoneGrd;
-  ctx.fill();
-
-  // ── FEATURE 3: Vertical light beam ──
-  const beamH = 70;
-  const beamGrd = ctx.createLinearGradient(cx, cy - beamH, cx, cy);
-  beamGrd.addColorStop(0, `rgba(${cr},${cg},${cb},0)`);
-  beamGrd.addColorStop(0.6, `rgba(${cr},${cg},${cb},0.18)`);
-  beamGrd.addColorStop(1, `rgba(${cr},${cg},${cb},0.55)`);
-  ctx.fillStyle = beamGrd;
-  ctx.beginPath();
-  ctx.moveTo(cx - 1.5, cy);
-  ctx.lineTo(cx + 1.5, cy);
-  ctx.lineTo(cx + 5, cy - beamH);
-  ctx.lineTo(cx - 5, cy - beamH);
-  ctx.closePath();
-  ctx.fill();
-
-  // Expanding sonar rings
-  for (let i = 0; i < NUM_RINGS; i++) {
-    const phase = ((t / PERIOD) + i / NUM_RINGS) % 1;
-    const r = INNER_R + (MAX_R - INNER_R) * phase;
-    const alpha = (1 - phase) * 0.9;
-    const lw = Math.max(1.2, (1 - phase * 0.6) * baseR * 0.22);
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.strokeStyle = `rgba(${cr},${cg},${cb},${alpha.toFixed(2)})`;
-    ctx.lineWidth = lw;
-    ctx.stroke();
-  }
-
-  // Dashed outer target ring (feature 3)
+  const {cx, cy} = _markerXY;
+  const tx = _tapXY.cx, ty = _tapXY.cy;
+  // Dashed line tap → correct pin
   ctx.save();
-  ctx.setLineDash([5, 7]);
-  ctx.beginPath();
-  ctx.arc(cx, cy, MAX_R + 6, 0, Math.PI * 2);
-  ctx.strokeStyle = `rgba(${cr},${cg},${cb},0.18)`;
-  ctx.lineWidth = 1;
-  ctx.stroke();
+  ctx.setLineDash([7, 5]);
+  ctx.strokeStyle = 'rgba(255,255,255,0.82)';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(cx, cy); ctx.stroke();
   ctx.setLineDash([]);
   ctx.restore();
-
-  // Glow halo behind dot
-  const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, INNER_R * 2.6);
-  grd.addColorStop(0, `rgba(${cr},${cg},${cb},0.55)`);
-  grd.addColorStop(0.4, `rgba(${cr},${cg},${cb},0.20)`);
-  grd.addColorStop(1, `rgba(${cr},${cg},${cb},0)`);
+  // Tap glow
   ctx.beginPath();
-  ctx.arc(cx, cy, INNER_R * 2.6, 0, Math.PI * 2);
-  ctx.fillStyle = grd;
+  ctx.arc(tx, ty, 22, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(30,120,255,0.18)';
   ctx.fill();
-
-  // Solid dot
+  // Tap circle
   ctx.beginPath();
-  ctx.arc(cx, cy, INNER_R, 0, Math.PI * 2);
-  ctx.fillStyle = `rgb(${cr},${cg},${cb})`;
+  ctx.arc(tx, ty, 13, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(20,100,230,0.88)';
   ctx.fill();
-
-  // Crosshair lines (feature 3)
-  const cLen = INNER_R * 1.8;
-  ctx.strokeStyle = `rgba(255,255,255,0.6)`;
-  ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.moveTo(cx - cLen, cy); ctx.lineTo(cx - INNER_R * 1.1, cy); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(cx + INNER_R * 1.1, cy); ctx.lineTo(cx + cLen, cy); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(cx, cy - cLen); ctx.lineTo(cx, cy - INNER_R * 1.1); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(cx, cy + INNER_R * 1.1); ctx.lineTo(cx, cy + cLen); ctx.stroke();
-
-  // White hot core
+  ctx.strokeStyle = 'rgba(255,255,255,0.95)';
+  ctx.lineWidth = 2.2;
+  ctx.stroke();
+  // X inside
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 2;
+  const xl = 6;
   ctx.beginPath();
-  ctx.arc(cx, cy, INNER_R * 0.38, 0, Math.PI * 2);
-  ctx.fillStyle = '#ffffff';
-  ctx.fill();
-
-  // ── TAP MARKER + DASHED LINE (reverse mode) ──
-  if (_tapXY) {
-    const tx = _tapXY.cx, ty = _tapXY.cy;
-    // Dashed line tap → correct
-    ctx.save();
-    ctx.setLineDash([7, 5]);
-    ctx.strokeStyle = 'rgba(255,255,255,0.82)';
-    ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(cx, cy); ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.restore();
-    // Tap glow
-    ctx.beginPath();
-    ctx.arc(tx, ty, 22, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(30,120,255,0.18)';
-    ctx.fill();
-    // Tap circle
-    ctx.beginPath();
-    ctx.arc(tx, ty, 13, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(20,100,230,0.88)';
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.95)';
-    ctx.lineWidth = 2.2;
-    ctx.stroke();
-    // X inside
-    ctx.strokeStyle = '#fff';
-    ctx.lineWidth = 2;
-    const xl = 6;
-    ctx.beginPath();
-    ctx.moveTo(tx-xl, ty-xl); ctx.lineTo(tx+xl, ty+xl);
-    ctx.moveTo(tx+xl, ty-xl); ctx.lineTo(tx-xl, ty+xl);
-    ctx.stroke();
-  }
-
-  _animRaf = requestAnimationFrame(_drawMarker);
+  ctx.moveTo(tx-xl, ty-xl); ctx.lineTo(tx+xl, ty+xl);
+  ctx.moveTo(tx+xl, ty-xl); ctx.lineTo(tx-xl, ty+xl);
+  ctx.stroke();
 }
 
 // ════════════════════════════════════════
@@ -2001,7 +1923,9 @@ function nextQ(){
     _tapXY=null;
     _markerXY=null;
     if(_animRaf){cancelAnimationFrame(_animRaf);_animRaf=null;}
-    // Clear any previous marker
+    // Hide SVG pin and clear tap indicator canvas
+    const cp=document.getElementById('city-pin');
+    if(cp) cp.style.display='none';
     const oc=document.getElementById('city-canvas');
     if(oc){const ctx=oc.getContext('2d');ctx.clearRect(0,0,oc.width,oc.height);}
     // Remove old name badge if any
