@@ -752,6 +752,7 @@ let S={
   shareUrl:"https://kidemy-app.netlify.app",
   shareCopied:false,
 };
+let currentUser=null, currentUserData=null;
 
 // ─── שמירת מצב הרשמה בין רענונים ────────────────────────────────────────────
 function _saveRegSession(){
@@ -11651,7 +11652,6 @@ function showIOSInstallGuide(){
 }
 
 // ── FIREBASE AUTH & DB ─────────────────────────────────────────────────────
-let currentUser=null, currentUserData=null;
 
 // Fetch verified student count via REST API (bypasses Firebase SDK in-memory cache).
 // Called after currentUser is confirmed so getIdToken always succeeds.
