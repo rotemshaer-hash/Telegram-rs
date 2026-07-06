@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
-<title>משחק ידיעת הארץ 🇮🇱</title>
+<title>ידע ישראל 🇮🇱</title>
 <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;700;800;900&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -43,10 +43,11 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
 }
 .s-icon{font-size:52px;line-height:1;margin-bottom:4px;animation:float 3s ease-in-out infinite;filter:drop-shadow(0 0 14px rgba(0,220,150,.5))}
 .s-title{
-  font-size:32px;font-weight:900;text-align:center;margin-bottom:4px;
-  background:linear-gradient(135deg,#00FFDD,#FF00CC,#FFAA00);
-  background-size:200% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  font-size:38px;font-weight:900;text-align:center;margin-bottom:4px;letter-spacing:1px;
+  background:linear-gradient(90deg,#FFFFFF 0%,#70D8FF 20%,#0070FF 42%,#FFFFFF 58%,#FFD700 76%,#70D8FF 90%,#FFFFFF 100%);
+  background-size:300% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;
   background-clip:text;animation:shimmer 4s linear infinite;
+  filter:drop-shadow(0 0 18px rgba(0,120,255,.55));
 }
 .s-sub{font-size:13px;color:rgba(220,200,255,.85);margin-bottom:14px;text-align:center;letter-spacing:.3px}
 .s-label{
@@ -64,25 +65,25 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
 .dbtn:active{transform:scale(.93)}
 .dbtn.easy{
   background:linear-gradient(145deg,#00C875,#00B8D9);
-  border-color:rgba(255,255,255,0.2);
+  border-color:rgba(145,225,255,0.85);
   box-shadow:0 6px 28px rgba(0,200,120,.5),inset 0 1.5px 0 rgba(255,255,255,0.28);
 }
 .dbtn.easy:active{transform:scale(.93);box-shadow:0 0 36px rgba(0,220,140,.6)}
 .dbtn.medium{
   background:linear-gradient(145deg,#FF9500,#FFD000);
-  border-color:rgba(255,255,255,0.2);
+  border-color:rgba(70,165,255,0.85);
   box-shadow:0 6px 28px rgba(255,160,0,.5),inset 0 1.5px 0 rgba(255,255,255,0.28);
 }
 .dbtn.medium:active{transform:scale(.93);box-shadow:0 0 36px rgba(255,180,0,.6)}
 .dbtn.hard{
   background:linear-gradient(145deg,#FF2055,#FF7000);
-  border-color:rgba(255,255,255,0.2);
+  border-color:rgba(25,100,230,0.85);
   box-shadow:0 6px 28px rgba(255,50,80,.5),inset 0 1.5px 0 rgba(255,255,255,0.28);
 }
 .dbtn.hard:active{transform:scale(.93);box-shadow:0 0 36px rgba(255,60,80,.6)}
 .dbtn.expert{
   background:linear-gradient(145deg,#9B00FF,#5C1FFF);
-  border-color:rgba(255,255,255,0.2);
+  border-color:rgba(10,45,170,0.9);
   box-shadow:0 6px 28px rgba(150,0,255,.5),inset 0 1.5px 0 rgba(255,255,255,0.28);
 }
 .dbtn.expert:active{transform:scale(.93);box-shadow:0 0 36px rgba(160,0,255,.6)}
@@ -775,7 +776,7 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
 <div id="screen-start" class="screen active">
   <button class="share-fab" onclick="shareGame()" aria-label="שתף משחק">📤</button>
   <div class="s-icon">🛰️</div>
-  <h1 class="s-title">ידיעת הארץ</h1>
+  <h1 class="s-title">ידע ישראל</h1>
   <p class="s-sub" style="display:none">נחש את שם הישוב על מפת הלוויין!</p>
 
   <!-- CATEGORY TABS -->
