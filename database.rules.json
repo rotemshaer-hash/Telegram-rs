@@ -3,6 +3,8 @@
     ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'",
     ".write": "auth != null && auth.token.email == 'rotemshaer@gmail.com'",
 
+    "rooms": { ".read": true, ".write": true },
+
     "teachers": { ".read": "auth != null" },
 
     "users": {
