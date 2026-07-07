@@ -23,42 +23,48 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
 .st-pin{position:relative;display:inline-flex;align-items:flex-start;justify-content:center;flex-shrink:0;filter:drop-shadow(0 4px 10px rgba(0,80,220,.5))}
 .st-dot-lbl{position:absolute;top:30px;left:50%;transform:translate(-50%,-50%);font-size:20px;font-weight:900;font-family:Rubik,Arial,sans-serif;background:linear-gradient(180deg,#A4E4FF 0%,#5BB8FF 55%,#2A6AEF 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1;white-space:nowrap;pointer-events:none}
 .st-world{font-size:26px;font-weight:900;color:#fff}
-.share-fab{position:absolute;top:12px;left:12px;background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.25);border-radius:20px;color:#fff;font-size:13px;font-weight:800;padding:7px 12px;cursor:pointer;z-index:10;touch-action:none}
+.s-icon{font-size:36px;line-height:1;animation:float 4s ease-in-out infinite;filter:drop-shadow(0 0 10px rgba(0,220,150,.45));position:absolute;top:15px;z-index:2;pointer-events:none;user-select:none}
+.s-icon-l{left:12px}
+.s-icon-r{right:12px;animation-delay:2s}
+.share-fab{background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.22);border-radius:22px;padding:5px 18px;display:flex;align-items:center;justify-content:center;gap:5px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;z-index:20;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);transition:background .15s,transform .12s;color:rgba(255,255,255,.88);margin:2px auto 8px;}
 .cat-tabs{display:flex;gap:5px;width:100%;overflow-x:auto;padding:0 2px;scrollbar-width:none;flex-shrink:0}
 .cat-tabs::-webkit-scrollbar{display:none}
 .cat-tab{flex-shrink:0;padding:7px 13px;background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.12);border-radius:20px;color:rgba(255,255,255,.6);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;touch-action:none;transition:all .2s}
 .cat-tab.active{background:rgba(255,255,255,.2);border-color:rgba(255,255,255,.5);color:#fff}
-.cat-panels{width:100%;flex:1;min-height:0;overflow:hidden;position:relative}
-.cat-panel{display:none;width:100%;height:100%;overflow-y:auto;padding:8px 0 4px}
+.cat-panels{width:100%;max-width:360px;position:relative;z-index:1}
+.cat-panel{display:none}
 .cat-panel.active{display:block}
-.dgrid2{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 4px}
-.dgrid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:0 4px}
-.dbtn{display:flex;flex-direction:column;align-items:center;gap:3px;padding:12px 8px 10px;border:none;border-radius:18px;cursor:pointer;touch-action:none;font-family:inherit;transition:transform .15s,box-shadow .15s}
-.dbtn.easy{background:linear-gradient(135deg,#1a6b2e,#2d9e48);box-shadow:0 4px 16px rgba(0,160,60,.3)}
-.dbtn.medium{background:linear-gradient(135deg,#1565c0,#1e88e5);box-shadow:0 4px 16px rgba(30,100,220,.3)}
-.dbtn.hard{background:linear-gradient(135deg,#4a148c,#7b1fa2);box-shadow:0 4px 16px rgba(100,0,180,.3)}
-.dbtn.expert{background:linear-gradient(135deg,#b71c1c,#e53935);box-shadow:0 4px 16px rgba(200,0,0,.3)}
-.de{font-size:20px;line-height:1}
-.dn{font-size:14px;font-weight:900;color:#fff}
-.dd{font-size:10px;color:rgba(255,255,255,.7);text-align:center;line-height:1.3}
-.mode-row{display:flex;gap:8px;width:100%;margin-top:6px;flex-shrink:0}
-.mode-btn{flex:1;padding:9px;background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.15);border-radius:14px;color:rgba(255,255,255,.7);font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;touch-action:none;transition:all .2s}
-.mode-btn.active{background:rgba(255,255,255,.22);border-color:rgba(255,255,255,.5);color:#fff}
-.mp-or{display:flex;align-items:center;gap:8px;width:100%;margin:6px 0 4px;flex-shrink:0}
-.mp-or::before,.mp-or::after{content:'';flex:1;height:1px;background:rgba(255,255,255,.15)}
-.mp-or span{color:rgba(255,255,255,.4);font-size:12px;font-weight:700}
-.mp-launch-btn{width:100%;padding:12px;background:linear-gradient(135deg,rgba(60,40,150,.8),rgba(80,20,180,.9));border:1.5px solid rgba(180,140,255,.4);border-radius:16px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;touch-action:none;box-shadow:0 4px 18px rgba(100,0,255,.25);flex-shrink:0;margin-bottom:5px}
-.ol-launch-btn{width:100%;padding:12px;background:linear-gradient(135deg,rgba(0,60,130,.8),rgba(0,100,200,.9));border:1.5px solid rgba(100,180,255,.35);border-radius:16px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;touch-action:none;box-shadow:0 4px 18px rgba(0,100,220,.25);flex-shrink:0}
+.dgrid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%}
+.dgrid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;width:100%}
+.dbtn{border-radius:20px;padding:16px 10px 12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:7px;transition:transform .18s,box-shadow .18s;font-family:inherit;border:1.5px solid transparent;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);touch-action:none}
+.dbtn:active{transform:scale(.93)}
+.dbtn.easy{background:linear-gradient(145deg,#60D8FF,#00AAFF);border-color:rgba(180,235,255,0.7);box-shadow:0 6px 28px rgba(0,170,255,.5),inset 0 1.5px 0 rgba(255,255,255,0.32)}
+.dbtn.medium{background:linear-gradient(145deg,#1E90FF,#0055DD);border-color:rgba(100,180,255,0.7);box-shadow:0 6px 28px rgba(30,144,255,.5),inset 0 1.5px 0 rgba(255,255,255,0.28)}
+.dbtn.hard{background:linear-gradient(145deg,#0044CC,#002FA8);border-color:rgba(60,130,230,0.7);box-shadow:0 6px 28px rgba(0,68,204,.55),inset 0 1.5px 0 rgba(255,255,255,0.24)}
+.dbtn.expert{background:linear-gradient(145deg,#001F7A,#00155A);border-color:rgba(30,80,200,0.7);box-shadow:0 6px 28px rgba(0,30,120,.6),inset 0 1.5px 0 rgba(255,255,255,0.18)}
+.de{font-size:32px;line-height:1}
+.dn{font-size:15px;font-weight:900;color:#fff}
+.dd{font-size:11px;color:rgba(255,255,255,.88);text-align:center;line-height:1.4}
+.mode-row{display:flex;gap:10px;width:100%;max-width:360px;margin:14px 0 4px;position:relative;z-index:1}
+.mode-btn{flex:1;padding:10px 6px;border-radius:14px;border:1.5px solid rgba(120,180,255,0.45);background:rgba(10,45,170,0.48);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);color:rgba(255,255,255,0.92);font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;transition:all .2s;box-shadow:0 4px 18px rgba(0,30,120,0.3),inset 0 1px 0 rgba(255,255,255,0.2)}
+.mode-btn.active{background:rgba(0,70,220,0.82);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-color:rgba(120,200,255,0.85);color:#fff;box-shadow:0 0 22px rgba(0,100,255,0.55),inset 0 1px 0 rgba(255,255,255,0.22)}
+.mp-or{display:flex;align-items:center;gap:10px;width:100%;max-width:360px;margin:12px 0 8px;position:relative;z-index:1}
+.mp-or::before,.mp-or::after{content:'';flex:1;height:1px;background:rgba(255,255,255,.12)}
+.mp-or span{font-size:11px;color:rgba(255,255,255,.3);white-space:nowrap;font-weight:700}
+.mp-launch-btn{width:100%;max-width:360px;padding:16px;border:none;border-radius:22px;background:linear-gradient(135deg,#0055DD,#0099FF,#55DDFF);background-size:200% auto;animation:shimmer 3s linear infinite;color:#fff;font-size:16px;font-weight:900;cursor:pointer;font-family:inherit;box-shadow:0 8px 36px rgba(0,120,255,.5);transition:transform .15s;position:relative;z-index:1;}
+.mp-launch-btn:active{transform:scale(.95)}
+.ol-launch-btn{width:100%;max-width:360px;padding:14px;border:none;border-radius:22px;background:linear-gradient(135deg,#0044CC,#0099EE,#00E5FF);background-size:200% auto;animation:shimmer 3s linear infinite;color:#fff;font-size:16px;font-weight:900;cursor:pointer;font-family:inherit;box-shadow:0 6px 28px rgba(0,100,255,.4);transition:transform .15s;position:relative;z-index:1;margin-top:6px;}
+.ol-launch-btn:active{transform:scale(.95)}
 .ghdr{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:linear-gradient(90deg,#001852,#002FA0);flex-shrink:0;z-index:20;width:100%}
 .gsc{display:flex;align-items:center;gap:4px;font-size:18px;font-weight:900;color:#FFD700}
 .gsc-star{font-size:16px}
 .gqc{font-size:12px;font-weight:700;color:rgba(255,255,255,.7)}
 #timer-ring{flex-shrink:0}
 .glt{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:800;color:#fff}
-.glt.easy{background:linear-gradient(90deg,#1a6b2e,#2d9e48)}
-.glt.medium{background:linear-gradient(90deg,#1565c0,#1e88e5)}
-.glt.hard{background:linear-gradient(90deg,#4a148c,#7b1fa2)}
-.glt.expert{background:linear-gradient(90deg,#b71c1c,#e53935)}
+.glt.easy{background:linear-gradient(90deg,#60D8FF,#00AAFF)}
+.glt.medium{background:linear-gradient(90deg,#1E90FF,#0055DD)}
+.glt.hard{background:linear-gradient(90deg,#0044CC,#002FA8)}
+.glt.expert{background:linear-gradient(90deg,#001F7A,#00155A)}
 .exit-game-btn{background:rgba(255,255,255,.12);border:none;border-radius:10px;color:#fff;font-size:16px;padding:5px 8px;cursor:pointer;touch-action:none}
 .pbar{width:100%;height:5px;background:rgba(255,255,255,.08);flex-shrink:0;z-index:20}
 .pfill{height:100%;background:linear-gradient(90deg,#55DDFF,#0099FF,#0044CC,#55DDFF);background-size:200% auto;animation:shimmer 2.5s linear infinite;transition:width .5s cubic-bezier(.4,0,.2,1)}
@@ -193,9 +199,11 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
 
 <!-- START SCREEN -->
 <div id="screen-start" class="screen active">
+  <div class="s-icon s-icon-l">🌍</div>
+  <div class="s-icon s-icon-r">🌍</div>
   <h1 class="s-title">
     <span class="st-or">או</span>
-    <span class="st-pin"><svg viewBox="0 0 100 137" width="52" height="72" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="tpg" x1="25%" y1="0%" x2="75%" y2="100%"><stop offset="0%" stop-color="#A4E4FF"/><stop offset="55%" stop-color="#5BB8FF"/><stop offset="100%" stop-color="#2A6AEF"/></linearGradient><radialGradient id="tph" cx="38%" cy="26%" r="52%"><stop offset="0%" stop-color="rgba(255,255,255,.5)"/><stop offset="100%" stop-color="rgba(255,255,255,0)"/></radialGradient></defs><path d="M50,3C24,3,3,24,3,50c0,34,47,84,47,84s47-50,47-84C97,24,76,3,50,3z" fill="url(#tpg)"/><path d="M50,3C24,3,3,24,3,50c0,34,47,84,47,84s47-50,47-84C97,24,76,3,50,3z" fill="url(#tph)"/><circle cx="50" cy="43" r="40" fill="white"/></svg><span class="st-dot-lbl">Dot</span></span>
+    <span class="st-pin"><svg viewBox="0 0 100 137" width="68" height="94" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="tpg" x1="25%" y1="0%" x2="75%" y2="100%"><stop offset="0%" stop-color="#A4E4FF"/><stop offset="55%" stop-color="#5BB8FF"/><stop offset="100%" stop-color="#2A6AEF"/></linearGradient><radialGradient id="tph" cx="38%" cy="26%" r="52%"><stop offset="0%" stop-color="rgba(255,255,255,.5)"/><stop offset="100%" stop-color="rgba(255,255,255,0)"/></radialGradient></defs><path d="M50,3C24,3,3,24,3,50c0,34,47,84,47,84s47-50,47-84C97,24,76,3,50,3z" fill="url(#tpg)"/><path d="M50,3C24,3,3,24,3,50c0,34,47,84,47,84s47-50,47-84C97,24,76,3,50,3z" fill="url(#tph)"/><circle cx="50" cy="43" r="40" fill="white"/></svg><span class="st-dot-lbl">Dot</span></span>
     <span class="st-world">עולם</span>
   </h1>
   <button class="share-fab" onclick="shareGame()" aria-label="שתף משחק">📤 שתף</button>
