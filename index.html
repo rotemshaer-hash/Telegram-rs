@@ -1410,14 +1410,6 @@ function ParentReg(){
         <span style="font-size:12px;line-height:1.7;color:#475569">אני <strong style="color:#0F1A1F">ההורה</strong>, מעל גיל 18, ומאשר/ת את הצטרפות ילדי לאפליקציה Kidemy. ידוע לי שפעילות הילד תהיה גלויה לי בכל עת.</span>
       </div>
 
-      <!-- Google sign-in shortcut -->
-      <div style="background:#fff;border:1.5px solid #E2E8F0;border-radius:16px;padding:12px 14px;box-shadow:0 2px 8px rgba(0,0,0,0.05)">
-        <p style="font-size:12px;color:#64748B;margin:0 0 10px;text-align:center">מלא פרטים ידנית <strong style="color:#475569">או</strong> ייבא מ-Google:</p>
-        <button onclick="signInWithGoogleParent()" style="width:100%;background:#fff;border:none;border-radius:14px;padding:12px;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;color:#1A1A2E;box-shadow:0 2px 10px rgba(0,0,0,0.2)">
-          <img src="https://www.google.com/favicon.ico" style="width:18px;height:18px" alt="G"> ייבא שם ומייל מ-Google
-        </button>
-      </div>
-
       <!-- submit -->
       <button onclick="submitParentReg()" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:18px;padding:17px;font-size:16px;font-weight:900;cursor:pointer;box-shadow:0 4px 20px rgba(20,184,166,.3)">
         המשך לרישום הילד ←
@@ -1429,29 +1421,6 @@ function ParentReg(){
 
     </div>
   </div>`;
-}
-
-async function signInWithGoogleParent(){
-  try{
-    showFireToast('⏳ מחבר עם Google...');
-    S._googleImporting=true;
-    const provider=new firebase.auth.GoogleAuthProvider();
-    const result=await auth.signInWithPopup(provider);
-    const gUser=result.user;
-    const nameEl=document.getElementById('prName');
-    const emailEl=document.getElementById('prEmail');
-    if(nameEl&&gUser.displayName)nameEl.value=gUser.displayName;
-    if(emailEl&&gUser.email)emailEl.value=gUser.email;
-    auth.signOut().catch(()=>{}); // don't await — let onAuthStateChanged fire while flag is still true
-    showFireToast('✅ פרטים הועתקו! השלם את שאר השדות ולחץ המשך.');
-  }catch(e){
-    S._googleImporting=false;
-    const _silentCodes=['auth/popup-closed-by-user','auth/cancelled-popup-request'];
-    if(!_silentCodes.includes(e.code))showFireToast('❌ '+e.message);
-  }finally{
-    // Delay clearing flag so onAuthStateChanged fires WHILE it's still true
-    setTimeout(()=>{S._googleImporting=false;},2000);
-  }
 }
 
 function validateIsraeliId(id){
@@ -11723,13 +11692,11 @@ auth&&auth.onAuthStateChanged(async user=>{
   if(user){
     // אין כניסה אוטומטית — רק כניסה ידנית מתקבלת (S._loggingIn=true מסמן כניסה ידנית)
     const _inRegFlow=['safety','parentReg','register','teacherPending','studentPending'].includes(S.screen);
-    if(!S._registering&&!S._loggingIn&&!S._googleImporting&&!_inRegFlow){
+    if(!S._registering&&!S._loggingIn&&!_inRegFlow){
       await auth.signOut().catch(()=>{});
       go('login');
       return;
     }
-    // Google import only — don't load DB data or re-render (would wipe the filled form)
-    if(S._googleImporting){return;}
     // בדוק אם המשתמש נחסם על ידי מנהל
     if(!S._registering){
       try{
