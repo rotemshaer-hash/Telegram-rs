@@ -680,7 +680,24 @@ const LVLS={
 // ── MAP STATE ──
 let _mapRect=null;
 let _mZ=1,_mPX=0,_mPY=0;
+let _baseZ=1,_basePX=0,_basePY=0;
 let _pinchSt=null;
+
+// Continent bounding boxes [minLat, maxLat, minLng, maxLng]
+const CONT_BBOX={
+  eu:[-5,72,-25,45],
+  as:[1,77,25,148],
+  af:[-36,38,-18,52],
+  am:[-56,73,-170,-34],
+  oc:[-48,12,108,180],
+};
+const LEVEL_CONT={
+  'europe-easy':'eu','europe-hard':'eu',
+  'asia-easy':'as','asia-hard':'as',
+  'africa-easy':'af','africa-hard':'af',
+  'americas-easy':'am','americas-hard':'am',
+  'oceania':'oc',
+};
 
 function _applyMapTransform(){
   const inner=document.getElementById('zoom-inner');
@@ -689,18 +706,43 @@ function _applyMapTransform(){
   const W=wrap.clientWidth,H=wrap.clientHeight;
   _mPX=Math.min(0,Math.max(W*(1-_mZ),_mPX));
   _mPY=Math.min(0,Math.max(H*(1-_mZ),_mPY));
-  inner.style.transform=_mZ===1?'':
+  inner.style.transform=(_mZ===1&&_mPX===0&&_mPY===0)?'':
     `translate(${_mPX}px,${_mPY}px) scale(${_mZ})`;
   const btn=document.getElementById('zoom-reset-btn');
-  if(btn)btn.style.display=_mZ>1.05?'block':'none';
+  if(btn)btn.style.display=(_mZ>_baseZ*1.08||_mZ>1.08)?'block':'none';
 }
 
 function resetMapZoom(){
   const inner=document.getElementById('zoom-inner');
   if(inner){inner.style.transition='transform .3s ease';}
-  _mZ=1;_mPX=0;_mPY=0;
+  _mZ=_baseZ;_mPX=_basePX;_mPY=_basePY;
   _applyMapTransform();
   setTimeout(()=>{if(inner)inner.style.transition='';},320);
+}
+
+function zoomToContinent(cont){
+  _baseZ=1;_basePX=0;_basePY=0;
+  if(!cont||!_mapRect){_mZ=1;_mPX=0;_mPY=0;return;}
+  const bbox=CONT_BBOX[cont];if(!bbox)return;
+  const wrap=document.getElementById('map-wrap');
+  if(!wrap)return;
+  const W=wrap.clientWidth,H=wrap.clientHeight;
+  const[minLat,maxLat,minLng,maxLng]=bbox;
+  const[px1,py2]=geo2pct(minLat,minLng);
+  const[px2,py1]=geo2pct(maxLat,maxLng);
+  const x1=_mapRect.offsetX+px1/100*_mapRect.dispW;
+  const x2=_mapRect.offsetX+px2/100*_mapRect.dispW;
+  const y1=_mapRect.offsetY+py1/100*_mapRect.dispH;
+  const y2=_mapRect.offsetY+py2/100*_mapRect.dispH;
+  const cw=x2-x1,ch=y2-y1;
+  const newZ=Math.min(6,Math.max(1,Math.min(W/cw,H/ch)*0.82));
+  const cx=(x1+x2)/2,cy=(y1+y2)/2;
+  _baseZ=newZ;_basePX=W/2-newZ*cx;_basePY=H/2-newZ*cy;
+  _mZ=_baseZ;_mPX=_basePX;_mPY=_basePY;
+  const inner=document.getElementById('zoom-inner');
+  if(inner){inner.style.transition='transform .55s ease';}
+  _applyMapTransform();
+  setTimeout(()=>{if(inner)inner.style.transition='';},600);
 }
 
 function _initMapZoom(){
@@ -719,13 +761,14 @@ function _initMapZoom(){
       const now=Date.now();
       if(now-_lastTap<300){
         e.preventDefault();
-        if(_mZ>1.05){resetMapZoom();}
+        if(_mZ>_baseZ*1.08){resetMapZoom();}
         else{
           const rect=wrap.getBoundingClientRect();
           const mx=tc[0].clientX-rect.left,my=tc[0].clientY-rect.top;
-          _mZ=2.5;
-          _mPX=mx-_mZ*mx;
-          _mPY=my-_mZ*my;
+          const newZ=Math.min(6,_baseZ*2.5);
+          _mPX=mx-newZ*(mx-_basePX)/_baseZ;
+          _mPY=my-newZ*(my-_basePY)/_baseZ;
+          _mZ=newZ;
           _applyMapTransform();
         }
       }
@@ -739,7 +782,7 @@ function _initMapZoom(){
       const dx=tc[1].clientX-tc[0].clientX,dy=tc[1].clientY-tc[0].clientY;
       const newDist=Math.hypot(dx,dy);
       const ratio=newDist/_pinchSt.dist;
-      const newZ=Math.min(6,Math.max(1,_pinchSt.z0*ratio));
+      const newZ=Math.min(6,Math.max(_baseZ,_pinchSt.z0*ratio));
       const mx=_pinchSt.midX,my=_pinchSt.midY;
       _mPX=mx-newZ*(mx-_pinchSt.px0)/_pinchSt.z0;
       _mPY=my-newZ*(my-_pinchSt.py0)/_pinchSt.z0;
@@ -747,7 +790,7 @@ function _initMapZoom(){
       _applyMapTransform();
     }
   },{passive:false});
-  wrap.addEventListener('touchend',()=>{if(_mZ<1.05){_mZ=1;_mPX=0;_mPY=0;_applyMapTransform();}});
+  wrap.addEventListener('touchend',()=>{if(_mZ<_baseZ*1.05){_mZ=_baseZ;_mPX=_basePX;_mPY=_basePY;_applyMapTransform();}});
 }
 
 // ── BUILD MAP ──
@@ -856,6 +899,7 @@ function goHome(){
   olStopPolling();olMode=false;olIsHost=false;olRoomCode=null;
   mpMode=false;
   _mapRect=null;
+  _baseZ=1;_basePX=0;_basePY=0;
   clearTimer();
   const inner=document.getElementById('zoom-inner');
   if(inner)inner.innerHTML='';
@@ -892,7 +936,8 @@ function startGame(lvl){
     mapWrap.classList.remove('rev-mode');
   }
   show('screen-game');
-  requestAnimationFrame(()=>requestAnimationFrame(()=>{buildMap();nextQ();}));
+  const _lvlCont=LEVEL_CONT[lvl]||null;
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{buildMap();zoomToContinent(_lvlCont);nextQ();}));
 }
 
 function nextQ(){
