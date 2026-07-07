@@ -20,8 +20,8 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
 #screen-start{justify-content:center;padding:14px 16px 10px;position:relative;overflow:hidden;background:linear-gradient(160deg,#001852 0%,#002FA0 55%,#003FAA 100%)}
 .s-title{font-size:28px;font-weight:900;color:#fff;text-align:center;letter-spacing:1px;margin-bottom:6px;display:flex;align-items:center;gap:6px;justify-content:center}
 .st-or{color:rgba(255,255,255,.85);font-size:22px}
-.st-pin{display:inline-flex;align-items:center;vertical-align:middle}
-.st-dot-lbl{font-size:20px;font-weight:900;color:#fff;margin-right:2px}
+.st-pin{position:relative;display:inline-flex;align-items:flex-start;justify-content:center;flex-shrink:0;filter:drop-shadow(0 4px 10px rgba(0,80,220,.5))}
+.st-dot-lbl{position:absolute;top:30px;left:50%;transform:translate(-50%,-50%);font-size:20px;font-weight:900;font-family:Rubik,Arial,sans-serif;background:linear-gradient(180deg,#A4E4FF 0%,#5BB8FF 55%,#2A6AEF 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1;white-space:nowrap;pointer-events:none}
 .st-world{font-size:26px;font-weight:900;color:#fff}
 .share-fab{position:absolute;top:12px;left:12px;background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.25);border-radius:20px;color:#fff;font-size:13px;font-weight:800;padding:7px 12px;cursor:pointer;z-index:10;touch-action:none}
 .cat-tabs{display:flex;gap:5px;width:100%;overflow-x:auto;padding:0 2px;scrollbar-width:none;flex-shrink:0}
@@ -1149,7 +1149,6 @@ function continueFromPass(){
   show('screen-game');
   nextQ();
 }
-function afterAnswer(){if(mpMode){const n=OKP[Math.floor(Math.random()*OKP.length)];_showFeedback(score>0,n);setTimeout(()=>showFacts(correctItem),700);}}
 function rematchMultiplayer(){mpMode=false;goMultiplayer();}
 function endMultiplayer(){
   const sorted=[...mpScores].sort((a,b)=>b.score-a.score);
@@ -1325,11 +1324,6 @@ function olShowQuestion(room){
   if(room.deadline){olStartTimer(room.deadline);}
   const olBar=document.getElementById('ol-timer-bar-wrap');if(olBar)olBar.style.display='';
   olStartPolling();
-}
-  _showFeedback(ok,ok?OKP[Math.floor(Math.random()*OKP.length)]:NOP[Math.floor(Math.random()*NOP.length)]);
-  document.getElementById('scoreVal').textContent=score;
-  try{await olFetch('/rooms/W'+olRoomCode+'/answers/'+olMyName,'PUT',{q:room?.currentQ||0,ans:idx,ok});}catch(_){}
-  setTimeout(()=>showFacts(correctItem),700);
 }
 let _olCurrentQ=0;
 function afterAnswer(){
