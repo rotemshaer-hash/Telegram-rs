@@ -153,6 +153,9 @@ input,textarea,select{font-family:inherit;-webkit-appearance:none;appearance:non
 .tabs{display:flex;background:rgba(20,184,166,.07);border-radius:50px;padding:4px;margin-bottom:18px}
 .tabs button{flex:1;padding:10px 4px;border:none;cursor:pointer;border-radius:50px;font-weight:700;font-size:12px;background:transparent;color:var(--muted);transition:all .2s;display:inline-flex;align-items:center;justify-content:center;gap:3px}
 .tabs button.on{background:linear-gradient(135deg,var(--s),#06B6D4);color:#fff;box-shadow:var(--gs)}
+.tabs.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.tabs.scroll::-webkit-scrollbar{display:none}
+.tabs.scroll button{flex:0 0 auto;white-space:nowrap}
 
 /* OTP */
 .otp{display:flex;gap:8px;justify-content:center;margin-bottom:20px}
@@ -9042,7 +9045,7 @@ function Profile(){
           <button onclick="showRanksPanel()" style="background:linear-gradient(135deg,#06B6D4,#8b2fc9);border:none;color:#fff;border-radius:18px;padding:14px 6px;font-weight:900;font-size:12px;cursor:pointer;box-shadow:0 5px 16px rgba(6,182,212,0.38);display:flex;flex-direction:column;align-items:center;gap:6px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>דרגות</button>
         </div>
 
-        <div class="tabs" style="margin-bottom:14px">${tabItems.map(([id,lbl])=>`<button class="${tab===id?'on':''}" onclick="S.pTab='${id}';render()">${lbl}</button>`).join('')}</div>
+        <div class="tabs scroll" style="margin-bottom:14px">${tabItems.map(([id,lbl])=>`<button class="${tab===id?'on':''}" onclick="S.pTab='${id}';render()">${lbl}</button>`).join('')}</div>
         ${content}
       </div>
       ${BNav("profile")}
@@ -9107,7 +9110,7 @@ function Profile(){
           </button>`).join('')}
         </div>`;
       })()}
-      <div class="tabs">
+      <div class="tabs scroll">
         ${tabItems.map(([id,lbl])=>`<button class="${tab===id?"on":""}" onclick="S.pTab='${id}';render()">${lbl}</button>`).join("")}
       </div>
       ${content}
