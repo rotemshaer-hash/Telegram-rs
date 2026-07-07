@@ -9365,21 +9365,6 @@ function Community(){
         <button onclick="S.comTab='briefs';if(!(S.parentBriefs&&S.parentBriefs.length))loadParentBriefs();render()" style="flex:1;padding:8px;border:none;border-radius:10px;font-weight:800;font-size:13px;cursor:pointer;transition:all .2s;background:${S.comTab==='briefs'?'rgba(255,255,255,0.9)':'transparent'};color:${S.comTab==='briefs'?'#0F1A1F':'rgba(255,255,255,0.85)'}">בקשות${(S.parentBriefs&&S.parentBriefs.length)?' ('+S.parentBriefs.length+')':''}</button>
       </div>
     </div>
-    ${currentUser&&S.comTab!=='groups'&&S.comTab!=='briefs'?`
-    <div style="background:#fff;margin:14px 16px 0;border-radius:20px;padding:14px 16px;box-shadow:0 2px 12px rgba(0,0,0,0.07);display:flex;align-items:center;gap:12px;cursor:pointer" onclick="S.showCompose=true;S.comPostType='text';render()">
-      <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#14B8A6,#06B6D4);display:flex;align-items:center;justify-content:center;flex-shrink:0">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-      </div>
-      <span style="flex:1;font-size:13px;color:#94A3B8">שתף עם הקהילה...</span>
-      <div style="display:flex;gap:8px">
-        <div onclick="event.stopPropagation();S.showCompose=true;S.comPostType='image';window._comMediaFile=null;render()" style="width:34px;height:34px;border-radius:10px;background:rgba(20,184,166,.1);display:flex;align-items:center;justify-content:center;cursor:pointer" title="פרסם תמונה">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-        </div>
-        <div onclick="event.stopPropagation();S.showCompose=true;S.comPostType='video';window._comMediaFile=null;render()" style="width:34px;height:34px;border-radius:10px;background:rgba(20,184,166,.1);display:flex;align-items:center;justify-content:center;cursor:pointer" title="פרסם וידאו">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2" stroke-linecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
-        </div>
-      </div>
-    </div>`:''}
     <div style="padding:15px 16px 100px">${S.comTab==='briefs'?_briefsHtml:S.comTab==='groups'?_groupsHtml:S.posts.length===0?`<div style="text-align:center;padding:60px 20px">
     <div style="font-size:48px;margin-bottom:16px">${icon("chat",14)}</div>
     <h3 style="color:#0F1A1F;font-weight:800;margin:0 0 8px">עדיין אין פוסטים</h3>
