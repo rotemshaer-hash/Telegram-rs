@@ -2152,7 +2152,7 @@ async function processPayment(payMethod,totalAmount){
     try{
       // מייל למנהל — אימות תשלום נדרש
       await sendEmail(ADMIN_EMAIL,'💰 תשלום ממתין לאימות — Kidemy',
-        `הזמנה חדשה ממתינה לאימות תשלום!\n\n📌 קוד הפניה: ${bookingData.payRef}\n👤 תלמיד: ${bookingData.studentName}\n👨‍🏫 מורה: ${t.name}\n📅 ${bookingData.day} בשעה ${bookingData.time}\n💰 סכום: ₪${totalAmount} (${payMethod})\n💎 עמלה: ₪${bookingData.commission} | למורה: ₪${bookingData.netToTeacher}\n\nכנס לפאנל מנהל → אימות תשלומים → אשר לאחר קבלת הכסף:\nhttps://kidemy-app.netlify.app`);
+        `הזמנה חדשה ממתינה לאימות תשלום!\n\n📌 קוד הפניה: ${bookingData.payRef}\n👤 תלמיד: ${bookingData.studentName}\n👨‍🏫 מורה: ${t.name}\n📅 ${bookingData.day} בשעה ${bookingData.time}\n💰 סכום (ישירות למורה, 100%): ₪${totalAmount} (${payMethod})\n\nכנס לפאנל מנהל → אימות תשלומים → אשר לאחר קבלת הכסף:\nhttps://kidemy-app.netlify.app`);
       // מייל להורה — ממתין לאימות
       if(currentUserData?.parentEmail){
         sendEmail(currentUserData.parentEmail,
