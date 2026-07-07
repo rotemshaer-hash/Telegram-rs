@@ -3017,9 +3017,9 @@ function showNotificationsPanel(){
   const items=notifications.length===0?
     `<div style="text-align:center;padding:40px 20px"><div style="font-size:54px;margin-bottom:12px">${icon("bell",14)}</div><h3 style="font-weight:900;font-size:17px;margin:0 0 6px;color:#0F1A1F">אין התראות חדשות</h3><p style="color:#64748B;font-size:13px;margin:0">כשתקבל הזמנות או הודעות הן יופיעו כאן</p></div>`:
     notifications.map(n=>{
-      const icons={newBooking:'📚',bookingApproved:'✅',bookingRejected:'❌',bookingCancelled:'🚫',newMessage:'💬',newReview:'⭐',newVideo:'📹',newTeacher:'🎓',newReport:'🚨',newUser:'👋',groupJoin:'🙋',groupApproved:'🎉',groupRejected:'😔',rateLesson:'⭐',lessonSummary:'📖',accountApproved:'🎉',teacherApproved:'🎓',adminMessage:'📣',newPost:'📢',lessonCompleted:'✅',newStory:'📸',briefProposal:'💼',briefAccepted:'🤝',newQuestion:'❓',questionAnswered:'💡'};
-      const titles={newBooking:'הזמנת שיעור חדשה',bookingApproved:'ההזמנה אושרה!',bookingRejected:'ההזמנה נדחתה',bookingCancelled:'השיעור בוטל',newMessage:'הודעה חדשה',newReview:'דירוג חדש',newVideo:'סרטון חדש לאישור',newTeacher:'מורה חדש נרשם',newReport:'דיווח חדש!',newUser:'משתמש חדש',groupJoin:'בקשת הצטרפות לקבוצה',groupApproved:'התקבלת לקבוצה!',groupRejected:'הבקשה לא אושרה',rateLesson:'דרג את השיעור',lessonSummary:'סיכום שיעור חדש',accountApproved:'החשבון שלך אושר!',teacherApproved:'פרופיל המורה שלך אושר!',adminMessage:'הודעה מהמנהל',newPost:'פוסט חדש בקהילה',lessonCompleted:'השיעור הסתיים',newStory:'סטורי חדש לאישור',briefProposal:'הצעת מורה לבקשתך',briefAccepted:'ההצעה שלך התקבלה!',newQuestion:'שאלה חדשה על הפרופיל',questionAnswered:'המורה ענה על שאלתך'};
-      const cols={newBooking:'#14B8A6',bookingApproved:'#10B981',bookingRejected:'#EF4444',bookingCancelled:'#F59E0B',newMessage:'#06B6D4',newReview:'#FBBF24',newVideo:'#06B6D4',newTeacher:'#14B8A6',newReport:'#E74C3C',newUser:'#0EA5E9',groupJoin:'#14B8A6',groupApproved:'#10B981',groupRejected:'#EF4444',rateLesson:'#FBBF24',lessonSummary:'#06B6D4',accountApproved:'#10B981',teacherApproved:'#14B8A6',adminMessage:'#06B6D4',newPost:'#F59E0B',lessonCompleted:'#10B981',newStory:'#8B5CF6',briefProposal:'#14B8A6',briefAccepted:'#10B981',newQuestion:'#14B8A6',questionAnswered:'#10B981'};
+      const icons={newBooking:'📚',bookingApproved:'✅',bookingRejected:'❌',bookingCancelled:'🚫',newMessage:'💬',newReview:'⭐',newVideo:'📹',newTeacher:'🎓',newReport:'🚨',newUser:'👋',groupJoin:'🙋',groupApproved:'🎉',groupRejected:'😔',rateLesson:'⭐',lessonSummary:'📖',accountApproved:'🎉',teacherApproved:'🎓',adminMessage:'📣',newPost:'📢',lessonCompleted:'✅',newStory:'📸',briefProposal:'💼',briefAccepted:'🤝',newQuestion:'❓',questionAnswered:'💡',trialReminder:'⏰'};
+      const titles={newBooking:'הזמנת שיעור חדשה',bookingApproved:'ההזמנה אושרה!',bookingRejected:'ההזמנה נדחתה',bookingCancelled:'השיעור בוטל',newMessage:'הודעה חדשה',newReview:'דירוג חדש',newVideo:'סרטון חדש לאישור',newTeacher:'מורה חדש נרשם',newReport:'דיווח חדש!',newUser:'משתמש חדש',groupJoin:'בקשת הצטרפות לקבוצה',groupApproved:'התקבלת לקבוצה!',groupRejected:'הבקשה לא אושרה',rateLesson:'דרג את השיעור',lessonSummary:'סיכום שיעור חדש',accountApproved:'החשבון שלך אושר!',teacherApproved:'פרופיל המורה שלך אושר!',adminMessage:'הודעה מהמנהל',newPost:'פוסט חדש בקהילה',lessonCompleted:'השיעור הסתיים',newStory:'סטורי חדש לאישור',briefProposal:'הצעת מורה לבקשתך',briefAccepted:'ההצעה שלך התקבלה!',newQuestion:'שאלה חדשה על הפרופיל',questionAnswered:'המורה ענה על שאלתך',trialReminder:'תזכורת ניסיון חינם'};
+      const cols={newBooking:'#14B8A6',bookingApproved:'#10B981',bookingRejected:'#EF4444',bookingCancelled:'#F59E0B',newMessage:'#06B6D4',newReview:'#FBBF24',newVideo:'#06B6D4',newTeacher:'#14B8A6',newReport:'#E74C3C',newUser:'#0EA5E9',groupJoin:'#14B8A6',groupApproved:'#10B981',groupRejected:'#EF4444',rateLesson:'#FBBF24',lessonSummary:'#06B6D4',accountApproved:'#10B981',teacherApproved:'#14B8A6',adminMessage:'#06B6D4',newPost:'#F59E0B',lessonCompleted:'#10B981',newStory:'#8B5CF6',briefProposal:'#14B8A6',briefAccepted:'#10B981',newQuestion:'#14B8A6',questionAnswered:'#10B981',trialReminder:'#8B5CF6'};
       const ico=icons[n.type]||'🔔';
       const ttl=titles[n.type]||'התראה';
       const col=cols[n.type]||'#14B8A6';
@@ -3047,9 +3047,10 @@ function showNotificationsPanel(){
       else if(n.type==='briefAccepted')sub=(n.from||'הורה')+(n.price?' • ₪'+n.price:'')+(n.childName?' עבור '+n.childName:'');
       else if(n.type==='newQuestion')sub=(n.from||'')+(n.preview?' • '+n.preview:'');
       else if(n.type==='questionAnswered')sub=(n.from||'המורה')+(n.preview?' • '+n.preview:'');
+      else if(n.type==='trialReminder')sub='נשאר/ו '+(n.daysLeft||0)+(n.daysLeft===1?' יום':' ימים')+' — לאחר מכן ₪79/חודש';
       else sub=n.message||n.preview||(n.from?'מ-'+n.from:'');
       return `
-        <div onclick="markNotificationRead('${n.id}');document.querySelector('._notifPanel')?.remove();${n.type==='bookingApproved'?"go('messages')":n.type==='newBooking'?"adminTab='bookings';showAdminPanel()":n.type==='newTeacher'||n.type==='newReport'?"adminTab='teachers';showAdminPanel()":n.type==='newVideo'?"adminTab='videos';showAdminPanel()":n.type==='newStory'?"adminTab='stories';showAdminPanel()":n.type==='groupJoin'?"showTeacherGroupsPanel()":n.type==='groupApproved'||n.type==='groupRejected'?"S.comTab='groups';go('community')":n.type==='rateLesson'&&n.bookingId?"showRatingDialog('"+n.bookingId+"','"+n.teacherId+"','"+n.teacherName+"')":n.type==='lessonSummary'?"go('messages')":n.type==='briefProposal'?"S.comTab='briefs';go('community')":n.type==='briefAccepted'?"go('messages')":n.type==='newQuestion'?"_notifGoToQA('"+currentUser?.uid+"')":n.type==='questionAnswered'?"_notifGoToQA('"+n.teacherUid+"')":""}" style="background:${n.read?'rgba(255,255,255,0.7)':'#fff'};border-right:4px solid ${col};border-radius:14px;padding:14px;margin-bottom:8px;cursor:pointer;display:flex;align-items:start;gap:12px;${!n.read?'box-shadow:0 4px 14px rgba(20,184,166,0.15)':''}">
+        <div onclick="markNotificationRead('${n.id}');document.querySelector('._notifPanel')?.remove();${n.type==='bookingApproved'?"go('messages')":n.type==='newBooking'?"adminTab='bookings';showAdminPanel()":n.type==='newTeacher'||n.type==='newReport'?"adminTab='teachers';showAdminPanel()":n.type==='newVideo'?"adminTab='videos';showAdminPanel()":n.type==='newStory'?"adminTab='stories';showAdminPanel()":n.type==='groupJoin'?"showTeacherGroupsPanel()":n.type==='groupApproved'||n.type==='groupRejected'?"S.comTab='groups';go('community')":n.type==='rateLesson'&&n.bookingId?"showRatingDialog('"+n.bookingId+"','"+n.teacherId+"','"+n.teacherName+"')":n.type==='lessonSummary'?"go('messages')":n.type==='briefProposal'?"S.comTab='briefs';go('community')":n.type==='briefAccepted'?"go('messages')":n.type==='newQuestion'?"_notifGoToQA('"+currentUser?.uid+"')":n.type==='questionAnswered'?"_notifGoToQA('"+n.teacherUid+"')":n.type==='trialReminder'?"go('subscribe')":""}" style="background:${n.read?'rgba(255,255,255,0.7)':'#fff'};border-right:4px solid ${col};border-radius:14px;padding:14px;margin-bottom:8px;cursor:pointer;display:flex;align-items:start;gap:12px;${!n.read?'box-shadow:0 4px 14px rgba(20,184,166,0.15)':''}">
           <div style="width:40px;height:40px;border-radius:12px;background:${col}20;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">${ico}</div>
           <div style="flex:1;min-width:0">
             <div style="font-weight:900;font-size:14px;color:#0F1A1F">${ttl}</div>
@@ -4087,6 +4088,25 @@ function teacherTrialDaysLeft(){
 }
 function teacherNeedsSubscription(){
   return currentUserData?.role==='teacher'&&isTeacherTrialExpired()&&!isActiveSubscription();
+}
+// שולח מייל + התראה באפליקציה למורה כשנשארו לו 3 ימים או יום אחד לסיום הניסיון.
+// כל תזכורת נשלחת פעם אחת בלבד (מסומנת ב-DB), כדי לא להציף באימיילים חוזרים.
+async function checkTeacherTrialReminder(){
+  if(currentUserData?.role!=='teacher'||isAdmin())return;
+  if(isActiveSubscription()||isTeacherTrialExpired())return;
+  const daysLeft=teacherTrialDaysLeft();
+  if(daysLeft!==3&&daysLeft!==1)return;
+  const flag='trialReminder'+daysLeft+'Sent';
+  if(currentUserData?.[flag])return;
+  try{
+    await db.ref('users/'+currentUser.uid+'/'+flag).set(true);
+    currentUserData[flag]=true;
+    const name=currentUserData?.name||'מורה יקר/ה';
+    const subject=daysLeft===1?'⏰ נשאר יום אחד לניסיון החינם שלך ב-Kidemy':'🎁 נשארו 3 ימים לניסיון החינם שלך ב-Kidemy';
+    const body=`שלום ${name},\n\nנשאר/ו לך ${daysLeft===1?'יום אחד':'3 ימים'} לניסיון החינם שלך כמורה ב-Kidemy.\n\nלאחר מכן, כדי להמשיך להופיע בחיפוש ולקבל תלמידים חדשים, יידרש מנוי חודשי של ₪79 — ניתן להפעיל בכל שלב דרך עמוד הפרופיל באפליקציה.\n\nהתשלום מול התלמידים על השיעורים עצמם לא משתנה ונשאר ישירות אצלכם.\n\n– צוות Kidemy`;
+    await sendEmail(currentUser.email,subject,body);
+    await db.ref('notifications/'+currentUser.uid).push({type:'trialReminder',read:false,createdAt:Date.now(),daysLeft}).catch(()=>{});
+  }catch(e){console.warn('[trialReminder] failed:',e);}
 }
 function genPayRef(bookingId){
   // קוד הפניה קצר ייחודי לכל הזמנה: KID-XXXXX
@@ -11825,7 +11845,7 @@ auth&&auth.onAuthStateChanged(async user=>{
       if(S.screen==='splash'||S.screen==='login'){go('home');setTimeout(showOnboarding,800);}
 
       // כל הטעינות אחרי הניווט — כישלון כאן לא מחזיר ל-login
-      if(currentUserData?.role==='teacher')await loadTeacherBookings();
+      if(currentUserData?.role==='teacher'){await loadTeacherBookings();checkTeacherTrialReminder();}
       await loadStudentBookings();
       await loadParentChildren();
       await loadFavorites();
