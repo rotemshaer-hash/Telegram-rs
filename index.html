@@ -1825,23 +1825,19 @@ function TeacherSetup(){
         <div style="display:flex;flex-direction:column;gap:10px">
           <div style="display:flex;gap:10px;align-items:flex-start">
             <div style="width:26px;height:26px;border-radius:50%;background:#14B8A6;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;flex-shrink:0">1</div>
-            <div style="font-size:13px;line-height:1.6"><strong>התלמיד משלם ל-Kidemy</strong> בעת קביעת השיעור (Bit/PayPal/PayBox)</div>
+            <div style="font-size:13px;line-height:1.6"><strong>אתה קובע את המחיר</strong> וסיכומי התשלום מול התלמיד/ההורה שלו — ישירות, לא דרך Kidemy</div>
           </div>
           <div style="display:flex;gap:10px;align-items:flex-start">
             <div style="width:26px;height:26px;border-radius:50%;background:#06B6D4;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;flex-shrink:0">2</div>
-            <div style="font-size:13px;line-height:1.6"><strong>Kidemy מאמת את התשלום</strong> ושולח לך אישור</div>
+            <div style="font-size:13px;line-height:1.6"><strong>אתה מקבל 100%</strong> מהתשלום — Kidemy לא לוקחת עמלה ולא מעורבת בכסף בין הצדדים</div>
           </div>
           <div style="display:flex;gap:10px;align-items:flex-start">
             <div style="width:26px;height:26px;border-radius:50%;background:#8b2fc9;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;flex-shrink:0">3</div>
-            <div style="font-size:13px;line-height:1.6"><strong>השיעור מתקיים</strong> – וידאו דרך הקישור האישי של המורה (Zoom / Google Meet)</div>
-          </div>
-          <div style="display:flex;gap:10px;align-items:flex-start">
-            <div style="width:26px;height:26px;border-radius:50%;background:#10B981;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;flex-shrink:0">4</div>
-            <div style="font-size:13px;line-height:1.6"><strong>Kidemy מעביר לך 85%</strong> מהתשלום תוך 24 שעות לאחר השיעור</div>
+            <div style="font-size:13px;line-height:1.6"><strong>השיעור מתקיים</strong> – וידאו דרך הקישור האישי שלך (Zoom / Google Meet)</div>
           </div>
         </div>
-        <div style="background:rgba(20,184,166,0.1);border-radius:12px;padding:10px;margin-top:12px">
-          <p style="margin:0;font-size:12px;color:#14B8A6;line-height:1.5">${icon("check-circle",14)} <strong>עמלת Kidemy: 15%</strong> – הכי נמוך בשוק!<br>הכסף שלך מוגן – אם השיעור לא התקיים, תקבל החזר מלא.</p>
+        <div style="background:rgba(139,47,201,0.08);border:1px solid rgba(139,47,201,0.25);border-radius:12px;padding:12px;margin-top:12px">
+          <p style="margin:0;font-size:12px;color:#7C3AED;line-height:1.6">🎁 <strong>${TRIAL_DAYS} יום ניסיון חינם</strong> — בלי צורך באמצעי תשלום עכשיו.<br>לאחר מכן, מנוי מורה ב-<strong>₪79/חודש</strong> כדי להמשיך להופיע ולקבל תלמידים דרך Kidemy.</p>
         </div>
       </div>
       <div style="background:rgba(20,184,166,.07);border:1.5px solid rgba(20,184,166,.3);border-radius:14px;padding:14px;margin-bottom:14px">
@@ -2186,13 +2182,7 @@ function isActiveSubscription(){
 }
 
 function checkSubAndAdvance(){
-  // מורים לא צריכים מנוי לצורך הזמנות
-  if(currentUserData?.role==='teacher'){S.bookStep=2;render();return;}
-  const usedFree=studentBookings.filter(b=>b.status!=='rejected').length;
-  if(usedFree>=1&&!isActiveSubscription()){
-    go('subscribe');
-    return;
-  }
+  // תלמידים משתמשים באפליקציה בחינם — אין הגבלת מנוי על הזמנות
   S.bookStep=2;render();
 }
 
@@ -2282,8 +2272,8 @@ function Subscribe(){
       <button onclick="go(S.prev||'home')" style="position:absolute;top:20px;right:20px;background:rgba(255,255,255,0.15);border:none;color:#fff;border-radius:50px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer">← חזרה</button>
       <div style="text-align:center">
         <div style="font-size:44px;margin-bottom:8px">💎</div>
-        <h2 style="color:#fff;font-weight:900;font-size:22px;margin:0 0 4px">Kidemy פרימיום</h2>
-        <p style="color:rgba(255,255,255,0.7);font-size:13px;margin:0">גישה בלתי מוגבלת לכל המורות</p>
+        <h2 style="color:#fff;font-weight:900;font-size:22px;margin:0 0 4px">מנוי מורה ב-Kidemy</h2>
+        <p style="color:rgba(255,255,255,0.7);font-size:13px;margin:0">המשיכו להופיע ולקבל תלמידים חדשים</p>
       </div>
     </div>
     <div style="padding:20px 16px">
@@ -2295,7 +2285,7 @@ function Subscribe(){
           <div style="text-align:left"><span style="font-size:34px;font-weight:900;color:#8B5CF6">₪${PLAN_PRICE}</span><span style="font-size:12px;color:#94A3B8">/חודש</span></div>
         </div>
         <div style="height:1px;background:#F1F5F9;margin-bottom:14px"></div>
-        ${[['הזמנות ללא הגבלה','שיעורים ממורות שונות בלי מכסה'],['סינון מתקדם','לפי מחיר, אזור, דירוג, קטגוריה'],['תג תלמיד מועדף','מורות רואות את ההזמנה שלך ראשונה'],['תמיכה מהירה','עדיפות בשירות לקוחות']].map(([t,d])=>`
+        ${[['הפרופיל שלך נשאר פעיל','ממשיכים להופיע בחיפוש ולקבל תלמידים חדשים'],['100% מהתשלום נשאר אצלך','Kidemy לא לוקחת עמלה משיעורים – אף פעם'],['עדיפות בתוצאות חיפוש','תלמידים רואים אותך קודם'],['תמיכה מהירה','עדיפות בשירות לקוחות']].map(([t,d])=>`
         <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:10px">
           <div style="width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,#8B5CF6,#06B6D4);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
           <div><div style="font-weight:700;font-size:13px;color:#0F1A1F">${t}</div><div style="font-size:11px;color:#64748B;margin-top:1px">${d}</div></div>
@@ -4083,6 +4073,20 @@ const ADMIN_PAYMENT={
 const COMMISSION_RATE=0; // ללא עמלה — הכנסה ממנויים
 function calcCommission(gross){
   return{gross,commission:0,net:gross};
+}
+// ── מודל מנוי: רק מורים משלמים, תלמידים בחינם לגמרי ─────────────────────────
+const TRIAL_DAYS=14; // ימי ניסיון חינם למורה לפני חובת מנוי
+function isTeacherTrialExpired(){
+  const ca=currentUserData?.createdAt||0;
+  return ca>0&&(Date.now()-ca)>TRIAL_DAYS*86400000;
+}
+function teacherTrialDaysLeft(){
+  const ca=currentUserData?.createdAt||0;
+  if(!ca)return TRIAL_DAYS;
+  return Math.max(0,Math.ceil(TRIAL_DAYS-(Date.now()-ca)/86400000));
+}
+function teacherNeedsSubscription(){
+  return currentUserData?.role==='teacher'&&isTeacherTrialExpired()&&!isActiveSubscription();
 }
 function genPayRef(bookingId){
   // קוד הפניה קצר ייחודי לכל הזמנה: KID-XXXXX
@@ -8955,7 +8959,7 @@ function Profile(){
     </div>`;}
 
   if(tab==="about") content=`
-    ${isActiveSubscription()?`<div style="background:linear-gradient(135deg,rgba(139,47,201,0.12),rgba(6,182,212,0.08));border:1.5px solid rgba(139,47,201,0.3);border-radius:16px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:10px"><div style="font-size:22px">💎</div><div><div style="font-weight:800;font-size:14px;color:#8B5CF6">מנוי פרימיום פעיל</div><div style="font-size:11px;color:#64748B;margin-top:1px">תוקף עד: ${new Date(currentUserData.subscription.expiresAt).toLocaleDateString('he-IL')}</div></div></div>`:currentUserData?.subscription?.status==='pending'?`<div style="background:rgba(245,158,11,0.08);border:1.5px solid rgba(245,158,11,0.25);border-radius:16px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:10px;cursor:pointer" onclick="go('subscribe')"><div style="font-size:22px">⏳</div><div><div style="font-weight:800;font-size:14px;color:#D97706">מנוי ממתין לאישור</div><div style="font-size:11px;color:#64748B;margin-top:1px">הצוות מאמת את התשלום — לחץ לפרטים</div></div></div>`:`<div style="background:linear-gradient(135deg,rgba(139,47,201,0.06),rgba(6,182,212,0.04));border:1.5px dashed rgba(139,47,201,0.25);border-radius:16px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="go('subscribe')"><div style="display:flex;align-items:center;gap:10px"><div style="font-size:22px">💎</div><div><div style="font-weight:800;font-size:13px;color:#8B5CF6">שדרג לפרימיום — ₪79/חודש</div><div style="font-size:11px;color:#64748B;margin-top:1px">הזמנות ללא הגבלה + תג מועדף</div></div></div><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></div>`}
+    ${!isTeacher?'':isActiveSubscription()?`<div style="background:linear-gradient(135deg,rgba(139,47,201,0.12),rgba(6,182,212,0.08));border:1.5px solid rgba(139,47,201,0.3);border-radius:16px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:10px"><div style="font-size:22px">💎</div><div><div style="font-weight:800;font-size:14px;color:#8B5CF6">מנוי פרימיום פעיל</div><div style="font-size:11px;color:#64748B;margin-top:1px">תוקף עד: ${new Date(currentUserData.subscription.expiresAt).toLocaleDateString('he-IL')}</div></div></div>`:currentUserData?.subscription?.status==='pending'?`<div style="background:rgba(245,158,11,0.08);border:1.5px solid rgba(245,158,11,0.25);border-radius:16px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:10px;cursor:pointer" onclick="go('subscribe')"><div style="font-size:22px">⏳</div><div><div style="font-weight:800;font-size:14px;color:#D97706">מנוי ממתין לאישור</div><div style="font-size:11px;color:#64748B;margin-top:1px">הצוות מאמת את התשלום — לחץ לפרטים</div></div></div>`:!isTeacherTrialExpired()?`<div style="background:linear-gradient(135deg,rgba(139,47,201,${teacherTrialDaysLeft()<=3?'0.12':'0.06'}),rgba(6,182,212,0.04));border:1.5px dashed rgba(139,47,201,${teacherTrialDaysLeft()<=3?'0.4':'0.25'});border-radius:16px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="go('subscribe')"><div style="display:flex;align-items:center;gap:10px"><div style="font-size:22px">${teacherTrialDaysLeft()<=3?'⏰':'🎁'}</div><div><div style="font-weight:800;font-size:13px;color:#8B5CF6">נותרו ${teacherTrialDaysLeft()} ימים לניסיון החינם</div><div style="font-size:11px;color:#64748B;margin-top:1px">לאחר מכן ₪79/חודש כדי להמשיך להופיע ולקבל תלמידים</div></div></div><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></div>`:`<div style="background:linear-gradient(135deg,rgba(139,47,201,0.06),rgba(6,182,212,0.04));border:1.5px dashed rgba(139,47,201,0.25);border-radius:16px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="go('subscribe')"><div style="display:flex;align-items:center;gap:10px"><div style="font-size:22px">💎</div><div><div style="font-weight:800;font-size:13px;color:#8B5CF6">הניסיון החינם הסתיים — ₪79/חודש</div><div style="font-size:11px;color:#64748B;margin-top:1px">כדי להמשיך להופיע ולקבל תלמידים</div></div></div><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></div>`}
     <div class="card"><h4 style="margin:0 0 10px;font-weight:800">👋 קצת עליי</h4><p style="margin:0;font-size:14px;line-height:1.7">${currentUserData?.bio||'עדיין לא כתבת קצת על עצמך.'}</p></div>
     <div class="ref-card">
       <h4 style="margin:0 0 6px;font-weight:900;font-size:16px">${icon("gift",14)} הפנה חבר – קבל ₪15!</h4>
@@ -11428,6 +11432,12 @@ function render(){
   const _openScreens=['splash','login','register','safety','parentReg','teacherReg','emailVerify','studentPending'];
   if(currentUser&&currentUserData?.role==='student'&&currentUserData?.verified!==true&&!isAdmin()&&!_openScreens.includes(S.screen)){
     S.screen='studentPending';
+  }
+
+  // Guard: מורה שסיים 14 יום ניסיון בלי מנוי פעיל — חסום עד לתשלום מנוי
+  const _subOpenScreens=['splash','login','register','safety','parentReg','teacherReg','teacherSetup','teacherPending','emailVerify','subscribe'];
+  if(teacherNeedsSubscription()&&!isAdmin()&&!_subOpenScreens.includes(S.screen)){
+    S.screen='subscribe';
   }
 
   // Save focused input before destroying DOM
