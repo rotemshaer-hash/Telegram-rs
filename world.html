@@ -138,7 +138,7 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
 #ol-timer-bar{height:100%;background:linear-gradient(90deg,#00E676,#00BCD4);transition:width .3s linear}
 .rev-name-badge{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:20;background:rgba(0,10,50,.88);border:2px solid rgba(100,180,255,.5);border-radius:18px;padding:12px 22px;font-size:20px;font-weight:900;color:#fff;text-align:center;pointer-events:none;backdrop-filter:blur(10px)}
 .rev-mode{cursor:crosshair}
-#city-pin{position:absolute;z-index:6;pointer-events:none;transform-origin:50% 97.8%;animation:pin-pulse 1.6s ease-in-out infinite;filter:drop-shadow(0 6px 14px rgba(0,60,200,.7));display:none;width:38px;height:52px}
+#city-pin{position:absolute;z-index:20;pointer-events:none;transform-origin:50% 97.8%;animation:pin-pulse 1.6s ease-in-out infinite;filter:drop-shadow(0 6px 14px rgba(0,60,200,.7));display:none;width:26px;height:36px}
 #exit-modal{position:fixed;inset:0;z-index:400;background:rgba(5,0,30,.82);backdrop-filter:blur(14px);display:none;align-items:center;justify-content:center;padding:20px}
 #exit-modal.open{display:flex}
 .exit-card{background:linear-gradient(145deg,rgba(20,10,70,.97),rgba(8,4,50,.98));border:1.5px solid rgba(100,160,255,.3);border-radius:26px;padding:28px 22px 20px;width:100%;max-width:320px;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center}
@@ -710,6 +710,15 @@ function _applyMapTransform(){
     `translate(${_mPX}px,${_mPY}px) scale(${_mZ})`;
   const btn=document.getElementById('zoom-reset-btn');
   if(btn)btn.style.display=(_mZ>_baseZ*1.08||_mZ>1.08)?'block':'none';
+  _updatePinPosition();
+}
+function _updatePinPosition(){
+  const pin=document.getElementById('city-pin');
+  if(!pin||!_markerXY||pin.style.display==='none')return;
+  const sx=_mPX+_mZ*_markerXY.cx;
+  const sy=_mPY+_mZ*_markerXY.cy;
+  pin.style.left=(sx-13)+'px';
+  pin.style.top=(sy-35)+'px';
 }
 
 function resetMapZoom(){
@@ -824,8 +833,8 @@ function buildMap(){
   inner.appendChild(oc);
   const cp=document.createElement('div');
   cp.id='city-pin';
-  cp.innerHTML='<svg viewBox="0 0 100 137" width="38" height="52" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="mpg" x1="25%" y1="0%" x2="75%" y2="100%"><stop offset="0%" stop-color="#FF6B35"/><stop offset="55%" stop-color="#FF4500"/><stop offset="100%" stop-color="#CC2200"/></linearGradient><radialGradient id="mph" cx="38%" cy="26%" r="52%"><stop offset="0%" stop-color="rgba(255,255,255,.5)"/><stop offset="100%" stop-color="rgba(255,255,255,0)"/></radialGradient></defs><path d="M50,3C24,3,3,24,3,50c0,34,47,84,47,84s47-50,47-84C97,24,76,3,50,3z" fill="url(#mpg)"/><path d="M50,3C24,3,3,24,3,50c0,34,47,84,47,84s47-50,47-84C97,24,76,3,50,3z" fill="url(#mph)"/><circle cx="50" cy="43" r="40" fill="white"/></svg>';
-  inner.appendChild(cp);
+  cp.innerHTML='<svg viewBox="0 0 100 137" width="26" height="36" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="mpg" x1="25%" y1="0%" x2="75%" y2="100%"><stop offset="0%" stop-color="#FF6B35"/><stop offset="55%" stop-color="#FF4500"/><stop offset="100%" stop-color="#CC2200"/></linearGradient><radialGradient id="mph" cx="38%" cy="26%" r="52%"><stop offset="0%" stop-color="rgba(255,255,255,.5)"/><stop offset="100%" stop-color="rgba(255,255,255,0)"/></radialGradient></defs><path d="M50,3C24,3,3,24,3,50c0,34,47,84,47,84s47-50,47-84C97,24,76,3,50,3z" fill="url(#mpg)"/><path d="M50,3C24,3,3,24,3,50c0,34,47,84,47,84s47-50,47-84C97,24,76,3,50,3z" fill="url(#mph)"/><circle cx="50" cy="43" r="40" fill="white"/></svg>';
+  wrap.appendChild(cp);
   _initMapZoom();
 }
 
@@ -842,7 +851,7 @@ function placeMarker(lat,lng,radiusKm){
   if(_animRaf){cancelAnimationFrame(_animRaf);_animRaf=null;}
   _playSound('ping');
   const pin=document.getElementById('city-pin');
-  if(pin){pin.style.left=(cx-19)+'px';pin.style.top=(cy-51)+'px';pin.style.display='block';}
+  if(pin){pin.style.display='block';_updatePinPosition();}
   if(_tapXY)_drawMarker();
 }
 
