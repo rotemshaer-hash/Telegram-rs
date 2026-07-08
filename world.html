@@ -31,6 +31,9 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
 .cat-tabs::-webkit-scrollbar{display:none}
 .cat-tab{flex-shrink:0;padding:9px 12px;border:none;border-radius:14px;background:transparent;color:rgba(255,255,255,.82);font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;transition:background .2s,color .2s;line-height:1.2;white-space:nowrap}
 .cat-tab.active{background:linear-gradient(135deg,rgba(0,80,220,0.88),rgba(0,160,255,0.88));color:#fff;box-shadow:0 3px 18px rgba(0,100,255,.55),inset 0 1px 0 rgba(255,255,255,0.22)}
+.app-sw{display:flex;align-self:center;background:rgba(10,45,170,0.42);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(120,180,255,0.35);border-radius:18px;padding:3px;gap:2px;margin-bottom:8px;flex-shrink:0;box-shadow:0 4px 18px rgba(0,20,90,0.3),inset 0 1px 0 rgba(255,255,255,0.18)}
+.app-sw a{padding:8px 22px;border-radius:14px;text-decoration:none;color:rgba(255,255,255,.78);font-size:14px;font-weight:800;font-family:inherit;transition:background .2s,color .2s;white-space:nowrap}
+.app-sw a.active{background:linear-gradient(135deg,rgba(0,80,220,0.88),rgba(0,160,255,0.88));color:#fff;box-shadow:0 3px 14px rgba(0,100,255,.55),inset 0 1px 0 rgba(255,255,255,0.22)}
 .cat-panels{width:100%;max-width:360px;position:relative;z-index:1;flex:1;min-height:0;display:flex;flex-direction:column}
 .cat-panel{display:none}
 .cat-panel.active{display:flex;flex-direction:column;flex:1}
@@ -207,6 +210,12 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
     <span class="st-world">עולם</span>
   </h1>
   <button class="share-fab" onclick="shareGame()" aria-label="שתף משחק">📤 שתף</button>
+
+  <!-- APP SWITCHER -->
+  <div class="app-sw">
+    <a href="game.html">🇮🇱 ישראל</a>
+    <a href="world.html" class="active">🌍 עולם</a>
+  </div>
 
   <div class="cat-tabs" style="margin-bottom:6px">
     <button class="cat-tab active" data-cat="world" onclick="showCat('world')">🌍 עולם</button>
