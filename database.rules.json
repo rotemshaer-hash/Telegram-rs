@@ -14,6 +14,12 @@
         },
         "verified": {
           ".validate": "auth.token.email == 'rotemshaer@gmail.com' || newData.val() == false"
+        },
+        "createdAt": {
+          ".validate": "auth.token.email == 'rotemshaer@gmail.com' || !data.exists()"
+        },
+        "subscription": {
+          ".validate": "auth.token.email == 'rotemshaer@gmail.com' || newData.child('status').val() != 'active'"
         }
       }
     },
@@ -42,7 +48,7 @@
         ".read": "auth != null && auth.uid == $uid",
         "$notifId": {
           ".write": "auth.uid == $uid || auth.token.email == 'rotemshaer@gmail.com'",
-          ".validate": "!newData.exists() || (data.exists() && newData.child('read').isBoolean()) || (!data.exists() && newData.hasChildren(['type', 'createdAt', 'read']) && newData.child('createdAt').isNumber() && newData.child('read').isBoolean() && (newData.child('type').val() == 'newBooking' || newData.child('type').val() == 'bookingApproved' || newData.child('type').val() == 'bookingRejected' || newData.child('type').val() == 'bookingCancelled' || newData.child('type').val() == 'newMessage' || newData.child('type').val() == 'lessonCompleted' || newData.child('type').val() == 'newReview' || newData.child('type').val() == 'newPost' || newData.child('type').val() == 'adminMessage' || newData.child('type').val() == 'accountApproved' || newData.child('type').val() == 'teacherApproved' || newData.child('type').val() == 'studentApproved' || newData.child('type').val() == 'groupJoin' || newData.child('type').val() == 'groupApproved' || newData.child('type').val() == 'groupRejected' || newData.child('type').val() == 'rateLesson' || newData.child('type').val() == 'lessonSummary' || newData.child('type').val() == 'newTeacher' || newData.child('type').val() == 'newUser' || newData.child('type').val() == 'newVideo' || newData.child('type').val() == 'newReport' || newData.child('type').val() == 'briefProposal' || newData.child('type').val() == 'briefAccepted' || newData.child('type').val() == 'newQuestion' || newData.child('type').val() == 'questionAnswered'))"
+          ".validate": "!newData.exists() || (data.exists() && newData.child('read').isBoolean()) || (!data.exists() && newData.hasChildren(['type', 'createdAt', 'read']) && newData.child('createdAt').isNumber() && newData.child('read').isBoolean() && (newData.child('type').val() == 'newBooking' || newData.child('type').val() == 'bookingApproved' || newData.child('type').val() == 'bookingRejected' || newData.child('type').val() == 'bookingCancelled' || newData.child('type').val() == 'newMessage' || newData.child('type').val() == 'lessonCompleted' || newData.child('type').val() == 'newReview' || newData.child('type').val() == 'newPost' || newData.child('type').val() == 'adminMessage' || newData.child('type').val() == 'accountApproved' || newData.child('type').val() == 'teacherApproved' || newData.child('type').val() == 'studentApproved' || newData.child('type').val() == 'groupJoin' || newData.child('type').val() == 'groupApproved' || newData.child('type').val() == 'groupRejected' || newData.child('type').val() == 'rateLesson' || newData.child('type').val() == 'lessonSummary' || newData.child('type').val() == 'newTeacher' || newData.child('type').val() == 'newUser' || newData.child('type').val() == 'newVideo' || newData.child('type').val() == 'newReport' || newData.child('type').val() == 'briefProposal' || newData.child('type').val() == 'briefAccepted' || newData.child('type').val() == 'newQuestion' || newData.child('type').val() == 'questionAnswered' || newData.child('type').val() == 'trialReminder'))"
         }
       }
     },
