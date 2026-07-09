@@ -12116,8 +12116,9 @@ async function firebaseRegister(email,password,userData){
       }catch(refErr){console.warn('Referral processing error:',refErr);}
     }catch(dbErr){
       // rollback: מחק את חשבון ה-Auth שנוצר, כדי שהרשמה מחדש תהיה אפשרית
+      console.error('[firebaseRegister] DB write failed:',dbErr.code,dbErr.message);
       await cred.user.delete().catch(()=>{});
-      throw new Error('שגיאה בשמירת פרטי החשבון — נסה שוב');
+      throw new Error('שגיאה בשמירת פרטי החשבון ['+(dbErr.code||'?')+'] — נסה שוב');
     }
     // שליחת מייל אימות — רק למשתמשים עם מייל אמיתי (לא @kidemy.app פיקטיבי)
     try{
@@ -12200,6 +12201,7 @@ async function firebaseRegister(email,password,userData){
     }
   }catch(e){
     S._registering=false;
+    console.error('[firebaseRegister] initial error:',e.code,e.message);
     if(e.code==='auth/email-already-in-use'){
       // בדוק אם המייל שייך לחשבון שנמחק ע"י מנהל — אם כן, מאפשרים הרשמה מחדש
       try{
@@ -12224,11 +12226,12 @@ async function firebaseRegister(email,password,userData){
           return await firebaseRegister(email,password,userData);
         }else{
           await auth.signOut().catch(()=>{});
-          showFireToast('❌ שם המשתמש תפוס – בחר שם אחר');
+          showFireToast('❌ שם המשתמש תפוס – בחר שם אחר (auth/email-already-in-use, יש רשומת DB)');
         }
       }catch(signInErr){
         S._reRegistering=false;
-        showFireToast('❌ שם המשתמש כבר קיים – בחר שם אחר');
+        console.error('[firebaseRegister] recovery sign-in error:',signInErr.code,signInErr.message);
+        showFireToast('❌ שם המשתמש כבר קיים ['+(signInErr.code||'?')+'] — '+(signInErr.message||''));
       }
       return;
     }
@@ -12237,7 +12240,7 @@ async function firebaseRegister(email,password,userData){
       'auth/invalid-email':'❌ כתובת מייל לא תקינה',
       'auth/network-request-failed':'❌ אין חיבור לאינטרנט'
     };
-    showFireToast(m[e.code]||'❌ '+e.message);
+    showFireToast(m[e.code]||'❌ ['+(e.code||'?')+'] '+e.message);
   }
 }
 
