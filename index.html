@@ -5751,6 +5751,54 @@ async function submitReport(targetType,targetId,targetName){
   }catch(e){showFireToast('❌ '+e.message);}
 }
 
+// ─── בחירת תחומי עניין — התאמה אישית לתלמיד חדש ──────────────────────────
+const MAX_INTERESTS=5;
+function showInterestsPicker(){
+  if(!currentUser||document.querySelector('._intDlg'))return;
+  const selected=new Set();
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px);padding:20px;direction:rtl';
+  ov.innerHTML=`
+    <div class="_intDlg" style="background:#fff;border-radius:24px;padding:24px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,0.3);max-height:85vh;overflow-y:auto;text-align:center">
+      <div style="font-size:44px;margin-bottom:8px">🎯</div>
+      <h3 style="font-weight:900;font-size:19px;margin:0 0 6px;color:#0F1A1F">מה מעניין אותך?</h3>
+      <p style="color:#64748B;font-size:13px;margin:0 0 18px;line-height:1.6">בחר עד ${MAX_INTERESTS} תחומים — נתאים לך המלצות מורים</p>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:18px">
+        ${CATS.map(c=>`<button data-c="${c.id}" class="_intChip" style="background:${c.col}0d;border:1.5px solid ${c.col}30;border-radius:50px;padding:8px 14px;font-size:13px;font-weight:700;color:#0F1A1F;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px">${c.em} ${c.lbl}</button>`).join('')}
+      </div>
+      <button id="_intSave" style="width:100%;background:linear-gradient(135deg,#8B5CF6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:14px;font-size:15px;font-weight:900;cursor:pointer;margin-bottom:8px">שמור והתחל ✨</button>
+      <button id="_intSkip" style="width:100%;background:none;border:none;color:#94A3B8;padding:8px;font-size:13px;cursor:pointer">דלג לעכשיו</button>
+    </div>`;
+  document.body.appendChild(ov);
+  ov.querySelectorAll('._intChip').forEach(el=>{
+    el.onclick=()=>{
+      const id=el.dataset.c;
+      if(selected.has(id)){
+        selected.delete(id);
+        el.style.background=el.style.borderColor.replace('30','0d');
+      } else {
+        if(selected.size>=MAX_INTERESTS){showFireToast('אפשר לבחור עד '+MAX_INTERESTS+' תחומים');return;}
+        selected.add(id);
+      }
+      const c=CATS.find(x=>x.id===id);
+      el.style.background=selected.has(id)?c.col:c.col+'0d';
+      el.style.color=selected.has(id)?'#fff':'#0F1A1F';
+    };
+  });
+  ov.querySelector('#_intSkip').onclick=()=>ov.remove();
+  ov.querySelector('#_intSave').onclick=async()=>{
+    const interests=[...selected];
+    ov.remove();
+    if(!interests.length)return;
+    try{
+      await db.ref('users/'+currentUser.uid+'/interests').set(interests);
+      if(currentUserData)currentUserData.interests=interests;
+      showFireToast('✅ מעולה! ההמלצות מותאמות לך');
+      render();
+    }catch(e){}
+  };
+}
+
 // ─── לוח זמנים שבועי 📅 ──────────────────────────────────────────────────
 const DAYS_HE=["ראשון","שני","שלישי","רביעי","חמישי","שישי","שבת"];
 const HOURS=["08:00","09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00","17:00","18:00","19:00","20:00","21:00"];
@@ -7896,6 +7944,36 @@ function Home(){
         <div style="height:14px"></div>
       `:''}
       </div>
+
+      ${(()=>{
+        if(currentUserData?.role==='student'&&currentUserData?.interests?.length){
+          const ids=currentUserData.interests;
+          const rec=applyFilters(TEACHERS).filter(t=>ids.includes(t.cat)||(Array.isArray(t.cats)&&t.cats.some(c=>ids.includes(c)))).slice(0,6);
+          if(!rec.length)return '';
+          return `<div style="margin-bottom:22px">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+              <div style="width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,#8B5CF6,#06B6D4);display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
+              <span style="font-weight:900;font-size:15px;color:#0F1A1F">מומלץ בשבילך</span>
+            </div>
+            ${rec.map(t=>`
+            <button class="tc" onclick="go('teacher',{teacher:TEACHERS.find(x=>x.id==='${t.id}')})">
+              <div class="tc-av" style="background:${t.col}20;overflow:hidden;padding:0">${t.photo?avatarHtml(t.photo,t.name,52,'16px'):t.av}${t.online?'<div class="online-dot"></div>':''}</div>
+              <div style="flex:1">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start">
+                  <span style="color:#FFD23F;font-weight:700;font-size:12px">${t.rating>0?stars(t.rating):'חדש 🆕'}</span>
+                  <span style="font-weight:800;font-size:14px">${escapeHtml(t.name||'')}</span>
+                </div>
+                <div style="font-size:12px;color:${C.muted};margin-top:2px">${catById(t.cat).lbl||''} • ${escapeHtml(t.city||'')}</div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
+                  <span style="font-weight:900;font-size:14px;color:var(--p)">₪${t.price}/שיעור</span>
+                  ${gTag(t.badge)}
+                </div>
+              </div>
+            </button>`).join('')}
+          </div>`;
+        }
+        return '';
+      })()}
 
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px">
         <h3 style="font-size:17px;font-weight:900;margin:0;color:#0F1A1F">📂 כל הנושאים</h3>
@@ -11809,7 +11887,13 @@ auth&&auth.onAuthStateChanged(async user=>{
 
       // ── ניווט מיידי — כל שאר הטעינה ברקע ────────────────────────
       S._loggingIn=false;S._registering=false;
-      if(S.screen==='splash'||S.screen==='login'){go('home');setTimeout(showOnboarding,800);}
+      if(S.screen==='splash'||S.screen==='login'){
+        go('home');
+        setTimeout(showOnboarding,800);
+        if(currentUserData?.role==='student'&&!currentUserData?.interests&&!isAdmin()){
+          setTimeout(showInterestsPicker,1800);
+        }
+      }
 
       // כל הטעינות אחרי הניווט — כישלון כאן לא מחזיר ל-login
       if(currentUserData?.role==='teacher'){await loadTeacherBookings();checkTeacherTrialReminder();}
