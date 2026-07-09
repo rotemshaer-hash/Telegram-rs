@@ -943,6 +943,15 @@ function showOnboarding(){
   document.body.appendChild(ov);
 }
 
+// Races a promise against a hard time limit so a stuck network/SDK call
+// (no timeout of its own) can never block a caller's flow indefinitely.
+function withTimeout(promise,ms,label){
+  return Promise.race([
+    promise,
+    new Promise((_,rej)=>setTimeout(()=>rej(new Error((label||'operation')+'-timeout')),ms))
+  ]);
+}
+
 // ─── Firebase Storage upload ──────────────────────────────────────────────────
 // Uploads base64 data URL to Firebase Storage; returns download URL.
 // Gracefully falls back to the base64 string if Storage is unavailable.
@@ -957,14 +966,10 @@ async function uploadBase64ToStorage(base64DataUrl, path){
     for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
     const blob=new Blob([bytes],{type:mime});
     const ref=storage.ref(path);
-    // Hard cap so a stuck/slow Storage request can never block the caller's flow
-    // (e.g. registration) indefinitely — fall back to the raw base64 instead.
-    const upload=(async()=>{
+    return await withTimeout((async()=>{
       const snap=await ref.put(blob,{contentType:mime});
       return await snap.ref.getDownloadURL();
-    })();
-    const timeout=new Promise((_,rej)=>setTimeout(()=>rej(new Error('storage-upload-timeout')),10000));
-    return await Promise.race([upload,timeout]);
+    })(),10000,'storage-upload');
   }catch(e){
     console.warn('[Storage] upload failed, fallback to base64:',e.message);
     return base64DataUrl;
@@ -12091,14 +12096,14 @@ async function firebaseRegister(email,password,userData){
     }
     // שמירת פרטים ב-Database — אם נכשל, מוחקים את חשבון ה-Auth כדי למנוע "עצמות Auth"
     try{
-      await db.ref('users/'+cred.user.uid).set({
+      await withTimeout(db.ref('users/'+cred.user.uid).set({
         ...userData,
         email,
         uid:cred.user.uid,
         createdAt:Date.now(),
         verified:false,
         role:userData.role||'student'
-      });
+      }),15000,'db-write');
       if(userData.parentId){
         await db.ref('parentLinks/'+userData.parentId+'/'+cred.user.uid).set({linkedAt:Date.now()});
       }
@@ -12130,85 +12135,83 @@ async function firebaseRegister(email,password,userData){
       await cred.user.delete().catch(()=>{});
       throw new Error('שגיאה בשמירת פרטי החשבון ['+(dbErr.code||'?')+'] — נסה שוב');
     }
-    // שליחת מייל אימות — רק למשתמשים עם מייל אמיתי (לא @kidemy.app פיקטיבי)
-    try{
-      if(!email.endsWith('@kidemy.app')){
-        await cred.user.sendEmailVerification({
-          url: window.location.origin,
-          handleCodeInApp: false
-        });
-      }
-    }catch(emailErr){
-      console.warn('Email verification failed:',emailErr);
-    }
-    // מייל ברכה — שלח למייל אמיתי בלבד (לא לכתובות אוטומטיות @kidemy.app)
-    const realEmail=email.endsWith('@kidemy.app')?userData.parentEmail||null:email;
-    if(realEmail) await sendWelcomeEmail(realEmail, userData.name||email.split('@')[0], userData.role||'student');
-    // מייל אימות להורה על הצטרפות הילד
-    if(userData.parentEmail){
-      try{
-        const roleHe=(userData.role||'student')==='teacher'?'מורה':'תלמיד/ה';
-        await sendEmail(userData.parentEmail,`הרשמה ממתינה לאישור – ${userData.name||''} ב-Kidemy`,
-          `שלום ${userData.parentName||'הורה יקר'},\n\nילדך ${userData.name||''} נרשם/ה ל-Kidemy כ${roleHe}.\n\nההרשמה ממתינה לאישור מנהל האפליקציה. תקבלו עדכון ברגע שהאישור יינתן.\n\nאם לא אישרת פעולה זו — צור קשר בהקדם.\n\nבכל שאלה – פנו למנהל האפליקציה: ${ADMIN_EMAIL}\n\n– צוות Kidemy`);
-      }catch(parentEmailErr){
-        console.warn('Parent email notification failed:',parentEmailErr);
-        showFireToast('⚠️ לא הצלחנו לשלוח מייל להורה — ההרשמה הצליחה');
-      }
-    }
-    // עדכון currentUserData מיד
+    // ── מהנקודה הזו ההרשמה הצליחה במלואה (החשבון נשמר ב-DB) ────────────────
+    // עדכון currentUserData מיד ומעבר למסך "ממתין לאישור" — לפני מיילים/התראות,
+    // כדי שהמשתמש יקבל אישור מיידי גם אם צעד המשך (מייל וכו') איטי/נכשל.
     currentUserData={...userData,email,uid:cred.user.uid,role:userData.role||'student'};
     kLog('sign_up',{method:'email',role:userData.role||'student'});
-    // התראה למנהל על משתמש/מורה חדש
-    try{
-      const roleHe=(userData.role||'student')==='teacher'?'מורה':'תלמיד/ה';
-      const isTeacher=(userData.role||'student')==='teacher';
-      // כתוב ל-adminAlerts כדי שהמנהל יראה בזמן אמת
-      if(!isTeacher){
-        try{
-          await db.ref('adminAlerts/students/'+cred.user.uid).set({
-            name:userData.name||email,
-            email:email,
-            parentName:userData.parentName||'',
-            parentPhone:userData.parentPhone||'',
-            createdAt:Date.now()
-          });
-        }catch(alertErr){
-          // אל תחסום הרשמה — הפאנל מציג גם users/ עם verified:false
-          console.warn('adminAlerts write failed:',alertErr);
-        }
-      }
-      await notifyAdmin({
-        type: isTeacher?'newTeacher':'newUser',
-        from: userData.name||email,
-        userEmail: email,
-        teacherEmail: isTeacher?email:undefined,
-        teacherId: isTeacher?cred.user.uid:undefined,
-        parentName: userData.parentName||'',
-        parentEmail: userData.parentEmail||'',
-        profileComplete: false,
-      });
-      await sendAdminEmail(`${isTeacher?'🎓 מורה':'👤 תלמיד/ה'} חדש/ה נרשם/ה – ${userData.name||email}`,
-        `שם: ${userData.name||'—'}\nמייל: ${email}\nתפקיד: ${roleHe}\n${userData.parentName?'הורה: '+userData.parentName+' ('+userData.parentEmail+')':''}\n${isTeacher?'⚠️ עדיין לא השלים/ה פרופיל מורה\n':''}\nזמן: ${new Date().toLocaleString('he-IL')}`);
-    }catch(e){console.warn('Admin notif failed:',e);}
-    // נקה את סשן ההרשמה – הרשמה הסתיימה
     try{
       sessionStorage.removeItem('_kidReg');
       sessionStorage.removeItem('_rName');
       sessionStorage.removeItem('_rAge');
       sessionStorage.removeItem('_rEmail');
+      sessionStorage.removeItem('_rUser');
     }catch(e){}
     S.safetyConfirmed=false;S.parentRegData=null;
     S._registering=false;S._loggingIn=false;
-    try{sessionStorage.removeItem('_rUser');}catch(e){}
     S._firstApproval=true; // flag — "ברוכים הבאים" רק בפעם הראשונה
-    // נעל גישה מיד — נווט ל-pending
     const regRole=userData.role||'student';
+    showFireToast('✅ ההרשמה הושלמה! ממתין לאישור מנהל');
     if(regRole==='teacher'){
       go('teacherSetup'); // מורה צריך להשלים פרופיל קודם
     } else {
       _attachStudentApprovalListener(cred.user.uid);
       go('studentPending');
     }
+    // ── מכאן והלאה: מיילים/התראות ברקע — לא חוסמים את הניווט שכבר קרה ──────
+    (async()=>{
+      // שליחת מייל אימות — רק למשתמשים עם מייל אמיתי (לא @kidemy.app פיקטיבי)
+      try{
+        if(!email.endsWith('@kidemy.app')){
+          await cred.user.sendEmailVerification({url:window.location.origin,handleCodeInApp:false});
+        }
+      }catch(emailErr){console.warn('Email verification failed:',emailErr);}
+      // מייל ברכה — שלח למייל אמיתי בלבד (לא לכתובות אוטומטיות @kidemy.app)
+      try{
+        const realEmail=email.endsWith('@kidemy.app')?userData.parentEmail||null:email;
+        if(realEmail) await sendWelcomeEmail(realEmail, userData.name||email.split('@')[0], userData.role||'student');
+      }catch(welcomeErr){console.warn('Welcome email failed:',welcomeErr);}
+      // מייל אימות להורה על הצטרפות הילד
+      if(userData.parentEmail){
+        try{
+          const roleHe=(userData.role||'student')==='teacher'?'מורה':'תלמיד/ה';
+          await sendEmail(userData.parentEmail,`הרשמה ממתינה לאישור – ${userData.name||''} ב-Kidemy`,
+            `שלום ${userData.parentName||'הורה יקר'},\n\nילדך ${userData.name||''} נרשם/ה ל-Kidemy כ${roleHe}.\n\nההרשמה ממתינה לאישור מנהל האפליקציה. תקבלו עדכון ברגע שהאישור יינתן.\n\nאם לא אישרת פעולה זו — צור קשר בהקדם.\n\nבכל שאלה – פנו למנהל האפליקציה: ${ADMIN_EMAIL}\n\n– צוות Kidemy`);
+        }catch(parentEmailErr){
+          console.warn('Parent email notification failed:',parentEmailErr);
+        }
+      }
+      // התראה למנהל על משתמש/מורה חדש
+      try{
+        const roleHe=(userData.role||'student')==='teacher'?'מורה':'תלמיד/ה';
+        const isTeacher=(userData.role||'student')==='teacher';
+        if(!isTeacher){
+          try{
+            await db.ref('adminAlerts/students/'+cred.user.uid).set({
+              name:userData.name||email,
+              email:email,
+              parentName:userData.parentName||'',
+              parentPhone:userData.parentPhone||'',
+              createdAt:Date.now()
+            });
+          }catch(alertErr){
+            console.warn('adminAlerts write failed:',alertErr);
+          }
+        }
+        await notifyAdmin({
+          type: isTeacher?'newTeacher':'newUser',
+          from: userData.name||email,
+          userEmail: email,
+          teacherEmail: isTeacher?email:undefined,
+          teacherId: isTeacher?cred.user.uid:undefined,
+          parentName: userData.parentName||'',
+          parentEmail: userData.parentEmail||'',
+          profileComplete: false,
+        });
+        await sendAdminEmail(`${isTeacher?'🎓 מורה':'👤 תלמיד/ה'} חדש/ה נרשם/ה – ${userData.name||email}`,
+          `שם: ${userData.name||'—'}\nמייל: ${email}\nתפקיד: ${roleHe}\n${userData.parentName?'הורה: '+userData.parentName+' ('+userData.parentEmail+')':''}\n${isTeacher?'⚠️ עדיין לא השלים/ה פרופיל מורה\n':''}\nזמן: ${new Date().toLocaleString('he-IL')}`);
+      }catch(e){console.warn('Admin notif failed:',e);}
+    })();
   }catch(e){
     S._registering=false;
     const _rb=document.getElementById('_regBtn');
