@@ -957,8 +957,14 @@ async function uploadBase64ToStorage(base64DataUrl, path){
     for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
     const blob=new Blob([bytes],{type:mime});
     const ref=storage.ref(path);
-    const snap=await ref.put(blob,{contentType:mime});
-    return await snap.ref.getDownloadURL();
+    // Hard cap so a stuck/slow Storage request can never block the caller's flow
+    // (e.g. registration) indefinitely — fall back to the raw base64 instead.
+    const upload=(async()=>{
+      const snap=await ref.put(blob,{contentType:mime});
+      return await snap.ref.getDownloadURL();
+    })();
+    const timeout=new Promise((_,rej)=>setTimeout(()=>rej(new Error('storage-upload-timeout')),10000));
+    return await Promise.race([upload,timeout]);
   }catch(e){
     console.warn('[Storage] upload failed, fallback to base64:',e.message);
     return base64DataUrl;
@@ -1548,7 +1554,7 @@ function Register(){
 
       <div class="warn" style="margin-bottom:18px"><span>🛡</span><span>אפליקציה לגילאי 8-18. ההורים מקבלים התראות והגישה לכל פעילותך.</span></div>
 
-      <button class="btn bp" onclick="quickRegister()">✨ הצטרף עכשיו – חינם!</button>
+      <button id="_regBtn" class="btn bp" onclick="quickRegister()">✨ הצטרף עכשיו – חינם!</button>
 
       <button onclick="go('login')" style="width:100%;background:none;border:none;padding:12px;font-size:13px;color:#8A94A6;cursor:pointer;margin-top:8px">
         כבר רשום? התחבר
@@ -1582,6 +1588,7 @@ function selectRole(r){
   }
 }
 async function quickRegister(){
+  if(S._registering){showFireToast('⏳ ההרשמה כבר בתהליך — רגע בבקשה...');return;}
   const name=document.getElementById('regName');
   const age=document.getElementById('regAge');
   const pass=document.getElementById('regPass');
@@ -1602,6 +1609,9 @@ async function quickRegister(){
 
   // כתובת Firebase Auth: username@kidemy.app
   const autoEmail=rawUsername+'@kidemy.app';
+
+  const btn=document.getElementById('_regBtn');
+  if(btn){btn.disabled=true;btn.style.opacity='0.6';btn.style.cursor='not-allowed';btn.textContent='⏳ נרשם...';}
 
   await firebaseRegister(autoEmail, pass.value, {
     name:name.value.trim(),
@@ -12201,6 +12211,8 @@ async function firebaseRegister(email,password,userData){
     }
   }catch(e){
     S._registering=false;
+    const _rb=document.getElementById('_regBtn');
+    if(_rb){_rb.disabled=false;_rb.style.opacity='';_rb.style.cursor='';_rb.textContent='✨ הצטרף עכשיו – חינם!';}
     console.error('[firebaseRegister] initial error:',e.code,e.message);
     if(e.code==='auth/email-already-in-use'){
       // בדוק אם המייל שייך לחשבון שנמחק ע"י מנהל — אם כן, מאפשרים הרשמה מחדש
