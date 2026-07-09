@@ -789,11 +789,13 @@ function _initMapZoom(){
         e.preventDefault();
         if(_mZ>_baseZ*1.08){resetMapZoom();}
         else{
-          const rect=wrap.getBoundingClientRect();
-          const mx=tc[0].clientX-rect.left,my=tc[0].clientY-rect.top;
+          // Zoom in centered on the current pin/marker so it stays visible
+          const W=wrap.clientWidth,H=wrap.clientHeight;
+          const cx=_markerXY?_markerXY.cx:W/2/_baseZ+(_basePX?-_basePX/_baseZ:0);
+          const cy=_markerXY?_markerXY.cy:H/2/_baseZ+(_basePY?-_basePY/_baseZ:0);
           const newZ=Math.min(6,_baseZ*2.5);
-          _mPX=mx-newZ*(mx-_basePX)/_baseZ;
-          _mPY=my-newZ*(my-_basePY)/_baseZ;
+          _mPX=W/2-newZ*cx;
+          _mPY=H/2-newZ*cy;
           _mZ=newZ;
           _applyMapTransform();
         }
