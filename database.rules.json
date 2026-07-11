@@ -18,6 +18,9 @@
         "createdAt": {
           ".validate": "auth.token.email == 'rotemshaer@gmail.com' || !data.exists()"
         },
+        "referredBy": {
+          ".validate": "auth.token.email == 'rotemshaer@gmail.com' || !data.exists()"
+        },
         "subscription": {
           ".validate": "auth.token.email == 'rotemshaer@gmail.com' || newData.child('status').val() != 'active'"
         }
@@ -36,7 +39,7 @@
       "$uid": {
         ".read": "auth != null && auth.uid == $uid",
         "$bookingId": {
-          ".write": "auth != null && (auth.uid == $uid || auth.token.email == 'rotemshaer@gmail.com')",
+          ".write": "auth != null && (auth.uid == $uid || root.child('bookings').child($bookingId).child('teacherId').val() == auth.uid || auth.token.email == 'rotemshaer@gmail.com')",
           "status": {
             ".validate": "auth.uid != $uid || newData.val() == 'pending' || newData.val() == 'awaitingPayment'"
           }
@@ -172,7 +175,12 @@
       "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth.uid == $uid || auth.token.email == 'rotemshaer@gmail.com'" }
     },
     "studentProgress": {
-      "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth.uid == $uid || auth.token.email == 'rotemshaer@gmail.com'" }
+      "$uid": {
+        ".read": "auth != null && auth.uid == $uid",
+        "$bookingId": {
+          ".write": "auth.uid == $uid || root.child('bookings').child($bookingId).child('teacherId').val() == auth.uid || auth.token.email == 'rotemshaer@gmail.com'"
+        }
+      }
     },
     "teacherSummaries": {
       "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth.uid == $uid || auth.token.email == 'rotemshaer@gmail.com'" }

@@ -2087,6 +2087,8 @@ async function processPayment(payMethod,totalAmount){
       studentId:currentUser.uid,
       studentName:currentUserData?.name||currentUser.email.split('@')[0],
       studentEmail:currentUser.email,
+      parentEmail:currentUserData?.parentEmail||'',
+      parentName:currentUserData?.parentName||'',
       teacherId:t.id,
       teacherName:t.name,
       teacherCat:t.cat,
@@ -2201,6 +2203,18 @@ async function adminApproveSubscription(subId,uid){
     await db.ref('users/'+uid+'/subscription').set({plan:'premium',status:'active',expiresAt,approvedAt:Date.now(),subId});
     await db.ref('adminAlerts/subscriptions/'+subId+'/status').set('approved');
     await db.ref('notifications/'+uid).push({type:'accountApproved',createdAt:Date.now(),read:false}).catch(()=>{});
+    // בונוס הפניית מורים: מורה שהביא מורה אחר שהפך למנוי משלם מקבל חודש נוסף בחינם
+    try{
+      const referrerUid=(await db.ref('users/'+uid+'/referredBy').get()).val();
+      if(referrerUid){
+        const referrer=(await db.ref('users/'+referrerUid).get()).val();
+        if(referrer&&referrer.role==='teacher'){
+          const curExpiry=(referrer.subscription?.status==='active'&&referrer.subscription.expiresAt>Date.now())?referrer.subscription.expiresAt:Date.now();
+          await db.ref('users/'+referrerUid+'/subscription').update({plan:'premium',status:'active',expiresAt:curExpiry+30*24*3600*1000});
+          await db.ref('notifications/'+referrerUid).push({type:'adminMessage',createdAt:Date.now(),read:false,msg:'🎉 מורה שהפנית הצטרף כמנוי משלם! קיבלת חודש נוסף בחינם ב-Kidemy.'}).catch(()=>{});
+        }
+      }
+    }catch(refBonusErr){console.warn('Referral bonus error:',refBonusErr);}
     showFireToast('✅ מנוי אושר!');
     await loadAdminData();renderAdminPanel();
   }catch(e){showFireToast('❌ '+e.message);}
@@ -2731,6 +2745,16 @@ function getMeetingLabel(url){
   if(url.includes('teams.microsoft.com'))return 'Teams';
   if(url.includes('whereby.com'))return 'Whereby';
   return 'וידאו';
+}
+function googleCalendarLink(b,isTeacher){
+  if(!b||!b.lessonTimestamp)return '';
+  const start=new Date(b.lessonTimestamp);
+  const end=new Date(start.getTime()+45*60000);
+  const fmt=d=>d.toISOString().replace(/[-:]|\.\d{3}/g,'');
+  const title=encodeURIComponent('שיעור Kidemy עם '+(isTeacher?(b.studentName||''):(b.teacherName||'')));
+  const details=encodeURIComponent('שיעור ב-Kidemy'+(b.jitsiUrl?('\nקישור לשיעור: '+b.jitsiUrl):''));
+  const location=encodeURIComponent(b.jitsiUrl||'');
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${fmt(start)}/${fmt(end)}&details=${details}&location=${location}`;
 }
 function joinJitsi(jitsiUrl,room,bookingData){
   if(!jitsiUrl){showFireToast('⚠️ המורה עדיין לא הגדיר קישור לשיעור');return;}
@@ -3928,7 +3952,6 @@ async function _saveLessonSummary(bookingId,enc){
     const tid=b.teacherId||currentUser.uid;
     // כתיבה אטומית לכל הנתיבים בבת אחת
     await db.ref().update({
-      ['lessonSummaries/'+bookingId]: summary,
       ['studentProgress/'+b.studentId+'/'+bookingId]: summary,
       ['teacherSummaries/'+tid+'/'+bookingId]: summary,
       ['bookings/'+bookingId+'/status']: 'completed',
@@ -3941,17 +3964,13 @@ async function _saveLessonSummary(bookingId,enc){
     // התראה לתלמיד — סיכום + בקשת דירוג
     await db.ref('notifications/'+b.studentId).push({type:'lessonSummary',from:summary.teacherName,preview:'סיכום שיעור: '+topic,read:false,createdAt:Date.now()}).catch(()=>{});
     await db.ref('notifications/'+b.studentId).push({type:'rateLesson',bookingId,teacherId:tid,teacherName:summary.teacherName,from:summary.teacherName,preview:'איך היה השיעור עם '+summary.teacherName+'?',read:false,createdAt:Date.now()+1}).catch(()=>{});
-    // מייל להורה על סיום שיעור
+    // מייל להורה על סיום שיעור — פרטי ההורה כבר על ההזמנה עצמה (b), אין צורך בקריאה נוספת
     try{
-      const stuSnap=await db.ref('users/'+b.studentId).get();
-      const stu=stuSnap.val()||{};
-      if(stu.parentEmail){
-        const _pvToken=await generateParentViewToken(b.studentId,stu.parentEmail).catch(()=>null);
-        const _pvLink=_pvToken?'https://kidemy-app.netlify.app/?parentView='+_pvToken:'https://kidemy-app.netlify.app';
-        const _emailBody=`שלום ${stu.parentName||'הורה יקר'} 👋\n\nהשיעור של ${stu.name||b.studentName||''} הסתיים בהצלחה! 🎓\n\n👨‍🏫 מורה: ${b.teacherName||''}\n📅 תאריך: ${b.day||''}\n📚 נושא: ${topic}${summary.notes?'\n💬 הערות: '+summary.notes:''}${summary.homework?'\n\n📎 שיעורי בית:\n'+summary.homework:''}\n\n━━━━━━━━━━━━━━━━━\n🔗 לצפייה בכל ההיסטוריה של ${stu.name||''}:\n${_pvLink}\n(הקישור תקף ל-30 יום, לא נדרשת סיסמה)\n━━━━━━━━━━━━━━━━━\n\n– צוות Kidemy 💙`;
-        sendEmail(stu.parentEmail,`✅ שיעור הושלם – ${stu.name||b.studentName||''} | Kidemy`,_emailBody).catch(()=>{});
+      if(b.parentEmail){
+        const _emailBody=`שלום ${b.parentName||'הורה יקר'} 👋\n\nהשיעור של ${b.studentName||''} הסתיים בהצלחה! 🎓\n\n👨‍🏫 מורה: ${b.teacherName||''}\n📅 תאריך: ${b.day||''}\n📚 נושא: ${topic}${summary.notes?'\n💬 הערות: '+summary.notes:''}${summary.homework?'\n\n📎 שיעורי בית:\n'+summary.homework:''}\n\n💡 תזכורת: תוכלו להתחבר בכל עת עם שם המשתמש והסיסמה של ${b.studentName||'הילד/ה'} כדי לראות את כל ההיסטוריה, השיחות וההזמנות.\n\n– צוות Kidemy 💙`;
+        sendEmail(b.parentEmail,`✅ שיעור הושלם – ${b.studentName||''} | Kidemy`,_emailBody).catch(()=>{});
       }
-    }catch(e2){}
+    }catch(e2){console.warn('[lesson-complete] parent email failed:',e2);}
     document.getElementById('_lsDialog')?.remove();
     showFireToast('🎓 כל הכבוד! עוד שיעור הושלם בהצלחה — הסיכום נשלח לתלמיד ולהורה');
     await loadTeacherBookings();
@@ -7176,6 +7195,13 @@ function renderAdminTab(){
     const _newUsersWeek=adminAllUsers.filter(u=>u.createdAt&&u.createdAt>=_weekAgo).length;
     const _studentsWithBk=new Set(_confirmedBks.map(b=>b.studentId)).size;
     const _convPct=_studentCount>0?Math.round((_studentsWithBk/_studentCount)*100):0;
+    // Trial → Paid conversion (מורים בלבד)
+    const _allTeacherUsers=adminAllUsers.filter(u=>u.role==='teacher');
+    const _trialDue=_allTeacherUsers.filter(t=>t.createdAt&&(_now-t.createdAt)>TRIAL_DAYS*86400000);
+    const _trialConverted=_trialDue.filter(t=>t.subscription?.status==='active'&&(!t.subscription.expiresAt||t.subscription.expiresAt>=_now));
+    const _trialChurned=_trialDue.length-_trialConverted.length;
+    const _trialConvPct=_trialDue.length>0?Math.round((_trialConverted.length/_trialDue.length)*100):null;
+    const _inTrialNow=_allTeacherUsers.length-_trialDue.length;
     // Month trend
     const _gmvChange=_gmvLastMon>0?Math.round(((_gmvThisMon-_gmvLastMon)/_gmvLastMon)*100):null;
     // Categories by revenue
@@ -7240,6 +7266,25 @@ function renderAdminTab(){
           <div style="width:${Math.min(_convPct,100)}%;height:100%;background:linear-gradient(90deg,#14B8A6,#06B6D4);border-radius:50px"></div>
         </div>
         <div style="font-size:11px;color:#94A3B8;margin-top:6px;text-align:left">${_studentsWithBk} מתוך ${_studentCount} תלמידים הזמינו שיעור</div>
+      </div>
+
+      <!-- Trial to Paid conversion (מורים) -->
+      <div style="background:#fff;border:1.5px solid rgba(139,47,201,.2);border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 2px 8px rgba(0,0,0,.04)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <span style="font-size:26px;font-weight:900;color:${_trialConvPct===null?'#94A3B8':_trialConvPct>=50?'#10B981':_trialConvPct>=25?'#F59E0B':'#EF4444'}">${_trialConvPct===null?'—':_trialConvPct+'%'}</span>
+          <span style="font-size:13px;font-weight:900;color:#0F1A1F">Trial → מנוי בתשלום (מורים)</span>
+        </div>
+        <div style="height:10px;background:#F1F5F9;border-radius:50px;overflow:hidden">
+          <div style="width:${_trialConvPct||0}%;height:100%;background:linear-gradient(90deg,#8b2fc9,#06B6D4);border-radius:50px"></div>
+        </div>
+        <div style="font-size:11px;color:#94A3B8;margin-top:6px;text-align:left">${_trialConverted.length} מתוך ${_trialDue.length} מורים שסיימו ניסיון הפכו למנויים</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px">
+          ${[['בניסיון כעת',_inTrialNow,'#A855F7'],['הומרו למנוי',_trialConverted.length,'#10B981'],['לא הומרו (Churn)',_trialChurned,'#EF4444']].map(([lbl,val,col])=>`
+          <div style="background:${col}0F;border-radius:12px;padding:10px;text-align:center">
+            <div style="font-size:18px;font-weight:900;color:${col}">${val}</div>
+            <div style="font-size:9px;color:#64748B;margin-top:3px;font-weight:700;line-height:1.3">${lbl}</div>
+          </div>`).join('')}
+        </div>
       </div>
 
       ${_topCatRev.length>0?`
@@ -9046,6 +9091,7 @@ function Profile(){
     <div class="ref-card">
       <h4 style="margin:0 0 6px;font-weight:900;font-size:16px">${icon("gift",14)} הפנה חבר – קבל ₪15!</h4>
       <p style="margin:0 0 10px;font-size:13px;opacity:.9;line-height:1.6">על כל חבר שנרשם דרך הלינק האישי שלך תקבל <strong>₪15 קרדיט</strong> לחשבונך, והחבר יקבל <strong>₪5 קרדיט</strong> לשיעור הראשון.</p>
+      ${isTeacher?`<div style="background:rgba(255,255,255,.12);border:1.5px dashed rgba(255,255,255,.35);border-radius:12px;padding:10px 12px;margin-bottom:10px"><div style="font-size:13px;font-weight:800;margin-bottom:2px">🎓 בונוס למורים</div><div style="font-size:12px;opacity:.9;line-height:1.5">מורה נוסף שהצטרף דרך הלינק שלך והפך למנוי בתשלום? תקבל/י <strong>חודש נוסף בחינם</strong> על המנוי שלך!</div></div>`:''}
       ${_userCredit>0?`<div style="background:rgba(255,255,255,.15);border-radius:10px;padding:8px 12px;margin-bottom:10px;font-size:13px;font-weight:800">💰 יתרת קרדיט: ₪${_userCredit}</div>`:''}
       ${currentUserData?.refCode?`<div style="background:rgba(0,0,0,.2);border-radius:10px;padding:8px 12px;margin-bottom:10px;font-size:12px;font-family:monospace;word-break:break-all;direction:ltr;text-align:left;color:#E0FDF4">${_myRefLink()}</div>`:''}
       <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -9818,6 +9864,8 @@ async function _acceptBriefProposal(briefId,teacherUid){
       studentId:currentUser.uid,
       studentName:currentUserData?.name||currentUser.email.split('@')[0],
       studentEmail:currentUser.email||'',
+      parentEmail:currentUserData?.parentEmail||'',
+      parentName:currentUserData?.parentName||'',
       teacherId:teacherUid,
       teacherName:proposal.teacherName,
       teacherCat:brief.subject,
@@ -11373,7 +11421,8 @@ function WeeklySchedule(){
                 <button onclick="joinJitsi('${b.jitsiUrl||''}','${b.jitsiRoom||''}',{})" style="flex:2;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:12px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">${icon("video",14)} הצטרף לשיעור</button>
                 <button onclick="S.chat={otherUid:'${isTeacher?(b.studentId||''):(b.teacherId||'')}',otherName:'${(isTeacher?(b.studentName||''):(b.teacherName||'')).replace(/'/g,"\\'")}'}; go('chat')" style="flex:1;background:rgba(6,182,212,0.15);border:1.5px solid rgba(6,182,212,0.3);color:#06B6D4;border-radius:12px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">${icon("chat",14)}</button>
                 ${isTeacher?`<button onclick="completeLesson('${b.id||''}')" style="flex:1;background:rgba(20,184,166,0.15);border:1.5px solid rgba(20,184,166,0.3);color:#14B8A6;border-radius:12px;padding:10px;font-weight:800;font-size:12px;cursor:pointer">${icon("check-circle",14)} סיים</button>`:''}
-              </div>`:''}
+              </div>${isTeacher&&b.lessonTimestamp?`
+              <a href="${googleCalendarLink(b,isTeacher)}" target="_blank" rel="noopener" style="margin-top:8px;display:flex;align-items:center;justify-content:center;gap:6px;background:rgba(139,47,201,0.1);border:1.5px solid rgba(139,47,201,0.25);color:#8b2fc9;border-radius:12px;padding:9px;font-weight:800;font-size:12px;text-decoration:none">${icon("calendar",14)} הוסף ליומן Google</a>`:''}`:''}
             </div>
           `).join('')}
         </div>
@@ -12085,6 +12134,10 @@ async function firebaseRegister(email,password,userData){
     S._registering=true;
     S._loggingIn=true; // כניסה ידנית (הרשמה) — לא לנתק
     const cred=await auth.createUserWithEmailAndPassword(email,password);
+    // מוודא שה-token הטרי כבר "תפס" בחיבור ה-Realtime Database לפני כל כתיבה —
+    // יש מרוץ ידוע ב-Firebase שבו auth.currentUser כבר מתעדכן ב-JS, אבל חיבור
+    // ה-RTDB עצמו עדיין לא הספיק לאמת מחדש, וכתיבה מיידית נכשלת ב-PERMISSION_DENIED.
+    await cred.user.getIdToken(true).catch(()=>{});
     // שמור displayName ב-Auth עצמו — כגיבוי לשם גם אם DB יאבד
     if(userData.name) await cred.user.updateProfile({displayName:userData.name}).catch(()=>{});
     // העלה תמונת תז הורה ל-Storage (אם קיימת) לפני כתיבה ל-RTDB
@@ -12096,14 +12149,28 @@ async function firebaseRegister(email,password,userData){
     }
     // שמירת פרטים ב-Database — אם נכשל, מוחקים את חשבון ה-Auth כדי למנוע "עצמות Auth"
     try{
-      await withTimeout(db.ref('users/'+cred.user.uid).set({
+      const _userRecord={
         ...userData,
         email,
         uid:cred.user.uid,
         createdAt:Date.now(),
         verified:false,
         role:userData.role||'student'
-      }),15000,'db-write');
+      };
+      try{
+        await withTimeout(db.ref('users/'+cred.user.uid).set(_userRecord),15000,'db-write');
+      }catch(firstWriteErr){
+        // רשת אמורה כבר לפתור את זה (getIdToken(true) למעלה), אבל ליתר ביטחון —
+        // אם עדיין PERMISSION_DENIED, מחכים רגע ומנסים פעם אחת נוספת.
+        if(firstWriteErr.code==='PERMISSION_DENIED'){
+          console.warn('[firebaseRegister] first write got PERMISSION_DENIED, retrying once');
+          await new Promise(r=>setTimeout(r,1200));
+          await cred.user.getIdToken(true).catch(()=>{});
+          await withTimeout(db.ref('users/'+cred.user.uid).set(_userRecord),15000,'db-write');
+        }else{
+          throw firstWriteErr;
+        }
+      }
       if(userData.parentId){
         await db.ref('parentLinks/'+userData.parentId+'/'+cred.user.uid).set({linkedAt:Date.now()});
       }
@@ -12123,6 +12190,7 @@ async function firebaseRegister(email,password,userData){
               await db.ref('userCredits/'+referrerUid).transaction(v=>(v||0)+15);
               await db.ref('userCredits/'+cred.user.uid).transaction(v=>(v||0)+5);
               await db.ref('referrals/'+referrerUid+'/'+cred.user.uid).set({at:Date.now(),code:storedRef});
+              await db.ref('users/'+cred.user.uid+'/referredBy').set(referrerUid);
               await db.ref('notifications/'+referrerUid).push({type:'adminMessage',createdAt:Date.now(),read:false,msg:'חבר שהפנית נרשם ל-Kidemy! קיבלת ₪15 קרדיט.'});
               sessionStorage.removeItem('_kidRefCode');
             }
@@ -12176,7 +12244,7 @@ async function firebaseRegister(email,password,userData){
         try{
           const roleHe=(userData.role||'student')==='teacher'?'מורה':'תלמיד/ה';
           await sendEmail(userData.parentEmail,`הרשמה ממתינה לאישור – ${userData.name||''} ב-Kidemy`,
-            `שלום ${userData.parentName||'הורה יקר'},\n\nילדך ${userData.name||''} נרשם/ה ל-Kidemy כ${roleHe}.\n\nההרשמה ממתינה לאישור מנהל האפליקציה. תקבלו עדכון ברגע שהאישור יינתן.\n\nאם לא אישרת פעולה זו — צור קשר בהקדם.\n\nבכל שאלה – פנו למנהל האפליקציה: ${ADMIN_EMAIL}\n\n– צוות Kidemy`);
+            `שלום ${userData.parentName||'הורה יקר'},\n\nילדך ${userData.name||''} נרשם/ה ל-Kidemy כ${roleHe}.\n\nההרשמה ממתינה לאישור מנהל האפליקציה. תקבלו עדכון ברגע שהאישור יינתן.\n\n💡 כהורה, תוכלו להתחבר בכל עת עם שם המשתמש (${userData.username||''}) והסיסמה שנקבעו בהרשמה, ולראות בדיוק את מה שהילד/ה רואה — כולל שיחות, שיעורים והזמנות. זו הדרך שלנו לתת לכם שקיפות מלאה.\n\nאם לא אישרת פעולה זו — צור קשר בהקדם.\n\nבכל שאלה – פנו למנהל האפליקציה: ${ADMIN_EMAIL}\n\n– צוות Kidemy`);
         }catch(parentEmailErr){
           console.warn('Parent email notification failed:',parentEmailErr);
         }
