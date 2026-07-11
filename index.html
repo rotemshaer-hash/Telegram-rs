@@ -2087,6 +2087,8 @@ async function processPayment(payMethod,totalAmount){
       studentId:currentUser.uid,
       studentName:currentUserData?.name||currentUser.email.split('@')[0],
       studentEmail:currentUser.email,
+      parentEmail:currentUserData?.parentEmail||'',
+      parentName:currentUserData?.parentName||'',
       teacherId:t.id,
       teacherName:t.name,
       teacherCat:t.cat,
@@ -3928,7 +3930,6 @@ async function _saveLessonSummary(bookingId,enc){
     const tid=b.teacherId||currentUser.uid;
     // כתיבה אטומית לכל הנתיבים בבת אחת
     await db.ref().update({
-      ['lessonSummaries/'+bookingId]: summary,
       ['studentProgress/'+b.studentId+'/'+bookingId]: summary,
       ['teacherSummaries/'+tid+'/'+bookingId]: summary,
       ['bookings/'+bookingId+'/status']: 'completed',
@@ -3941,17 +3942,13 @@ async function _saveLessonSummary(bookingId,enc){
     // התראה לתלמיד — סיכום + בקשת דירוג
     await db.ref('notifications/'+b.studentId).push({type:'lessonSummary',from:summary.teacherName,preview:'סיכום שיעור: '+topic,read:false,createdAt:Date.now()}).catch(()=>{});
     await db.ref('notifications/'+b.studentId).push({type:'rateLesson',bookingId,teacherId:tid,teacherName:summary.teacherName,from:summary.teacherName,preview:'איך היה השיעור עם '+summary.teacherName+'?',read:false,createdAt:Date.now()+1}).catch(()=>{});
-    // מייל להורה על סיום שיעור
+    // מייל להורה על סיום שיעור — פרטי ההורה כבר על ההזמנה עצמה (b), אין צורך בקריאה נוספת
     try{
-      const stuSnap=await db.ref('users/'+b.studentId).get();
-      const stu=stuSnap.val()||{};
-      if(stu.parentEmail){
-        const _pvToken=await generateParentViewToken(b.studentId,stu.parentEmail).catch(()=>null);
-        const _pvLink=_pvToken?'https://kidemy-app.netlify.app/?parentView='+_pvToken:'https://kidemy-app.netlify.app';
-        const _emailBody=`שלום ${stu.parentName||'הורה יקר'} 👋\n\nהשיעור של ${stu.name||b.studentName||''} הסתיים בהצלחה! 🎓\n\n👨‍🏫 מורה: ${b.teacherName||''}\n📅 תאריך: ${b.day||''}\n📚 נושא: ${topic}${summary.notes?'\n💬 הערות: '+summary.notes:''}${summary.homework?'\n\n📎 שיעורי בית:\n'+summary.homework:''}\n\n━━━━━━━━━━━━━━━━━\n🔗 לצפייה בכל ההיסטוריה של ${stu.name||''}:\n${_pvLink}\n(הקישור תקף ל-30 יום, לא נדרשת סיסמה)\n━━━━━━━━━━━━━━━━━\n\n– צוות Kidemy 💙`;
-        sendEmail(stu.parentEmail,`✅ שיעור הושלם – ${stu.name||b.studentName||''} | Kidemy`,_emailBody).catch(()=>{});
+      if(b.parentEmail){
+        const _emailBody=`שלום ${b.parentName||'הורה יקר'} 👋\n\nהשיעור של ${b.studentName||''} הסתיים בהצלחה! 🎓\n\n👨‍🏫 מורה: ${b.teacherName||''}\n📅 תאריך: ${b.day||''}\n📚 נושא: ${topic}${summary.notes?'\n💬 הערות: '+summary.notes:''}${summary.homework?'\n\n📎 שיעורי בית:\n'+summary.homework:''}\n\n💡 תזכורת: תוכלו להתחבר בכל עת עם שם המשתמש והסיסמה של ${b.studentName||'הילד/ה'} כדי לראות את כל ההיסטוריה, השיחות וההזמנות.\n\n– צוות Kidemy 💙`;
+        sendEmail(b.parentEmail,`✅ שיעור הושלם – ${b.studentName||''} | Kidemy`,_emailBody).catch(()=>{});
       }
-    }catch(e2){}
+    }catch(e2){console.warn('[lesson-complete] parent email failed:',e2);}
     document.getElementById('_lsDialog')?.remove();
     showFireToast('🎓 כל הכבוד! עוד שיעור הושלם בהצלחה — הסיכום נשלח לתלמיד ולהורה');
     await loadTeacherBookings();
@@ -9818,6 +9815,8 @@ async function _acceptBriefProposal(briefId,teacherUid){
       studentId:currentUser.uid,
       studentName:currentUserData?.name||currentUser.email.split('@')[0],
       studentEmail:currentUser.email||'',
+      parentEmail:currentUserData?.parentEmail||'',
+      parentName:currentUserData?.parentName||'',
       teacherId:teacherUid,
       teacherName:proposal.teacherName,
       teacherCat:brief.subject,
@@ -12085,6 +12084,10 @@ async function firebaseRegister(email,password,userData){
     S._registering=true;
     S._loggingIn=true; // כניסה ידנית (הרשמה) — לא לנתק
     const cred=await auth.createUserWithEmailAndPassword(email,password);
+    // מוודא שה-token הטרי כבר "תפס" בחיבור ה-Realtime Database לפני כל כתיבה —
+    // יש מרוץ ידוע ב-Firebase שבו auth.currentUser כבר מתעדכן ב-JS, אבל חיבור
+    // ה-RTDB עצמו עדיין לא הספיק לאמת מחדש, וכתיבה מיידית נכשלת ב-PERMISSION_DENIED.
+    await cred.user.getIdToken(true).catch(()=>{});
     // שמור displayName ב-Auth עצמו — כגיבוי לשם גם אם DB יאבד
     if(userData.name) await cred.user.updateProfile({displayName:userData.name}).catch(()=>{});
     // העלה תמונת תז הורה ל-Storage (אם קיימת) לפני כתיבה ל-RTDB
@@ -12096,14 +12099,28 @@ async function firebaseRegister(email,password,userData){
     }
     // שמירת פרטים ב-Database — אם נכשל, מוחקים את חשבון ה-Auth כדי למנוע "עצמות Auth"
     try{
-      await withTimeout(db.ref('users/'+cred.user.uid).set({
+      const _userRecord={
         ...userData,
         email,
         uid:cred.user.uid,
         createdAt:Date.now(),
         verified:false,
         role:userData.role||'student'
-      }),15000,'db-write');
+      };
+      try{
+        await withTimeout(db.ref('users/'+cred.user.uid).set(_userRecord),15000,'db-write');
+      }catch(firstWriteErr){
+        // רשת אמורה כבר לפתור את זה (getIdToken(true) למעלה), אבל ליתר ביטחון —
+        // אם עדיין PERMISSION_DENIED, מחכים רגע ומנסים פעם אחת נוספת.
+        if(firstWriteErr.code==='PERMISSION_DENIED'){
+          console.warn('[firebaseRegister] first write got PERMISSION_DENIED, retrying once');
+          await new Promise(r=>setTimeout(r,1200));
+          await cred.user.getIdToken(true).catch(()=>{});
+          await withTimeout(db.ref('users/'+cred.user.uid).set(_userRecord),15000,'db-write');
+        }else{
+          throw firstWriteErr;
+        }
+      }
       if(userData.parentId){
         await db.ref('parentLinks/'+userData.parentId+'/'+cred.user.uid).set({linkedAt:Date.now()});
       }
@@ -12176,7 +12193,7 @@ async function firebaseRegister(email,password,userData){
         try{
           const roleHe=(userData.role||'student')==='teacher'?'מורה':'תלמיד/ה';
           await sendEmail(userData.parentEmail,`הרשמה ממתינה לאישור – ${userData.name||''} ב-Kidemy`,
-            `שלום ${userData.parentName||'הורה יקר'},\n\nילדך ${userData.name||''} נרשם/ה ל-Kidemy כ${roleHe}.\n\nההרשמה ממתינה לאישור מנהל האפליקציה. תקבלו עדכון ברגע שהאישור יינתן.\n\nאם לא אישרת פעולה זו — צור קשר בהקדם.\n\nבכל שאלה – פנו למנהל האפליקציה: ${ADMIN_EMAIL}\n\n– צוות Kidemy`);
+            `שלום ${userData.parentName||'הורה יקר'},\n\nילדך ${userData.name||''} נרשם/ה ל-Kidemy כ${roleHe}.\n\nההרשמה ממתינה לאישור מנהל האפליקציה. תקבלו עדכון ברגע שהאישור יינתן.\n\n💡 כהורה, תוכלו להתחבר בכל עת עם שם המשתמש (${userData.username||''}) והסיסמה שנקבעו בהרשמה, ולראות בדיוק את מה שהילד/ה רואה — כולל שיחות, שיעורים והזמנות. זו הדרך שלנו לתת לכם שקיפות מלאה.\n\nאם לא אישרת פעולה זו — צור קשר בהקדם.\n\nבכל שאלה – פנו למנהל האפליקציה: ${ADMIN_EMAIL}\n\n– צוות Kidemy`);
         }catch(parentEmailErr){
           console.warn('Parent email notification failed:',parentEmailErr);
         }
