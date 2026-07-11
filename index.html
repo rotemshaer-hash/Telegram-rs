@@ -7183,6 +7183,13 @@ function renderAdminTab(){
     const _newUsersWeek=adminAllUsers.filter(u=>u.createdAt&&u.createdAt>=_weekAgo).length;
     const _studentsWithBk=new Set(_confirmedBks.map(b=>b.studentId)).size;
     const _convPct=_studentCount>0?Math.round((_studentsWithBk/_studentCount)*100):0;
+    // Trial → Paid conversion (מורים בלבד)
+    const _allTeacherUsers=adminAllUsers.filter(u=>u.role==='teacher');
+    const _trialDue=_allTeacherUsers.filter(t=>t.createdAt&&(_now-t.createdAt)>TRIAL_DAYS*86400000);
+    const _trialConverted=_trialDue.filter(t=>t.subscription?.status==='active'&&(!t.subscription.expiresAt||t.subscription.expiresAt>=_now));
+    const _trialChurned=_trialDue.length-_trialConverted.length;
+    const _trialConvPct=_trialDue.length>0?Math.round((_trialConverted.length/_trialDue.length)*100):null;
+    const _inTrialNow=_allTeacherUsers.length-_trialDue.length;
     // Month trend
     const _gmvChange=_gmvLastMon>0?Math.round(((_gmvThisMon-_gmvLastMon)/_gmvLastMon)*100):null;
     // Categories by revenue
@@ -7247,6 +7254,25 @@ function renderAdminTab(){
           <div style="width:${Math.min(_convPct,100)}%;height:100%;background:linear-gradient(90deg,#14B8A6,#06B6D4);border-radius:50px"></div>
         </div>
         <div style="font-size:11px;color:#94A3B8;margin-top:6px;text-align:left">${_studentsWithBk} מתוך ${_studentCount} תלמידים הזמינו שיעור</div>
+      </div>
+
+      <!-- Trial to Paid conversion (מורים) -->
+      <div style="background:#fff;border:1.5px solid rgba(139,47,201,.2);border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 2px 8px rgba(0,0,0,.04)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <span style="font-size:26px;font-weight:900;color:${_trialConvPct===null?'#94A3B8':_trialConvPct>=50?'#10B981':_trialConvPct>=25?'#F59E0B':'#EF4444'}">${_trialConvPct===null?'—':_trialConvPct+'%'}</span>
+          <span style="font-size:13px;font-weight:900;color:#0F1A1F">Trial → מנוי בתשלום (מורים)</span>
+        </div>
+        <div style="height:10px;background:#F1F5F9;border-radius:50px;overflow:hidden">
+          <div style="width:${_trialConvPct||0}%;height:100%;background:linear-gradient(90deg,#8b2fc9,#06B6D4);border-radius:50px"></div>
+        </div>
+        <div style="font-size:11px;color:#94A3B8;margin-top:6px;text-align:left">${_trialConverted.length} מתוך ${_trialDue.length} מורים שסיימו ניסיון הפכו למנויים</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px">
+          ${[['בניסיון כעת',_inTrialNow,'#A855F7'],['הומרו למנוי',_trialConverted.length,'#10B981'],['לא הומרו (Churn)',_trialChurned,'#EF4444']].map(([lbl,val,col])=>`
+          <div style="background:${col}0F;border-radius:12px;padding:10px;text-align:center">
+            <div style="font-size:18px;font-weight:900;color:${col}">${val}</div>
+            <div style="font-size:9px;color:#64748B;margin-top:3px;font-weight:700;line-height:1.3">${lbl}</div>
+          </div>`).join('')}
+        </div>
       </div>
 
       ${_topCatRev.length>0?`
