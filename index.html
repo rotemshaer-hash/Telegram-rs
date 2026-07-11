@@ -2734,6 +2734,16 @@ function getMeetingLabel(url){
   if(url.includes('whereby.com'))return 'Whereby';
   return 'וידאו';
 }
+function googleCalendarLink(b,isTeacher){
+  if(!b||!b.lessonTimestamp)return '';
+  const start=new Date(b.lessonTimestamp);
+  const end=new Date(start.getTime()+45*60000);
+  const fmt=d=>d.toISOString().replace(/[-:]|\.\d{3}/g,'');
+  const title=encodeURIComponent('שיעור Kidemy עם '+(isTeacher?(b.studentName||''):(b.teacherName||'')));
+  const details=encodeURIComponent('שיעור ב-Kidemy'+(b.jitsiUrl?('\nקישור לשיעור: '+b.jitsiUrl):''));
+  const location=encodeURIComponent(b.jitsiUrl||'');
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${fmt(start)}/${fmt(end)}&details=${details}&location=${location}`;
+}
 function joinJitsi(jitsiUrl,room,bookingData){
   if(!jitsiUrl){showFireToast('⚠️ המורה עדיין לא הגדיר קישור לשיעור');return;}
   const url=jitsiUrl;
@@ -11372,7 +11382,8 @@ function WeeklySchedule(){
                 <button onclick="joinJitsi('${b.jitsiUrl||''}','${b.jitsiRoom||''}',{})" style="flex:2;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:12px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">${icon("video",14)} הצטרף לשיעור</button>
                 <button onclick="S.chat={otherUid:'${isTeacher?(b.studentId||''):(b.teacherId||'')}',otherName:'${(isTeacher?(b.studentName||''):(b.teacherName||'')).replace(/'/g,"\\'")}'}; go('chat')" style="flex:1;background:rgba(6,182,212,0.15);border:1.5px solid rgba(6,182,212,0.3);color:#06B6D4;border-radius:12px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">${icon("chat",14)}</button>
                 ${isTeacher?`<button onclick="completeLesson('${b.id||''}')" style="flex:1;background:rgba(20,184,166,0.15);border:1.5px solid rgba(20,184,166,0.3);color:#14B8A6;border-radius:12px;padding:10px;font-weight:800;font-size:12px;cursor:pointer">${icon("check-circle",14)} סיים</button>`:''}
-              </div>`:''}
+              </div>${isTeacher&&b.lessonTimestamp?`
+              <a href="${googleCalendarLink(b,isTeacher)}" target="_blank" rel="noopener" style="margin-top:8px;display:flex;align-items:center;justify-content:center;gap:6px;background:rgba(139,47,201,0.1);border:1.5px solid rgba(139,47,201,0.25);color:#8b2fc9;border-radius:12px;padding:9px;font-weight:800;font-size:12px;text-decoration:none">${icon("calendar",14)} הוסף ליומן Google</a>`:''}`:''}
             </div>
           `).join('')}
         </div>
