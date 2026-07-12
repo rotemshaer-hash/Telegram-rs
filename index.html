@@ -12216,18 +12216,24 @@ async function firebaseRegister(email,password,userData){
         verified:false,
         role:userData.role||'student'
       };
-      try{
-        await withTimeout(db.ref('users/'+cred.user.uid).set(_userRecord),15000,'db-write');
-      }catch(firstWriteErr){
-        // רשת אמורה כבר לפתור את זה (getIdToken(true) למעלה), אבל ליתר ביטחון —
-        // אם עדיין PERMISSION_DENIED, מחכים רגע ומנסים פעם אחת נוספת.
-        if(firstWriteErr.code==='PERMISSION_DENIED'){
-          console.warn('[firebaseRegister] first write got PERMISSION_DENIED, retrying once');
-          await new Promise(r=>setTimeout(r,1200));
-          await cred.user.getIdToken(true).catch(()=>{});
-          await withTimeout(db.ref('users/'+cred.user.uid).set(_userRecord),15000,'db-write');
-        }else{
-          throw firstWriteErr;
+      {
+        // רשת אמורה כבר לפתור את מרוץ ה-token למעלה (getIdToken(true)), אבל ברשת
+        // איטית/לא יציבה הפער יכול להיות ארוך יותר משנייה — לכן, אם עדיין
+        // PERMISSION_DENIED, מנסים עד 3 פעמים נוספות עם המתנה גדלה (backoff).
+        const delays=[1200,2500,4500];
+        let lastErr=null;
+        let written=false;
+        for(let attempt=0;attempt<=delays.length&&!written;attempt++){
+          try{
+            await withTimeout(db.ref('users/'+cred.user.uid).set(_userRecord),15000,'db-write');
+            written=true;
+          }catch(writeErr){
+            lastErr=writeErr;
+            if(writeErr.code!=='PERMISSION_DENIED'||attempt===delays.length)throw writeErr;
+            console.warn('[firebaseRegister] write got PERMISSION_DENIED, retry',attempt+1,'of',delays.length);
+            await new Promise(r=>setTimeout(r,delays[attempt]));
+            await cred.user.getIdToken(true).catch(()=>{});
+          }
         }
       }
       if(userData.parentId){

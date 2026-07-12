@@ -28,6 +28,9 @@
         },
         "subscription": {
           ".validate": "auth.token.email == 'rotemshaer@gmail.com' || newData.child('status').val() != 'active'"
+        },
+        "parentId": {
+          ".write": "auth != null && !data.exists()"
         }
       }
     },
@@ -38,7 +41,13 @@
       }
     },
     "teacherBookings": {
-      "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth != null && (auth.uid == $uid || auth.token.email == 'rotemshaer@gmail.com')" }
+      "$uid": {
+        ".read": "auth != null && auth.uid == $uid",
+        ".write": "auth != null && auth.uid == $uid",
+        "$bookingId": {
+          ".write": "auth != null && (auth.uid == $uid || root.child('bookings').child($bookingId).child('studentId').val() == auth.uid || auth.token.email == 'rotemshaer@gmail.com')"
+        }
+      }
     },
     "userBookings": {
       "$uid": {
@@ -82,7 +91,7 @@
       }
     },
     "userChats": {
-      "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth.uid == $uid || auth.token.email == 'rotemshaer@gmail.com'" }
+      "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth != null" }
     },
     "adminAlerts":  { ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'", ".write": "auth != null" },
     "adminNotifs":  { ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'", ".write": "auth != null" },
@@ -165,12 +174,18 @@
       "$groupId": {
         ".read": "auth != null",
         "$uid": {
-          ".write": "auth != null && (auth.uid == $uid || auth.token.email == 'rotemshaer@gmail.com')"
+          ".write": "auth != null && (auth.uid == $uid || root.child('groups').child($groupId).child('teacherId').val() == auth.uid || auth.token.email == 'rotemshaer@gmail.com')"
         }
       }
     },
     "userGroups": {
-      "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth.uid == $uid || auth.token.email == 'rotemshaer@gmail.com'" }
+      "$uid": {
+        ".read": "auth != null && auth.uid == $uid",
+        ".write": "auth != null && auth.uid == $uid",
+        "$groupId": {
+          ".write": "auth != null && (auth.uid == $uid || root.child('groups').child($groupId).child('teacherId').val() == auth.uid || auth.token.email == 'rotemshaer@gmail.com')"
+        }
+      }
     },
     "reports": { ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'", ".write": "auth != null" },
     "favorites": {
