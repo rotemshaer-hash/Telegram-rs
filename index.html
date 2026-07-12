@@ -1811,6 +1811,24 @@ function TeacherSetup(){
         <p style="font-size:11px;color:#94A3B8;margin:6px 0 0">${icon("alert-triangle",14)} ללא קישור, תלמידים לא יוכלו להצטרף לשיעור</p>
       </div>
 
+      <!-- פרטי תשלום לקבלת כספים משיעורים -->
+      <div class="card" style="margin-bottom:18px;background:linear-gradient(135deg,rgba(139,47,201,0.06),rgba(20,184,166,0.04));border:1.5px solid rgba(139,47,201,0.3)">
+        <h3 style="font-weight:900;font-size:16px;margin:0 0 6px;color:#8b2fc9">${icon("dollar",14)} פרטי תשלום לקבלת כספים משיעורים</h3>
+        <p style="color:#64748B;font-size:12px;margin:0 0 12px;line-height:1.6">תלמידים ישלמו <strong>ישירות אליך</strong> — Kidemy לא מעורבת בכסף. הכנס לפחות אמצעי תשלום אחד כדי שתלמידים יוכלו לשלם לך.</p>
+        <div style="margin-bottom:10px">
+          <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">💜 מספר Bit</label>
+          <input id="tPayBit" class="inp" type="tel" placeholder="050-1234567">
+        </div>
+        <div style="margin-bottom:10px">
+          <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">🅿️ PayPal.me / אימייל PayPal</label>
+          <input id="tPayPaypal" class="inp" type="text" placeholder="paypal.me/yourname">
+        </div>
+        <div style="margin-bottom:0">
+          <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">🔵 מספר PayBox</label>
+          <input id="tPayPaybox" class="inp" type="tel" placeholder="050-1234567">
+        </div>
+      </div>
+
       <div class="warn" style="margin-bottom:14px"><span>🛡</span><span>הפרופיל יעבור אישור צוות הבטיחות תוך 24 שעות.</span></div>
 
       <!-- הסבר מודל תשלום -->
@@ -1992,6 +2010,10 @@ async function saveTeacherProfile(){
   if(!document.getElementById('tAgeConfirm')?.checked){showFireToast('❌ יש לאשר שאתה/ת בין גיל 14 ל-18');return;}
   const _ageVal=parseInt(document.getElementById('tAge')?.value||0);
   if(_ageVal&&(_ageVal<14||_ageVal>18)){showFireToast('❌ גיל המורה חייב להיות בין 14 ל-18');return;}
+  const payBit=document.getElementById('tPayBit')?.value.trim()||'';
+  const payPaypal=document.getElementById('tPayPaypal')?.value.trim()||'';
+  const payPaybox=document.getElementById('tPayPaybox')?.value.trim()||'';
+  if(!payBit&&!payPaypal&&!payPaybox){showFireToast('❌ הכנס לפחות אמצעי תשלום אחד לקבלת כספים משיעורים');return;}
 
   try{
     showFireToast('⏳ שומר פרופיל...');
@@ -2001,6 +2023,7 @@ async function saveTeacherProfile(){
 
     const mainCat=_selectedCats[0]||'custom';
     const teacherData={
+      payment:{bit:payBit,paypal:payPaypal,paybox:payPaybox},
       uid:currentUser.uid,
       name:currentUserData?.name||currentUser.email.split('@')[0],
       email:currentUser.email,
@@ -2124,7 +2147,7 @@ async function processPayment(payMethod,totalAmount){
       grossAmount:totalAmount,
       commission:0,
       netToTeacher:totalAmount,
-      status:'awaitingPayment',
+      status:'pending',
       jitsiRoom:jitsiRoom,
       jitsiUrl:t.meetingLink||'',
       meetingPlatform:getMeetingLabel(t.meetingLink||''),
@@ -2136,24 +2159,27 @@ async function processPayment(payMethod,totalAmount){
       ['userBookings/'+currentUser.uid+'/'+bookingId]: bookingData,
       ['teacherBookings/'+t.id+'/'+bookingId]: bookingData,
     });
-    // שלח התראה למנהל בלבד (לא למורה — הוא יקבל רק לאחר אימות תשלום)
-    await db.ref('adminAlerts/payments/'+bookingId).set({
-      bookingId,studentId:currentUser.uid,studentName:bookingData.studentName,
-      teacherId:t.id,teacherName:t.name,
-      amount:totalAmount,commission:bookingData.commission,netToTeacher:bookingData.netToTeacher,
-      payMethod,payRef:bookingData.payRef,
-      day:bookingData.day,time:bookingData.time,
-      status:'awaitingPayment',createdAt:Date.now()
+    // התראה למורה — התשלום הולך ישירות אליו, הוא זה שמאשר את ההזמנה
+    await db.ref('notifications/'+t.id).push({
+      type:'newBooking',from:bookingData.studentName||'תלמיד',
+      bookingId,day:bookingData.day||'',time:bookingData.time||'',
+      amount:totalAmount,
+      preview:'הזמנה חדשה ממתינה לאישורך',
+      read:false,createdAt:Date.now()
     }).catch(()=>{});
     try{
-      // מייל למנהל — אימות תשלום נדרש
-      await sendEmail(ADMIN_EMAIL,'💰 תשלום ממתין לאימות — Kidemy',
-        `הזמנה חדשה ממתינה לאימות תשלום!\n\n📌 קוד הפניה: ${bookingData.payRef}\n👤 תלמיד: ${bookingData.studentName}\n👨‍🏫 מורה: ${t.name}\n📅 ${bookingData.day} בשעה ${bookingData.time}\n💰 סכום (ישירות למורה, 100%): ₪${totalAmount} (${payMethod})\n\nכנס לפאנל מנהל → אימות תשלומים → אשר לאחר קבלת הכסף:\nhttps://kidemy-app.netlify.app`);
-      // מייל להורה — ממתין לאימות
+      // מייל למורה — הזמנה חדשה, ממתינה לאישורו לאחר קבלת התשלום
+      const teacherSnap=await db.ref('teachers/'+t.id).get();
+      const teacherEmail=teacherSnap.val()?.email||'';
+      if(teacherEmail)await sendEmail(teacherEmail,
+        `📅 הזמנה חדשה — ${bookingData.studentName||'תלמיד'} — Kidemy`,
+        `שלום,\n\nיש לך הזמנה חדשה:\n\n👤 תלמיד: ${bookingData.studentName||''}\n📅 ${bookingData.day||''} בשעה ${bookingData.time||''}\n💰 לקבלתך (100%, ${payMethod}): ₪${totalAmount}\n\nלאחר שתקבל את התשלום, כנס לאפליקציה ואשר את ההזמנה:\nhttps://kidemy-app.netlify.app\n\n– צוות Kidemy`
+      );
+      // מייל להורה — ממתין לאישור המורה
       if(currentUserData?.parentEmail){
         sendEmail(currentUserData.parentEmail,
-          `📚 ${currentUserData.name||bookingData.studentName} הזמין/ה שיעור — ממתין לאישור תשלום`,
-          `שלום ${currentUserData.parentName||'הורה יקר'},\n\nילדך הזמין/ה שיעור ב-Kidemy:\n👨‍🏫 מורה: ${t.name}\n📅 ${bookingData.day} בשעה ${bookingData.time}\n💰 סכום: ₪${totalAmount} (${payMethod})\n📌 קוד הפניה: ${bookingData.payRef}\n\n⏳ ההזמנה תאושר לאחר אימות התשלום ע"י הצוות.\n\n– צוות Kidemy`
+          `📚 ${currentUserData.name||bookingData.studentName} הזמין/ה שיעור — ממתין לאישור המורה`,
+          `שלום ${currentUserData.parentName||'הורה יקר'},\n\nילדך הזמין/ה שיעור ב-Kidemy:\n👨‍🏫 מורה: ${t.name}\n📅 ${bookingData.day} בשעה ${bookingData.time}\n💰 סכום: ₪${totalAmount} (${payMethod})\n📌 קוד הפניה: ${bookingData.payRef}\n\n⏳ ההזמנה תאושר לאחר שהמורה יאשר קבלת התשלום.\n\n– צוות Kidemy`
         ).catch(()=>{});
       }
     }catch(e){}
@@ -2161,7 +2187,7 @@ async function processPayment(payMethod,totalAmount){
     S.lastPayRef=bookingData.payRef;
     S.bookStep=3;
     kLog('booking_created',{teacher_id:t.id,teacher_cat:t.cat||'',price:totalAmount,method:payMethod,type:S.bookType||'single'});
-    showFireToast('🎉 מעולה! עשית צעד גדול — ההזמנה נשמרה ומחכה לאישור תשלום');
+    showFireToast('🎉 מעולה! עשית צעד גדול — ההזמנה נשמרה ומחכה לאישור המורה');
     render();
   }catch(e){
     showFireToast('❌ שגיאה: '+e.message);
@@ -8561,16 +8587,16 @@ function Booking(){
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
         <div style="width:40px;height:40px;border-radius:12px;background:rgba(20,184,166,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
         <div>
-          <div style="font-weight:900;font-size:16px;color:#14B8A6">תשלום מאובטח דרך Kidemy</div>
-          <div style="font-size:12px;color:#64748B;margin-top:2px">הכסף אצלנו עד שהשיעור הושלם</div>
+          <div style="font-weight:900;font-size:16px;color:#14B8A6">תשלום ישיר למורה</div>
+          <div style="font-size:12px;color:#64748B;margin-top:2px">Kidemy לא מעורבת בכסף — התשלום ישירות בינך לבין המורה</div>
         </div>
       </div>
       <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-        <div style="background:rgba(20,184,166,0.1);border-radius:50px;padding:5px 12px;font-size:11px;font-weight:700;color:#14B8A6">1️⃣ אתה משלם ל-Kidemy</div>
+        <div style="background:rgba(20,184,166,0.1);border-radius:50px;padding:5px 12px;font-size:11px;font-weight:700;color:#14B8A6">1️⃣ אתה משלם למורה</div>
         <span style="color:#94A3B8">→</span>
-        <div style="background:rgba(20,184,166,0.1);border-radius:50px;padding:5px 12px;font-size:11px;font-weight:700;color:#14B8A6">2️⃣ השיעור מתקיים</div>
+        <div style="background:rgba(20,184,166,0.1);border-radius:50px;padding:5px 12px;font-size:11px;font-weight:700;color:#14B8A6">2️⃣ המורה מאשר קבלת תשלום</div>
         <span style="color:#94A3B8">→</span>
-        <div style="background:rgba(251,191,36,0.1);border-radius:50px;padding:5px 12px;font-size:11px;font-weight:700;color:#D97706">3️⃣ Kidemy מעביר למורה</div>
+        <div style="background:rgba(16,185,129,0.1);border-radius:50px;padding:5px 12px;font-size:11px;font-weight:700;color:#10B981">3️⃣ השיעור מתקיים</div>
       </div>
     </div>
 
@@ -8580,7 +8606,7 @@ function Booking(){
       <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:13px"><span style="font-weight:700">${t.name}</span><span style="color:${C.muted}">מורה</span></div>
       <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:13px"><span style="font-weight:700">${selDay?.label||''} ${selDay?.num||''} ${selDay?.mon||''} – ${S.bookTime}</span><span style="color:${C.muted}">מועד</span></div>
       <div style="height:1px;background:rgba(20,184,166,.15);margin:10px 0"></div>
-      <div style="display:flex;justify-content:space-between"><span style="font-weight:900;font-size:16px">לתשלום ל-Kidemy</span><span style="font-weight:900;font-size:20px;color:#14B8A6">₪${price}</span></div>
+      <div style="display:flex;justify-content:space-between"><span style="font-weight:900;font-size:16px">לתשלום למורה</span><span style="font-weight:900;font-size:20px;color:#14B8A6">₪${price}</span></div>
     </div>
 
     ${(()=>{
@@ -8591,61 +8617,66 @@ function Booking(){
       if(subStatus==='pending')out+=`<div style="background:rgba(139,47,201,0.08);border:1.5px solid rgba(139,47,201,0.25);border-radius:14px;padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px"><div style="font-size:20px">⏳</div><div><div style="font-weight:800;font-size:13px;color:#8B5CF6">מנוי פרימיום ממתין לאישור</div><div style="font-size:11px;color:#64748B;margin-top:1px">הצוות מאמת את התשלום — בד"כ תוך 2–4 שעות</div></div></div>`;
       return out;
     })()}
-    <h3 style="font-weight:900;font-size:16px;margin:0 0 12px">בחר אמצעי תשלום:</h3>
-
-    <!-- Bit -->
-    <div class="pay-m ${S.bookPay==='bit'?"on":""}" onclick="S.bookPay='bit';render()" style="border-color:${S.bookPay==='bit'?'#14B8A6':'rgba(20,184,166,.1)'};background:${S.bookPay==='bit'?'rgba(20,184,166,0.1)':'rgba(255,255,255,0.7)'}">
-      <div style="font-size:30px;width:48px;height:48px;border-radius:14px;background:rgba(20,184,166,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0">💜</div>
-      <div style="flex:1">
-        <div style="font-weight:800;font-size:15px;color:#14B8A6">Bit</div>
-        <div style="font-size:12px;color:${C.muted}">שלח ל: ${ADMIN_PAYMENT.bit} (Kidemy)</div>
-      </div>
-      ${S.bookPay==='bit'?`<div style="margin-right:auto;width:24px;height:24px;border-radius:50%;background:#14B8A6;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px">✓</div>`:""}
-    </div>
-
-    <!-- PayPal -->
-    <div class="pay-m ${S.bookPay==='paypal'?"on":""}" onclick="S.bookPay='paypal';render()" style="border-color:${S.bookPay==='paypal'?'#003087':'rgba(20,184,166,.1)'};background:${S.bookPay==='paypal'?'rgba(0,48,135,0.08)':'rgba(255,255,255,0.7)'}">
-      <div style="font-size:30px;width:48px;height:48px;border-radius:14px;background:rgba(0,48,135,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0">🅿️</div>
-      <div style="flex:1">
-        <div style="font-weight:800;font-size:15px;color:#003087">PayPal</div>
-        <div style="font-size:12px;color:${C.muted}">שלח ל: ${ADMIN_PAYMENT.paypal}</div>
-      </div>
-      ${S.bookPay==='paypal'?`<div style="margin-right:auto;width:24px;height:24px;border-radius:50%;background:#003087;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px">✓</div>`:""}
-    </div>
-
-    <!-- PayBox -->
-    <div class="pay-m ${S.bookPay==='paybox'?"on":""}" onclick="S.bookPay='paybox';render()" style="border-color:${S.bookPay==='paybox'?'#0066CC':'rgba(20,184,166,.1)'};background:${S.bookPay==='paybox'?'rgba(0,102,204,0.08)':'rgba(255,255,255,0.7)'}">
-      <div style="font-size:30px;width:48px;height:48px;border-radius:14px;background:rgba(0,102,204,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0">🔵</div>
-      <div style="flex:1">
-        <div style="font-weight:800;font-size:15px;color:#0066CC">PayBox</div>
-        <div style="font-size:12px;color:${C.muted}">שלח ל: ${ADMIN_PAYMENT.paybox} (Kidemy)</div>
-      </div>
-      ${S.bookPay==='paybox'?`<div style="margin-right:auto;width:24px;height:24px;border-radius:50%;background:#0066CC;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px">✓</div>`:""}
-    </div>
-
-    <!-- הוראות + לינק ישיר -->
-    ${S.bookPay?`
-    <div style="background:linear-gradient(135deg,rgba(20,184,166,0.1),rgba(6,182,212,0.08));border:1.5px solid rgba(20,184,166,0.3);border-radius:16px;padding:16px;margin-bottom:14px">
-      <h4 style="font-weight:900;font-size:14px;margin:0 0 10px;color:#14B8A6;display:flex;align-items:center;gap:6px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12" y2="18"/></svg>כיצד לשלם:</h4>
-      <div style="display:flex;flex-direction:column;gap:8px">
-        <div style="display:flex;gap:8px;align-items:center"><div style="width:24px;height:24px;border-radius:50%;background:#14B8A6;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;flex-shrink:0">1</div><span style="font-size:13px">${S.bookPay==='paypal'?'לחץ "פתח PayPal.me" למטה → ישלח לעמוד תשלום':'לחץ "העתק מספר" למטה → פתח Bit/PayBox ושלם למספר'}</span></div>
-        <div style="display:flex;gap:8px;align-items:center"><div style="width:24px;height:24px;border-radius:50%;background:#06B6D4;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;flex-shrink:0">2</div><span style="font-size:13px">שלח <strong style="color:#14B8A6">₪${price}</strong> ל: <strong style="direction:ltr;unicode-bidi:isolate">${S.bookPay==='paypal'?ADMIN_PAYMENT.paypal:S.bookPay==='paybox'?ADMIN_PAYMENT.paybox:ADMIN_PAYMENT.bit}</strong></span></div>
-        <div style="display:flex;gap:8px;align-items:center"><div style="width:24px;height:24px;border-radius:50%;background:#06B6D4;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;flex-shrink:0">3</div><span style="font-size:13px">בהערה כתוב: <strong>"Kidemy – ${t.name}"</strong></span></div>
-        <div style="display:flex;gap:8px;align-items:center"><div style="width:24px;height:24px;border-radius:50%;background:#10B981;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;flex-shrink:0">4</div><span style="font-size:13px">חזור ולחץ "אישור – שילמתי!" ←</span></div>
-      </div>
-      ${S.bookPay==='bit'?`<button onclick="navigator.clipboard?.writeText('${ADMIN_PAYMENT.bit}').then(()=>showFireToast('✅ מספר הועתק!')).catch(()=>{})" style="display:block;width:100%;margin-top:10px;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:12px;padding:11px;font-weight:800;font-size:13px;cursor:pointer;text-align:center">💜 העתק מספר Bit: ${ADMIN_PAYMENT.bit}</button>`:
-      S.bookPay==='paypal'?`<a href="https://paypal.me/rotemshaer/${price}USD" target="_blank" style="display:block;width:100%;margin-top:10px;background:linear-gradient(135deg,#003087,#009CDE);border:none;color:#fff;border-radius:12px;padding:11px;font-weight:800;font-size:13px;cursor:pointer;text-align:center;text-decoration:none">🅿️ פתח PayPal.me לתשלום →</a>`:
-      `<button onclick="navigator.clipboard?.writeText('${ADMIN_PAYMENT.paybox}').then(()=>showFireToast('✅ מספר הועתק!')).catch(()=>{})" style="display:block;width:100%;margin-top:10px;background:linear-gradient(135deg,#0066CC,#0052A3);border:none;color:#fff;border-radius:12px;padding:11px;font-weight:800;font-size:13px;cursor:pointer;text-align:center">🔵 העתק מספר PayBox: ${ADMIN_PAYMENT.paybox}</button>`}
-    </div>`:''}
-
-    <button class="btn bg" ${!S.bookPay?"disabled":`onclick="processPayment('${S.bookPay||''}',${price})"`}>${!S.bookPay?"בחר אמצעי תשלום":"✅ אישור – שילמתי!"}</button>
-    <p style="text-align:center;font-size:11px;color:${C.muted};margin-top:10px">ההזמנה תאושר רק לאחר אימות התשלום על ידי צוות Kidemy</p>`;
+    ${(()=>{
+      const tp=t.payment||{};
+      if(!tp.bit&&!tp.paypal&&!tp.paybox){
+        return `<div style="background:rgba(239,68,68,0.06);border:1.5px solid rgba(239,68,68,0.25);border-radius:16px;padding:18px;text-align:center;margin-bottom:14px">
+          <div style="font-size:32px;margin-bottom:8px">⚠️</div>
+          <div style="font-weight:800;font-size:14px;color:#EF4444;margin-bottom:6px">המורה טרם הגדיר/ה פרטי תשלום</div>
+          <div style="font-size:12px;color:#64748B;line-height:1.6">אי אפשר להשלים הזמנה כרגע. אפשר לשלוח למורה הודעה בצ'אט ולנסות שוב מאוחר יותר.</div>
+        </div>`;
+      }
+      const paypalUrl=tp.paypal?(tp.paypal.startsWith('http')?tp.paypal:tp.paypal.startsWith('paypal.me/')?'https://'+tp.paypal:'https://paypal.me/'+tp.paypal.replace(/^@/,'')):'';
+      let out=`<h3 style="font-weight:900;font-size:16px;margin:0 0 12px">בחר אמצעי תשלום:</h3>`;
+      if(tp.bit)out+=`
+      <div class="pay-m ${S.bookPay==='bit'?"on":""}" onclick="S.bookPay='bit';render()" style="border-color:${S.bookPay==='bit'?'#14B8A6':'rgba(20,184,166,.1)'};background:${S.bookPay==='bit'?'rgba(20,184,166,0.1)':'rgba(255,255,255,0.7)'}">
+        <div style="font-size:30px;width:48px;height:48px;border-radius:14px;background:rgba(20,184,166,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0">💜</div>
+        <div style="flex:1">
+          <div style="font-weight:800;font-size:15px;color:#14B8A6">Bit</div>
+          <div style="font-size:12px;color:${C.muted}">שלח ל: ${tp.bit} (${t.name})</div>
+        </div>
+        ${S.bookPay==='bit'?`<div style="margin-right:auto;width:24px;height:24px;border-radius:50%;background:#14B8A6;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px">✓</div>`:""}
+      </div>`;
+      if(tp.paypal)out+=`
+      <div class="pay-m ${S.bookPay==='paypal'?"on":""}" onclick="S.bookPay='paypal';render()" style="border-color:${S.bookPay==='paypal'?'#003087':'rgba(20,184,166,.1)'};background:${S.bookPay==='paypal'?'rgba(0,48,135,0.08)':'rgba(255,255,255,0.7)'}">
+        <div style="font-size:30px;width:48px;height:48px;border-radius:14px;background:rgba(0,48,135,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0">🅿️</div>
+        <div style="flex:1">
+          <div style="font-weight:800;font-size:15px;color:#003087">PayPal</div>
+          <div style="font-size:12px;color:${C.muted}">שלח ל: ${tp.paypal} (${t.name})</div>
+        </div>
+        ${S.bookPay==='paypal'?`<div style="margin-right:auto;width:24px;height:24px;border-radius:50%;background:#003087;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px">✓</div>`:""}
+      </div>`;
+      if(tp.paybox)out+=`
+      <div class="pay-m ${S.bookPay==='paybox'?"on":""}" onclick="S.bookPay='paybox';render()" style="border-color:${S.bookPay==='paybox'?'#0066CC':'rgba(20,184,166,.1)'};background:${S.bookPay==='paybox'?'rgba(0,102,204,0.08)':'rgba(255,255,255,0.7)'}">
+        <div style="font-size:30px;width:48px;height:48px;border-radius:14px;background:rgba(0,102,204,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0">🔵</div>
+        <div style="flex:1">
+          <div style="font-weight:800;font-size:15px;color:#0066CC">PayBox</div>
+          <div style="font-size:12px;color:${C.muted}">שלח ל: ${tp.paybox} (${t.name})</div>
+        </div>
+        ${S.bookPay==='paybox'?`<div style="margin-right:auto;width:24px;height:24px;border-radius:50%;background:#0066CC;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px">✓</div>`:""}
+      </div>`;
+      if(S.bookPay)out+=`
+      <div style="background:linear-gradient(135deg,rgba(20,184,166,0.1),rgba(6,182,212,0.08));border:1.5px solid rgba(20,184,166,0.3);border-radius:16px;padding:16px;margin-bottom:14px">
+        <h4 style="font-weight:900;font-size:14px;margin:0 0 10px;color:#14B8A6;display:flex;align-items:center;gap:6px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12" y2="18"/></svg>כיצד לשלם:</h4>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;gap:8px;align-items:center"><div style="width:24px;height:24px;border-radius:50%;background:#14B8A6;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;flex-shrink:0">1</div><span style="font-size:13px">${S.bookPay==='paypal'?'לחץ "פתח PayPal.me" למטה → ישלח לעמוד תשלום':'לחץ "העתק" למטה → פתח Bit/PayBox ושלם למספר'}</span></div>
+          <div style="display:flex;gap:8px;align-items:center"><div style="width:24px;height:24px;border-radius:50%;background:#06B6D4;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;flex-shrink:0">2</div><span style="font-size:13px">שלח <strong style="color:#14B8A6">₪${price}</strong> ישירות ל<strong>${t.name}</strong>: <strong style="direction:ltr;unicode-bidi:isolate">${S.bookPay==='paypal'?tp.paypal:S.bookPay==='paybox'?tp.paybox:tp.bit}</strong></span></div>
+          <div style="display:flex;gap:8px;align-items:center"><div style="width:24px;height:24px;border-radius:50%;background:#10B981;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;flex-shrink:0">3</div><span style="font-size:13px">חזור ולחץ "אישור – שילמתי!" ←</span></div>
+        </div>
+        ${S.bookPay==='bit'?`<button onclick="navigator.clipboard?.writeText('${tp.bit}').then(()=>showFireToast('✅ מספר הועתק!')).catch(()=>{})" style="display:block;width:100%;margin-top:10px;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:12px;padding:11px;font-weight:800;font-size:13px;cursor:pointer;text-align:center">💜 העתק מספר Bit: ${tp.bit}</button>`:
+        S.bookPay==='paypal'?`<a href="${paypalUrl}" target="_blank" style="display:block;width:100%;margin-top:10px;background:linear-gradient(135deg,#003087,#009CDE);border:none;color:#fff;border-radius:12px;padding:11px;font-weight:800;font-size:13px;cursor:pointer;text-align:center;text-decoration:none">🅿️ פתח PayPal לתשלום →</a>`:
+        `<button onclick="navigator.clipboard?.writeText('${tp.paybox}').then(()=>showFireToast('✅ מספר הועתק!')).catch(()=>{})" style="display:block;width:100%;margin-top:10px;background:linear-gradient(135deg,#0066CC,#0052A3);border:none;color:#fff;border-radius:12px;padding:11px;font-weight:800;font-size:13px;cursor:pointer;text-align:center">🔵 העתק מספר PayBox: ${tp.paybox}</button>`}
+      </div>`;
+      out+=`<button class="btn bg" ${!S.bookPay?"disabled":`onclick="processPayment('${S.bookPay||''}',${price})"`}>${!S.bookPay?"בחר אמצעי תשלום":"✅ אישור – שילמתי!"}</button>
+      <p style="text-align:center;font-size:11px;color:${C.muted};margin-top:10px">ההזמנה תאושר ע"י המורה לאחר קבלת התשלום</p>`;
+      return out;
+    })()}`;
 
   if(step===3){S.booked=true;body=`
     <div style="text-align:center;padding:10px 0">
       <div style="width:88px;height:88px;border-radius:26px;background:#14B8A615;display:flex;align-items:center;justify-content:center;margin:0 auto 14px"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
       <h3 style="font-weight:900;font-size:22px;margin-bottom:6px;color:#0F1A1F">ההזמנה נשלחה!</h3>
-      <p style="font-size:13px;color:#64748B;margin:0 0 18px;line-height:1.6">ממתינה לאימות תשלום ע"י צוות Kidemy</p>
+      <p style="font-size:13px;color:#64748B;margin:0 0 18px;line-height:1.6">ממתינה לאישור המורה לאחר קבלת התשלום</p>
 
       <!-- קוד הפניה -->
       <div style="background:linear-gradient(135deg,#E0FDF4,#CCFBF1);border:1.5px solid rgba(20,184,166,0.25);border-radius:20px;padding:20px;margin-bottom:18px">
@@ -9884,7 +9915,7 @@ async function _acceptBriefProposal(briefId,teacherUid){
       commission:0,netToTeacher:price,
       payMethod:'briefAccepted',
       payRef:'BRIEF-'+briefId.substring(0,6).toUpperCase(),
-      status:'awaitingPayment',
+      status:'pending',
       briefId,briefChildName:brief.childName,
       createdAt:Date.now()
     };
@@ -10524,6 +10555,22 @@ function showEditTeacherProfileDialog(){
         <p style="font-size:12px;color:#64748B;margin:0 0 10px;line-height:1.6">תלמידים ישתמשו בקישור זה לכניסה לשיעור. יש להגדיר קישור פעיל כדי שתלמידים יוכלו להצטרף.</p>
         <input id="_etMeetingLink" class="inp" type="url" value="${(t.meetingLink||'').replace(/"/g,'&quot;')}" placeholder="https://zoom.us/j/... או https://meet.google.com/...">
       </div>
+      <div style="background:rgba(139,47,201,0.04);border:1.5px solid rgba(139,47,201,0.25);border-radius:18px;padding:16px;margin-bottom:16px">
+        <h3 style="font-weight:900;font-size:15px;margin:0 0 6px;color:#8b2fc9">${icon("dollar",14)} פרטי תשלום לקבלת כספים משיעורים</h3>
+        <p style="font-size:12px;color:#64748B;margin:0 0 10px;line-height:1.6">תלמידים ישלמו ישירות אליך. הכנס לפחות אמצעי תשלום אחד.</p>
+        <div style="margin-bottom:10px">
+          <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">💜 מספר Bit</label>
+          <input id="_etPayBit" class="inp" type="tel" value="${(t.payment?.bit||'').replace(/"/g,'&quot;')}" placeholder="050-1234567">
+        </div>
+        <div style="margin-bottom:10px">
+          <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">🅿️ PayPal.me / אימייל PayPal</label>
+          <input id="_etPayPaypal" class="inp" type="text" value="${(t.payment?.paypal||'').replace(/"/g,'&quot;')}" placeholder="paypal.me/yourname">
+        </div>
+        <div style="margin-bottom:0">
+          <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">🔵 מספר PayBox</label>
+          <input id="_etPayPaybox" class="inp" type="tel" value="${(t.payment?.paybox||'').replace(/"/g,'&quot;')}" placeholder="050-1234567">
+        </div>
+      </div>
       <div style="background:rgba(239,68,68,0.04);border:1.5px solid rgba(239,68,68,0.18);border-radius:18px;padding:16px;margin-bottom:16px">
         <h3 style="font-weight:900;font-size:15px;margin:0 0 6px;color:#EF4444">${icon("mail",14)} מייל להתראות</h3>
         <p style="font-size:12px;color:#64748B;margin:0 0 10px;line-height:1.6">כאן תקבל הודעות על הזמנות שיעור חדשות. <strong>חשוב:</strong> הכנס מייל אמיתי שלך (לא @kidemy.app).</p>
@@ -10775,6 +10822,10 @@ async function saveTeacherProfileEdits(){
   const facebook=document.getElementById('_etFacebook')?.value.trim()||'';
   const notificationEmail=document.getElementById('_etNotifEmail')?.value.trim()||'';
   const meetingLink=document.getElementById('_etMeetingLink')?.value.trim()||'';
+  const payBit=document.getElementById('_etPayBit')?.value.trim()||'';
+  const payPaypal=document.getElementById('_etPayPaypal')?.value.trim()||'';
+  const payPaybox=document.getElementById('_etPayPaybox')?.value.trim()||'';
+  if(!payBit&&!payPaypal&&!payPaybox){showFireToast('❌ הכנס לפחות אמצעי תשלום אחד לקבלת כספים משיעורים');return;}
   const cats=(window._etCats&&window._etCats.length)?window._etCats:(TEACHERS.find(x=>x.id===currentUser?.uid)?.cats||[]);
   const customCats=window._etCustomCats||[];
   const allCats=[...cats,...customCats.map(c=>'custom:'+c)];
@@ -10799,7 +10850,7 @@ async function saveTeacherProfileEdits(){
     await db.ref('users/'+currentUser.uid).update(userUpdates);
     if(currentUserData)Object.assign(currentUserData,userUpdates);
     const faq=(window._etFaq||[]).filter(x=>x&&x.q&&x.a).slice(0,5);
-    const teacherUpdates={desc:firstDesc,price,city,cats:allCats,cat:allCats[0],customCats,name,instagram,tiktok,facebook,notificationEmail,meetingLink,faq};
+    const teacherUpdates={desc:firstDesc,price,city,cats:allCats,cat:allCats[0],customCats,name,instagram,tiktok,facebook,notificationEmail,meetingLink,faq,payment:{bit:payBit,paypal:payPaypal,paybox:payPaybox}};
     await db.ref('teachers/'+currentUser.uid).update(teacherUpdates);
     await db.ref('teachers/'+currentUser.uid+'/catProfiles').update(catProfileUpdates);
     for(const cc of customCats){

@@ -3,7 +3,12 @@
     ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'",
     ".write": "auth != null && auth.token.email == 'rotemshaer@gmail.com'",
 
-    "teachers": { ".read": "auth != null" },
+    "teachers": {
+      ".read": "auth != null",
+      "$teacherUid": {
+        ".write": "auth != null && (auth.uid == $teacherUid || auth.token.email == 'rotemshaer@gmail.com')"
+      }
+    },
 
     "users": {
       "$uid": {
