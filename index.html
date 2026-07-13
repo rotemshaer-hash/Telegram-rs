@@ -1286,7 +1286,7 @@ function Safety(){
         ${[
           'כל משתמש יכול לדווח על פוסט, הודעה, מורה או תלמיד בלחיצת כפתור אחת.',
           'דיווחים מגיעים ישירות למנהל האפליקציה שמטפל בהם בתוך 24 שעות.',
-          'משתמש שדיווח עליו יחסם מיד עד לבירור, גם אם הדיווח עדיין בבחינה.',
+          'לאחר בדיקת הדיווח, הצוות נוקט פעולה בהתאם — כולל חסימת המשתמש במקרים חמורים.',
           'תוכן לא הולם, שפה פוגענית או ניסיון ליצור קשר מחוץ לאפליקציה – מוביל למחיקת חשבון.',
         ].map(t=>`<div style="display:flex;gap:9px;margin-bottom:10px;align-items:flex-start"><span style="color:#EF4444;font-size:16px;flex-shrink:0;margin-top:1px">✓</span><span style="font-size:13px;line-height:1.6;color:#475569">${t}</span></div>`).join('')}
       </div>
@@ -1420,9 +1420,9 @@ function ParentReg(){
 
       </div>
 
-      <!-- consent — pre-checked; user can uncheck to disagree -->
-      <div id="prConsent" class="kcb-row" data-checked="true" onclick="kcbToggle(this)" style="background:rgba(20,184,166,.08);border:1.5px solid rgba(20,184,166,.3);border-radius:14px;padding:12px 14px">
-        <div class="kcb-box" style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border-color:#14B8A6;color:#fff">✓</div>
+      <!-- consent — must be actively checked by the parent -->
+      <div id="prConsent" class="kcb-row" data-checked="false" onclick="kcbToggle(this)" style="background:rgba(20,184,166,.08);border:1.5px solid rgba(20,184,166,.3);border-radius:14px;padding:12px 14px">
+        <div class="kcb-box">✓</div>
         <span style="font-size:12px;line-height:1.7;color:#475569">אני <strong style="color:#0F1A1F">ההורה</strong>, מעל גיל 18, ומאשר/ת את הצטרפות ילדי לאפליקציה Kidemy. ידוע לי שפעילות הילד תהיה גלויה לי בכל עת.</span>
       </div>
 
