@@ -1831,9 +1831,20 @@ function TeacherSetup(){
 
       <div class="warn" style="margin-bottom:14px"><span>🛡</span><span>הפרופיל יעבור אישור צוות הבטיחות תוך 24 שעות.</span></div>
 
+      <!-- טריאל חינם — הדגשה מרכזית -->
+      <div style="background:linear-gradient(135deg,#7C3AED,#A855F7);border-radius:20px;padding:20px;margin-bottom:14px;text-align:center;box-shadow:0 6px 20px rgba(124,58,237,0.35)">
+        <div style="font-size:34px;margin-bottom:6px">🎁</div>
+        <div style="font-weight:900;font-size:22px;color:#fff;margin-bottom:4px">${TRIAL_DAYS} יום ניסיון חינם</div>
+        <div style="font-size:13px;color:rgba(255,255,255,0.9);line-height:1.6">בלי צורך באמצעי תשלום עכשיו — תוכל להירשם ולהתחיל לקבל תלמידים מיד.<br>לאחר מכן, מנוי מורה ב-<strong>₪79/חודש</strong> כדי להמשיך להופיע ולקבל תלמידים דרך Kidemy.</div>
+      </div>
+
       <!-- הסבר מודל תשלום -->
       <div style="background:linear-gradient(135deg,rgba(20,184,166,0.1),rgba(6,182,212,0.08));border:1.5px solid rgba(20,184,166,0.3);border-radius:18px;padding:18px;margin-bottom:14px">
         <h4 style="font-weight:900;font-size:15px;margin:0 0 12px;color:#14B8A6">${icon("dollar",14)} איך עובד התשלום?</h4>
+        <div style="background:rgba(139,47,201,0.08);border:1px solid rgba(139,47,201,0.25);border-radius:12px;padding:10px 12px;margin-bottom:12px;display:flex;gap:8px;align-items:center">
+          <span style="font-size:18px">🤝</span>
+          <span style="font-size:12px;color:#7C3AED;line-height:1.6"><strong>Kidemy היא פלטפורמת תיווך בלבד</strong> — אנחנו מחברים בינך לבין תלמידים, אבל לא מעורבים בכסף שעובר ביניכם.</span>
+        </div>
         <div style="display:flex;flex-direction:column;gap:10px">
           <div style="display:flex;gap:10px;align-items:flex-start">
             <div style="width:26px;height:26px;border-radius:50%;background:#14B8A6;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;flex-shrink:0">1</div>
@@ -1843,20 +1854,18 @@ function TeacherSetup(){
             <div style="width:26px;height:26px;border-radius:50%;background:#06B6D4;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;flex-shrink:0">2</div>
             <div style="font-size:13px;line-height:1.6"><strong>אתה מקבל 100%</strong> מהתשלום — Kidemy לא לוקחת עמלה ולא מעורבת בכסף בין הצדדים</div>
           </div>
-          <div style="display:flex;gap:10px;align-items:flex-start">
-            <div style="width:26px;height:26px;border-radius:50%;background:#8b2fc9;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;flex-shrink:0">3</div>
-            <div style="font-size:13px;line-height:1.6"><strong>השיעור מתקיים</strong> – וידאו דרך הקישור האישי שלך (Zoom / Google Meet)</div>
-          </div>
-        </div>
-        <div style="background:rgba(139,47,201,0.08);border:1px solid rgba(139,47,201,0.25);border-radius:12px;padding:12px;margin-top:12px">
-          <p style="margin:0;font-size:12px;color:#7C3AED;line-height:1.6">🎁 <strong>${TRIAL_DAYS} יום ניסיון חינם</strong> — בלי צורך באמצעי תשלום עכשיו.<br>לאחר מכן, מנוי מורה ב-<strong>₪79/חודש</strong> כדי להמשיך להופיע ולקבל תלמידים דרך Kidemy.</p>
         </div>
       </div>
-      <div style="background:rgba(20,184,166,.07);border:1.5px solid rgba(20,184,166,.3);border-radius:14px;padding:14px;margin-bottom:14px">
-        <label style="display:flex;gap:10px;align-items:flex-start;cursor:pointer">
-          <input type="checkbox" id="tAgeConfirm" style="width:18px;height:18px;accent-color:#14B8A6;flex-shrink:0;margin-top:2px">
-          <span style="font-size:13px;line-height:1.6;color:#374151">אני מאשר/ת שאני בין גיל <strong>14 ל-18</strong> ושהורי/אפוטרופסי מסכימים להשתתפותי כמורה ב-Kidemy</span>
-        </label>
+
+      <!-- אופציה להפעיל מנוי כבר עכשיו -->
+      <div style="background:#fff;border:1.5px dashed rgba(139,47,201,0.35);border-radius:16px;padding:14px;margin-bottom:14px;text-align:center">
+        <p style="margin:0 0 10px;font-size:12px;color:#64748B;line-height:1.6">לא חובה בכלל בזמן הניסיון החינם — אבל אם אתה כבר בטוח, אפשר להפעיל את המנוי כבר עכשיו:</p>
+        <button type="button" onclick="go('subscribe')" style="background:rgba(139,47,201,0.08);border:1.5px solid rgba(139,47,201,0.3);color:#7C3AED;border-radius:50px;padding:10px 20px;font-weight:800;font-size:13px;cursor:pointer">${icon("dollar",14)} הכנס אמצעי תשלום כבר עכשיו (לא חובה)</button>
+      </div>
+
+      <div id="tAgeConfirm" class="kcb-row light" data-checked="false" onclick="kcbToggle(this)" style="margin-bottom:14px">
+        <div class="kcb-box">✓</div>
+        <span style="font-size:13px;line-height:1.6;color:#374151">אני מאשר/ת שאני בין גיל <strong>14 ל-18</strong> ושהורי/אפוטרופסי מסכימים להשתתפותי כמורה ב-Kidemy</span>
       </div>
       <button class="btn bp" onclick="saveTeacherProfile()">${icon("check-circle",14)} שמור פרופיל ופרסם</button>
     </div>
@@ -2007,7 +2016,7 @@ async function saveTeacherProfile(){
   if(!price?.value||parseInt(price.value)<20){showFireToast('❌ מחיר מינימלי ₪20');return;}
   if(!desc?.value.trim()||desc.value.length<20){showFireToast('❌ תיאור לפחות 20 תווים');return;}
   if(!_modeOnline&&!_modeFrontal){showFireToast('❌ בחר לפחות אופן הוראה אחד');return;}
-  if(!document.getElementById('tAgeConfirm')?.checked){showFireToast('❌ יש לאשר שאתה/ת בין גיל 14 ל-18');return;}
+  if(!kcbChecked('tAgeConfirm')){showFireToast('❌ יש לאשר שאתה/ת בין גיל 14 ל-18');return;}
   const _ageVal=parseInt(document.getElementById('tAge')?.value||0);
   if(_ageVal&&(_ageVal<14||_ageVal>18)){showFireToast('❌ גיל המורה חייב להיות בין 14 ל-18');return;}
   const payBit=document.getElementById('tPayBit')?.value.trim()||'';
