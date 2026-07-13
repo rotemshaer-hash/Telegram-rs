@@ -1,0 +1,39 @@
+name: Build iOS App (simulator, unsigned)
+
+# Builds for the iOS Simulator only — this needs no Apple Developer account or
+# signing certificates, and just proves the Xcode project compiles. A real
+# device / App Store build additionally needs a paid Apple Developer account,
+# a signing certificate, and a provisioning profile, none of which exist yet —
+# see mobile/README.md for what that step will involve.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'mobile/**'
+      - '.github/workflows/build-ios.yml'
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install mobile wrapper dependencies
+        working-directory: mobile
+        run: npm ci
+      - name: Sync Capacitor iOS project
+        working-directory: mobile
+        run: npx cap sync ios
+      - name: Install CocoaPods dependencies
+        working-directory: mobile/ios/App
+        run: pod install
+      - name: Build for iOS Simulator (unsigned)
+        working-directory: mobile/ios/App
+        run: |
+          xcodebuild -workspace App.xcworkspace -scheme App \
+            -sdk iphonesimulator -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO build

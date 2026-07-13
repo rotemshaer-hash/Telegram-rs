@@ -1,0 +1,16 @@
+{
+  "name": "kidemy-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Kidemy native app wrapper (Capacitor) around the live web app",
+  "scripts": {
+    "sync": "cap sync"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.4.1",
+    "@capacitor/cli": "^8.4.1",
+    "@capacitor/core": "^8.4.1",
+    "@capacitor/ios": "^8.4.1",
+    "sharp": "^0.35.3"
+  }
+}

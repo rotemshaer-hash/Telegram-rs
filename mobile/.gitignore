@@ -1,0 +1,13 @@
+node_modules/
+android/app/build/
+android/.gradle/
+android/local.properties
+android/*.iml
+android/.idea/
+ios/App/build/
+ios/App/Pods/
+ios/App/App.xcworkspace/xcuserdata/
+ios/App/App.xcodeproj/xcuserdata/
+*.keystore
+*.p12
+*.mobileprovision

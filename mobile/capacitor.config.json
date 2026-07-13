@@ -1,0 +1,15 @@
+{
+  "appId": "app.kidemy.mobile",
+  "appName": "Kidemy",
+  "webDir": "www",
+  "server": {
+    "url": "https://kidemy-app.netlify.app",
+    "cleartext": false
+  },
+  "android": {
+    "allowMixedContent": false
+  },
+  "ios": {
+    "contentInset": "automatic"
+  }
+}
