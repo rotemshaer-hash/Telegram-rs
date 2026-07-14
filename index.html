@@ -4173,8 +4173,8 @@ async function checkTeacherTrialReminder(){
   }catch(e){console.warn('[trialReminder] failed:',e);}
 }
 function genPayRef(bookingId){
-  // קוד הפניה קצר ייחודי לכל הזמנה: KID-XXXXX
-  return 'KID-'+(bookingId||'').replace(/[^A-Za-z0-9]/g,'').toUpperCase().substring(0,5);
+  // קוד הפניה קצר ייחודי לכל הזמנה: DRU-XXXXX
+  return 'DRU-'+(bookingId||'').replace(/[^A-Za-z0-9]/g,'').toUpperCase().substring(0,5);
 }
 function isAdmin(){
   return currentUser&&ADMIN_EMAILS.includes(currentUser.email?.toLowerCase());
@@ -6166,14 +6166,19 @@ async function shareMyLocation(){
   try{
     showFireToast('📡 מאתר מיקום...');
     const gps=await getUserGPS(true);
+    // מעוגל ל-2 ספרות אחרי הנקודה (~1.1 ק"מ דיוק) — מספיק לחיפוש "בקרבתי",
+    // בלי לשמור/לחשוף את הכתובת המדויקת של מורה (לעיתים קטין) לכל לקוח
+    // שטוען את רשימת המורים (המיקום המדויק לעולם לא נשלח, גם לא ברקע).
+    const roundedLat=Math.round(gps.lat*100)/100;
+    const roundedLng=Math.round(gps.lng*100)/100;
     await db.ref('teachers/'+currentUser.uid+'/gps').set({
-      lat:gps.lat,
-      lng:gps.lng,
+      lat:roundedLat,
+      lng:roundedLng,
       accuracy:gps.accuracy,
       updatedAt:Date.now()
     });
     const t=TEACHERS.find(x=>x.id===currentUser.uid);
-    if(t)t.gps={lat:gps.lat,lng:gps.lng};
+    if(t)t.gps={lat:roundedLat,lng:roundedLng};
     showFireToast('✅ המיקום שלך נשמר!');
     render();
   }catch(e){
@@ -9610,6 +9615,7 @@ async function sendReply(id){
   const inp=document.getElementById("rp_"+id);
   if(!inp||!inp.value.trim()||!currentUser)return;
   const text=inp.value.trim();
+  if(containsProfanity(text)){ showFireToast('❌ התגובה מכילה שפה לא הולמת. נסה לנסח מחדש בבקשה.'); return; }
   inp.value="";
   const p=S.posts.find(x=>x.id===id);
   if(!p)return;
@@ -9650,6 +9656,7 @@ async function postNew(){
   const postType=S.comPostType||'text';
   if(!postText&&!mediaFile){showFireToast('❌ הוסף טקסט או מדיה');return;}
   if(postText.length > 5000){ showFireToast('❌ פוסט ארוך מדי (מקסימום 5000 תווים)'); return; }
+  if(containsProfanity(postText)){ showFireToast('❌ הפוסט מכיל שפה לא הולמת. נסה לנסח מחדש בבקשה.'); return; }
   if(!currentUser){showFireToast('❌ צריך להתחבר');return;}
   if(currentUserData?.role==='student'&&currentUserData?.verified!==true&&!isAdmin()){
     showFireToast('🔒 חכה לאישור מנהל לפני פרסום');return;
