@@ -6598,7 +6598,9 @@ async function adminRejectReview(reviewId,teacherId){
 }
 
 function renderAdminPanel(){
-  document.getElementById('_adminPanel')?.remove();
+  const _prevPanel=document.getElementById('_adminPanel');
+  const _prevScroll=_prevPanel?_prevPanel.scrollTop:0;
+  _prevPanel?.remove();
   const pendingTeachers=adminAllTeachers.filter(t=>!t.verified);
   const totalPending=pendingTeachers.length+adminIncompleteTeachers.length;
   const pendingVideos=adminAllVideos.filter(v=>!v.approved);
@@ -6672,6 +6674,7 @@ function renderAdminPanel(){
     </div>
     <div style="padding:16px;background:transparent;min-height:calc(100vh - 280px)">${renderAdminTab()}</div>`;
   document.body.appendChild(ov);
+  if(_prevScroll)requestAnimationFrame(()=>{ov.scrollTop=_prevScroll;});
 }
 
 async function adminMarkMessageRead(id){
