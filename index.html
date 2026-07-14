@@ -3724,16 +3724,35 @@ async function _sendVoiceMessage(blob,otherUid,otherName){
   });
 }
 
+// ─── סינון שפה גסה בצ'אט (SSOT — רשימה אחת, נבדקת בכל הודעה לפני שליחה) ──────
+// הערה: ל-\b ב-JS אין תמיכה בעברית (\w הוא ASCII בלבד), אז מילות שורש בודדות
+// מוגבלות עם lookaround ידני ל-א-ת כדי לא לפגוע במילים לגיטימיות (למשל "אחראי").
+const PROFANITY_PATTERNS=[
+  // אנגלית
+  /\bf+u+c+k+\w*/i,/\bs+h+i+t+\w*/i,/\bb+i+t+c+h+\w*/i,/\bc+u+n+t+\w*/i,
+  /\bass+hole+\w*/i,/\bwhore\w*/i,/\bslut\w*/i,/\bretard(ed)?\b/i,/\bn+i+g+g+\w*/i,
+  // עברית — עם גבולות מילה ידניים כדי למנוע התאמה בתוך מילים תמימות
+  /(?<![א-ת])כוס\s?אמ\w*/,/(?<![א-ת])בן\s?זונה(?![א-ת])/,/(?<![א-ת])בת\s?זונה(?![א-ת])/,
+  /(?<![א-ת])זונה(?![א-ת])/,/(?<![א-ת])מניאק\w*(?![א-ת])/,/(?<![א-ת])[מתל]זדיין\w*(?![א-ת])/,
+  /(?<![א-ת])שרמוטה(?![א-ת])/,/(?<![א-ת])קוקסינל(?![א-ת])/,/(?<![א-ת])חרא(?![א-ת])/,
+  /(?<![א-ת])מפגר\w*(?![א-ת])/,/(?<![א-ת])הומו\s?(דפוק|מטונף)(?![א-ת])/,/(?<![א-ת])כוס\s?אחותך(?![א-ת])/,
+];
+function containsProfanity(text){
+  if(!text)return false;
+  return PROFANITY_PATTERNS.some(rx=>rx.test(text));
+}
+
 async function sendChatMessage(otherUid,otherName){
   if(!currentUser){showFireToast('❌ לא מחובר');return;}
   const inp=document.getElementById('chatInputBox');
   if(!inp||!inp.value.trim())return;
   const now=Date.now();
   if(now-_lastMsgTime<2000){showFireToast('⚠️ המתן שנייה בין הודעות');return;}
-  _lastMsgTime=now;sessionStorage.setItem('_lmt',now);
   const text=inp.value.trim();
   if(!text || text.trim().length === 0) return;
   if(text.length > 2000){ showFireToast('❌ הודעה ארוכה מדי (מקסימום 2000 תווים)'); return; }
+  if(containsProfanity(text)){ showFireToast('❌ ההודעה מכילה שפה לא הולמת. נסה לנסח מחדש בבקשה.'); return; }
+  _lastMsgTime=now;sessionStorage.setItem('_lmt',now);
   inp.value='';
   inp.focus();
   const chatId=getChatId(currentUser.uid,otherUid);
@@ -8940,6 +8959,7 @@ function Chat(){
       <div style="width:42px;height:42px;border-radius:14px;display:flex;align-items:center;justify-content:center;background:rgba(20,184,166,0.15)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
       <div><div style="font-weight:800;font-size:15px">${c.otherName||c.name||'משתמש'}</div><span style="font-size:11px;padding:3px 9px;background:rgba(16,185,129,0.15);color:#10B981;border-radius:50px;font-weight:700">פעיל</span></div>
       <div style="margin-right:auto;display:flex;gap:8px">
+        <button onclick="showReportDialog('chatUser','${c.otherUid}','${(c.otherName||'').replace(/'/g,'')}')" title="דווח על משתמש זה" style="background:rgba(231,76,60,0.1);border:none;color:#E74C3C;cursor:pointer;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></button>
       </div>
     </div>
     <div style="background:#FFF8E1;padding:7px 14px;display:flex;gap:7px;align-items:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#856404" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg><span style="font-size:11px;color:#856404;font-weight:600">ההורים יכולים לצפות בשיחה זו</span></div>
