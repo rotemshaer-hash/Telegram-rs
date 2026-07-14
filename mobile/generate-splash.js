@@ -2,11 +2,9 @@ const sharp = require('sharp');
 const path = require('path');
 
 const ROOT = __dirname;
+const LOGO = '/root/.claude/uploads/ca2a159a-39b3-5ca1-ba6c-86038422fc5c/195ff782-1000201684.png';
 
-function splashSvg(w, h) {
-  const s = Math.min(w, h) * 0.22;
-  const cx = w / 2, cy = h / 2;
-  const scale = s / 24;
+function gradientSvg(w, h) {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
     <defs>
       <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
@@ -16,11 +14,19 @@ function splashSvg(w, h) {
       </linearGradient>
     </defs>
     <rect width="${w}" height="${h}" fill="url(#g)"/>
-    <g transform="translate(${cx},${cy}) scale(${scale}) translate(-12,-12)">
-      <path d="M22 10v6M2 10l10-5 10 5-10 5z" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-      <path d="M6 12v5c3 3 9 3 12 0v-5" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-    </g>
   </svg>`;
+}
+
+// Composite the real Drushe wordmark logo, centered, at ~40% of the shorter
+// screen dimension, onto the brand gradient background.
+async function splashBuffer(w, h) {
+  const logoSize = Math.round(Math.min(w, h) * 0.4);
+  const logoResized = await sharp(LOGO).resize(logoSize, logoSize).toBuffer();
+  const background = Buffer.from(gradientSvg(w, h));
+  return sharp(background)
+    .composite([{ input: logoResized, gravity: 'center' }])
+    .png()
+    .toBuffer();
 }
 
 const androidSplashes = [
@@ -37,13 +43,13 @@ const iosSplashes = [
 
 async function run() {
   for (const [dir, w, h] of androidSplashes) {
-    const svg = Buffer.from(splashSvg(w, h));
-    await sharp(svg).resize(w, h).png().toFile(path.join(ROOT, 'android/app/src/main/res', dir, 'splash.png'));
+    const buf = await splashBuffer(w, h);
+    await sharp(buf).toFile(path.join(ROOT, 'android/app/src/main/res', dir, 'splash.png'));
     console.log('android splash', dir, `${w}x${h}`, 'done');
   }
-  const svg2732 = Buffer.from(splashSvg(2732, 2732));
+  const buf2732 = await splashBuffer(2732, 2732);
   for (const f of iosSplashes) {
-    await sharp(svg2732).resize(2732, 2732).png().toFile(path.join(ROOT, 'ios/App/App/Assets.xcassets/Splash.imageset', f));
+    await sharp(buf2732).toFile(path.join(ROOT, 'ios/App/App/Assets.xcassets/Splash.imageset', f));
     console.log('ios splash', f, 'done');
   }
 }

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Kidemy project constitution validator.
+# Drushe project constitution validator.
 # Runs on every deploy — a non-zero exit blocks the deploy.
 
 set -euo pipefail
@@ -18,7 +18,7 @@ has_pattern() {
   grep -q "$1" "$FILE" 2>/dev/null
 }
 
-echo "=== Kidemy constitution validator ==="
+echo "=== Drushe constitution validator ==="
 echo ""
 
 # ── SSOT: each constant defined exactly once ─────────────────────────────────
@@ -56,6 +56,7 @@ require() {
 require "Commission is zero"            "const COMMISSION_RATE=0"
 require "Dark header gradient"          "linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%)"
 require "Firebase project kidemy-83a17" "kidemy-83a17"
+require "App name Drushe"               "Drushe"
 require "Student approval listener fn"  "_attachStudentApprovalListener"
 require "Student pending guard in render" "verified!==true&&!isAdmin()"
 
@@ -74,6 +75,7 @@ forbid() {
 }
 
 forbid "Wrong app name (Lamdeni)"   "Lamdeni"
+forbid "Wrong app name (Kidemy)"    "Kidemy"
 forbid "Direct eval()"              "eval("
 
 echo ""

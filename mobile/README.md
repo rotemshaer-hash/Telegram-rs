@@ -1,4 +1,4 @@
-# Kidemy mobile wrapper
+# Drushe mobile wrapper
 
 This is a thin native wrapper (Capacitor) around the live web app at
 https://kidemy-app.netlify.app — it does **not** contain a copy of the app's
@@ -14,10 +14,10 @@ permissions, or the wrapper's own version.
 ## What's done
 
 - Capacitor project set up for both platforms (`android/`, `ios/`).
-- App name "Kidemy" set in both platforms.
-- App icon generated from the same brand gradient + graduation-cap mark
-  used in the web app's own manifest, at every required size for both
-  platforms (`generate-icons.js` — rerun it if the design should change).
+- App name "Drushe" set in both platforms.
+- App icon generated from the real Drushe wordmark logo on the brand
+  gradient, at every required size for both platforms (`generate-icons.js`
+  — rerun it if the design should change).
 - Splash screen generated to match (`generate-splash.js`).
 - Two GitHub Actions workflows added, matching the existing deploy
   workflow style:
@@ -46,7 +46,7 @@ your payment, your legal identity.
    your Apple Developer account, needed before `build-ios.yml` can produce
    a real device / App Store build instead of just a simulator build.
 5. **Store listings** — screenshots, description, age rating questionnaire
-   (this one needs real care — Kidemy is a children's platform, and both
+   (this one needs real care — Drushe is a children's platform, and both
    stores have extra rules here worth reading carefully rather than
    rushing), privacy policy URL (already have `/privacy.html`) and terms
    URL (already have `/terms.html`).

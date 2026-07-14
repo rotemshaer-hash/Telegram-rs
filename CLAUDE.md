@@ -1,4 +1,4 @@
-# Kidemy – Project Constitution
+# Drushe – Project Constitution
 
 ## Core Principles
 
@@ -16,8 +16,8 @@ No duplicates. No inline magic numbers. Refer to the one definition everywhere.
 
 | Rule | Value | Why |
 |------|-------|-----|
-| App name | **Kidemy** — never "Lamdeni" | Brand |
-| Firebase project | `kidemy-83a17` | Wrong project = data loss |
+| App name | **Drushe** — never "Kidemy" or "Lamdeni" (both retired) | Brand |
+| Firebase project | `kidemy-83a17` — **intentionally still says "kidemy"**, do not rename | Real infra ID from before the Drushe rebrand; renaming it would require migrating to a new Firebase project, not a text edit — wrong project = data loss |
 | Dark header gradient | `linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%)` | Core visual identity — **never change** |
 | Commission model | `COMMISSION_RATE=0` — subscription only | Business model decision |
 | Admin email | `ADMIN_EMAIL` constant — one definition | SSOT |

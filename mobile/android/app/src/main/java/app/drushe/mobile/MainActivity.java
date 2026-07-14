@@ -1,4 +1,4 @@
-package app.kidemy.mobile;
+package app.drushe.mobile;
 
 import com.getcapacitor.BridgeActivity;
 

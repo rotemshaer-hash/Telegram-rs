@@ -1,8 +1,8 @@
 {
-  "name": "kidemy-app",
+  "name": "drushe-app",
   "version": "1.0.0",
   "private": true,
-  "description": "Kidemy native app wrapper (Capacitor) around the live web app",
+  "description": "Drushe native app wrapper (Capacitor) around the live web app",
   "scripts": {
     "sync": "cap sync"
   },

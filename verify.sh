@@ -35,7 +35,7 @@ check "מסך Splash"                      "^function Splash\("
 check "gradient כותרת כהה"             "linear-gradient\(150deg,#0F1A1F"
 check "מערך CATS"                       "const CATS="
 check "listener לסטוריז"               "ref\('stories'\)"
-check "שם האפליקציה Kidemy"           "Kidemy"
+check "שם האפליקציה Drushe"           "Drushe"
 
 if [ ${#ERRORS[@]} -gt 0 ]; then
   echo ""

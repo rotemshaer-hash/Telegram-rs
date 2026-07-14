@@ -1,6 +1,6 @@
 {
-  "appId": "app.kidemy.mobile",
-  "appName": "Kidemy",
+  "appId": "app.drushe.mobile",
+  "appName": "Drushe",
   "webDir": "www",
   "server": {
     "url": "https://kidemy-app.netlify.app",

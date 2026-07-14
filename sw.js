@@ -1,4 +1,4 @@
-// Kidemy Service Worker — v4.9.54
+// Drushe Service Worker — v4.9.54
 const VERSION = '4.9.54';
 
 // Clear all caches + activate immediately
