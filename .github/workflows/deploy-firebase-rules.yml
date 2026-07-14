@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - 'database.rules.json'
+      - 'storage.rules'
+      - 'firebase.json'
 
 jobs:
   deploy:
@@ -20,4 +22,4 @@ jobs:
           GOOGLE_APPLICATION_CREDENTIALS_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: |
           echo "$GOOGLE_APPLICATION_CREDENTIALS_JSON" > /tmp/sa.json
-          GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa.json firebase deploy --only database --project kidemy-83a17 --non-interactive
+          GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa.json firebase deploy --only database,storage --project kidemy-83a17 --non-interactive

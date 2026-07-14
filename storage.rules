@@ -1,0 +1,41 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Parent/teacher ID and age-verification photos — the most sensitive content
+    // in the app. Only the account owner and the admin may ever read or write
+    // these; never public.
+    match /id-photos/{uid}/{fileName} {
+      allow read: if request.auth != null &&
+        (request.auth.uid == uid || request.auth.token.email == 'rotemshaer@gmail.com');
+      allow write: if request.auth != null && request.auth.uid == uid &&
+        request.resource.size < 15 * 1024 * 1024 &&
+        request.resource.contentType.matches('image/.*');
+    }
+
+    // Story images, community post media, teacher portfolio files — meant to be
+    // shown to other signed-in users inside the app, so read is open to any
+    // authenticated user; only the owner may upload/overwrite their own files.
+    match /stories/{uid}/{fileName} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == uid &&
+        request.resource.size < 15 * 1024 * 1024 &&
+        request.resource.contentType.matches('image/.*');
+    }
+    match /communityMedia/{uid}/{fileName} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == uid &&
+        request.resource.size < 25 * 1024 * 1024;
+    }
+    match /portfolio/{uid}/{fileName} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == uid &&
+        request.resource.size < 25 * 1024 * 1024;
+    }
+
+    // Deny everything else by default.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
