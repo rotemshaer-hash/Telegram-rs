@@ -51,7 +51,7 @@ try{auth=firebase.auth();db=firebase.database();storage=firebase.storage();try{a
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&family=Rubik:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
-html,body{height:100%;background:#CCFBF1;font-family:'Rubik','Heebo',-apple-system,sans-serif;overflow-x:hidden;overscroll-behavior:none;-webkit-overflow-scrolling:touch;letter-spacing:-0.02em}
+html,body{height:100%;background:#ECFEFF;font-family:'Rubik','Heebo',-apple-system,sans-serif;overflow-x:hidden;overscroll-behavior:none;-webkit-overflow-scrolling:touch;letter-spacing:-0.02em}
 ::-webkit-scrollbar{display:none}
 
 h1,h2,h3,h4{letter-spacing:-0.025em;font-family:'Rubik','Heebo',sans-serif}
@@ -80,7 +80,7 @@ input,textarea,select{font-family:inherit;-webkit-appearance:none;appearance:non
 }
 
 /* SCREENS */
-.screen{min-height:100dvh;background:linear-gradient(165deg,#CCFBF1 0%,#A5F3FC 50%,#7DD3FC 100%);animation:fadeUp .22s ease}
+.screen{min-height:100dvh;background:linear-gradient(165deg,#ECFEFF 0%,#F0F9FF 50%,#EEF2FF 100%);animation:fadeUp .22s ease}
 @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
 @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.3)}}
 @keyframes ring{0%{width:14px;height:14px;opacity:.8}100%{width:80px;height:80px;opacity:0}}
@@ -200,7 +200,7 @@ input,textarea,select{font-family:inherit;-webkit-appearance:none;appearance:non
 .p-acts button{background:none;border:none;font-weight:700;font-size:14px;color:var(--muted);cursor:pointer;display:flex;align-items:center;gap:5px}
 
 /* CHAT */
-.chat-wrap{min-height:100dvh;display:flex;flex-direction:column;background:linear-gradient(165deg,#CCFBF1 0%,#A5F3FC 50%,#7DD3FC 100%);direction:rtl}
+.chat-wrap{min-height:100dvh;display:flex;flex-direction:column;background:linear-gradient(165deg,#ECFEFF 0%,#F0F9FF 50%,#EEF2FF 100%);direction:rtl}
 .chat-hdr{background:rgba(255,255,255,.96);backdrop-filter:blur(20px);padding:14px 18px;border-bottom:1px solid rgba(0,0,0,.06);display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:10}
 .chat-msgs{flex:1;overflow-y:auto;padding:14px 14px 10px;-webkit-overflow-scrolling:touch}
 .bbl{max-width:76%;padding:11px 15px;font-size:14px;line-height:1.5;box-shadow:0 2px 8px rgba(0,0,0,.07)}
@@ -293,7 +293,7 @@ body.dark .online-dot{border-color:#0D1117 !important}
 </head>
 <body>
 <!-- Mobile-only notice for desktop users -->
-<div id="_desktopWarn" style="display:none;position:fixed;inset:0;background:linear-gradient(165deg,#CCFBF1 0%,#A5F3FC 50%,#7DD3FC 100%);z-index:99999;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:40px;color:#0F1A1F">
+<div id="_desktopWarn" style="display:none;position:fixed;inset:0;background:linear-gradient(165deg,#ECFEFF 0%,#F0F9FF 50%,#EEF2FF 100%);z-index:99999;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:40px;color:#0F1A1F">
   <div style="font-size:80px;margin-bottom:20px">📱</div>
   <h1 style="font-size:28px;font-weight:900;margin:0 0 12px">Drushe</h1>
   <p style="font-size:16px;color:#0F1A1F;margin:0 0 8px">ילדים מלמדים ילדים</p>
@@ -1251,7 +1251,7 @@ function SharePanel(){
 
 // ─── SPLASH ───────────────────────────────────────────────────────────────────
 function Splash(){
-  return `<div style="min-height:100dvh;background:linear-gradient(165deg,#CCFBF1 0%,#A5F3FC 50%,#7DD3FC 100%);display:flex;flex-direction:column;align-items:center;text-align:center">
+  return `<div style="min-height:100dvh;background:linear-gradient(165deg,#ECFEFF 0%,#F0F9FF 50%,#EEF2FF 100%);display:flex;flex-direction:column;align-items:center;text-align:center">
     <div style="width:100%;background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);padding:56px 28px 46px;position:relative;overflow:hidden">
       <div style="position:absolute;top:-60px;right:-60px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,0.06)"></div>
       <div style="position:absolute;bottom:-40px;left:-40px;width:140px;height:140px;border-radius:50%;background:rgba(139,47,201,0.15)"></div>
@@ -1277,7 +1277,7 @@ function Splash(){
 
 // ─── REGISTER (5 STEPS) ───────────────────────────────────────────────────────
 function Safety(){
-  return `<div class="screen" style="background:linear-gradient(165deg,#CCFBF1 0%,#A5F3FC 50%,#7DD3FC 100%);min-height:100dvh;display:flex;flex-direction:column;align-items:center;padding:0 0 40px;overflow-y:auto">
+  return `<div class="screen" style="background:linear-gradient(165deg,#ECFEFF 0%,#F0F9FF 50%,#EEF2FF 100%);min-height:100dvh;display:flex;flex-direction:column;align-items:center;padding:0 0 40px;overflow-y:auto">
 
     <!-- Header -->
     <div style="width:100%;background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);padding:28px 20px 24px;text-align:center;position:relative;color:#fff">
@@ -1395,7 +1395,7 @@ function Safety(){
 }
 
 function ParentReg(){
-  return `<div class="screen" style="background:linear-gradient(165deg,#CCFBF1 0%,#A5F3FC 50%,#7DD3FC 100%);min-height:100dvh;display:flex;flex-direction:column;align-items:center;padding:0 0 40px;overflow-y:auto">
+  return `<div class="screen" style="background:linear-gradient(165deg,#ECFEFF 0%,#F0F9FF 50%,#EEF2FF 100%);min-height:100dvh;display:flex;flex-direction:column;align-items:center;padding:0 0 40px;overflow-y:auto">
 
     <!-- progress bar -->
     <div style="width:100%;background:rgba(15,26,31,0.08);height:4px"><div style="width:50%;height:4px;background:linear-gradient(90deg,#14B8A6,#06B6D4);border-radius:2px"></div></div>
@@ -1541,7 +1541,7 @@ function submitParentReg(){
 }
 
 function Register(){
-  return `<div class="screen" style="background:linear-gradient(165deg,#CCFBF1 0%,#A5F3FC 50%,#7DD3FC 100%);min-height:100dvh;display:flex;flex-direction:column;align-items:center;padding:0 0 40px;overflow-y:auto">
+  return `<div class="screen" style="background:linear-gradient(165deg,#ECFEFF 0%,#F0F9FF 50%,#EEF2FF 100%);min-height:100dvh;display:flex;flex-direction:column;align-items:center;padding:0 0 40px;overflow-y:auto">
     <!-- progress bar -->
     <div style="width:100%;background:rgba(0,0,0,.08);height:4px"><div style="width:100%;height:4px;background:linear-gradient(90deg,#14B8A6,#06B6D4);border-radius:2px"></div></div>
 
@@ -1707,7 +1707,7 @@ async function quickRegister(){
 
 // ─── TEACHER PROFILE SETUP ───────────────────────────────────────────────────
 function TeacherSetup(){
-  return `<div class="screen" style="background:linear-gradient(165deg,#CCFBF1 0%,#A5F3FC 50%,#7DD3FC 100%);min-height:100dvh;padding-bottom:80px">
+  return `<div class="screen" style="background:linear-gradient(165deg,#ECFEFF 0%,#F0F9FF 50%,#EEF2FF 100%);min-height:100dvh;padding-bottom:80px">
     <div style="background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);padding:24px 20px 32px;border-radius:0 0 32px 32px;color:#fff;position:relative;overflow:hidden">
       <div style="position:absolute;top:-60px;right:-60px;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,0.08)"></div>
       <button onclick="auth.signOut().then(()=>go('login'))" style="background:rgba(255,255,255,0.15);border:none;color:#fff;font-size:14px;cursor:pointer;border-radius:50px;padding:8px 16px;font-weight:700">← יציאה</button>
@@ -2353,7 +2353,7 @@ function Subscribe(){
   const hasPending=currentUserData?.subscription?.status==='pending';
 
   if(step===2||hasPending) return `
-  <div class="screen" style="background:linear-gradient(165deg,#CCFBF1 0%,#A5F3FC 50%,#7DD3FC 100%);min-height:100dvh;padding:0;direction:rtl">
+  <div class="screen" style="background:linear-gradient(165deg,#ECFEFF 0%,#F0F9FF 50%,#EEF2FF 100%);min-height:100dvh;padding:0;direction:rtl">
     <div style="padding:24px 20px 20px;text-align:center;background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);border-radius:0 0 28px 28px">
       <button onclick="go('home')" style="position:absolute;top:20px;right:20px;background:rgba(255,255,255,0.15);border:none;color:#fff;border-radius:50px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer">← חזרה</button>
       <div style="font-size:36px;margin-bottom:8px">⏳</div>
@@ -6658,7 +6658,7 @@ function renderAdminPanel(){
   const pendingVideos=adminAllVideos.filter(v=>!v.approved);
   const ov=document.createElement('div');
   ov.id='_adminPanel';
-  ov.style.cssText='position:fixed;inset:0;background:linear-gradient(165deg,#CCFBF1 0%,#A5F3FC 50%,#7DD3FC 100%);z-index:9999;direction:rtl;overflow-y:auto';
+  ov.style.cssText='position:fixed;inset:0;background:linear-gradient(165deg,#ECFEFF 0%,#F0F9FF 50%,#EEF2FF 100%);z-index:9999;direction:rtl;overflow-y:auto';
   ov.innerHTML=`
     <div style="background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);padding:20px;color:#fff;position:sticky;top:0;z-index:2;box-shadow:0 4px 20px rgba(0,0,0,0.3);position:relative;overflow:hidden">
       <div style="position:absolute;top:-40px;right:-50px;width:180px;height:180px;border-radius:50%;background:rgba(20,184,166,.25);filter:blur(45px);pointer-events:none"></div>
@@ -8343,7 +8343,7 @@ function DiscoverSlide(v){
 }
 function Discover(){
   if(!currentUser){
-    return `<div class="screen" style="display:flex;align-items:center;justify-content:center;min-height:100dvh;background:linear-gradient(165deg,#CCFBF1 0%,#A5F3FC 50%,#7DD3FC 100%);padding:20px;text-align:center">
+    return `<div class="screen" style="display:flex;align-items:center;justify-content:center;min-height:100dvh;background:linear-gradient(165deg,#ECFEFF 0%,#F0F9FF 50%,#EEF2FF 100%);padding:20px;text-align:center">
       <div>
         <div style="font-size:44px;margin-bottom:14px">🎬</div>
         <p style="font-weight:800;color:#0F1A1F;font-size:16px;margin:0 0 18px">יש להתחבר כדי לצפות בדרילס</p>
@@ -8473,7 +8473,7 @@ function findNearby(){
 // ─── TEACHER PROFILE ──────────────────────────────────────────────────────────
 function Teacher(){
   const t=S.teacher||TEACHERS[0];
-  if(S.ratingT===t.id&&!S.ratingDone) return `<div class="screen" style="display:flex;align-items:center;justify-content:center;min-height:100dvh;background:linear-gradient(165deg,#CCFBF1 0%,#A5F3FC 50%,#7DD3FC 100%)">
+  if(S.ratingT===t.id&&!S.ratingDone) return `<div class="screen" style="display:flex;align-items:center;justify-content:center;min-height:100dvh;background:linear-gradient(165deg,#ECFEFF 0%,#F0F9FF 50%,#EEF2FF 100%)">
     <div style="padding:32px 24px;text-align:center;max-width:340px">
       <div style="font-size:56px;margin-bottom:16px">${t.av}</div>
       <h3 style="font-weight:900;font-size:22px;margin-bottom:6px">איך היה השיעור עם ${escapeHtml(t.name||'')}?</h3>
@@ -8489,7 +8489,7 @@ function Teacher(){
       <button onclick="S.ratingT=null;render()" style="background:none;border:none;color:${C.muted};font-size:13px;margin-top:12px;cursor:pointer;display:block;width:100%">דלג</button>
     </div>
   </div>`;
-  if(S.ratingDone) return `<div class="screen" style="display:flex;align-items:center;justify-content:center;min-height:100dvh;background:linear-gradient(165deg,#CCFBF1 0%,#A5F3FC 50%,#7DD3FC 100%)">
+  if(S.ratingDone) return `<div class="screen" style="display:flex;align-items:center;justify-content:center;min-height:100dvh;background:linear-gradient(165deg,#ECFEFF 0%,#F0F9FF 50%,#EEF2FF 100%)">
     <div style="text-align:center;padding:32px">
       <div style="font-size:72px;margin-bottom:18px">🙏</div>
       <h3 style="font-weight:900;font-size:22px;margin-bottom:8px">תודה על הביקורת והדירוג!</h3>
@@ -8498,7 +8498,7 @@ function Teacher(){
     </div>
   </div>`;
 
-  return `<div class="screen" style="background:linear-gradient(165deg,#CCFBF1 0%,#A5F3FC 50%,#7DD3FC 100%)">
+  return `<div class="screen" style="background:linear-gradient(165deg,#ECFEFF 0%,#F0F9FF 50%,#EEF2FF 100%)">
     <div style="background:linear-gradient(150deg,#0F1A1F 0%,${t.col}BB 60%,${t.col} 100%);padding:24px 20px 40px;border-radius:0 0 32px 32px;text-align:center;color:#fff;position:relative;overflow:hidden">
       <div style="position:absolute;top:-60px;right:-60px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.06)"></div>
       <button onclick="back()" style="background:rgba(255,255,255,.2);border:none;color:#fff;font-size:14px;cursor:pointer;border-radius:50px;padding:8px 16px;font-weight:700;display:block;text-align:right;margin-bottom:18px;position:relative;z-index:1">← חזור</button>
@@ -8948,7 +8948,7 @@ function Booking(){
       </div>
     </div>`;}
 
-  return `<div class="screen" style="background:linear-gradient(165deg,#CCFBF1 0%,#A5F3FC 50%,#7DD3FC 100%)">
+  return `<div class="screen" style="background:linear-gradient(165deg,#ECFEFF 0%,#F0F9FF 50%,#EEF2FF 100%)">
     <div style="background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);padding:20px 20px 28px;color:#fff;border-radius:0 0 28px 28px">
       <button onclick="${step===1?"back()":"S.bookStep--;render()"}" style="background:rgba(255,255,255,.1);border:none;color:#fff;font-size:14px;cursor:pointer;border-radius:50px;padding:8px 16px;font-weight:700">← חזור</button>
       <h2 style="font-size:18px;font-weight:900;margin:10px 0 4px;display:flex;align-items:center;gap:8px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>קביעת שיעור עם ${escapeHtml(t.name||'')}</h2>
@@ -9429,7 +9429,7 @@ function Profile(){
     const _rank=getStudentRank(studentBookings.filter(b=>b.status==='completed').length);
     const _nextLesson=studentBookings.find(b=>b.status==='approved');
     const _achCount=(currentUserData?.achievements||[]).length;
-    return `<div class="screen" style="background:linear-gradient(165deg,#CCFBF1 0%,#A5F3FC 50%,#7DD3FC 100%);padding-bottom:100px">
+    return `<div class="screen" style="background:linear-gradient(165deg,#ECFEFF 0%,#F0F9FF 50%,#EEF2FF 100%);padding-bottom:100px">
       <div style="background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);padding:36px 20px 52px;border-radius:0 0 40px 40px;text-align:center;color:#fff;position:relative;overflow:hidden">
         <div style="position:absolute;top:-70px;left:-50px;width:200px;height:200px;border-radius:50%;background:rgba(20,184,166,0.15);filter:blur(10px)"></div>
         <div style="position:absolute;bottom:-50px;right:-40px;width:160px;height:160px;border-radius:50%;background:rgba(20,184,166,0.2);filter:blur(10px)"></div>
@@ -9469,7 +9469,7 @@ function Profile(){
     </div>`;
   }
 
-  return `<div class="screen" style="background:linear-gradient(165deg,#CCFBF1 0%,#A5F3FC 50%,#7DD3FC 100%);padding-bottom:100px">
+  return `<div class="screen" style="background:linear-gradient(165deg,#ECFEFF 0%,#F0F9FF 50%,#EEF2FF 100%);padding-bottom:100px">
     <div style="background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);padding:32px 20px 40px;border-radius:0 0 32px 32px;text-align:center;color:#fff;position:relative;overflow:hidden">
       <div style="position:absolute;top:-50px;right:-50px;width:140px;height:140px;border-radius:50%;background:rgba(255,255,255,.06)"></div>
       <button onclick="${isTeacher&&myT?'shareTeacher(TEACHERS.find(x=>x.id===currentUser.uid))':'shareApp()'}" style="position:absolute;top:20px;left:20px;background:rgba(255,255,255,.2);border:none;color:#fff;font-size:18px;cursor:pointer;border-radius:50%;width:40px;height:40px;display:flex;align-items:center;justify-content:center;z-index:2" title="${isTeacher?'שתף פרופיל שלי':'שתף אפליקציה'}"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg></button>
@@ -10366,7 +10366,7 @@ function About(){
 
 // ─── LOGIN SCREEN ─────────────────────────────────────────────────────────────
 function Login(){
-  return `<div class="screen" style="background:linear-gradient(165deg,#CCFBF1 0%,#A5F3FC 50%,#7DD3FC 100%);min-height:100dvh;display:flex;flex-direction:column">
+  return `<div class="screen" style="background:linear-gradient(165deg,#ECFEFF 0%,#F0F9FF 50%,#EEF2FF 100%);min-height:100dvh;display:flex;flex-direction:column">
     <!-- Header -->
     <div style="background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);padding:48px 20px 40px;text-align:center;color:#fff;position:relative;overflow:hidden">
       <div style="position:absolute;top:-60px;right:-60px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,0.06)"></div>
@@ -10417,7 +10417,7 @@ function TeacherPending(){
   const createdAt=t.createdAt?new Date(t.createdAt).toLocaleDateString('he-IL'):'היום';
   const rejected=currentUserData?.rejected===true;
 
-  return `<div class="screen" style="background:linear-gradient(165deg,#CCFBF1 0%,#A5F3FC 50%,#7DD3FC 100%);min-height:100dvh;padding:0;direction:rtl">
+  return `<div class="screen" style="background:linear-gradient(165deg,#ECFEFF 0%,#F0F9FF 50%,#EEF2FF 100%);min-height:100dvh;padding:0;direction:rtl">
 
     <!-- Header -->
     <div style="background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);padding:24px 20px 20px;text-align:center;border-radius:0 0 28px 28px">
@@ -10519,7 +10519,7 @@ function StudentPending(){
   const parentPhone=currentUserData?.parentPhone||'';
   const createdAt=currentUserData?.createdAt?new Date(currentUserData.createdAt).toLocaleDateString('he-IL'):'היום';
   const rejected=currentUserData?.rejected===true;
-  return `<div class="screen" style="background:linear-gradient(165deg,#CCFBF1 0%,#A5F3FC 50%,#7DD3FC 100%);min-height:100dvh;padding:0;direction:rtl">
+  return `<div class="screen" style="background:linear-gradient(165deg,#ECFEFF 0%,#F0F9FF 50%,#EEF2FF 100%);min-height:100dvh;padding:0;direction:rtl">
     <div style="padding:24px 20px 20px;text-align:center;background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);border-radius:0 0 28px 28px">
       <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:4px">
         <span style="font-size:24px;font-weight:900;letter-spacing:-0.02em"><span style="color:#fff">Dru</span><span style="color:#F472B6">s</span><span style="color:#5EEAD4">he</span></span>
@@ -11685,7 +11685,7 @@ function WeeklySchedule(){
   const groups={};
   upcoming.forEach(b=>{const k=b.day||'—';if(!groups[k])groups[k]=[];groups[k].push(b);});
   const entries=Object.entries(groups);
-  return `<div class="screen" style="background:linear-gradient(165deg,#CCFBF1 0%,#A5F3FC 50%,#7DD3FC 100%);min-height:100vh">
+  return `<div class="screen" style="background:linear-gradient(165deg,#ECFEFF 0%,#F0F9FF 50%,#EEF2FF 100%);min-height:100vh">
     <div style="background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);padding:24px 20px 28px;color:#fff;border-radius:0 0 28px 28px">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:4px">
         <button onclick="back()" style="background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:50%;width:36px;height:36px;font-size:18px;cursor:pointer">←</button>
@@ -11738,7 +11738,7 @@ function WeeklySchedule(){
 
 function ParentPortal(){
   return `
-    <div style="min-height:100vh;background:linear-gradient(165deg,#CCFBF1 0%,#A5F3FC 50%,#7DD3FC 100%);direction:rtl;padding:0 0 48px">
+    <div style="min-height:100vh;background:linear-gradient(165deg,#ECFEFF 0%,#F0F9FF 50%,#EEF2FF 100%);direction:rtl;padding:0 0 48px">
       <div style="text-align:center;padding:24px 20px 20px;background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);border-radius:0 0 28px 28px;margin-bottom:24px">
         <div style="width:72px;height:72px;border-radius:20px;background:rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center;margin:0 auto 12px"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></div>
         <h1 style="font-size:24px;font-weight:900;color:#fff;margin:0 0 6px">פורטל הורים</h1>
@@ -11816,7 +11816,7 @@ async function _loadParentPortalData(token){
 }
 
 function EmailVerify(){
-  return `<div class="screen" style="background:linear-gradient(165deg,#CCFBF1 0%,#A5F3FC 50%,#7DD3FC 100%);min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px">
+  return `<div class="screen" style="background:linear-gradient(165deg,#ECFEFF 0%,#F0F9FF 50%,#EEF2FF 100%);min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px">
     <div style="background:#fff;border-radius:28px;padding:36px 28px;max-width:360px;width:100%;text-align:center">
       <div style="font-size:60px;margin-bottom:16px">${icon("mail",14)}</div>
       <h2 style="font-size:22px;font-weight:900;margin:0 0 10px;color:#0F1A1F">אמת את כתובת המייל</h2>
@@ -12688,7 +12688,7 @@ async function firebaseRegister(email,password,userData){
 // מסך הצלחת הרשמה עם הוראות לאימות מייל
 function RegSuccess(){
   const userName=currentUserData?.name||currentUser?.email?.split('@')[0]||'';
-  return `<div class="screen" style="background:linear-gradient(165deg,#CCFBF1 0%,#A5F3FC 50%,#7DD3FC 100%);min-height:100dvh;padding:0 0 40px;overflow-y:auto">
+  return `<div class="screen" style="background:linear-gradient(165deg,#ECFEFF 0%,#F0F9FF 50%,#EEF2FF 100%);min-height:100dvh;padding:0 0 40px;overflow-y:auto">
 
     <!-- כותרת ברוכים הבאים -->
     <div style="text-align:center;margin-bottom:20px;animation:fadeUp 0.5s ease;background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);padding:36px 20px 28px;color:#fff">
