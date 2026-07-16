@@ -7949,29 +7949,25 @@ function Home(){
 
       <!-- Drils (רילס) discovery entry point -->
       <button onclick="openDiscover()" style="width:100%;border:none;cursor:pointer;text-align:right;border-radius:20px;margin-bottom:22px;height:92px;padding:0 14px;display:flex;align-items:center;gap:13px;position:relative;overflow:hidden;
-        background:
-          radial-gradient(120% 140% at 15% 10%, rgba(255,154,213,.5), transparent 55%),
-          radial-gradient(90% 120% at 90% 15%, rgba(94,234,212,.38), transparent 60%),
-          radial-gradient(120% 140% at 55% 115%, rgba(99,102,241,.5), transparent 55%),
-          linear-gradient(150deg,#190B33 0%,#4C1D73 55%,#7C2E9C 100%)">
-        <div style="position:absolute;inset:0;background:linear-gradient(115deg,rgba(8,3,18,.55) 0%,rgba(8,3,18,.15) 60%,transparent 100%);z-index:0"></div>
-        <div style="position:relative;z-index:1;flex-shrink:0;width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center">
-          <div style="width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.95);display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:0 4px 14px rgba(0,0,0,.3)"><img src="/icon-192.png" alt="" style="width:100%;height:100%;object-fit:cover"></div>
+        background:linear-gradient(150deg,#5EEAD4 0%,#A78BFA 55%,#F0ABFC 100%)">
+        <div style="position:absolute;inset:0;background:linear-gradient(115deg,rgba(30,20,50,.32) 0%,transparent 65%);z-index:0"></div>
+        <div style="position:relative;z-index:1;flex-shrink:0;width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center">
+          <div style="width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.95);display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:0 4px 14px rgba(0,0,0,.25)"><img src="/icon-192.png" alt="" style="width:100%;height:100%;object-fit:cover"></div>
         </div>
         <div style="position:relative;z-index:1;flex:1;min-width:0">
           <div style="display:flex;align-items:center;gap:7px">
-            <span style="color:#fff;font-weight:800;font-size:16px">דרילס</span>
-            <span style="background:rgba(255,255,255,.18);backdrop-filter:blur(6px);color:#fff;font-size:8.5px;font-weight:800;padding:2.5px 8px;border-radius:50px;flex-shrink:0">🔥 חדש</span>
+            <span style="color:#fff;font-weight:800;font-size:16px;text-shadow:0 1px 3px rgba(0,0,0,.25)">דרילס</span>
+            <span style="background:rgba(255,255,255,.22);backdrop-filter:blur(6px);color:#fff;font-size:8.5px;font-weight:800;padding:2.5px 8px;border-radius:50px;flex-shrink:0">🔥 חדש</span>
           </div>
-          <div style="color:rgba(255,255,255,.78);font-size:10.5px;margin-top:3px">גלה מורים בסרטון · כל התחומים</div>
+          <div style="color:rgba(255,255,255,.92);font-size:10.5px;margin-top:3px;text-shadow:0 1px 2px rgba(0,0,0,.2)">גלה מורים בסרטון · כל התחומים</div>
         </div>
         <div style="position:relative;z-index:1;flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:4px">
           <div style="display:flex;align-items:center">
-            <div style="width:19px;height:19px;border-radius:50%;border:1.5px solid rgba(20,10,40,.9);background:linear-gradient(160deg,#14B8A6,#06B6D4);display:flex;align-items:center;justify-content:center;font-size:7.5px;font-weight:800;color:#fff;flex-shrink:0">🎓</div>
-            <div style="width:19px;height:19px;border-radius:50%;border:1.5px solid rgba(20,10,40,.9);background:linear-gradient(160deg,#F59E0B,#EF4444);display:flex;align-items:center;justify-content:center;font-size:7.5px;font-weight:800;color:#fff;flex-shrink:0;margin-inline-start:-7px">🎨</div>
-            <div style="width:19px;height:19px;border-radius:50%;border:1.5px solid rgba(20,10,40,.9);background:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-size:6.5px;font-weight:800;color:#fff;flex-shrink:0;margin-inline-start:-7px">+${Math.max(realStats.teachers-2,0)}</div>
+            <div style="width:19px;height:19px;border-radius:50%;border:1.5px solid rgba(255,255,255,.6);background:linear-gradient(160deg,#14B8A6,#06B6D4);display:flex;align-items:center;justify-content:center;font-size:7.5px;font-weight:800;color:#fff;flex-shrink:0">🎓</div>
+            <div style="width:19px;height:19px;border-radius:50%;border:1.5px solid rgba(255,255,255,.6);background:linear-gradient(160deg,#F59E0B,#EF4444);display:flex;align-items:center;justify-content:center;font-size:7.5px;font-weight:800;color:#fff;flex-shrink:0;margin-inline-start:-7px">🎨</div>
+            <div style="width:19px;height:19px;border-radius:50%;border:1.5px solid rgba(255,255,255,.6);background:rgba(60,20,80,.35);display:flex;align-items:center;justify-content:center;font-size:6.5px;font-weight:800;color:#fff;flex-shrink:0;margin-inline-start:-7px">+${Math.max(realStats.teachers-2,0)}</div>
           </div>
-          <div style="color:rgba(255,255,255,.7);font-size:8px;font-weight:700">גלוש ‹</div>
+          <div style="color:rgba(255,255,255,.92);font-size:8px;font-weight:700;text-shadow:0 1px 2px rgba(0,0,0,.2)">גלוש ‹</div>
         </div>
       </button>
 
