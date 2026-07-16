@@ -402,6 +402,9 @@ function icon(name,size=16,color='currentColor'){
 
 const TEACHERS=[]; // נטען מ-Firebase
 let teachersLoaded=false;
+const DISCOVER_FEED=[]; // פיד "רילס" - סרטונים מאושרים מכל המורים, נטען מ-Firebase
+let discoverFeedLoaded=false;
+let discoverFeedLoading=false;
 let realStats={teachers:0,students:0,cities:0,categories:16};
 let publicTeacherVideos=[];
 let publicTeacherReviews=[];
@@ -634,6 +637,45 @@ async function loadRealTeachers(){
   }catch(e){console.warn('Failed to load teachers:',e);teachersLoaded=true;}
 }
 
+// טעינת פיד "רילס" - סרטונים מאושרים של כל המורים המאומתים, קריאה אחת ל-DB
+async function loadDiscoverFeed(force=false){
+  if(discoverFeedLoading)return;
+  if(discoverFeedLoaded&&!force)return;
+  if(!currentUser||!db)return;
+  discoverFeedLoading=true;
+  try{
+    if(!teachersLoaded)await loadRealTeachers();
+    const snap=await db.ref('videos').get();
+    const list=[];
+    if(snap.exists())snap.forEach(teacherSnap=>{
+      const teacherId=teacherSnap.key;
+      const t=TEACHERS.find(x=>x.id===teacherId);
+      if(!t)return; // מציג רק סרטונים של מורים מאומתים ופעילים כרגע
+      teacherSnap.forEach(vSnap=>{
+        const v=vSnap.val()||{};
+        if(v.approved!==true)return;
+        list.push({
+          id:vSnap.key,teacherId,
+          title:v.title||'',url:v.url||'',desc:v.desc||'',
+          platform:v.platform||'other',
+          thumbnail:v.thumbnail||null,
+          views:v.views||0,likes:v.likes||0,
+          createdAt:v.createdAt||0,
+          teacherName:t.name||v.teacherName||'',
+          teacherPhoto:t.photo||null,
+          teacherCat:t.cat,teacherPrice:t.price,teacherCity:t.city,
+          teacherRating:t.rating||0
+        });
+      });
+    });
+    // ערבוב לגילוי מגוון (לא רק הכי חדש למעלה, כמו רילס אמיתי)
+    for(let i=list.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[list[i],list[j]]=[list[j],list[i]];}
+    DISCOVER_FEED.length=0;DISCOVER_FEED.push(...list);
+    discoverFeedLoaded=true;
+    if(S.screen==='discover')render();
+  }catch(e){console.warn('Failed to load discover feed:',e);discoverFeedLoaded=true;}
+  finally{discoverFeedLoading=false;}
+}
 
 const CONVOS=[];
 let convosLoaded=false;
@@ -810,6 +852,7 @@ function go(scr,extra={}){
     const tid=(extra.teacher||S.teacher)?.id;
     if(tid)loadTeacherSchedule(tid);
   }
+  if(scr==='discover')loadDiscoverFeed();
   history.pushState({screen:scr,prev:S.prev},'');
   render();
   window.scrollTo(0,0);
@@ -7899,6 +7942,17 @@ function Home(){
         <div class="card-sm" onclick="${isAdmin()?"showAdminPanel('students')":'go(\'nearby\')'}" style="flex:1;text-align:center;padding:12px 6px;margin-bottom:0;cursor:pointer"><div style="width:32px;height:32px;border-radius:10px;background:#10B98115;display:flex;align-items:center;justify-content:center;margin:0 auto 4px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg></div><div style="font-weight:900;font-size:17px;color:#10B981" data-stat="students">${realStats.students}</div><div style="font-size:10px;color:#94A3B8;font-weight:600">תלמידים</div></div>
       </div>
 
+      <!-- Reels discovery entry point -->
+      <button onclick="openDiscover()" style="width:100%;border:none;cursor:pointer;text-align:right;background:linear-gradient(120deg,#0F1A1F 0%,#0e7a72 55%,#8b2fc9 100%);border-radius:22px;padding:18px 20px;margin-bottom:22px;display:flex;align-items:center;gap:14px;box-shadow:0 8px 22px rgba(15,26,31,0.25);position:relative;overflow:hidden">
+        <div style="position:absolute;top:-40px;left:-40px;width:140px;height:140px;border-radius:50%;background:rgba(255,255,255,.08)"></div>
+        <div style="width:48px;height:48px;border-radius:14px;background:rgba(255,255,255,.18);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;position:relative;z-index:1">🎬</div>
+        <div style="flex:1;position:relative;z-index:1">
+          <div style="color:#fff;font-weight:900;font-size:15px;margin-bottom:2px">רילס · גלה מורים בסרטון</div>
+          <div style="color:rgba(255,255,255,.8);font-size:12px">גלילה מהירה בין סרטוני מורים מכל התחומים</div>
+        </div>
+        <div style="color:#fff;font-size:20px;position:relative;z-index:1">‹</div>
+      </button>
+
       ${(()=>{
         if(!currentUser)return '';
         const isTeacher=currentUserData?.role==='teacher';
@@ -8191,6 +8245,126 @@ function Home(){
     </div>
     ${BNav("home")}
     <div style="text-align:center;padding:4px 0 8px;font-size:10px;color:rgba(148,163,184,0.5)">v${APP_VERSION} · ${APP_BUILD}</div>
+  </div>`;
+}
+
+// ─── DISCOVER (רילס) ──────────────────────────────────────────────────────────
+function openDiscover(){
+  if(!currentUser){showFireToast('❌ יש להתחבר כדי לצפות ברילס');go('login');return;}
+  go('discover');
+}
+function _discoverPlatformMeta(p){
+  const map={
+    youtube:{lbl:'YouTube',em:'▶️'},
+    instagram:{lbl:'Instagram',em:'📸'},
+    tiktok:{lbl:'TikTok',em:'🎵'},
+    vimeo:{lbl:'Vimeo',em:'🎬'},
+    other:{lbl:'קישור חיצוני',em:'🔗'}
+  };
+  return map[p]||map.other;
+}
+function _openDiscoverTeacher(teacherId){
+  const t=TEACHERS.find(x=>x.id===teacherId);
+  if(!t){showFireToast('❌ מורה לא נמצא/ה');return;}
+  go('teacher',{teacher:t});
+}
+function _openDiscoverBooking(teacherId){
+  const t=TEACHERS.find(x=>x.id===teacherId);
+  if(!t){showFireToast('❌ מורה לא נמצא/ה');return;}
+  go('booking',{teacher:t});
+}
+function _toggleDiscoverMute(btn){
+  const vid=btn.closest('.discover-slide')?.querySelector('video.discover-video');
+  if(!vid)return;
+  vid.muted=!vid.muted;
+  btn.textContent=vid.muted?'🔇':'🔊';
+}
+function _setupDiscoverObserver(){
+  const scroller=document.getElementById('_discoverScroller');
+  if(!scroller)return;
+  const videos=scroller.querySelectorAll('video.discover-video');
+  if(window._discoverObserver)window._discoverObserver.disconnect();
+  if(!videos.length)return;
+  window._discoverObserver=new IntersectionObserver(entries=>{
+    entries.forEach(en=>{
+      const vid=en.target;
+      if(en.isIntersecting&&en.intersectionRatio>=0.6)vid.play().catch(()=>{});
+      else vid.pause();
+    });
+  },{root:scroller,threshold:[0,0.6,1]});
+  videos.forEach(v=>window._discoverObserver.observe(v));
+}
+function DiscoverSlide(v){
+  const isNative=v.platform==='gallery_cloudinary';
+  const catObj=catById(v.teacherCat)||{};
+  const media=isNative
+    ?`<video class="discover-video" src="${escapeHtml(v.url)}" loop muted playsinline preload="metadata" style="width:100%;height:100%;object-fit:contain;background:#000" onclick="this.paused?this.play().catch(()=>{}):this.pause()"></video>
+      <button onclick="event.stopPropagation();_toggleDiscoverMute(this)" style="position:absolute;top:18px;left:18px;z-index:3;background:rgba(0,0,0,.45);border:none;color:#fff;width:38px;height:38px;border-radius:50%;font-size:16px;cursor:pointer">🔇</button>`
+    :(()=>{
+        const pm=_discoverPlatformMeta(v.platform);
+        const bg=v.thumbnail?`background-image:url('${escapeHtml(v.thumbnail)}');background-size:cover;background-position:center`:`background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%)`;
+        return `<div style="width:100%;height:100%;${bg};display:flex;align-items:center;justify-content:center;cursor:pointer" onclick="if(safeUrl('${jsAttrEscape(v.url||'')}'))window.open('${jsAttrEscape(v.url||'')}','_blank');else showFireToast('❌ קישור לא תקין')">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:10px;color:#fff">
+            <div style="width:70px;height:70px;border-radius:50%;background:rgba(255,255,255,.18);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;font-size:30px">${pm.em}</div>
+            <div style="font-weight:800;font-size:13px;background:rgba(0,0,0,.4);padding:6px 14px;border-radius:50px">צפה ב-${pm.lbl}</div>
+          </div>
+        </div>`;
+      })();
+  return `<div class="discover-slide" data-video-id="${escapeHtml(v.id)}" style="scroll-snap-align:start;scroll-snap-stop:always;height:100dvh;width:100%;position:relative;background:#000;overflow:hidden;flex-shrink:0">
+    ${media}
+    <div style="position:absolute;left:0;right:0;bottom:0;height:50%;background:linear-gradient(to top,rgba(0,0,0,.88),transparent);pointer-events:none;z-index:1"></div>
+    <div style="position:absolute;left:0;right:0;bottom:0;padding:20px 18px 30px;z-index:2;color:#fff">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;cursor:pointer" onclick="_openDiscoverTeacher('${jsAttrEscape(v.teacherId)}')">
+        ${avatarHtml(v.teacherPhoto,v.teacherName,44,'50%')}
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:900;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(v.teacherName)}</div>
+          <div style="font-size:12px;color:rgba(255,255,255,.75)">${catObj.em||'🎓'} ${escapeHtml(catObj.lbl||'')}${v.teacherCity?' · '+escapeHtml(v.teacherCity):''}</div>
+        </div>
+        ${v.teacherRating?`<div style="font-size:12px;font-weight:700;background:rgba(255,255,255,.15);padding:4px 10px;border-radius:50px;flex-shrink:0">⭐ ${v.teacherRating}</div>`:''}
+      </div>
+      ${v.title?`<div style="font-weight:700;font-size:14px;margin-bottom:4px">${escapeHtml(v.title)}</div>`:''}
+      ${v.desc?`<div style="font-size:13px;color:rgba(255,255,255,.85);margin-bottom:14px;line-height:1.5">${escapeHtml(v.desc)}</div>`:'<div style="margin-bottom:14px"></div>'}
+      <div style="display:flex;gap:10px;align-items:center">
+        <button onclick="_openDiscoverBooking('${jsAttrEscape(v.teacherId)}')" style="flex:1;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:13px;font-weight:900;font-size:14px;cursor:pointer">🎓 הזמן שיעור${v.teacherPrice?' · ₪'+v.teacherPrice:''}</button>
+        <div style="font-size:11px;color:rgba(255,255,255,.7);display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0">
+          <span>👁️ ${v.views||0}</span>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+function Discover(){
+  if(!currentUser){
+    return `<div class="screen" style="display:flex;align-items:center;justify-content:center;min-height:100dvh;background:linear-gradient(165deg,#CCFBF1 0%,#A5F3FC 50%,#7DD3FC 100%);padding:20px;text-align:center">
+      <div>
+        <div style="font-size:44px;margin-bottom:14px">🎬</div>
+        <p style="font-weight:800;color:#0F1A1F;font-size:16px;margin:0 0 18px">יש להתחבר כדי לצפות ברילס</p>
+        <button onclick="go('login')" class="btn bp" style="padding:13px 26px">התחברות</button>
+      </div>
+    </div>`;
+  }
+  const backBtn=`<button onclick="back()" style="position:fixed;top:18px;right:18px;z-index:10;background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:50%;width:38px;height:38px;font-size:18px;cursor:pointer;backdrop-filter:blur(6px)">←</button>`;
+  if(!discoverFeedLoaded||discoverFeedLoading){
+    return `<div class="screen" style="position:fixed;inset:0;background:#000;display:flex;align-items:center;justify-content:center;color:#fff">
+      ${backBtn}
+      <div style="text-align:center"><div style="font-size:40px;margin-bottom:10px">🎬</div><p style="font-size:14px;color:rgba(255,255,255,.8)">טוען רילס...</p></div>
+    </div>`;
+  }
+  if(!DISCOVER_FEED.length){
+    return `<div class="screen" style="position:fixed;inset:0;background:#000;display:flex;align-items:center;justify-content:center;color:#fff;padding:20px;text-align:center">
+      ${backBtn}
+      <div>
+        <div style="font-size:44px;margin-bottom:14px">🎬</div>
+        <p style="font-weight:800;font-size:16px;margin:0 0 6px">אין עדיין סרטונים להצגה</p>
+        <p style="font-size:13px;color:rgba(255,255,255,.7)">מורים שיעלו סרטונים מאושרים יופיעו כאן</p>
+      </div>
+    </div>`;
+  }
+  return `<div class="screen" style="position:fixed;inset:0;background:#000;padding:0;min-height:100dvh">
+    ${backBtn}
+    <div id="_discoverScroller" style="height:100dvh;width:100%;overflow-y:scroll;scroll-snap-type:y mandatory;-webkit-overflow-scrolling:touch">
+      ${DISCOVER_FEED.map(v=>DiscoverSlide(v)).join('')}
+    </div>
   </div>`;
 }
 
@@ -11646,7 +11820,7 @@ function EmailVerify(){
   </div>`;
 }
 
-const SCREENS={splash:Splash,safety:Safety,parentReg:ParentReg,register:Register,login:Login,regSuccess:RegSuccess,emailVerify:EmailVerify,teacherSetup:TeacherSetup,teacherPending:TeacherPending,studentPending:StudentPending,home:Home,nearby:Nearby,teacher:Teacher,booking:Booking,messages:Messages,chat:Chat,profile:Profile,community:Community,leaderboard:Leaderboard,about:About,parentPortal:ParentPortal,weeklySchedule:WeeklySchedule,subscribe:Subscribe};
+const SCREENS={splash:Splash,safety:Safety,parentReg:ParentReg,register:Register,login:Login,regSuccess:RegSuccess,emailVerify:EmailVerify,teacherSetup:TeacherSetup,teacherPending:TeacherPending,studentPending:StudentPending,home:Home,nearby:Nearby,teacher:Teacher,booking:Booking,messages:Messages,chat:Chat,profile:Profile,community:Community,leaderboard:Leaderboard,about:About,parentPortal:ParentPortal,weeklySchedule:WeeklySchedule,subscribe:Subscribe,discover:Discover};
 
 function _hs(inp){
   S.search=inp.value;
@@ -11700,10 +11874,20 @@ function render(){
   const _focTag=_ae?.tagName;
   const _focSel=(_focTag==='INPUT'||_focTag==='TEXTAREA')?_ae.selectionStart:null;
 
+  // שמירת מיקום הגלילה בפיד הרילס - רינדור מלא לא אמור לקפוץ לך חזרה לראש בזמן צפייה
+  const _discoverScroller=document.getElementById('_discoverScroller');
+  const _discoverPrevScroll=_discoverScroller?_discoverScroller.scrollTop:0;
+
   const fn=SCREENS[S.screen]||Home;
-  const noRefreshScreens=['splash','login','register','safety','parentReg','teacherReg','teacherPending','studentPending','regSuccess','parentPortal','weeklySchedule','messages'];
+  const noRefreshScreens=['splash','login','register','safety','parentReg','teacherReg','teacherPending','studentPending','regSuccess','parentPortal','weeklySchedule','messages','discover'];
   const showRefresh=!noRefreshScreens.includes(S.screen);
   document.getElementById("app").innerHTML=fn()+SharePanel()+(showRefresh?`<button id="_rfshBtn" class="rfsh-btn" onclick="refreshCurrentScreen()" title="רענן">↻</button>`:'')
+
+  if(S.screen==='discover'){
+    const _ds=document.getElementById('_discoverScroller');
+    if(_ds&&_discoverPrevScroll)_ds.scrollTop=_discoverPrevScroll;
+    setTimeout(_setupDiscoverObserver,50);
+  }
 
   // Restore focus so keyboard stays open
   if(_focId){

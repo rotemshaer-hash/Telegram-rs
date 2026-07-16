@@ -130,8 +130,8 @@
     },
     "pendingReviews": { ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'", ".write": "auth != null" },
     "videos": {
+      ".read": "auth != null",
       "$teacherId": {
-        ".read": "auth != null",
         ".write": "auth.uid == $teacherId || auth.token.email == 'rotemshaer@gmail.com'",
         "$videoId": {
           "approved": {
