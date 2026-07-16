@@ -1267,6 +1267,7 @@ function Splash(){
       <div style="margin-top:42px;display:flex;flex-direction:column;gap:12px;width:100%;max-width:300px">
         <button class="btn bp" onclick="go('safety')">✨ הצטרף עכשיו – חינם!</button>
         <button class="btn bd" onclick="go('login')">${icon("key",14)} כבר רשום? התחבר</button>
+        <button onclick="browseAsGuest()" style="background:none;border:none;color:#64748B;font-size:13px;font-weight:700;cursor:pointer;padding:6px">${icon("search",12)} עיין כאורח בלי להירשם</button>
       </div>
       <p style="color:#64748B;font-size:11px;margin-top:24px">מיועד לילדים 8–18 בליווי הורים</p>
       <p style="color:#94A3B8;font-size:10px;margin-top:6px">v${APP_VERSION} · ${APP_BUILD}</p>
@@ -7915,7 +7916,7 @@ function Home(){
     <div style="background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);padding:20px 20px 38px;border-radius:0 0 32px 32px;position:relative;overflow:hidden">
       <div style="position:absolute;top:-70px;right:-70px;width:220px;height:220px;border-radius:50%;background:rgba(255,255,255,.07)"></div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;position:relative;z-index:1">
-        <button onclick="go('profile')" style="width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,.25);border:2px solid rgba(255,255,255,.4);font-size:22px;cursor:pointer;backdrop-filter:blur(10px);box-shadow:0 4px 12px rgba(0,0,0,0.15)">${currentUserData?.photo?`<img src="${currentUserData.photo}" style="width:100%;height:100%;border-radius:50%;object-fit:cover" alt="">`:'👤'}</button>
+        <button onclick="currentUser?go('profile'):go('login')" style="width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,.25);border:2px solid rgba(255,255,255,.4);font-size:22px;cursor:pointer;backdrop-filter:blur(10px);box-shadow:0 4px 12px rgba(0,0,0,0.15)">${currentUserData?.photo?`<img src="${currentUserData.photo}" style="width:100%;height:100%;border-radius:50%;object-fit:cover" alt="">`:'👤'}</button>
         <div style="text-align:center;flex:1">
           <div style="display:flex;align-items:center;gap:6px;justify-content:center">
             <span style="font-size:26px;font-weight:900;letter-spacing:-.5px"><span style="color:#fff">Dru</span><span style="color:#F472B6">s</span><span style="color:#5EEAD4">he</span></span>
@@ -12175,6 +12176,10 @@ if(typeof auth==='undefined'||!auth){
 }
 auth&&auth.onAuthStateChanged(async user=>{
   if(user){loadRealTeachers();}
+  // אורח אנונימי (עיין כאורח) — מאפשר קריאת נתונים ציבוריים (auth != null) בלי חשבון אמיתי.
+  // currentUser נשאר null בכוונה, כדי שכל בדיקות "האם מחובר" הקיימות באפליקציה
+  // (הזמנה, הודעות, רילס וכו') ימשיכו לדרוש הרשמה אמיתית בדיוק כמו היום.
+  if(user&&user.isAnonymous){render();return;}
   if(user){
     // אין כניסה אוטומטית — רק כניסה ידנית מתקבלת (S._loggingIn=true מסמן כניסה ידנית)
     const _inRegFlow=['safety','parentReg','register','teacherPending','studentPending'].includes(S.screen);
@@ -12470,6 +12475,16 @@ auth&&auth.onAuthStateChanged(async user=>{
     _userCredit=0;_userCreditLoaded=false;
   }
 });
+
+async function browseAsGuest(){
+  if(typeof auth==='undefined'||!auth){showFireToast('❌ Firebase לא נטען — רענן את הדף (F5)');return;}
+  try{
+    await auth.signInAnonymously();
+    go('home');
+  }catch(e){
+    showFireToast('❌ לא ניתן להיכנס כרגע. נסה שוב.');
+  }
+}
 
 async function firebaseRegister(email,password,userData){
   if(typeof auth==='undefined'||!auth){showFireToast('❌ Firebase לא נטען — רענן את הדף (F5)');return;}
