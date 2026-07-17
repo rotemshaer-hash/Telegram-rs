@@ -120,7 +120,7 @@ input,textarea,select{font-family:inherit;-webkit-appearance:none;appearance:non
 .bs{background:linear-gradient(135deg,#14B8A6,#06B6D4);color:#fff;box-shadow:var(--gs)}
 .bg{background:linear-gradient(135deg,#14B8A6,#06B6D4);color:#fff;box-shadow:var(--gg)}
 .bw{background:#fff;color:var(--p);box-shadow:0 8px 24px rgba(0,0,0,.15)}
-.bd{background:rgba(255,255,255,.1);color:#fff;border:1.5px solid rgba(255,255,255,.2)}
+.bd{background:rgba(20,184,166,.08);color:#0e7a72;border:1.5px solid rgba(20,184,166,.3)}
 
 /* TAGS */
 .tag{display:inline-flex;align-items:center;gap:5px;padding:5px 13px;border-radius:50px;font-size:12px;font-weight:700}
@@ -647,7 +647,7 @@ async function loadDiscoverFeed(force=false){
   discoverFeedLoading=true;
   try{
     if(!teachersLoaded)await loadRealTeachers();
-    const snap=await db.ref('videos').get();
+    const snap=await withTimeout(db.ref('videos').get(),12000,'discover-feed');
     const list=[];
     if(snap.exists())snap.forEach(teacherSnap=>{
       const teacherId=teacherSnap.key;
@@ -12310,6 +12310,7 @@ auth&&auth.onAuthStateChanged(async user=>{
       await loadParentChildren();
       await loadFavorites();
       loadStories();
+      loadDiscoverFeed(); // טעינה מוקדמת ברקע כדי שדרילס ייפתח מיידית כשלוחצים עליו
       await loadNotifications();
       await loadMyGroupStatuses();
       await loadUserChats();
