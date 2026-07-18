@@ -350,7 +350,7 @@ function catIcon(c,size=26,stroke){
   if(!c)return `<span style="font-size:${size}px">${icon("tag",14)}</span>`;
   const col=stroke||c.col||'#14B8A6';
   if(c.svg)return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${col}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${c.svg}</svg>`;
-  return `<span style="font-size:${size}px">${c.em||'🎓'}</span>`;
+  return c.em?`<span style="font-size:${size}px">${c.em}</span>`:icon("tag",size);
 }
 const _SVGP={
   trash:`<polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>`,
@@ -591,7 +591,7 @@ async function loadRealTeachers(){
           if(!CATS.find(c=>c.id===mainCat)&&t.cats&&t.cats.length>0){
             mainCat=t.cats.find(c=>CATS.find(x=>x.id===c))||t.cats[0]||'general';
           }
-          const catObj=CATS.find(c=>c.id===mainCat)||{em:'🎓',col:'#14B8A6',lbl:'כללי'};
+          const catObj=catById(mainCat);
 
           TEACHERS.push({
             id:t.uid||child.key,
@@ -1072,7 +1072,10 @@ window.onunhandledrejection=function(ev){
 
 function kcbToggle(el){const r=el.closest('.kcb-row');if(!r)return;const v=r.dataset.checked==='true';r.dataset.checked=v?'false':'true';}
 function kcbChecked(id){const el=document.getElementById(id);return el?.dataset.checked==='true';}
-const catById=id=>CATS.find(c=>c.id===id)||{};
+const catById=id=>{
+  if(typeof id==='string'&&id.startsWith('custom:'))return{id,lbl:id.slice(7)||'כללי',col:'#14B8A6'};
+  return CATS.find(c=>c.id===id)||{id,lbl:id||'כללי',col:'#14B8A6'};
+};
 const stars=r=>"★".repeat(Math.floor(r))+" "+r;
 const mTag=m=>`<span class="tag ${m==="online"?"t-online":"t-frontal"}">${m==="online"?icon("smartphone",12)+" אונליין":icon("users",12)+" פרונטלי"}</span>`;
 const gTag=b=>b?`<span class="tag t-gold">${b}</span>`:"";
@@ -8032,7 +8035,7 @@ function Home(){
             <div style="display:flex;align-items:center;gap:8px"><div style="width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,#14B8A6,#06B6D4);display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div><span style="font-weight:900;font-size:15px;color:#0F1A1F">קבוצות שכונה פעילות</span></div>
             <button onclick="S.comTab='groups';go('community')" style="background:rgba(20,184,166,0.1);border:none;color:#14B8A6;font-size:12px;font-weight:700;cursor:pointer;border-radius:50px;padding:5px 12px">ראה הכל →</button>
           </div>
-          ${openGroups.map(g=>{const c=CATS.find(x=>x.id===g.subject)||{em:'🎓',lbl:g.subject||'כללי',col:'#14B8A6'};const spots=(g.maxStudents||5)-(g.membersCount||0);return `<div onclick="showGroupDetail('${g.id}')" style="background:#fff;border-radius:16px;padding:12px 14px;box-shadow:0 2px 10px rgba(0,0,0,0.07);cursor:pointer;border:1.5px solid ${c.col}18;display:flex;align-items:center;gap:11px;margin-bottom:9px">
+          ${openGroups.map(g=>{const c=catById(g.subject);const spots=(g.maxStudents||5)-(g.membersCount||0);return `<div onclick="showGroupDetail('${g.id}')" style="background:#fff;border-radius:16px;padding:12px 14px;box-shadow:0 2px 10px rgba(0,0,0,0.07);cursor:pointer;border:1.5px solid ${c.col}18;display:flex;align-items:center;gap:11px;margin-bottom:9px">
             <div style="width:44px;height:44px;border-radius:13px;background:${c.col}18;display:flex;align-items:center;justify-content:center;flex-shrink:0">${catIcon(c,22)}</div>
             <div style="flex:1;min-width:0">
               <div style="font-weight:800;font-size:14px;color:#0F1A1F;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(g.title||'')}</div>
@@ -8337,7 +8340,7 @@ function DiscoverSlide(v){
       ${v.title?`<div style="font-weight:700;font-size:14px;margin-bottom:4px">${escapeHtml(v.title)}</div>`:''}
       ${v.desc?`<div style="font-size:13px;color:rgba(255,255,255,.85);margin-bottom:14px;line-height:1.5">${escapeHtml(v.desc)}</div>`:'<div style="margin-bottom:14px"></div>'}
       <div style="display:flex;gap:10px;align-items:center">
-        <button onclick="_openDiscoverBooking('${jsAttrEscape(v.teacherId)}')" style="flex:1;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:13px;font-weight:900;font-size:14px;cursor:pointer">🎓 הזמן שיעור${v.teacherPrice?' · ₪'+v.teacherPrice:''}</button>
+        <button onclick="_openDiscoverBooking('${jsAttrEscape(v.teacherId)}')" style="flex:1;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:13px;font-weight:900;font-size:14px;cursor:pointer">📅 הזמן שיעור${v.teacherPrice?' · ₪'+v.teacherPrice:''}</button>
         <div style="font-size:11px;color:rgba(255,255,255,.7);display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0">
           <span>👁️ ${v.views||0}</span>
         </div>
@@ -8521,7 +8524,7 @@ function Teacher(){
       </div>
       <div style="margin-top:10px;display:flex;gap:7px;justify-content:center;flex-wrap:wrap;position:relative;z-index:1">
         ${(t.cats&&t.cats.length?t.cats:[t.cat]).map(cid=>{
-          const cat=CATS.find(x=>x.id===cid)||{em:'🎓',lbl:cid,col:'#14B8A6'};
+          const cat=catById(cid);
           const active=S.teacherCat===cid;
           return `<button onclick="S.teacherCat='${cid}';render()" style="background:${active?'#fff':'rgba(255,255,255,0.22)'};color:${active?t.col:'#fff'};border:${active?'none':'1.5px solid rgba(255,255,255,0.35)'};border-radius:50px;padding:6px 14px;font-size:12px;font-weight:800;cursor:pointer;transition:all 0.2s;${active?'box-shadow:0 3px 12px rgba(0,0,0,0.2)':''};display:flex;align-items:center;gap:5px">${catIcon(cat,14)} ${cat.lbl}</button>`;
         }).join('')}
@@ -9221,7 +9224,7 @@ function Profile(){
   let content="";
 
   if(isTeacher&&myCats.includes(tab)){
-    const catObj=CATS.find(x=>x.id===tab)||{em:'🎓',lbl:tab,col:'#14B8A6'};
+    const catObj=catById(tab);
     const catProfile=myT?.catProfiles?.[tab];
     const catVids=teacherVideos.filter(v=>v.cat===tab);
     content=`
@@ -9268,7 +9271,7 @@ function Profile(){
     content=`
     ${myCats.length>1?`<div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px">
       <button onclick="S.profileVideoCat=null;render()" style="border-radius:50px;padding:7px 16px;font-size:12px;font-weight:800;cursor:pointer;border:1.5px solid ${!selCat?'#14B8A6':'rgba(100,116,139,0.3)'};background:${!selCat?'linear-gradient(135deg,#14B8A6,#06B6D4)':'rgba(100,116,139,0.08)'};color:${!selCat?'#fff':'#64748B'}">הכל</button>
-      ${myCats.map(cid=>{const c=CATS.find(x=>x.id===cid)||{em:'🎓',lbl:cid,col:'#14B8A6'};const on=selCat===cid;return `<button onclick="S.profileVideoCat='${cid}';render()" style="border-radius:50px;padding:7px 16px;font-size:12px;font-weight:800;cursor:pointer;border:1.5px solid ${on?c.col:'rgba(100,116,139,0.3)'};background:${on?c.col+'22':'rgba(100,116,139,0.06)'};color:${on?c.col:'#64748B'};display:inline-flex;align-items:center;gap:5px">${catIcon(c,14)} ${c.lbl}</button>`;}).join('')}
+      ${myCats.map(cid=>{const c=catById(cid);const on=selCat===cid;return `<button onclick="S.profileVideoCat='${cid}';render()" style="border-radius:50px;padding:7px 16px;font-size:12px;font-weight:800;cursor:pointer;border:1.5px solid ${on?c.col:'rgba(100,116,139,0.3)'};background:${on?c.col+'22':'rgba(100,116,139,0.06)'};color:${on?c.col:'#64748B'};display:inline-flex;align-items:center;gap:5px">${catIcon(c,14)} ${c.lbl}</button>`;}).join('')}
     </div>`:''}
     <div style="display:flex;justify-content:space-between;align-items:center;margin:0 0 14px">
       <span></span>
@@ -9425,7 +9428,7 @@ function Profile(){
   }
 
   const tabItems=isTeacher&&myCats.length
-    ?[...myCats.map(cid=>{const c=CATS.find(x=>x.id===cid)||{em:'🎓',lbl:cid};return [cid,c.lbl];}),...[['bookings','<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>הזמנות'+(teacherPendingBookings.length>0?` (${teacherPendingBookings.length})`:'')],['wallet','<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>ארנק'],['portfolio','🖼 תיק עבודות'],['ach','<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M17 5h3a2 2 0 0 1 0 4h-1M7 5H4a2 2 0 0 0 0 4h1"/></svg>הישגים'],['about','<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>אודות']]]
+    ?[...myCats.map(cid=>{const c=catById(cid);return [cid,c.lbl];}),...[['bookings','<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>הזמנות'+(teacherPendingBookings.length>0?` (${teacherPendingBookings.length})`:'')],['wallet','<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>ארנק'],['portfolio','🖼 תיק עבודות'],['ach','<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M17 5h3a2 2 0 0 1 0 4h-1M7 5H4a2 2 0 0 0 0 4h1"/></svg>הישגים'],['about','<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>אודות']]]
     :[['lessons','<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>שיעורים'],['ach','<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M17 5h3a2 2 0 0 1 0 4h-1M7 5H4a2 2 0 0 0 0 4h1"/></svg>הישגים'],['about','<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>אודות']];
 
   // ─── STUDENT PROFILE (dedicated design) ─────────────────────────────────────
@@ -9706,7 +9709,7 @@ function Community(){
     </div>
   </div>`:"";
   const _isTeacherU=currentUserData?.role==='teacher';
-  const _groupsHtml=(()=>{const openG=communityGroups.filter(g=>g.status==='open'&&(!S.groupSubj||g.subject===S.groupSubj));const hdr=_isTeacherU?`<div style="display:flex;gap:8px;margin-bottom:16px"><button onclick="showCreateGroupDialog()" style="flex:1;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:14px;padding:12px;font-weight:800;font-size:13px;cursor:pointer">+ צור קבוצה</button><button onclick="showTeacherGroupsPanel()" style="flex:1;background:rgba(20,184,166,0.1);border:1.5px solid rgba(20,184,166,0.3);color:#14B8A6;border-radius:14px;padding:12px;font-weight:800;font-size:13px;cursor:pointer">${icon("users",14)} הקבוצות שלי</button></div>`:currentUser?`<div style="margin-bottom:14px"><button onclick="showStudentGroupsPanel()" style="width:100%;background:rgba(20,184,166,0.08);border:1.5px solid rgba(20,184,166,0.25);color:#14B8A6;border-radius:14px;padding:11px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">${icon("users",14)} הקבוצות שלי${Object.keys(myGroupStatuses).length?' ('+Object.keys(myGroupStatuses).length+')':''}</button></div>`:'';const allSubjs=[...new Set(communityGroups.filter(g=>g.status==='open'&&g.subject).map(g=>g.subject))];const subjFilter=allSubjs.length>1?'<div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px">'+['<button onclick="S.groupSubj=null;render()" style="flex-shrink:0;padding:6px 14px;border-radius:50px;font-size:12px;font-weight:800;cursor:pointer;border:none;background:'+(S.groupSubj?'rgba(100,116,139,0.1)':'linear-gradient(135deg,#14B8A6,#06B6D4)')+';color:'+(S.groupSubj?'#64748B':'#fff')+'">הכל</button>',...allSubjs.map(sid=>{const c=CATS.find(x=>x.id===sid)||{em:'🎓',lbl:sid,col:'#14B8A6'};const on=S.groupSubj===sid;return '<button onclick="S.groupSubj=\''+sid+'\';render()" style="flex-shrink:0;padding:6px 14px;border-radius:50px;font-size:12px;font-weight:800;cursor:pointer;border:none;background:'+(on?c.col:'rgba(100,116,139,0.1)')+';color:'+(on?'#fff':'#64748B')+'">'+catIcon(c,13)+' '+c.lbl+'</button>';})].join('')+'</div>':'';if(!openG.length)return hdr+subjFilter+`<div style="text-align:center;padding:40px 20px"><div style="margin-bottom:14px">${icon("home",64)}</div><h3 style="font-weight:900;font-size:18px;margin:0 0 8px">אין קבוצות פעילות</h3><p style="color:#64748B;font-size:13px">${S.groupSubj?'נסה לשנות את הסינון':_isTeacherU?'היה הראשון ליצור קבוצה!':'בקרוב יהיו קבוצות זמינות...'}</p></div>`;return hdr+subjFilter+openG.map(g=>{const cat=CATS.find(c=>c.id===g.subject)||{em:'🎓',lbl:g.subject||'כללי',col:'#14B8A6'};const spots=Math.max(0,(g.maxStudents||0)-(g.membersCount||0));const spotsHtml=(g.maxStudents||0)>0?spots>0?`<div style="text-align:center;background:rgba(16,185,129,0.1);border-radius:12px;padding:8px 12px;flex-shrink:0"><div style="font-weight:900;font-size:16px;color:#10B981">${spots}</div><div style="font-size:10px;color:#64748B">מקומות</div></div>`:`<div style="background:rgba(239,68,68,0.1);border-radius:12px;padding:8px 12px;flex-shrink:0"><div style="font-size:11px;font-weight:800;color:#EF4444">מלא</div></div>`:'';return `<div class="card" onclick="showGroupDetail('${g.id}')" style="cursor:pointer;margin-bottom:12px;padding:16px 18px"><div style="display:flex;gap:12px;align-items:center"><div style="width:48px;height:48px;border-radius:14px;background:${cat.col}18;display:flex;align-items:center;justify-content:center;flex-shrink:0">${catIcon(cat,26)}</div><div style="flex:1;min-width:0"><div style="font-weight:900;font-size:15px;margin-bottom:3px">${g.title}</div><div style="font-size:12px;color:${cat.col};font-weight:700">${cat.lbl}${g.isMixed?' · 🌈 מעורבת':''}</div></div>${spotsHtml}</div>${g.desc?`<p style="margin:10px 0 0;font-size:13px;color:#64748B;line-height:1.5">${g.desc.substring(0,100)}${g.desc.length>100?'...':''}</p>`:''}<div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">${g.day?`<span style="background:rgba(20,184,166,0.1);color:#14B8A6;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">📅 ${g.day}</span>`:''}${g.time?` <span style="background:rgba(20,184,166,0.1);color:#14B8A6;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">${icon("clock",14)} ${g.time}</span>`:''}${g.location?` <span style="background:rgba(20,184,166,0.1);color:#14B8A6;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">${icon("pin",14)} ${g.location}</span>`:''}${g.price?`<span style="background:rgba(20,184,166,0.1);color:#14B8A6;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">₪${g.price}</span>`:`<span style="background:rgba(16,185,129,0.1);color:#10B981;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">חינם!</span>`}</div></div>`;}).join('');})();
+  const _groupsHtml=(()=>{const openG=communityGroups.filter(g=>g.status==='open'&&(!S.groupSubj||g.subject===S.groupSubj));const hdr=_isTeacherU?`<div style="display:flex;gap:8px;margin-bottom:16px"><button onclick="showCreateGroupDialog()" style="flex:1;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:14px;padding:12px;font-weight:800;font-size:13px;cursor:pointer">+ צור קבוצה</button><button onclick="showTeacherGroupsPanel()" style="flex:1;background:rgba(20,184,166,0.1);border:1.5px solid rgba(20,184,166,0.3);color:#14B8A6;border-radius:14px;padding:12px;font-weight:800;font-size:13px;cursor:pointer">${icon("users",14)} הקבוצות שלי</button></div>`:currentUser?`<div style="margin-bottom:14px"><button onclick="showStudentGroupsPanel()" style="width:100%;background:rgba(20,184,166,0.08);border:1.5px solid rgba(20,184,166,0.25);color:#14B8A6;border-radius:14px;padding:11px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">${icon("users",14)} הקבוצות שלי${Object.keys(myGroupStatuses).length?' ('+Object.keys(myGroupStatuses).length+')':''}</button></div>`:'';const allSubjs=[...new Set(communityGroups.filter(g=>g.status==='open'&&g.subject).map(g=>g.subject))];const subjFilter=allSubjs.length>1?'<div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px">'+['<button onclick="S.groupSubj=null;render()" style="flex-shrink:0;padding:6px 14px;border-radius:50px;font-size:12px;font-weight:800;cursor:pointer;border:none;background:'+(S.groupSubj?'rgba(100,116,139,0.1)':'linear-gradient(135deg,#14B8A6,#06B6D4)')+';color:'+(S.groupSubj?'#64748B':'#fff')+'">הכל</button>',...allSubjs.map(sid=>{const c=catById(sid);const on=S.groupSubj===sid;return '<button onclick="S.groupSubj=\''+sid+'\';render()" style="flex-shrink:0;padding:6px 14px;border-radius:50px;font-size:12px;font-weight:800;cursor:pointer;border:none;background:'+(on?c.col:'rgba(100,116,139,0.1)')+';color:'+(on?'#fff':'#64748B')+'">'+catIcon(c,13)+' '+c.lbl+'</button>';})].join('')+'</div>':'';if(!openG.length)return hdr+subjFilter+`<div style="text-align:center;padding:40px 20px"><div style="margin-bottom:14px">${icon("home",64)}</div><h3 style="font-weight:900;font-size:18px;margin:0 0 8px">אין קבוצות פעילות</h3><p style="color:#64748B;font-size:13px">${S.groupSubj?'נסה לשנות את הסינון':_isTeacherU?'היה הראשון ליצור קבוצה!':'בקרוב יהיו קבוצות זמינות...'}</p></div>`;return hdr+subjFilter+openG.map(g=>{const cat=catById(g.subject);const spots=Math.max(0,(g.maxStudents||0)-(g.membersCount||0));const spotsHtml=(g.maxStudents||0)>0?spots>0?`<div style="text-align:center;background:rgba(16,185,129,0.1);border-radius:12px;padding:8px 12px;flex-shrink:0"><div style="font-weight:900;font-size:16px;color:#10B981">${spots}</div><div style="font-size:10px;color:#64748B">מקומות</div></div>`:`<div style="background:rgba(239,68,68,0.1);border-radius:12px;padding:8px 12px;flex-shrink:0"><div style="font-size:11px;font-weight:800;color:#EF4444">מלא</div></div>`:'';return `<div class="card" onclick="showGroupDetail('${g.id}')" style="cursor:pointer;margin-bottom:12px;padding:16px 18px"><div style="display:flex;gap:12px;align-items:center"><div style="width:48px;height:48px;border-radius:14px;background:${cat.col}18;display:flex;align-items:center;justify-content:center;flex-shrink:0">${catIcon(cat,26)}</div><div style="flex:1;min-width:0"><div style="font-weight:900;font-size:15px;margin-bottom:3px">${g.title}</div><div style="font-size:12px;color:${cat.col};font-weight:700">${cat.lbl}${g.isMixed?' · 🌈 מעורבת':''}</div></div>${spotsHtml}</div>${g.desc?`<p style="margin:10px 0 0;font-size:13px;color:#64748B;line-height:1.5">${g.desc.substring(0,100)}${g.desc.length>100?'...':''}</p>`:''}<div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">${g.day?`<span style="background:rgba(20,184,166,0.1);color:#14B8A6;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">📅 ${g.day}</span>`:''}${g.time?` <span style="background:rgba(20,184,166,0.1);color:#14B8A6;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">${icon("clock",14)} ${g.time}</span>`:''}${g.location?` <span style="background:rgba(20,184,166,0.1);color:#14B8A6;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">${icon("pin",14)} ${g.location}</span>`:''}${g.price?`<span style="background:rgba(20,184,166,0.1);color:#14B8A6;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">₪${g.price}</span>`:`<span style="background:rgba(16,185,129,0.1);color:#10B981;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">חינם!</span>`}</div></div>`;}).join('');})();
 
   const _briefsHtml=(()=>{
     const briefs=S.parentBriefs||[];
@@ -9714,7 +9717,7 @@ function Community(){
       :_isTeacherU?`<div style="background:rgba(20,184,166,0.06);border:1.5px solid rgba(20,184,166,0.2);border-radius:14px;padding:12px 14px;margin-bottom:14px;font-size:13px;color:#14B8A6;font-weight:700;text-align:center">${icon('award',14,'#14B8A6')} כמורה — ראה בקשות הורים ושלח הצעות</div>`:'';
     if(!briefs.length)return hdr+`<div style="text-align:center;padding:40px 20px"><div style="margin-bottom:14px">${icon('file-text',48,'#94A3B8')}</div><h3 style="font-weight:900;font-size:18px;margin:0 0 8px">אין בקשות פעילות</h3><p style="color:#64748B;font-size:13px">${(!_isTeacherU&&currentUser)?'פרסם בקשה ומורים יגיבו בהצעות מחיר':'בקרוב יהיו בקשות של הורים לצפייה'}</p></div>`;
     return hdr+briefs.map(b=>{
-      const cat=CATS.find(c=>c.id===b.subject)||{em:'🎓',lbl:b.subject||'כללי',col:'#14B8A6'};
+      const cat=catById(b.subject);
       const isMine=currentUser&&b.parentUid===currentUser.uid;
       const ago=Math.round((Date.now()-(b.createdAt||0))/60000);
       const agoTxt=ago<1?'עכשיו':ago<60?ago+' דק\'':ago<1440?Math.floor(ago/60)+' שע\'':Math.floor(ago/1440)+' ימים';
@@ -10038,7 +10041,7 @@ function showBriefProposalDialog(briefId){
   const brief=(S.parentBriefs||[]).find(b=>b.id===briefId);
   if(!brief){showFireToast('❌ הבקשה לא נמצאה');return;}
   if(brief.parentUid===currentUser.uid){showFireToast('❌ לא ניתן להגיש הצעה לבקשה שלך');return;}
-  const catObj=CATS.find(c=>c.id===brief.subject)||{em:'🎓',lbl:brief.subject||'כללי',col:'#14B8A6'};
+  const catObj=catById(brief.subject);
   const ov=document.createElement('div');
   ov.id='_bpOv';
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(8px);direction:rtl';
@@ -10101,7 +10104,7 @@ async function showMyBriefProposals(briefId){
     if(snap.exists())snap.forEach(c=>proposals.push({id:c.key,...c.val()}));
     proposals.sort((a,b)=>a.price-b.price);
   }catch(e){showFireToast('❌ '+e.message);return;}
-  const catObj=CATS.find(c=>c.id===brief.subject)||{em:'🎓',lbl:brief.subject||'כללי',col:'#14B8A6'};
+  const catObj=catById(brief.subject);
   const ov=document.createElement('div');
   ov.id='_mpOv';
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(8px);direction:rtl';
@@ -11024,7 +11027,7 @@ function toggleFaq(i){
 // ─────────────────────────────────────────────────────────────────────────────
 function showEditCatProfileDialog(catId){
   if(!currentUser){showFireToast('❌ לא מחובר');return;}
-  const cat=CATS.find(x=>x.id===catId)||{em:'🎓',lbl:catId,col:'#14B8A6'};
+  const cat=catById(catId);
   const t=TEACHERS.find(x=>x.id===currentUser.uid)||{};
   const existing=(t.catProfiles||{})[catId]||{};
   const ov=document.createElement('div');
@@ -11118,7 +11121,7 @@ function showEditSubjectDialog(catId){
   if(!currentUser)return;
   const t=TEACHERS.find(x=>x.id===currentUser.uid);
   if(!t)return;
-  const catObj=CATS.find(x=>x.id===catId)||{em:'🎓',lbl:catId,col:'#14B8A6'};
+  const catObj=catById(catId);
   const cp=t?.catProfiles?.[catId]||{};
   const catVids=teacherVideos.filter(v=>v.cat===catId);
   const ov=document.createElement('div');
@@ -11430,7 +11433,7 @@ function showCreateGroupDialog(){
     </div>
     <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">${icon("tag",14)} מקצוע</label>
     <select id="_cgCat" style="width:100%;background:rgba(20,184,166,0.06);border:1.5px solid rgba(20,184,166,0.25);border-radius:12px;padding:11px;font-size:13px;font-family:inherit;direction:rtl;outline:none;box-sizing:border-box;margin-bottom:12px">
-      ${myCats.map(cid=>{const c=CATS.find(x=>x.id===cid)||{em:'🎓',lbl:cid};return `<option value="${cid}">${c.em} ${c.lbl}</option>`;}).join('')}
+      ${myCats.map(cid=>{const c=catById(cid);return `<option value="${cid}">${c.em?c.em+' ':''}${c.lbl}</option>`;}).join('')}
     </select>
     <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">${icon("file-text",14)} כותרת הקבוצה</label>
     <input id="_cgTitle" placeholder="לדוגמה: קבוצת כדורגל לגיל 10-12" style="width:100%;background:rgba(20,184,166,0.06);border:1.5px solid rgba(20,184,166,0.25);border-radius:12px;padding:11px;font-size:13px;direction:rtl;outline:none;box-sizing:border-box;margin-bottom:12px">
@@ -11493,7 +11496,7 @@ async function _saveNewGroup(){
 function showGroupDetail(groupId){
   const g=communityGroups.find(x=>x.id===groupId);
   if(!g)return;
-  const catObj=CATS.find(x=>x.id===g.subject)||{em:'🎓',lbl:g.subject||'כללי',col:'#14B8A6'};
+  const catObj=catById(g.subject);
   const spotsLeft=(g.maxStudents||5)-(g.membersCount||0);
   const myStatus=myGroupStatuses[groupId]?.status||null;
   const isOwner=currentUser?.uid===g.teacherId;
@@ -11578,7 +11581,7 @@ async function showStudentGroupsPanel(){
   for(const gId of groupIds){
     const g=communityGroups.find(x=>x.id===gId);
     if(!g)continue;
-    const cat=CATS.find(c=>c.id===g.subject)||{em:'🎓',lbl:g.subject||'כללי',col:'#14B8A6'};
+    const cat=catById(g.subject);
     const st=myGroupStatuses[gId]?.status||'pending';
     const stLabel=st==='approved'?'✅ אושרת':st==='rejected'?'❌ נדחתה':'⏳ ממתינה';
     const stCol=st==='approved'?'#10B981':st==='rejected'?'#EF4444':'#F59E0B';
@@ -11614,7 +11617,7 @@ async function showTeacherGroupsPanel(){
     const snap=await db.ref('groupMembers/'+g.id).get().catch(()=>null);
     const members=[];
     if(snap?.exists())snap.forEach(c=>members.push({uid:c.key,...c.val()}));
-    const catObj=CATS.find(x=>x.id===g.subject)||{em:'🎓',lbl:g.subject||'כללי',col:'#14B8A6'};
+    const catObj=catById(g.subject);
     membersHtml+=`<div style="background:rgba(100,116,139,0.06);border-radius:18px;padding:14px;margin-bottom:12px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
         <div style="display:flex;align-items:center;gap:8px">
