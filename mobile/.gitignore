@@ -9,5 +9,7 @@ ios/App/Pods/
 ios/App/App.xcworkspace/xcuserdata/
 ios/App/App.xcodeproj/xcuserdata/
 *.keystore
+*.jks
 *.p12
 *.mobileprovision
+android/keystore.properties
