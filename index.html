@@ -1077,6 +1077,11 @@ const catById=id=>{
   return CATS.find(c=>c.id===id)||{id,lbl:id||'כללי',col:'#14B8A6'};
 };
 const stars=r=>"★".repeat(Math.floor(r))+" "+r;
+function timeAgoTxt(ts){
+  if(!ts)return '';
+  const m=Math.round((Date.now()-ts)/60000);
+  return m<1?'עכשיו':m<60?m+' דק\'':m<1440?Math.floor(m/60)+' שע\'':Math.floor(m/1440)+' ימים';
+}
 const mTag=m=>`<span class="tag ${m==="online"?"t-online":"t-frontal"}">${m==="online"?icon("smartphone",12)+" אונליין":icon("users",12)+" פרונטלי"}</span>`;
 const gTag=b=>b?`<span class="tag t-gold">${b}</span>`:"";
 const lTag=o=>o?`<span class="tag t-live">מחובר</span>`:"";
@@ -3154,8 +3159,7 @@ function showNotificationsPanel(){
       const ico=icons[n.type]||'🔔';
       const ttl=titles[n.type]||'התראה';
       const col=cols[n.type]||'#14B8A6';
-      const ago=Math.round((Date.now()-(n.createdAt||0))/60000);
-      const agoTxt=ago<1?'עכשיו':ago<60?ago+' דק\'':ago<1440?Math.floor(ago/60)+' שע\'':Math.floor(ago/1440)+' ימים';
+      const agoTxt=timeAgoTxt(n.createdAt);
       let sub='';
       if(n.type==='newBooking')sub=(n.from||'תלמיד')+(n.day?' • יום '+n.day+' '+n.time:'')+(n.amount?' • ₪'+n.amount:'');
       else if(n.type==='bookingApproved')sub=(n.from||'המורה')+(n.day?' • יום '+n.day+' '+n.time:'');
@@ -3675,18 +3679,6 @@ function setupConvListeners(){
 function teardownConvListeners(){
   Object.values(_convListeners).forEach(q=>{try{q.off();}catch(e){}});
   _convListeners={};
-}
-
-async function refreshChats(){
-  if(!currentUser)return;
-  showFireToast('🔄 מרענן שיחות...');
-  await loadUserChats();
-  setupConvListeners();
-  await pollForNewMessages();
-  if(currentUserData?.role==='teacher')await loadTeacherBookings();
-  else await loadStudentBookings();
-  render();
-  showFireToast('✅ השיחות עודכנו');
 }
 
 // ── Active poll: check each known chat for new messages via .get() ──────────
@@ -7236,7 +7228,7 @@ function renderAdminTab(){
     const pending=adminAllReviews.filter(r=>!r.approved);
     const approved=adminAllReviews.filter(r=>r.approved===true);
     const starsHtml=n=>'⭐'.repeat(n)+'☆'.repeat(5-n);
-    const ago=ts=>{const m=Math.round((Date.now()-ts)/60000);return m<60?m+' דק\'':m<1440?Math.floor(m/60)+' שע\'':Math.floor(m/1440)+' ימים';};
+    const ago=timeAgoTxt;
     const renderReview=(r,showActions)=>`
       <div style="background:#fff;border-radius:18px;margin-bottom:10px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,0.06)">
         <div style="padding:14px 16px 10px;display:flex;align-items:center;gap:12px">
@@ -8638,7 +8630,7 @@ function Teacher(){
       <!-- Reviews section -->
       ${(()=>{
         const starsHtml=n=>'⭐'.repeat(n)+'☆'.repeat(5-n);
-        const ago=ts=>{const m=Math.round((Date.now()-ts)/60000);return m<60?m+' דק\'':m<1440?Math.floor(m/60)+' שע\'':Math.floor(m/1440)+' ימים';};
+        const ago=timeAgoTxt;
         return `<div id="_reviewsSection" class="card" style="padding:16px;margin-bottom:16px">
           ${(()=>{
             return '';
@@ -8983,7 +8975,6 @@ function Messages(){
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <button onclick="back()" style="background:rgba(255,255,255,.2);border:none;color:#fff;font-size:14px;cursor:pointer;border-radius:50px;padding:8px 14px;font-weight:700">← חזור</button>
           <button onclick="go('weeklySchedule')" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;font-size:12px;cursor:pointer;border-radius:50px;padding:8px 12px;font-weight:800;display:flex;align-items:center;gap:5px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> לוח</button>
-          <button onclick="refreshChats()" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;font-size:12px;cursor:pointer;border-radius:50px;padding:8px 12px;font-weight:800;display:flex;align-items:center;gap:5px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> רענן</button>
         </div>
         <div style="text-align:right"><h2 style="font-size:22px;font-weight:900;margin:0;display:flex;align-items:center;gap:8px;justify-content:flex-end;flex-wrap:wrap">${isTeacherRole?'הודעות והזמנות':'הודעות ושיעורים'}${isTeacherRole?'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>':'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>'}</h2><p style="color:rgba(255,255,255,.85);font-size:12px;margin:4px 0 0">${approved.length} שיעורים פעילים</p></div>
       </div>
@@ -9007,8 +8998,7 @@ function Messages(){
       ${userChats.length>0?`
         <h3 style="font-size:14px;font-weight:800;margin:0 0 12px;color:#06B6D4;display:flex;align-items:center;gap:6px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> שיחות פעילות</h3>
         ${userChats.slice(0,5).map(uc=>{
-          const ago=Math.round((Date.now()-(uc.lastTime||0))/60000);
-          const agoTxt=ago<1?'עכשיו':ago<60?ago+' דק\'':ago<1440?Math.floor(ago/60)+' שע\'':Math.floor(ago/1440)+' ימים';
+          const agoTxt=timeAgoTxt(uc.lastTime);
           const isUnread=!!uc.unread;
           return `
           <button onclick="S.chat={otherUid:'${uc.otherUid}',otherName:'${jsAttrEscape(uc.otherName||'')}'};go('chat')" style="width:100%;background:${isUnread?'rgba(6,182,212,0.07)':'#fff'};border:${isUnread?'1.5px solid rgba(6,182,212,0.35)':'none'};border-radius:18px;padding:13px;margin-bottom:10px;display:flex;align-items:center;gap:12px;cursor:pointer;box-shadow:0 4px 14px rgba(20,184,166,0.10);text-align:right">
@@ -9394,7 +9384,7 @@ function Profile(){
     const pendingB=teacherAllBookings.filter(b=>b.status==='pending');
     const approvedB=teacherAllBookings.filter(b=>b.status==='approved'||b.status==='completed');
     const rejectedB=teacherAllBookings.filter(b=>b.status==='rejected');
-    const ago=ts=>{const m=Math.round((Date.now()-ts)/60000);return m<60?m+' דק\'':m<1440?Math.floor(m/60)+' שע\'':Math.floor(m/1440)+' ימים';};
+    const ago=timeAgoTxt;
     content=teacherAllBookings.length===0?`
       <div style="background:rgba(255,255,255,0.7);backdrop-filter:blur(10px);border-radius:20px;padding:40px 24px;text-align:center;margin-top:10px">
         <div style="margin-bottom:12px">${icon("calendar",54)}</div>
@@ -9507,7 +9497,7 @@ function Profile(){
         const unread=userChats.filter(c=>c.unread);
         const all=userChats.slice(0,3);
         if(all.length===0)return '';
-        const ago=ts=>{const m=Math.round((Date.now()-(ts||0))/60000);return m<1?'עכשיו':m<60?m+' דק\'':m<1440?Math.floor(m/60)+' שע\'':Math.floor(m/1440)+' ימים';};
+        const ago=timeAgoTxt;
         return `
         <div style="background:${unread.length>0?'rgba(6,182,212,0.06)':'rgba(255,255,255,0.7)'};border:1.5px solid ${unread.length>0?'rgba(6,182,212,0.35)':'rgba(20,184,166,0.2)'};border-radius:18px;padding:12px 14px;margin-bottom:14px">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
@@ -9719,8 +9709,7 @@ function Community(){
     return hdr+briefs.map(b=>{
       const cat=catById(b.subject);
       const isMine=currentUser&&b.parentUid===currentUser.uid;
-      const ago=Math.round((Date.now()-(b.createdAt||0))/60000);
-      const agoTxt=ago<1?'עכשיו':ago<60?ago+' דק\'':ago<1440?Math.floor(ago/60)+' שע\'':Math.floor(ago/1440)+' ימים';
+      const agoTxt=timeAgoTxt(b.createdAt);
       const actionBtn=isMine
         ?`<button onclick="showMyBriefProposals('${b.id}')" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:11px;font-weight:900;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">${icon('users',14,'#fff')} הצעות שהתקבלו</button>`
         :_isTeacherU
@@ -9939,8 +9928,7 @@ async function loadCommunityPosts(){
           p.reps=Object.values(p.reps);
         }
         if(!p.reps)p.reps=[];
-        const ago=Math.round((Date.now()-(p.createdAt||0))/60000);
-        p.time=ago<1?'עכשיו':ago<60?ago+' דק\'':ago<1440?Math.floor(ago/60)+' שע\'':Math.floor(ago/1440)+' ימים';
+        p.time=timeAgoTxt(p.createdAt);
         p.liked=currentUser&&p.likedBy&&p.likedBy[currentUser.uid];
         S.posts.push(p);
       });
@@ -11894,7 +11882,7 @@ function render(){
   const _discoverPrevScroll=_discoverScroller?_discoverScroller.scrollTop:0;
 
   const fn=SCREENS[S.screen]||Home;
-  const noRefreshScreens=['splash','login','register','safety','parentReg','teacherReg','teacherPending','studentPending','regSuccess','parentPortal','weeklySchedule','messages','discover'];
+  const noRefreshScreens=['splash','login','register','safety','parentReg','teacherReg','teacherPending','studentPending','regSuccess','parentPortal','weeklySchedule','discover'];
   const showRefresh=!noRefreshScreens.includes(S.screen);
   document.getElementById("app").innerHTML=fn()+SharePanel()+(showRefresh?`<button id="_rfshBtn" class="rfsh-btn" onclick="refreshCurrentScreen()" title="רענן">↻</button>`:'')
 
@@ -11951,7 +11939,13 @@ async function refreshCurrentScreen(){
     loads.push(loadRealTeachers());
     if(['home','nearby','search'].includes(scr)){}// כבר טוען מורים
     if(scr==='community'){loads.push(loadCommunityPosts());loads.push(loadParentBriefs());}
-    if(scr==='messages'){loads.push(loadUserChats());loads.push(loadLessonSummaries());if(currentUserData?.role==='teacher')loads.push(loadTeacherBookings());}
+    if(scr==='messages'){
+      await loadUserChats();
+      setupConvListeners();
+      loads.push(pollForNewMessages());
+      loads.push(loadLessonSummaries());
+      loads.push(currentUserData?.role==='teacher'?loadTeacherBookings():loadStudentBookings());
+    }
     if(scr==='profile'){
       if(currentUserData?.role==='teacher')loads.push(loadTeacherVideos());
       loads.push(loadNotifications());
