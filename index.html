@@ -4269,7 +4269,7 @@ async function _requestBrowserNotifPermission(){
 }
 
 let adminAllUsers=[],adminAllTeachers=[],adminAllVideos=[],adminAllReports=[],adminAllBookings=[],adminIncompleteTeachers=[],adminAllPosts=[],adminAllReviews=[],adminAllStories=[];
-let adminAlertStudents=[],adminAlertPosts=[],adminAlertPayments=[],adminAlertSubscriptions=[],adminContactMessages=[],adminAlertStoriesPending=0; // מקור ראשי לממתינים
+let adminAlertStudents=[],adminAlertPosts=[],adminAlertSubscriptions=[],adminContactMessages=[],adminAlertStoriesPending=0; // מקור ראשי לממתינים
 let adminTab='users';
 let _adminPendingCount=0;
 
@@ -4286,7 +4286,7 @@ let _adminDataLoading=false; // מנע listener מלאפס נתונים בזמן
 function _startAdminAlertsListener(){
   if(!isAdmin())return;
   const _rebadge=()=>{
-    const n=adminAlertStudents.length+adminAlertPosts.length+adminAlertPayments.length+adminContactMessages.filter(m=>!m.read).length+adminAlertStoriesPending;
+    const n=adminAlertStudents.length+adminAlertPosts.length+adminContactMessages.filter(m=>!m.read).length+adminAlertStoriesPending;
     _updateAdminBadge(n);
     if(document.getElementById('_adminPanel')&&!_adminActionInProgress)renderAdminPanel();
   };
@@ -4295,18 +4295,14 @@ function _startAdminAlertsListener(){
     // בנה מערכים חדשים בנפרד לפני השמה (atomic update — מונע מצב ביניים)
     const newStudents=[];
     const newPosts=[];
-    const newPayments=[];
     if(snap.exists()){
       const st=snap.child('students');
       if(st.exists())st.forEach(c=>newStudents.push({uid:c.key,...c.val()}));
       const po=snap.child('posts');
       if(po.exists())po.forEach(c=>newPosts.push({id:c.key,...c.val()}));
-      const py=snap.child('payments');
-      if(py.exists())py.forEach(c=>newPayments.push({id:c.key,...c.val()}));
     }
     adminAlertStudents=newStudents;
     adminAlertPosts=newPosts;
-    adminAlertPayments=newPayments.filter(p=>p.status==='awaitingPayment');
     _rebadge();
   });
   db.ref('contactMessages').on('value',snap=>{
@@ -4351,10 +4347,9 @@ async function loadAdminData(){
   try{
     // קרא users דרך REST API (עוקף קאש SDK) + adminAlerts במקביל
     const token=await firebase.auth().currentUser.getIdToken(false);
-    const [usersRes,alertsSnap,payAlertsSnap,subAlertsSnap,msgsSnap]=await Promise.all([
+    const [usersRes,alertsSnap,subAlertsSnap,msgsSnap]=await Promise.all([
       fetch('https://kidemy-83a17-default-rtdb.firebaseio.com/users.json?auth='+token,{cache:'no-store'}),
       db.ref('adminAlerts/students').get(),
-      db.ref('adminAlerts/payments').get(),
       db.ref('adminAlerts/subscriptions').get(),
       db.ref('contactMessages').get()
     ]);
@@ -4366,10 +4361,6 @@ async function loadAdminData(){
     // סנכרן adminAlertStudents מ-Firebase ישירות
     adminAlertStudents=[];
     if(alertsSnap.exists())alertsSnap.forEach(c=>adminAlertStudents.push({uid:c.key,...c.val()}));
-    // סנכרן adminAlertPayments
-    adminAlertPayments=[];
-    if(payAlertsSnap.exists())payAlertsSnap.forEach(c=>{const v={id:c.key,...c.val()};if(v.status==='awaitingPayment')adminAlertPayments.push(v);});
-    adminAlertPayments.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
     adminAlertSubscriptions=[];
     if(subAlertsSnap.exists())subAlertsSnap.forEach(c=>{const v={id:c.key,...c.val()};if(v.status==='awaitingPayment')adminAlertSubscriptions.push(v);});
     adminAlertSubscriptions.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
@@ -4521,88 +4512,6 @@ async function adminRejectBooking(teacherId,bookingId){
   }catch(e){showFireToast('❌ '+e.message);}
 }
 
-// ── אימות תשלום: המנהל מאשר שהכסף הגיע ─────────────────────────────────────
-async function adminConfirmPayment(bookingId){
-  try{
-    showFireToast('⏳ מאמת תשלום...');
-    const payAlert=adminAlertPayments.find(p=>p.id===bookingId||p.bookingId===bookingId);
-    if(!payAlert){showFireToast('❌ לא נמצאה הזמנה');return;}
-    const bid=payAlert.bookingId||bookingId;
-    const now=Date.now();
-    // עדכן סטטוס בכל הנתיבים
-    await Promise.all([
-      db.ref('bookings/'+bid+'/status').set('pending'),
-      db.ref('bookings/'+bid+'/paymentConfirmedAt').set(now),
-      db.ref('bookings/'+bid+'/paymentConfirmedBy').set('admin'),
-      db.ref('teacherBookings/'+payAlert.teacherId+'/'+bid+'/status').set('pending'),
-      db.ref('teacherBookings/'+payAlert.teacherId+'/'+bid+'/paymentConfirmedAt').set(now),
-      db.ref('userBookings/'+payAlert.studentId+'/'+bid+'/status').set('pending'),
-      db.ref('userBookings/'+payAlert.studentId+'/'+bid+'/paymentConfirmedAt').set(now),
-      db.ref('adminAlerts/payments/'+bid+'/status').set('confirmed'),
-      db.ref('adminAlerts/payments/'+bid+'/confirmedAt').set(now),
-    ]);
-    // שלח התראה למורה — עכשיו הוא יודע על ההזמנה
-    await db.ref('notifications/'+payAlert.teacherId).push({
-      type:'newBooking',from:payAlert.studentName||'תלמיד',
-      bookingId:bid,day:payAlert.day||'',time:payAlert.time||'',
-      amount:payAlert.netToTeacher||payAlert.amount||0,
-      preview:'הזמנה חדשה ממתינה לאישורך',
-      read:false,createdAt:now
-    }).catch(()=>{});
-    // מייל למורה
-    try{
-      const teacherSnap=await db.ref('teachers/'+payAlert.teacherId).get();
-      const teacherEmail=teacherSnap.val()?.email||'';
-      if(teacherEmail)await sendEmail(teacherEmail,
-        `📅 הזמנה חדשה — ${payAlert.studentName||'תלמיד'} — Drushe`,
-        `שלום,\n\nהתשלום אומת ✅ — נא לאשר את ההזמנה:\n\n👤 תלמיד: ${payAlert.studentName||''}\n📅 ${payAlert.day||''} בשעה ${payAlert.time||''}\n💰 לקבלתך: ₪${payAlert.netToTeacher||''}\n\nכנס לאפליקציה ואשר:\nhttps://kidemy-app.netlify.app\n\n– צוות Drushe`
-      );
-    }catch(e){}
-    // מייל לתלמיד — תשלום אומת
-    try{
-      const stuSnap=await db.ref('users/'+payAlert.studentId).get();
-      const stu=stuSnap.val()||{};
-      const notifyEmail=stu.parentEmail||(!(stu.email||'').endsWith('@kidemy.app')&&stu.email)||'';
-      if(notifyEmail)sendEmail(notifyEmail,
-        `✅ התשלום אומת — שיעור עם ${payAlert.teacherName||''} — Drushe`,
-        `שלום ${stu.parentName||stu.name||''},\n\n✅ קיבלנו את התשלום שלך!\n\nהמורה ${payAlert.teacherName||''} יאשר את השיעור תוך 24 שעות.\n📌 קוד הפניה: ${payAlert.payRef||bid.substring(0,8)}\n\n– צוות Drushe`
-      ).catch(()=>{});
-    }catch(e){}
-    // הסר מהמערך המקומי מיד
-    adminAlertPayments=adminAlertPayments.filter(p=>p.id!==bookingId&&p.bookingId!==bid);
-    // עדכן adminAllBookings בזיכרון
-    const bIdx=adminAllBookings.findIndex(x=>x.id===bid);
-    if(bIdx>=0){adminAllBookings[bIdx].status='pending';adminAllBookings[bIdx].paymentConfirmedAt=now;}
-    renderAdminPanel();
-    showFireToast('✅ תשלום אומת! המורה קיבל הודעה.');
-  }catch(e){showFireToast('❌ שגיאה: '+e.message);console.error(e);}
-}
-
-async function adminCancelPayment(bookingId){
-  if(!await _confirm('לבטל את ההזמנה?\nהפעולה אינה ניתנת לביטול.',{confirmText:'בטל הזמנה',cancelText:'חזרה',destructive:true}))return;
-  try{
-    showFireToast('⏳ מבטל הזמנה...');
-    const payAlert=adminAlertPayments.find(p=>p.id===bookingId||p.bookingId===bookingId);
-    if(!payAlert){showFireToast('❌ לא נמצאה הזמנה');return;}
-    const bid=payAlert.bookingId||bookingId;
-    await Promise.all([
-      db.ref('bookings/'+bid+'/status').set('cancelled'),
-      db.ref('teacherBookings/'+payAlert.teacherId+'/'+bid+'/status').set('cancelled'),
-      db.ref('userBookings/'+payAlert.studentId+'/'+bid+'/status').set('cancelled'),
-      db.ref('adminAlerts/payments/'+bid+'/status').set('cancelled'),
-      db.ref('adminAlerts/payments/'+bid+'/cancelledAt').set(Date.now()),
-    ]);
-    // הודעה לתלמיד
-    await db.ref('notifications/'+payAlert.studentId).push({
-      type:'bookingCancelled',from:'Drushe',bookingId:bid,
-      preview:'ההזמנה בוטלה. צור קשר עם הצוות לפרטים.',
-      read:false,createdAt:Date.now()
-    }).catch(()=>{});
-    adminAlertPayments=adminAlertPayments.filter(p=>p.id!==bookingId&&p.bookingId!==bid);
-    renderAdminPanel();
-    showFireToast('🗑 ההזמנה בוטלה.');
-  }catch(e){showFireToast('❌ שגיאה: '+e.message);}
-}
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function adminVerifyStudent(uid){
@@ -6472,7 +6381,7 @@ function showAdminPanel(forceTab=null){
     const upd={};
     unreadMsgs.forEach(m=>{upd[m.id+'/read']=true;m.read=true;});
     db.ref('contactMessages').update(upd).catch(()=>{});
-    _updateAdminBadge(adminAlertStudents.length+adminAlertPosts.length+adminAlertPayments.length);
+    _updateAdminBadge(adminAlertStudents.length+adminAlertPosts.length);
   }
   _verifyAdminPin(()=>{loadAdminData().then(()=>{
     if(forceTab){
@@ -6503,7 +6412,7 @@ async function adminSwitchTab(id){
       const upd={};
       unreadMsgs.forEach(m=>{upd[m.id+'/read']=true;m.read=true;});
       db.ref('contactMessages').update(upd).catch(()=>{});
-      _updateAdminBadge(adminAlertStudents.length+adminAlertPosts.length+adminAlertPayments.length+adminContactMessages.filter(m=>!m.read).length);
+      _updateAdminBadge(adminAlertStudents.length+adminAlertPosts.length+adminContactMessages.filter(m=>!m.read).length);
     }
   }
   if(id==='posts'){
@@ -6624,7 +6533,6 @@ function renderAdminPanel(){
       </div>
       ${totalPending>0?`<div onclick="adminTab='teachers';renderAdminPanel()" style="margin-top:10px;background:rgba(239,68,68,0.85);border-radius:12px;padding:10px 14px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:8px;position:relative;z-index:2">${icon("bell",14)} <span>${totalPending} מורים ממתינים לטיפול – לחץ</span></div>`:''}
       ${_adminCommunityOrphans.length>0?`<div onclick="adminTab='students';renderAdminPanel()" style="margin-top:8px;background:rgba(239,68,68,0.75);border-radius:12px;padding:10px 14px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:8px;position:relative;z-index:2">${icon("alert-triangle",14)} <span>${_adminCommunityOrphans.length} משתמשים פרסמו בקהילה ללא אישור — לחץ לטיפול</span></div>`:''}
-      ${adminAlertPayments.length>0?`<div onclick="adminSwitchTab('payments')" style="margin-top:8px;background:rgba(245,158,11,0.9);border-radius:12px;padding:10px 14px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:8px;position:relative;z-index:2">${icon("dollar",14)} <span>${adminAlertPayments.length} תשלומים ממתינים לאימות — לחץ לאישור</span></div>`:''}
       ${adminContactMessages.filter(m=>!m.read).length>0?`<div onclick="adminSwitchTab('messages')" style="margin-top:8px;background:rgba(6,182,212,0.9);border-radius:12px;padding:10px 14px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:8px;position:relative;z-index:2">${icon("chat",14)} <span>${adminContactMessages.filter(m=>!m.read).length} הודעות חדשות מהאפליקציה — לחץ לצפייה</span></div>`:''}
       ${adminAlertSubscriptions.length>0?`<div onclick="adminSwitchTab('subscriptions')" style="margin-top:8px;background:rgba(139,47,201,0.85);border-radius:12px;padding:10px 14px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:8px;position:relative;z-index:2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg> <span>${adminAlertSubscriptions.length} מנויים ממתינים לאימות תשלום — לחץ לאישור</span></div>`:''}
     </div>
@@ -6639,7 +6547,6 @@ function renderAdminPanel(){
         ${[['teachers','מורים','#14B8A6','<circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/>',adminAllTeachers.length,totalPending],
            ['students','תלמידים','#06B6D4','<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>',realStats.students,Math.max(adminAlertStudents.length,adminAllUsers.filter(u=>u.role!=='teacher'&&u.verified===false).length)],
            ['bookings','הזמנות','#F59E0B','<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',adminAllBookings.length,adminAllBookings.filter(b=>b.status==='pending').length],
-           ['payments','תשלומים ממתינים','#D97706','<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>',adminAlertPayments.length,null],
            ['posts','פוסטים ממתינים','#14B8A6','<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>',Math.max(adminAlertPosts.length,adminAllPosts.filter(p=>p.status==='pending').length),null],
            ['messages','הודעות חדשות','#06B6D4','<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',adminContactMessages.filter(m=>!m.read).length,null],
            ['reports','דיווחים','#DC2626','<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',adminAllReports.filter(r=>r.status==='open').length,null],
@@ -6685,110 +6592,6 @@ function renderAdminTab(){
       <button onclick="confirmDeleteOldUsers()" style="width:100%;background:linear-gradient(135deg,#F59E0B,#B45309);border:none;color:#fff;border-radius:50px;padding:13px;font-weight:900;font-size:14px;cursor:pointer;margin-bottom:8px">🧹 מחק משתמשים ישנים</button>
       <button onclick="confirmResetSystem()" style="width:100%;background:linear-gradient(135deg,#EF4444,#B91C1C);border:none;color:#fff;border-radius:50px;padding:13px;font-weight:900;font-size:14px;cursor:pointer">${icon("trash",14)} מחק הכל ואפס מערכת</button>
     </div>`;
-  if(adminTab==='payments'){
-    // חישוב סיכום פיננסי מהזמנות מאושרות ומושלמות
-    const confirmedBookings=adminAllBookings.filter(b=>b.status==='pending'||b.status==='approved'||b.status==='completed');
-    const totalGross=confirmedBookings.reduce((s,b)=>s+(b.grossAmount||b.price||0),0);
-    const totalSubRevenue=(adminAlertSubscriptions||[]).filter(s=>s.status==='approved').reduce((s,b)=>s+(b.amount||79),0);
-    const pendingPay=adminAlertPayments; // awaitingPayment
-    return `
-      <!-- כפתור רענון -->
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-        <button onclick="loadAdminData().then(()=>renderAdminPanel())" style="background:rgba(20,184,166,0.1);border:1px solid rgba(20,184,166,0.3);color:#14B8A6;border-radius:50px;padding:7px 14px;font-size:12px;font-weight:800;cursor:pointer">${icon("refresh",14)} רענן</button>
-        <h4 style="font-weight:900;font-size:16px;margin:0;color:#0F1A1F">${icon("dollar",14)} אימות תשלומים</h4>
-      </div>
-
-      <!-- סיכום פיננסי -->
-      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:18px">
-        <div style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border-radius:16px;padding:14px;color:#fff;text-align:center">
-          <div style="font-size:20px;font-weight:900">₪${totalGross.toLocaleString()}</div>
-          <div style="font-size:10px;opacity:0.9;margin-top:3px">סה"כ שווי הזמנות</div>
-        </div>
-        <div style="background:linear-gradient(135deg,#8b2fc9,#06B6D4);border-radius:16px;padding:14px;color:#fff;text-align:center">
-          <div style="font-size:20px;font-weight:900">₪${totalSubRevenue.toLocaleString()}</div>
-          <div style="font-size:10px;opacity:0.9;margin-top:3px">הכנסות ממנויים</div>
-        </div>
-      </div>
-
-      <!-- פרטי חשבון Drushe לקבלת תשלומים -->
-      <div style="background:#fff;border:1.5px solid rgba(20,184,166,0.2);border-radius:18px;padding:16px;margin-bottom:16px">
-        <h4 style="font-weight:900;font-size:14px;margin:0 0 10px;color:#14B8A6">${icon("smartphone",14)} פרטי חשבון Drushe (לקבלת תשלומים)</h4>
-        ${[['💜 Bit',ADMIN_PAYMENT.bit],['🅿️ PayPal',ADMIN_PAYMENT.paypal],['🔵 PayBox',ADMIN_PAYMENT.paybox]].map(([n,v])=>`
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(20,184,166,0.08)">
-            <button onclick="if(navigator.clipboard)navigator.clipboard.writeText('${v}').then(()=>showFireToast('📋 הועתק!'))" style="background:rgba(20,184,166,0.1);border:none;color:#14B8A6;border-radius:50px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer">העתק</button>
-            <div style="text-align:right"><div style="font-weight:800;font-size:13px">${n}</div><div style="font-size:12px;color:#64748B;direction:ltr;text-align:right">${v}</div></div>
-          </div>`).join('')}
-      </div>
-
-      <!-- ממתינים לאימות -->
-      <h4 style="font-weight:900;font-size:15px;margin:0 0 12px;color:${pendingPay.length>0?'#D97706':'#64748B'}">
-        ⏳ ממתינים לאימות תשלום (${pendingPay.length})
-      </h4>
-      ${pendingPay.length===0?`
-        <div style="background:rgba(16,185,129,0.06);border:1.5px solid rgba(16,185,129,0.2);border-radius:16px;padding:28px;text-align:center;color:#64748B;margin-bottom:18px">
-          <div style="font-size:40px;margin-bottom:8px">${icon("check-circle",14)}</div>
-          <div style="font-size:14px;font-weight:700;color:#10B981">אין תשלומים ממתינים</div>
-          <div style="font-size:12px;margin-top:4px">כל התשלומים טופלו</div>
-        </div>
-      `:pendingPay.map(p=>`
-        <div style="background:#fff;border:2px solid rgba(245,158,11,0.45);border-radius:20px;padding:16px;margin-bottom:14px;box-shadow:0 4px 16px rgba(245,158,11,0.12)">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
-            <div>
-              <div style="background:rgba(245,158,11,0.15);color:#D97706;font-size:10px;font-weight:800;padding:3px 10px;border-radius:50px;display:inline-block;margin-bottom:6px">⏳ ממתין לאימות</div>
-              <div style="font-size:11px;color:#64748B;direction:ltr;font-family:monospace;font-weight:800;margin-bottom:2px">📌 ${p.payRef||p.id?.substring(0,8)||''}</div>
-            </div>
-            <div style="text-align:left">
-              <div style="font-size:22px;font-weight:900;color:#0F1A1F">₪${p.amount||0}</div>
-              <div style="font-size:10px;color:#64748B">${p.payMethod||''}</div>
-            </div>
-          </div>
-          <div style="background:rgba(248,250,252,1);border-radius:14px;padding:12px;margin-bottom:12px">
-            <div style="display:flex;justify-content:space-between;margin-bottom:6px">
-              <span style="font-size:12px;color:#64748B">תלמיד</span>
-              <span style="font-size:13px;font-weight:800;color:#0F1A1F">${escapeHtml(p.studentName||'')}</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;margin-bottom:6px">
-              <span style="font-size:12px;color:#64748B">מורה</span>
-              <span style="font-size:13px;font-weight:800;color:#0F1A1F">${escapeHtml(p.teacherName||'')}</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;margin-bottom:6px">
-              <span style="font-size:12px;color:#64748B">מועד</span>
-              <span style="font-size:12px;font-weight:700;color:#0F1A1F">${p.day||''} ${p.time||''}</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;border-top:1px solid rgba(20,184,166,0.1);padding-top:8px;margin-top:2px">
-              <span style="font-size:11px;color:#06B6D4">עמלה: ₪${p.commission||0}</span>
-              <span style="font-size:11px;color:#10B981">למורה: ₪${p.netToTeacher||0}</span>
-            </div>
-          </div>
-          <div style="display:flex;gap:8px">
-            <button onclick="adminConfirmPayment('${p.id}')" style="flex:2;background:linear-gradient(135deg,#10B981,#059669);border:none;color:#fff;border-radius:14px;padding:12px;font-weight:900;font-size:13px;cursor:pointer">${icon("check-circle",14)} אישרתי — קיבלתי תשלום</button>
-            <button onclick="adminCancelPayment('${p.id}')" style="flex:1;background:rgba(239,68,68,0.1);border:1.5px solid rgba(239,68,68,0.3);color:#EF4444;border-radius:14px;padding:12px;font-weight:800;font-size:12px;cursor:pointer">${icon("x-circle",14)} בטל</button>
-          </div>
-          <div style="text-align:center;font-size:10px;color:#94A3B8;margin-top:8px">${new Date(p.createdAt||0).toLocaleString('he-IL')}</div>
-        </div>
-      `).join('')}
-
-      <!-- היסטוריה: הזמנות שאומתו -->
-      ${(()=>{
-        const confirmed=adminAllBookings.filter(b=>b.paymentConfirmedAt&&(b.status==='pending'||b.status==='approved'||b.status==='completed')).slice(0,10);
-        if(confirmed.length===0)return '';
-        return `
-        <h4 style="font-weight:900;font-size:14px;margin:20px 0 10px;color:#10B981">${icon("check-circle",14)} אומתו לאחרונה (${confirmed.length})</h4>
-        ${confirmed.map(b=>`
-          <div style="background:rgba(16,185,129,0.04);border:1.5px solid rgba(16,185,129,0.15);border-radius:16px;padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">
-            <div>
-              <div style="font-size:13px;font-weight:800;color:#0F1A1F">${escapeHtml(b.studentName||'')} → ${escapeHtml(b.teacherName||'')}</div>
-              <div style="font-size:11px;color:#64748B;margin-top:2px">${b.day||''} ${b.time||''} • ${b.payMethod||''}</div>
-              <div style="font-size:10px;color:#94A3B8;margin-top:1px">${b.payRef||''}</div>
-            </div>
-            <div style="text-align:left">
-              <div style="font-size:16px;font-weight:900;color:#10B981">₪${b.grossAmount||b.price||0}</div>
-              <div style="font-size:10px;color:#06B6D4">+₪${b.commission||0} עמלה</div>
-            </div>
-          </div>
-        `).join('')}`;
-      })()}`;
-  }
   if(adminTab==='students'){
     // כלול: role=student + כל מי שנרשם עם @kidemy.app ואינו מורה (מגן על רשומות עם role שגוי)
     const _teacherUids=new Set([...adminAllTeachers.map(t=>t.uid),...adminAllUsers.filter(u=>u.role==='teacher').map(u=>u.uid)]);
@@ -7264,7 +7067,6 @@ function renderAdminTab(){
     const _gmvThisMon=_confirmedBks.filter(b=>b.createdAt>=_thisMonStart.getTime()).reduce((s,b)=>s+(b.grossAmount||b.price||0),0);
     const _gmvLastMon=_confirmedBks.filter(b=>b.createdAt>=_lastMonStart.getTime()&&b.createdAt<_thisMonStart.getTime()).reduce((s,b)=>s+(b.grossAmount||b.price||0),0);
     const _avgPrice=_confirmedBks.length>0?Math.round(_gmvTotal/_confirmedBks.length):0;
-    const _pendingGmv=adminAlertPayments.reduce((s,p)=>s+(p.amount||0),0);
     // Activity
     const _completedLessons=adminAllBookings.filter(b=>b.status==='completed').length;
     const _activeTeachers=new Set(_confirmedBks.map(b=>b.teacherId)).size;
@@ -7304,16 +7106,11 @@ function renderAdminTab(){
         </div>
       </div>
 
-      <!-- Revenue + Pending row -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+      <!-- Revenue row -->
+      <div style="margin-bottom:10px">
         <div style="background:#fff;border:1.5px solid rgba(139,47,201,.2);border-radius:16px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,.04)">
           <div style="font-size:10px;color:#64748B;font-weight:700;margin-bottom:4px">הכנסות ממנויים</div>
           <div style="font-size:24px;font-weight:900;color:#8b2fc9">₪${_revTotal.toLocaleString()}</div>
-        </div>
-        <div style="background:#fff;border:1.5px solid rgba(217,119,6,.2);border-radius:16px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,.04)">
-          <div style="font-size:10px;color:#64748B;font-weight:700;margin-bottom:4px">ממתין לאימות תשלום</div>
-          <div style="font-size:24px;font-weight:900;color:#D97706">₪${_pendingGmv.toLocaleString()}</div>
-          <div style="font-size:10px;color:#94A3B8;margin-top:2px">${adminAlertPayments.length} הזמנות</div>
         </div>
       </div>
 
@@ -8900,10 +8697,8 @@ function Booking(){
 function Messages(){
   const isTeacherRole=currentUserData?.role==='teacher';
   const bookingsSource=isTeacherRole?teacherAllBookings:studentBookings;
-  // מורים לא רואים הזמנות שממתינות לאימות תשלום (awaitingPayment)
   const approved=bookingsSource.filter(b=>b.status==='approved'||b.status==='completed');
   const pending=bookingsSource.filter(b=>b.status==='pending');
-  const awaitingPaymentBookings=!isTeacherRole?bookingsSource.filter(b=>b.status==='awaitingPayment'):[];
   const rejected=bookingsSource.filter(b=>b.status==='rejected');
   const cancelled=bookingsSource.filter(b=>b.status==='cancelled');
 
@@ -8955,29 +8750,7 @@ function Messages(){
         <div style="height:14px"></div>
       `:''}
 
-      ${awaitingPaymentBookings.length>0?`
-        <h3 style="font-size:14px;font-weight:800;margin:0 0 12px;color:#D97706">${icon("dollar",14)} ממתינים לאימות תשלום (${awaitingPaymentBookings.length})</h3>
-        ${awaitingPaymentBookings.map(b=>`
-          <div style="background:rgba(255,255,255,0.9);border-radius:20px;padding:16px;margin-bottom:12px;border:2px dashed rgba(245,158,11,0.5);box-shadow:0 2px 12px rgba(245,158,11,0.1)">
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
-              <div style="flex:1">
-                <div style="font-weight:900;font-size:15px;color:#0F1A1F">${escapeHtml(b.teacherName)}</div>
-                <div style="font-size:12px;color:#D97706;font-weight:700;margin-top:3px">📅 יום ${b.day} • ${icon("clock",14)} ${b.time}</div>
-                <div style="font-size:11px;color:#64748B;margin-top:3px">${icon("dollar",14)} ₪${b.grossAmount||b.price||0} • ${b.payMethod||''}</div>
-              </div>
-              <span style="background:rgba(245,158,11,0.15);color:#D97706;font-size:10px;font-weight:800;padding:4px 10px;border-radius:50px;flex-shrink:0">⏳ ממתין לאימות</span>
-            </div>
-            ${b.payRef?`
-            <div style="background:rgba(15,26,31,0.05);border-radius:12px;padding:10px;display:flex;justify-content:space-between;align-items:center">
-              <button onclick="if(navigator.clipboard)navigator.clipboard.writeText('${b.payRef}').then(()=>showFireToast('📋 הועתק!'))" style="background:rgba(20,184,166,0.1);border:none;color:#14B8A6;border-radius:50px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer">${icon("clipboard",14)} העתק</button>
-              <div style="text-align:right"><div style="font-size:10px;color:#64748B">קוד הפניה</div><div style="font-family:monospace;font-weight:900;font-size:15px;color:#0F1A1F;letter-spacing:2px">${b.payRef}</div></div>
-            </div>`:''}
-            <div style="font-size:11px;color:#94A3B8;text-align:center;margin-top:8px">הצוות יאמת את התשלום ויעדכן אותך תוך שעות ספורות</div>
-          </div>
-        `).join('')}
-      `:''}
-
-      ${approved.length===0&&pending.length===0&&awaitingPaymentBookings.length===0?`
+      ${approved.length===0&&pending.length===0?`
         <div style="background:rgba(255,255,255,0.85);backdrop-filter:blur(12px);border-radius:24px;padding:40px 24px;text-align:center;margin-top:30px">
           ${isTeacherRole?`
             <div style="width:64px;height:64px;border-radius:18px;background:#14B8A615;display:flex;align-items:center;justify-content:center;margin:0 auto 14px"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
