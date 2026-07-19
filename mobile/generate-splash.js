@@ -2,7 +2,7 @@ const sharp = require('sharp');
 const path = require('path');
 
 const ROOT = __dirname;
-const LOGO = '/root/.claude/uploads/ca2a159a-39b3-5ca1-ba6c-86038422fc5c/195ff782-1000201684.png';
+const LOGO = path.join(__dirname, 'logo-master.png');
 
 function gradientSvg(w, h) {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">

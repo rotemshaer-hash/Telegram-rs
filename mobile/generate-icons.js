@@ -2,7 +2,7 @@ const sharp = require('sharp');
 const path = require('path');
 
 const ROOT = __dirname;
-const LOGO = '/root/.claude/uploads/ca2a159a-39b3-5ca1-ba6c-86038422fc5c/195ff782-1000201684.png';
+const LOGO = path.join(__dirname, 'logo-master.png');
 
 const densities = [
   ['mdpi', 48, 108],
