@@ -9206,6 +9206,18 @@ function Profile(){
       </div>
       ${(()=>{
         if(currentUserData?.role!=='teacher')return '';
+        const _pendCount=teacherPendingBookings.length;
+        const _tip=_pendCount>0
+          ?`יש לך <strong>${_pendCount} הזמנות ממתינות לאישור</strong> — תלמידים בוחרים מורה גם לפי מספר השיעורים שהשלים, אז כדאי לאשר בהקדם.`
+          :'דירוג ומספר השיעורים שהשלמת הם הדבר הראשון שתלמידים רואים בפרופיל שלך, והשיעורים שהשלמת גם קובעים את המקום שלך בלוח המצוינות. אשר הזמנות מהר ובקש מהתלמידים לדרג בסוף השיעור.';
+        return `
+        <div style="background:rgba(20,184,166,0.06);border:1.5px solid rgba(20,184,166,0.2);border-radius:16px;padding:12px 14px;margin-bottom:14px;display:flex;gap:10px;align-items:flex-start">
+          <span style="font-size:18px;flex-shrink:0">💡</span>
+          <span style="font-size:12.5px;line-height:1.6;color:#374151">${_tip}</span>
+        </div>`;
+      })()}
+      ${(()=>{
+        if(currentUserData?.role!=='teacher')return '';
         const unread=userChats.filter(c=>c.unread);
         const all=userChats.slice(0,3);
         if(all.length===0)return '';
