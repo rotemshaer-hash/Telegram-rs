@@ -105,7 +105,7 @@
     "adminAlerts":  { ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'", ".write": "auth != null" },
     "adminNotifs":  { ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'", ".write": "auth != null" },
     "parentTokens": {
-      "$token": { ".read": "auth.token.email == 'rotemshaer@gmail.com'", ".write": "auth.token.email == 'rotemshaer@gmail.com'" }
+      "$token": { ".read": true, ".write": "auth.token.email == 'rotemshaer@gmail.com'" }
     },
     "parentLinks": {
       "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth != null && auth.uid == $uid" }

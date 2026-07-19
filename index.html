@@ -4932,70 +4932,7 @@ async function _submitRatingFromNotif(bookingId,teacherId,teacherName){
   }catch(e){showFireToast('❌ שגיאה: '+e.message);}
 }
 
-// ─── דוח שבועי להורים 📊 ─────────────────────────────────────────────────────
-async function generateParentViewToken(uid,parentEmail){
-  const _ta=new Uint8Array(24);crypto.getRandomValues(_ta);const token=Array.from(_ta,b=>b.toString(16).padStart(2,'0')).join('').substring(0,32);
-  await db.ref('parentTokens/'+token).set({
-    uid,parentEmail,createdAt:Date.now(),
-    expiresAt:Date.now()+30*24*60*60*1000
-  });
-  return token;
-}
-
-function buildParentEmailBody(studentName,parentName,weekLessons,allLessonsCount,token){
-  const portalUrl='https://kidemy-app.netlify.app/?parentView='+token;
-  const sep='━━━━━━━━━━━━━━━━━━━━━━';
-  const lessonLines=weekLessons.map((l,i)=>{
-    let line=`${i+1}. 📚 ${l.topic||'—'} | 👨‍🏫 ${l.teacherName||''} | 📅 ${l.day||''}`;
-    if(l.homework)line+='\n   📎 שיעורי בית: '+l.homework;
-    if(l.notes)line+='\n   💬 הערות: '+l.notes;
-    if(l.rating)line+='\n   ⭐ דירוג: '+l.rating+'/5';
-    return line;
-  }).join('\n\n');
-  return `שלום ${parentName||'הורה יקר'} 👋
-
-הנה הדוח השבועי של ${studentName} ב-Drushe 🎓
-
-${sep}
-📅 שיעורים השבוע (${weekLessons.length} שיעורים)
-${sep}
-${weekLessons.length>0?lessonLines:'לא היו שיעורים השבוע.'}
-
-${sep}
-📊 סה"כ שיעורים עד כה: ${allLessonsCount}
-${sep}
-
-🔗 לצפייה בכל ההיסטוריה של ${studentName}:
-${portalUrl}
-
-הקישור תקף ל-30 יום. לא נדרשת סיסמה!
-
-– צוות Drushe 💙`;
-}
-
-async function adminSendWeeklyReports(){
-  if(!isAdmin()){showFireToast('❌ אין הרשאה');return;}
-  const studentsWithParents=adminAllUsers.filter(u=>u.parentEmail&&u.role!=='teacher');
-  if(studentsWithParents.length===0){showFireToast('⚠️ אין תלמידים עם מייל הורה רשום');return;}
-  showFireToast('⏳ שולח דוחות שבועיים...');
-  const weekAgo=Date.now()-7*24*60*60*1000;
-  let sent=0,errors=0;
-  for(const stu of studentsWithParents){
-    try{
-      const progressSnap=await db.ref('studentProgress/'+stu.uid).get();
-      const allLessons=[];
-      if(progressSnap.exists())progressSnap.forEach(c=>allLessons.push({id:c.key,...c.val()}));
-      const weekLessons=allLessons.filter(l=>(l.createdAt||0)>=weekAgo);
-      if(weekLessons.length===0&&allLessons.length===0)continue;
-      const token=await generateParentViewToken(stu.uid,stu.parentEmail);
-      const body=buildParentEmailBody(stu.name||'',stu.parentName||'',weekLessons,allLessons.length,token);
-      await sendEmail(stu.parentEmail,`📊 דוח שבועי – ${stu.name||''} | Drushe`,body);
-      sent++;
-      await new Promise(r=>setTimeout(r,300));
-    }catch(e){console.warn('weekly report error for',stu.uid,e);errors++;}
-  }
-  showFireToast(`✅ נשלחו ${sent} דוחות${errors>0?' ('+errors+' שגיאות)':''}`);
-}
+// ─── דוח שבועי להורים 📊 (נשלח אוטומטית ע"י GitHub Actions — ראה scripts/send-weekly-parent-reports.js) ──
 
 async function adminDeleteUser(uid,name,role){
   if(!isAdmin()){showFireToast('❌ אין הרשאה');return;}
@@ -11755,26 +11692,19 @@ async function _loadParentPortalData(token){
       el.innerHTML=`<div style="font-size:48px;margin-bottom:12px">${icon("x-circle",14)}</div><p style="color:#EF4444;font-weight:800;font-size:16px">קישור לא תקף</p><p style="color:#64748B;font-size:13px;margin-top:6px">בקש קישור חדש מצוות Drushe</p>`;
       return;
     }
-    const {uid,expiresAt}=snap.val();
-    if(Date.now()>expiresAt){
+    const data=snap.val();
+    if(Date.now()>data.expiresAt){
       el.innerHTML=`<div style="font-size:48px;margin-bottom:12px">${icon("clock",14)}</div><p style="color:#F59E0B;font-weight:800;font-size:16px">קישור פג תוקף</p><p style="color:#64748B;font-size:13px;margin-top:6px">הקישור תקף ל-30 יום בלבד</p>`;
       return;
     }
-    const [stuSnap,progressSnap]=await Promise.all([
-      db.ref('users/'+uid).get(),
-      db.ref('studentProgress/'+uid).get()
-    ]);
-    const stu=stuSnap.val()||{};
-    const lessons=[];
-    if(progressSnap.exists())progressSnap.forEach(c=>lessons.push({id:c.key,...c.val()}));
-    lessons.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
-    const weekAgo=Date.now()-7*24*60*60*1000;
-    const weekLessons=lessons.filter(l=>(l.createdAt||0)>=weekAgo);
+    const weekLessons=data.weekLessons||[];
+    const lessons=data.allLessons||[];
+    const allCount=data.allLessonsCount||lessons.length;
     el.innerHTML=`
       <div style="background:#fff;border-radius:22px;padding:20px;margin-bottom:20px;text-align:right;box-shadow:0 4px 20px rgba(0,0,0,0.08)">
         <div style="width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,#14B8A6,#06B6D4);display:flex;align-items:center;justify-content:center;margin-bottom:10px"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></div>
-        <h2 style="font-size:22px;font-weight:900;color:#0F1A1F;margin:0 0 4px">${escapeHtml(stu.name||'תלמיד/ה')}</h2>
-        <p style="font-size:13px;color:#475569;margin:0">${weekLessons.length} שיעורים השבוע · ${lessons.length} שיעורים סה"כ</p>
+        <h2 style="font-size:22px;font-weight:900;color:#0F1A1F;margin:0 0 4px">${escapeHtml(data.studentName||'תלמיד/ה')}</h2>
+        <p style="font-size:13px;color:#475569;margin:0">${weekLessons.length} שיעורים השבוע · ${allCount} שיעורים סה"כ</p>
       </div>
       ${weekLessons.length>0?`
         <h3 style="font-size:15px;font-weight:800;color:#14B8A6;margin:0 0 12px;text-align:right;display:flex;align-items:center;gap:6px;justify-content:flex-end"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> שיעורים השבוע</h3>
@@ -11790,8 +11720,8 @@ async function _loadParentPortalData(token){
           <div style="width:44px;height:44px;border-radius:12px;background:rgba(100,116,139,0.1);display:flex;align-items:center;justify-content:center;margin:0 auto 8px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
           <p style="color:#64748B;font-size:14px;margin:0">לא היו שיעורים השבוע</p>
         </div>`}
-      ${lessons.length>weekLessons.length?`
-        <h3 style="font-size:15px;font-weight:800;color:#06B6D4;margin:20px 0 12px;text-align:right;display:flex;align-items:center;gap:6px;justify-content:flex-end"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg> היסטוריה (${lessons.length} שיעורים)</h3>
+      ${allCount>weekLessons.length?`
+        <h3 style="font-size:15px;font-weight:800;color:#06B6D4;margin:20px 0 12px;text-align:right;display:flex;align-items:center;gap:6px;justify-content:flex-end"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg> היסטוריה (${allCount} שיעורים)</h3>
         ${lessons.map(l=>`
           <div style="background:#fff;border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 1px 8px rgba(0,0,0,0.05)">
             <div style="text-align:right">

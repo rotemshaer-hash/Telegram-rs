@@ -1,0 +1,25 @@
+name: Send Weekly Parent Reports
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Sundays 06:00 UTC (~09:00 Israel time)
+    - cron: '0 6 * * 0'
+
+jobs:
+  send-reports:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        working-directory: scripts
+        run: npm install
+      - name: Send weekly parent reports
+        working-directory: scripts
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          EMAILJS_PRIVATE_KEY: ${{ secrets.EMAILJS_PRIVATE_KEY }}
+        run: node send-weekly-parent-reports.js
