@@ -11855,7 +11855,7 @@ function _hs(inp){
         </div>
       </div>
     </button>`).join('')+'<div style="height:14px"></div>';
-  requestAnimationFrame(()=>{const si=document.getElementById('homeSearch');if(si)si.focus({preventScroll:true});});
+  requestAnimationFrame(()=>{const si=document.getElementById('homeSearch');if(si&&document.activeElement!==si)si.focus({preventScroll:true});});
 }
 
 function render(){
