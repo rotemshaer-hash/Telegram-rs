@@ -1531,7 +1531,7 @@ function submitParentReg(){
   S.parentRegData={name,id,email,age,phone,idPhoto:_parentIdPhotoBase64||null,confirmedAt:Date.now()};
   _parentIdPhotoBase64=null;
   _saveRegSession();
-  showFireToast('✅ פרטי ההורה אומתו!');
+  showFireToast('✅ פרטי ההורה נקלטו!');
   setTimeout(()=>go('register'),600);
 }
 
@@ -1562,7 +1562,7 @@ function Register(){
       <div style="background:linear-gradient(135deg,rgba(16,185,129,.12),rgba(20,184,166,.08));border:1.5px solid rgba(16,185,129,.4);border-radius:16px;padding:12px 15px;margin-bottom:16px;display:flex;gap:10px;align-items:center">
         <div style="background:#10B981;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">✓</div>
         <div>
-          <div style="font-size:12px;font-weight:900;color:#065F46">הורה אומת בהצלחה</div>
+          <div style="font-size:12px;font-weight:900;color:#065F46">פרטי ההורה נקלטו בהצלחה</div>
           <div style="font-size:11px;color:#047857;margin-top:1px">${escapeHtml(S.parentRegData?.name||'')} · ${escapeHtml(S.parentRegData?.email||'')}</div>
         </div>
         <button onclick="S.parentRegData=null;go('parentReg')" style="margin-right:auto;background:none;border:none;font-size:11px;color:#6B7280;cursor:pointer;flex-shrink:0">שנה</button>
