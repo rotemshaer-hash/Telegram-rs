@@ -1255,8 +1255,8 @@ function Splash(){
       </div>
     </div>
     <div style="flex:1;display:flex;flex-direction:column;align-items:center;padding:28px 28px 36px;width:100%">
-      <div style="display:flex;gap:12px;justify-content:center">
-        ${[[realStats.teachers,"מורים"],[realStats.categories,"נושאים"],[realStats.cities,"ערים"]].map(([v,l])=>`<div style="background:#fff;border:1px solid #E2E8F0;border-radius:18px;padding:12px 20px;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,0.06)"><div style="font-weight:900;font-size:22px;color:#14B8A6">${v}</div><div style="font-size:11px;color:#64748B;font-weight:600">${l}</div></div>`).join("")}
+      <div style="display:flex;gap:8px;justify-content:center;width:100%">
+        ${[[realStats.teachers,"מורים"],[realStats.students,"תלמידים"],[realStats.categories,"נושאים"],[realStats.cities,"ערים"]].map(([v,l])=>`<div style="flex:1;min-width:0;background:#fff;border:1px solid #E2E8F0;border-radius:16px;padding:12px 8px;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,0.06)"><div style="font-weight:900;font-size:20px;color:#14B8A6">${v}</div><div style="font-size:10px;color:#64748B;font-weight:600">${l}</div></div>`).join("")}
       </div>
       <div style="margin-top:42px;display:flex;flex-direction:column;gap:12px;width:100%;max-width:300px">
         <button class="btn bp" onclick="go('safety')">✨ הצטרף עכשיו – חינם!</button>
