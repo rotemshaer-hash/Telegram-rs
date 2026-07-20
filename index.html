@@ -3142,7 +3142,7 @@ function showNotificationsPanel(){
     `<div style="text-align:center;padding:40px 20px"><div style="font-size:54px;margin-bottom:12px">${icon("bell",14)}</div><h3 style="font-weight:900;font-size:17px;margin:0 0 6px;color:#0F1A1F">אין התראות חדשות</h3><p style="color:#64748B;font-size:13px;margin:0">כשתקבל הזמנות או הודעות הן יופיעו כאן</p></div>`:
     notifications.map(n=>{
       const icons={newBooking:'📚',bookingApproved:'✅',bookingRejected:'❌',bookingCancelled:'🚫',newMessage:'💬',newReview:'⭐',newVideo:'📹',newTeacher:'🎓',newReport:'🚨',newUser:'👋',groupJoin:'🙋',groupApproved:'🎉',groupRejected:'😔',rateLesson:'⭐',lessonSummary:'📖',accountApproved:'🎉',teacherApproved:'🎓',adminMessage:'📣',newPost:'📢',lessonCompleted:'✅',newStory:'📸',briefProposal:'💼',briefAccepted:'🤝',newQuestion:'❓',questionAnswered:'💡',trialReminder:'⏰'};
-      const titles={newBooking:'הזמנת שיעור חדשה',bookingApproved:'ההזמנה אושרה!',bookingRejected:'ההזמנה נדחתה',bookingCancelled:'השיעור בוטל',newMessage:'הודעה חדשה',newReview:'דירוג חדש',newVideo:'סרטון חדש לאישור',newTeacher:'מורה חדש נרשם',newReport:'דיווח חדש!',newUser:'משתמש חדש',groupJoin:'בקשת הצטרפות לקבוצה',groupApproved:'התקבלת לקבוצה!',groupRejected:'הבקשה לא אושרה',rateLesson:'דרג את השיעור',lessonSummary:'סיכום שיעור חדש',accountApproved:'החשבון שלך אושר!',teacherApproved:'פרופיל המורה שלך אושר!',adminMessage:'הודעה מהמנהל',newPost:'פוסט חדש בקהילה',lessonCompleted:'השיעור הסתיים',newStory:'סטורי חדש לאישור',briefProposal:'הצעת מורה לבקשתך',briefAccepted:'ההצעה שלך התקבלה!',newQuestion:'שאלה חדשה על הפרופיל',questionAnswered:'המורה ענה על שאלתך',trialReminder:'תזכורת ניסיון חינם'};
+      const titles={newBooking:'הזמנת שיעור חדשה',bookingApproved:'ההזמנה אושרה!',bookingRejected:'ההזמנה נדחתה',bookingCancelled:'השיעור בוטל',newMessage:'הודעה חדשה',newReview:'דירוג חדש',newVideo:'סרטון חדש לאישור',newTeacher:'מורה חדש נרשם',newReport:'דיווח חדש!',newUser:'משתמש חדש',groupJoin:'בקשת הצטרפות לקבוצה',groupApproved:'התקבלת לקבוצה!',groupRejected:'הבקשה לא אושרה',rateLesson:'דרג את השיעור',lessonSummary:'סיכום שיעור חדש',accountApproved:'החשבון שלך אושר!',teacherApproved:'פרופיל המורה שלך אושר!',adminMessage:'הודעה מהמנהל',newPost:'פוסט חדש בקהילה',lessonCompleted:'השיעור הסתיים',newStory:'סטורי חדש לאישור',briefProposal:'הצעת מורה לדרוש שלך',briefAccepted:'ההצעה שלך התקבלה!',newQuestion:'שאלה חדשה על הפרופיל',questionAnswered:'המורה ענה על שאלתך',trialReminder:'תזכורת ניסיון חינם'};
       const cols={newBooking:'#14B8A6',bookingApproved:'#10B981',bookingRejected:'#EF4444',bookingCancelled:'#F59E0B',newMessage:'#06B6D4',newReview:'#FBBF24',newVideo:'#06B6D4',newTeacher:'#14B8A6',newReport:'#E74C3C',newUser:'#0EA5E9',groupJoin:'#14B8A6',groupApproved:'#10B981',groupRejected:'#EF4444',rateLesson:'#FBBF24',lessonSummary:'#06B6D4',accountApproved:'#10B981',teacherApproved:'#14B8A6',adminMessage:'#06B6D4',newPost:'#F59E0B',lessonCompleted:'#10B981',newStory:'#8B5CF6',briefProposal:'#14B8A6',briefAccepted:'#10B981',newQuestion:'#14B8A6',questionAnswered:'#10B981',trialReminder:'#8B5CF6'};
       const ico=icons[n.type]||'🔔';
       const ttl=titles[n.type]||'התראה';
@@ -9412,9 +9412,9 @@ function Community(){
 
   const _briefsHtml=(()=>{
     const briefs=S.parentBriefs||[];
-    const hdr=(!_isTeacherU&&currentUser)?`<button onclick="showPostBriefDialog()" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:14px;padding:13px;font-weight:900;font-size:14px;cursor:pointer;margin-bottom:14px;display:flex;align-items:center;justify-content:center;gap:8px">${icon('file-text',16,'#fff')} פרסם בקשת הורה חדשה</button>`
-      :_isTeacherU?`<div style="background:rgba(20,184,166,0.06);border:1.5px solid rgba(20,184,166,0.2);border-radius:14px;padding:12px 14px;margin-bottom:14px;font-size:13px;color:#14B8A6;font-weight:700;text-align:center">${icon('award',14,'#14B8A6')} כמורה — ראה בקשות הורים ושלח הצעות</div>`:'';
-    if(!briefs.length)return hdr+`<div style="text-align:center;padding:40px 20px"><div style="margin-bottom:14px">${icon('file-text',48,'#94A3B8')}</div><h3 style="font-weight:900;font-size:18px;margin:0 0 8px">אין בקשות פעילות</h3><p style="color:#64748B;font-size:13px">${(!_isTeacherU&&currentUser)?'פרסם בקשה ומורים יגיבו בהצעות מחיר':'בקרוב יהיו בקשות של הורים לצפייה'}</p></div>`;
+    const hdr=(!_isTeacherU&&currentUser)?`<button onclick="showPostBriefDialog()" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:14px;padding:13px;font-weight:900;font-size:14px;cursor:pointer;margin-bottom:14px;display:flex;align-items:center;justify-content:center;gap:8px">${icon('file-text',16,'#fff')} פרסם דרוש חדש</button>`
+      :_isTeacherU?`<div style="background:rgba(20,184,166,0.06);border:1.5px solid rgba(20,184,166,0.2);border-radius:14px;padding:12px 14px;margin-bottom:14px;font-size:13px;color:#14B8A6;font-weight:700;text-align:center">${icon('award',14,'#14B8A6')} כמורה — ראה דרושים ושלח הצעות</div>`:'';
+    if(!briefs.length)return hdr+`<div style="text-align:center;padding:40px 20px"><div style="margin-bottom:14px">${icon('file-text',48,'#94A3B8')}</div><h3 style="font-weight:900;font-size:18px;margin:0 0 8px">אין דרושים פעילים</h3><p style="color:#64748B;font-size:13px">${(!_isTeacherU&&currentUser)?'פרסם דרוש ומורים יגיבו בהצעות מחיר':'בקרוב יהיו דרושים לצפייה'}</p></div>`;
     return hdr+briefs.map(b=>{
       const cat=catById(b.subject);
       const isMine=currentUser&&b.parentUid===currentUser.uid;
@@ -9454,7 +9454,7 @@ function Community(){
         <div style="display:flex;gap:8px;align-items:center">
           <button onclick="back()" style="background:rgba(255,255,255,.15);border:none;color:#fff;font-size:14px;cursor:pointer;border-radius:50px;padding:8px 14px;font-weight:700">← חזור</button>
           <button onclick="S.showCompose=true;render()" style="background:rgba(255,255,255,.15);border:none;color:#fff;font-weight:800;font-size:13px;cursor:pointer;border-radius:50px;padding:9px 16px;display:flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> שאל/שתף</button>
-          ${!_isTeacherU&&currentUser?`<button onclick="showPostBriefDialog()" style="background:rgba(255,255,255,.15);border:none;color:#fff;font-weight:800;font-size:13px;cursor:pointer;border-radius:50px;padding:9px 16px;display:flex;align-items:center;gap:6px">${icon('file-text',14,'#fff')} בקשה</button>`:''}
+          ${!_isTeacherU&&currentUser?`<button onclick="showPostBriefDialog()" style="background:rgba(255,255,255,.15);border:none;color:#fff;font-weight:800;font-size:13px;cursor:pointer;border-radius:50px;padding:9px 16px;display:flex;align-items:center;gap:6px">${icon('file-text',14,'#fff')} דרוש</button>`:''}
         </div>
         <div style="text-align:right;position:relative;z-index:1">
           <h2 style="font-size:22px;font-weight:900;margin:0">קהילה</h2>
@@ -9484,7 +9484,7 @@ function Community(){
       <div style="display:flex;gap:4px;background:rgba(255,255,255,0.12);border-radius:12px;padding:3px;margin-top:12px;position:relative;z-index:1">
         <button onclick="S.comTab='posts';render()" style="flex:1;padding:8px;border:none;border-radius:10px;font-weight:800;font-size:13px;cursor:pointer;transition:all .2s;background:${S.comTab!=='groups'&&S.comTab!=='briefs'?'rgba(255,255,255,0.9)':'transparent'};color:${S.comTab!=='groups'&&S.comTab!=='briefs'?'#0F1A1F':'rgba(255,255,255,0.85)'}">פוסטים</button>
         <button onclick="S.comTab='groups';render()" style="flex:1;padding:8px;border:none;border-radius:10px;font-weight:800;font-size:13px;cursor:pointer;transition:all .2s;background:${S.comTab==='groups'?'rgba(255,255,255,0.9)':'transparent'};color:${S.comTab==='groups'?'#0F1A1F':'rgba(255,255,255,0.85)'}">קבוצות${communityGroups.length?' ('+communityGroups.length+')':''}</button>
-        <button onclick="S.comTab='briefs';if(!(S.parentBriefs&&S.parentBriefs.length))loadParentBriefs();render()" style="flex:1;padding:8px;border:none;border-radius:10px;font-weight:800;font-size:13px;cursor:pointer;transition:all .2s;background:${S.comTab==='briefs'?'rgba(255,255,255,0.9)':'transparent'};color:${S.comTab==='briefs'?'#0F1A1F':'rgba(255,255,255,0.85)'}">בקשות${(S.parentBriefs&&S.parentBriefs.length)?' ('+S.parentBriefs.length+')':''}</button>
+        <button onclick="S.comTab='briefs';if(!(S.parentBriefs&&S.parentBriefs.length))loadParentBriefs();render()" style="flex:1;padding:8px;border:none;border-radius:10px;font-weight:800;font-size:13px;cursor:pointer;transition:all .2s;background:${S.comTab==='briefs'?'rgba(255,255,255,0.9)':'transparent'};color:${S.comTab==='briefs'?'#0F1A1F':'rgba(255,255,255,0.85)'}">דרושים${(S.parentBriefs&&S.parentBriefs.length)?' ('+S.parentBriefs.length+')':''}</button>
       </div>
     </div>
     <div style="padding:15px 16px 100px">${S.comTab==='briefs'?_briefsHtml:S.comTab==='groups'?_groupsHtml:S.posts.length===0?`<div style="text-align:center;padding:60px 20px">
@@ -9663,7 +9663,7 @@ async function deleteMyPost(id){
   }catch(e){showFireToast('❌ '+e.message);}
 }
 
-// ─── PARENT BRIEFS (בקשת הורה) ────────────────────────────────────────────────
+// ─── PARENT BRIEFS (לוח דרושים) ────────────────────────────────────────────────
 async function loadParentBriefs(){
   if(!db)return;
   try{
@@ -9681,7 +9681,7 @@ async function loadParentBriefs(){
 
 function showPostBriefDialog(){
   if(!currentUser){showFireToast('❌ יש להתחבר');return;}
-  if(currentUserData?.role==='teacher'){showFireToast('❌ בקשות הורים — עבור הורים ותלמידים בלבד');return;}
+  if(currentUserData?.role==='teacher'){showFireToast('❌ דרושים — עבור הורים ותלמידים בלבד');return;}
   const ov=document.createElement('div');
   ov.id='_pbOv';
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(8px);direction:rtl';
@@ -9689,7 +9689,7 @@ function showPostBriefDialog(){
     <div style="width:40px;height:4px;background:#E2E8F0;border-radius:50px;margin:0 auto 18px"></div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
       <button onclick="document.getElementById('_pbOv')?.remove()" style="background:rgba(20,184,166,0.1);border:none;color:#14B8A6;font-size:18px;cursor:pointer;border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center">&#x2715;</button>
-      <h3 style="font-weight:900;font-size:18px;margin:0;display:flex;align-items:center;gap:8px">${icon('file-text',18,'#14B8A6')} בקשת הורה חדשה</h3>
+      <h3 style="font-weight:900;font-size:18px;margin:0;display:flex;align-items:center;gap:8px">${icon('file-text',18,'#14B8A6')} דרוש חדש</h3>
     </div>
     <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">${icon('user',14)} שם הילד/ה</label>
     <input id="_pbChild" placeholder="שם הילד/ה" class="inp" style="margin-bottom:12px">
@@ -9701,7 +9701,7 @@ function showPostBriefDialog(){
     <textarea id="_pbDesc" rows="3" placeholder="ספר על הצרכים של הילד/ה — רמה, מטרות, זמינות מועדפת..." class="inp" style="margin-bottom:12px;resize:none"></textarea>
     <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">${icon('dollar',14)} תקציב לשיעור (&#x20AA;)</label>
     <input id="_pbBudget" type="number" min="0" placeholder="לדוגמה: 80" class="inp" style="margin-bottom:20px">
-    <button onclick="_saveParentBrief()" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:14px;font-weight:900;font-size:15px;cursor:pointer;box-shadow:0 6px 20px rgba(20,184,166,0.3);display:flex;align-items:center;justify-content:center;gap:8px">${icon('send',16,'#fff')} פרסם בקשה</button>
+    <button onclick="_saveParentBrief()" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:14px;font-weight:900;font-size:15px;cursor:pointer;box-shadow:0 6px 20px rgba(20,184,166,0.3);display:flex;align-items:center;justify-content:center;gap:8px">${icon('send',16,'#fff')} פרסם דרוש</button>
   </div>`;
   document.body.appendChild(ov);
   ov.onclick=e=>{if(e.target===ov)ov.remove();};
@@ -9716,7 +9716,7 @@ async function _saveParentBrief(){
   if(!description){showFireToast('❌ חסר תיאור הצורך');return;}
   if(!budget||budget<1){showFireToast('❌ הזן תקציב לשיעור');return;}
   try{
-    showFireToast('⏳ מפרסם בקשה...');
+    showFireToast('⏳ מפרסם דרוש...');
     const ref=db.ref('parentBriefs').push();
     const data={
       parentUid:currentUser.uid,
@@ -9727,7 +9727,7 @@ async function _saveParentBrief(){
     await ref.set(data);
     S.parentBriefs=[{id:ref.key,...data},...(S.parentBriefs||[])];
     document.getElementById('_pbOv')?.remove();
-    showFireToast('✅ הבקשה פורסמה! מורים יוכלו לשלוח הצעות');
+    showFireToast('✅ הדרוש פורסם! מורים יוכלו לשלוח הצעות');
     if(S.screen==='community')render();
   }catch(e){showFireToast('❌ '+e.message);}
 }
@@ -9736,8 +9736,8 @@ function showBriefProposalDialog(briefId){
   if(!currentUser){showFireToast('❌ יש להתחבר');return;}
   if(currentUserData?.role!=='teacher'){showFireToast('❌ רק מורים יכולים להגיש הצעות');return;}
   const brief=(S.parentBriefs||[]).find(b=>b.id===briefId);
-  if(!brief){showFireToast('❌ הבקשה לא נמצאה');return;}
-  if(brief.parentUid===currentUser.uid){showFireToast('❌ לא ניתן להגיש הצעה לבקשה שלך');return;}
+  if(!brief){showFireToast('❌ הדרוש לא נמצא');return;}
+  if(brief.parentUid===currentUser.uid){showFireToast('❌ לא ניתן להגיש הצעה לדרוש שלך');return;}
   const catObj=catById(brief.subject);
   const ov=document.createElement('div');
   ov.id='_bpOv';
@@ -9769,7 +9769,7 @@ async function _submitBriefProposal(briefId){
   if(!price||price<1){showFireToast('❌ הזן מחיר לשיעור');return;}
   if(!message||message.length<10){showFireToast('❌ כתוב הודעה להורה (לפחות 10 תווים)');return;}
   const brief=(S.parentBriefs||[]).find(b=>b.id===briefId);
-  if(!brief){showFireToast('❌ הבקשה לא נמצאה');return;}
+  if(!brief){showFireToast('❌ הדרוש לא נמצא');return;}
   try{
     showFireToast('⏳ שולח הצעה...');
     const proposal={
@@ -9793,7 +9793,7 @@ async function _submitBriefProposal(briefId){
 async function showMyBriefProposals(briefId){
   if(!currentUser){showFireToast('❌ יש להתחבר');return;}
   const brief=(S.parentBriefs||[]).find(b=>b.id===briefId);
-  if(!brief||brief.parentUid!==currentUser.uid){showFireToast('❌ הבקשה לא נמצאה');return;}
+  if(!brief||brief.parentUid!==currentUser.uid){showFireToast('❌ הדרוש לא נמצא');return;}
   showFireToast('⏳ טוען הצעות...');
   let proposals=[];
   try{
@@ -9806,7 +9806,7 @@ async function showMyBriefProposals(briefId){
   ov.id='_mpOv';
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(8px);direction:rtl';
   const propCards=proposals.length===0
-    ?`<div style="text-align:center;padding:40px 20px;color:#64748B">${icon('clock',40,'#94A3B8')}<p style="font-size:14px;font-weight:700;margin-top:12px">אין הצעות עדיין<br>מורים יראו את הבקשה ויגישו הצעות</p></div>`
+    ?`<div style="text-align:center;padding:40px 20px;color:#64748B">${icon('clock',40,'#94A3B8')}<p style="font-size:14px;font-weight:700;margin-top:12px">אין הצעות עדיין<br>מורים יראו את הדרוש ויגישו הצעות</p></div>`
     :proposals.map(p=>`
     <div style="background:#F8FAFC;border:1.5px solid rgba(20,184,166,0.2);border-radius:16px;padding:14px 16px;margin-bottom:12px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
@@ -9835,7 +9835,7 @@ async function showMyBriefProposals(briefId){
 async function _acceptBriefProposal(briefId,teacherUid){
   if(!currentUser)return;
   const brief=(S.parentBriefs||[]).find(b=>b.id===briefId);
-  if(!brief||brief.parentUid!==currentUser.uid){showFireToast('❌ הבקשה לא נמצאה');return;}
+  if(!brief||brief.parentUid!==currentUser.uid){showFireToast('❌ הדרוש לא נמצא');return;}
   try{
     showFireToast('⏳ יוצר הזמנה...');
     const snap=await db.ref('briefProposals/'+briefId+'/'+teacherUid).get();
