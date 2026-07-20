@@ -3816,6 +3816,14 @@ async function sendChatMessage(otherUid,otherName){
   inp.focus();
   const chatId=getChatId(currentUser.uid,otherUid);
   try{
+    // רשום את שני הצדדים כמשתתפי הצ'אט — נחוץ לכלל האבטחה של messages/.
+    // אחרת, אם זו פנייה ראשונה בלי הזמנה מאושרת (למשל "שלח הודעה פרטית"
+    // בפרופיל מורה), הצד השני לעולם לא נרשם, וההאזנה שלו בזמן אמת נכשלת
+    // בשקט (permission-denied) — הוא רואה שההודעה "לא הגיעה".
+    await Promise.all([
+      db.ref('chatParticipants/'+chatId+'/'+currentUser.uid).set(true),
+      db.ref('chatParticipants/'+chatId+'/'+otherUid).set(true)
+    ]).catch(()=>{});
     await db.ref('messages/'+chatId).push({
       from:currentUser.uid,
       fromName:currentUserData?.name||currentUser.email.split('@')[0],
