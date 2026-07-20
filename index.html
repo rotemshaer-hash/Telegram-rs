@@ -12198,6 +12198,10 @@ async function firebaseRegister(email,password,userData){
     S._registering=true;
     S._loggingIn=true; // כניסה ידנית (הרשמה) — לא לנתק
     const cred=await auth.createUserWithEmailAndPassword(email,password);
+    // קבע את currentUser הגלובלי מיד — לא לחכות ל-onAuthStateChanged (אירוע נפרד,
+    // אסינכרוני, שעלול לרוץ אחרי הקוד הזה). בלעדי זה, _emailRateLimitOk() רואה
+    // currentUser ריק ומבטל בשקט את כל המיילים (ברכה + עדכון הורה) שנשלחים בהמשך.
+    currentUser=cred.user;
     // מוודא שה-token הטרי כבר "תפס" בחיבור ה-Realtime Database לפני כל כתיבה —
     // יש מרוץ ידוע ב-Firebase שבו auth.currentUser כבר מתעדכן ב-JS, אבל חיבור
     // ה-RTDB עצמו עדיין לא הספיק לאמת מחדש, וכתיבה מיידית נכשלת ב-PERMISSION_DENIED.
