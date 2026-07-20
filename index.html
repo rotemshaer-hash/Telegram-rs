@@ -4372,6 +4372,9 @@ async function loadAdminData(){
      }
     }
     realStats.students=adminAllUsers.filter(u=>u.role==='student'&&u.verified===true).length;
+    // עדכן ספריה ציבורית לקריאה — כדי שאורחים/משתמשים רגילים (שאין להם
+    // הרשאה לקרוא את כל users/) יוכלו לראות את המספר האמיתי במסך הבית/הפתיחה
+    db.ref('stats/students').set(realStats.students).catch(()=>{});
     // עדכן ספירה בדף הבית אם מוצג
     document.querySelectorAll('[data-stat="students"]').forEach(el=>el.textContent=realStats.students);
     const teachersSnap=await db.ref('teachers').get();
@@ -11845,19 +11848,33 @@ function showAndroidInstallGuide(){
 
 // ── FIREBASE AUTH & DB ─────────────────────────────────────────────────────
 
-// Fetch verified student count via REST API (bypasses Firebase SDK in-memory cache).
-// Called after currentUser is confirmed so getIdToken always succeeds.
+// קורא את מונה התלמידים הציבורי (stats/students). קריאה ישירה של users/
+// נחסמת בכוונה לכל מי שאינו מנהל (יש שם מידע פרטי — תמונות ת.ז., פרטי
+// הורים וכו') — אי אפשר לחשב את המספר הזה "בזמן אמת" מהלקוח לכל
+// משתמש/אורח, אז מונה ציבורי נפרד הוא הדרך הבטוחה להציג מספר אמיתי בלי
+// לחשוף נתונים. למנהל בלבד יש הרשאה לקרוא את users/ במלואו — כשהוא
+// מחובר, מחשבים ישירות (מדויק תמיד) וגם "מזריעים" את המונה הציבורי,
+// כדי שהוא יהיה עדכני עבור כל שאר המשתמשים בלי לחכות שהמנהל יפתח את
+// פאנל הניהול.
 async function refreshStudentCount(){
   try{
-    const cu=firebase.auth().currentUser;
-    if(!cu)return;
-    const token=await cu.getIdToken(false);
-    const res=await fetch('https://kidemy-83a17-default-rtdb.firebaseio.com/users.json?auth='+token,{cache:'no-store'});
-    if(!res.ok){console.error('[RSC] HTTP',res.status);return;}
-    const data=await res.json();
-    if(data&&data.error){console.error('[RSC] Firebase error:',data.error);return;}
-    let count=0;
-    if(data&&typeof data==='object')Object.values(data).forEach(u=>{if(u&&u.role==='student'&&u.verified===true)count++;});
+    if(isAdmin()){
+      const token=await firebase.auth().currentUser.getIdToken(false);
+      const res=await fetch('https://kidemy-83a17-default-rtdb.firebaseio.com/users.json?auth='+token,{cache:'no-store'});
+      if(res.ok){
+        const data=await res.json();
+        if(data&&typeof data==='object'&&!data.error){
+          let count=0;
+          Object.values(data).forEach(u=>{if(u&&u.role==='student'&&u.verified===true)count++;});
+          realStats.students=count;
+          document.querySelectorAll('[data-stat="students"]').forEach(el=>el.textContent=count);
+          db.ref('stats/students').set(count).catch(()=>{});
+          return;
+        }
+      }
+    }
+    const snap=await db.ref('stats/students').get();
+    const count=snap.val()||0;
     realStats.students=count;
     document.querySelectorAll('[data-stat="students"]').forEach(el=>el.textContent=count);
   }catch(e){console.error('[RSC] fetch error:',e.message);}

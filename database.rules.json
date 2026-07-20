@@ -16,6 +16,11 @@
       }
     },
 
+    "stats": {
+      ".read": true,
+      ".write": "auth != null && auth.token.email == 'rotemshaer@gmail.com'"
+    },
+
     "users": {
       "$uid": {
         ".read": "auth != null && auth.uid == $uid",
