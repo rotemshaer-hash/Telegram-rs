@@ -4684,6 +4684,11 @@ async function adminApproveTeacher(uid){
   if(_adminActionInProgress){showFireToast('⏳ פעולה בתהליך...');return;}
   _adminActionInProgress=true;
   try{
+    const avSnap=await db.ref('teachers/'+uid+'/ageVerification/status').get();
+    if(avSnap.val()!=='verified'){
+      showFireToast('❌ יש לאמת גיל וזהות (כפתור "אמת גיל וזהות") לפני אישור המורה');
+      return;
+    }
     await db.ref('teachers/'+uid+'/verified').set(true);
     await db.ref('teachers/'+uid+'/active').set(true);
     await db.ref('users/'+uid+'/verified').set(true);
