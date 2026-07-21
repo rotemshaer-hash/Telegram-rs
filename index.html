@@ -7677,24 +7677,22 @@ function Home(){
   }).join("");
 
   return `<div class="screen">
-    <div style="background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);padding:20px 20px 38px;border-radius:0 0 32px 32px;position:relative;overflow:hidden">
-      <div style="position:absolute;top:-70px;right:-70px;width:220px;height:220px;border-radius:50%;background:rgba(255,255,255,.07)"></div>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;position:relative;z-index:1">
-        <button onclick="currentUser?go('profile'):go('login')" style="width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,.25);border:2px solid rgba(255,255,255,.4);font-size:22px;cursor:pointer;backdrop-filter:blur(10px);box-shadow:0 4px 12px rgba(0,0,0,0.15)">${currentUserData?.photo?`<img src="${currentUserData.photo}" style="width:100%;height:100%;border-radius:50%;object-fit:cover" alt="">`:'👤'}</button>
-        <div style="text-align:center;flex:1">
-          <div style="display:flex;align-items:center;gap:6px;justify-content:center">
-            <span style="font-size:26px;font-weight:900;letter-spacing:-.5px"><span style="color:#fff">Dru</span><span style="color:#A78BFA">s</span><span style="color:#5EEAD4">he</span></span>
-          </div>
-        </div>
+    <div style="background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);padding:14px 20px 16px;border-radius:0 0 22px 22px;position:relative;overflow:hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center;position:relative;z-index:1">
+        <button onclick="currentUser?go('profile'):go('login')" style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.25);border:2px solid rgba(255,255,255,.4);font-size:19px;cursor:pointer;backdrop-filter:blur(10px)">${currentUserData?.photo?`<img src="${currentUserData.photo}" style="width:100%;height:100%;border-radius:50%;object-fit:cover" alt="">`:'👤'}</button>
+        <span style="font-size:22px;font-weight:900;letter-spacing:-.5px"><span style="color:#fff">Dru</span><span style="color:#A78BFA">s</span><span style="color:#5EEAD4">he</span></span>
         <div style="display:flex;gap:6px">
-          <button onclick="shareApp()" style="background:rgba(255,255,255,.2);border:none;color:#fff;cursor:pointer;border-radius:50%;width:38px;height:38px;display:flex;align-items:center;justify-content:center" title="שתף את Drushe"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
-          <button onclick="showFiltersPanel()" style="position:relative;background:rgba(255,255,255,.2);border:none;color:#fff;cursor:pointer;border-radius:50%;width:38px;height:38px;display:flex;align-items:center;justify-content:center">${activeFiltersCount()>0?`<span style="position:absolute;top:-4px;left:-4px;background:#14B8A6;color:#fff;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900">${activeFiltersCount()}</span>`:''}<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg></button>
-          ${currentUser?`<button onclick="showNotificationsPanel()" style="position:relative;background:rgba(255,255,255,.2);border:none;color:#fff;cursor:pointer;border-radius:50%;width:38px;height:38px;display:flex;align-items:center;justify-content:center">${unreadCount>0?`<span style="position:absolute;top:-4px;left:-4px;background:#EF4444;color:#fff;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900">${unreadCount}</span>`:''}<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>`:''}
+          <button onclick="shareApp()" style="background:rgba(255,255,255,.2);border:none;color:#fff;cursor:pointer;border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center" title="שתף את Drushe"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
+          <button onclick="showFiltersPanel()" style="position:relative;background:rgba(255,255,255,.2);border:none;color:#fff;cursor:pointer;border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center">${activeFiltersCount()>0?`<span style="position:absolute;top:-4px;left:-4px;background:#14B8A6;color:#fff;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900">${activeFiltersCount()}</span>`:''}<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg></button>
+          ${currentUser?`<button onclick="showNotificationsPanel()" style="position:relative;background:rgba(255,255,255,.2);border:none;color:#fff;cursor:pointer;border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center">${unreadCount>0?`<span style="position:absolute;top:-4px;left:-4px;background:#EF4444;color:#fff;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900">${unreadCount}</span>`:''}<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>`:''}
         </div>
       </div>
-      <p style="color:rgba(255,255,255,.88);font-size:14px;margin:0 0 2px;position:relative;z-index:1">שלום, ${currentUser ? (currentUserData?.name || currentUser.email.split('@')[0]) : 'אורח'} 👋</p>
-      <h2 style="color:#fff;font-size:20px;font-weight:900;margin:0 0 16px;position:relative;z-index:1">מה תרצה ללמוד היום?</h2>
-      <div style="background:rgba(255,255,255,.94);border:1px solid rgba(255,255,255,.5);border-radius:50px;padding:12px 18px;display:flex;align-items:center;gap:10px;position:relative;z-index:1;box-shadow:0 6px 20px rgba(0,0,0,.12)">
+      <p style="color:rgba(255,255,255,.8);font-size:12.5px;margin:10px 0 0;position:relative;z-index:1">שלום, ${currentUser ? (currentUserData?.name || currentUser.email.split('@')[0]) : 'אורח'} 👋</p>
+    </div>
+
+    <div style="padding:18px 20px 0">
+      <h2 style="color:#0F1A1F;font-size:19px;font-weight:900;margin:0 0 14px">מה תרצה ללמוד היום?</h2>
+      <div style="background:#fff;border:1px solid #E7EDEC;border-radius:50px;padding:12px 18px;display:flex;align-items:center;gap:10px;box-shadow:0 2px 10px rgba(0,0,0,.05)">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#0F1A1F" stroke-opacity=".55" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
         <input id="homeSearch" value="${S.search||''}" oninput="_hs(this)" placeholder="חפש מורה, נושא, עיר..." style="border:none;outline:none;flex:1;font-size:15px;direction:rtl;background:transparent;color:#0F1A1F;font-family:inherit">
         <button id="_hsX" onclick="S.search='';document.getElementById('homeSearch').value='';_hs({value:''})" style="background:rgba(15,26,31,0.08);border:none;color:#0F1A1F;cursor:pointer;border-radius:50%;width:24px;height:24px;font-size:12px;display:flex;align-items:center;justify-content:center;visibility:${S.search?'visible':'hidden'};pointer-events:${S.search?'auto':'none'}">✕</button>
@@ -7702,7 +7700,7 @@ function Home(){
       </div>
     </div>
 
-    <div style="padding:16px 20px 100px;margin-top:-14px">
+    <div style="padding:16px 20px 100px">
       <!-- Drils (רילס) discovery entry point -->
       <button onclick="openDiscover()" style="width:100%;border:none;cursor:pointer;text-align:right;border-radius:20px;margin-bottom:22px;height:92px;padding:0 14px;display:flex;align-items:center;gap:13px;position:relative;overflow:hidden;
         background:linear-gradient(150deg,#5EEAD4 0%,#A78BFA 55%,#F0ABFC 100%)">
