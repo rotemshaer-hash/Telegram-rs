@@ -3175,7 +3175,7 @@ function showNotificationsPanel(){
   const ov=document.createElement('div');
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:flex-start;justify-content:center;backdrop-filter:blur(8px);padding:60px 16px 16px;direction:rtl';
   const items=notifications.length===0?
-    `<div style="text-align:center;padding:40px 20px"><div style="font-size:54px;margin-bottom:12px">${icon("bell",14)}</div><h3 style="font-weight:900;font-size:17px;margin:0 0 6px;color:#0F1A1F">אין התראות חדשות</h3><p style="color:#64748B;font-size:13px;margin:0">כשתקבל הזמנות או הודעות הן יופיעו כאן</p></div>`:
+    `<div style="text-align:center;padding:40px 20px"><div style="margin-bottom:12px;display:flex;justify-content:center">${miniBadge('bell','#F59E0B',54)}</div><h3 style="font-weight:900;font-size:17px;margin:0 0 6px;color:#0F1A1F">אין התראות חדשות</h3><p style="color:#64748B;font-size:13px;margin:0">כשתקבל הזמנות או הודעות הן יופיעו כאן</p></div>`:
     notifications.map(n=>{
       const icons={newBooking:'📚',bookingApproved:'✅',bookingRejected:'❌',bookingCancelled:'🚫',newMessage:'💬',newReview:'⭐',newVideo:'📹',newTeacher:'🎓',newReport:'🚨',newUser:'👋',groupJoin:'🙋',groupApproved:'🎉',groupRejected:'😔',rateLesson:'⭐',lessonSummary:'📖',accountApproved:'🎉',teacherApproved:'🎓',adminMessage:'📣',newPost:'📢',lessonCompleted:'✅',newStory:'📸',briefProposal:'💼',briefAccepted:'🤝',newQuestion:'❓',questionAnswered:'💡',trialReminder:'⏰'};
       const titles={newBooking:'הזמנת שיעור חדשה',bookingApproved:'ההזמנה אושרה!',bookingRejected:'ההזמנה נדחתה',bookingCancelled:'השיעור בוטל',newMessage:'הודעה חדשה',newReview:'דירוג חדש',newVideo:'סרטון חדש לאישור',newTeacher:'מורה חדש נרשם',newReport:'דיווח חדש!',newUser:'משתמש חדש',groupJoin:'בקשת הצטרפות לקבוצה',groupApproved:'התקבלת לקבוצה!',groupRejected:'הבקשה לא אושרה',rateLesson:'דרג את השיעור',lessonSummary:'סיכום שיעור חדש',accountApproved:'החשבון שלך אושר!',teacherApproved:'פרופיל המורה שלך אושר!',adminMessage:'הודעה מהמנהל',newPost:'פוסט חדש בקהילה',lessonCompleted:'השיעור הסתיים',newStory:'סטורי חדש לאישור',briefProposal:'הצעת מורה לדרוש שלך',briefAccepted:'ההצעה שלך התקבלה!',newQuestion:'שאלה חדשה על הפרופיל',questionAnswered:'המורה ענה על שאלתך',trialReminder:'תזכורת ניסיון חינם'};
@@ -4854,7 +4854,7 @@ function showRatingDialog(bookingId,teacherId,teacherName){
   let _stars=0;
   ov.innerHTML=`
     <div style="background:#fff;border-radius:28px;padding:28px 24px;width:100%;max-width:360px;direction:rtl;text-align:center">
-      <div style="font-size:48px;margin-bottom:10px">${icon("star",14)}</div>
+      <div style="margin-bottom:10px;display:flex;justify-content:center">${miniBadge('star','#F59E0B',48)}</div>
       <h3 style="font-weight:900;font-size:20px;margin:0 0 6px;color:#0F1A1F">איך היה השיעור?</h3>
       <p style="font-size:13px;color:#64748B;margin:0 0 20px">עם ${escapeHtml(teacherName||'המורה')}</p>
       <div id="_starRow" style="display:flex;justify-content:center;gap:10px;margin-bottom:18px;font-size:36px">
@@ -6187,7 +6187,7 @@ function confirmResetSystem(){
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:99999;display:flex;align-items:center;justify-content:center;padding:24px;direction:rtl;backdrop-filter:blur(12px)';
   ov.innerHTML=`
     <div style="background:#fff;border-radius:24px;padding:28px;width:100%;max-width:360px;text-align:center">
-      <div style="font-size:64px;margin-bottom:14px">${icon("alert-triangle",14)}</div>
+      <div style="margin-bottom:14px;display:flex;justify-content:center">${miniBadge('alert-triangle','#EF4444',64)}</div>
       <h3 style="font-weight:900;font-size:20px;margin:0 0 12px;color:#EF4444">איפוס מלא של המערכת</h3>
       <div style="background:rgba(239,68,68,0.06);border-radius:14px;padding:14px;margin-bottom:16px;text-align:right">
         <p style="margin:0;font-size:13px;line-height:1.7;color:#0F1A1F">הפעולה הזו תמחק <strong>לצמיתות</strong>:<br>
@@ -6909,7 +6909,7 @@ function renderAdminTab(){
     const pendingPosts=[...adminAllPosts.filter(p=>p.status==='pending'||!p.status),...pendingFromAlerts.map(p=>({...p,status:'pending',_fromAlert:true}))];
     const approvedPosts=adminAllPosts.filter(p=>p.status==='approved');
     const totalPosts=adminAllPosts.length+pendingFromAlerts.length;
-    if(totalPosts===0&&adminAlertPosts.length===0)return `<div style="text-align:center;padding:40px;color:#64748B"><div style="font-size:48px;margin-bottom:10px">${icon("file-text",14)}</div><p style="margin:0 0 16px">אין פוסטים</p><div style="display:flex;gap:8px;justify-content:center"><button onclick="adminSwitchTab('posts')" style="background:#14B8A6;border:none;color:#fff;border-radius:50px;padding:10px 20px;font-weight:800;cursor:pointer">${icon("refresh",14)} רענן</button><button onclick="adminDeleteAllPosts()" style="background:rgba(239,68,68,0.9);border:none;color:#fff;border-radius:50px;padding:10px 20px;font-weight:800;cursor:pointer">${icon("trash",14)} מחק הכל</button></div></div>`;
+    if(totalPosts===0&&adminAlertPosts.length===0)return `<div style="text-align:center;padding:40px;color:#64748B"><div style="margin-bottom:10px;display:flex;justify-content:center">${miniBadge('file-text','#06B6D4',48)}</div><p style="margin:0 0 16px">אין פוסטים</p><div style="display:flex;gap:8px;justify-content:center"><button onclick="adminSwitchTab('posts')" style="background:#14B8A6;border:none;color:#fff;border-radius:50px;padding:10px 20px;font-weight:800;cursor:pointer">${icon("refresh",14)} רענן</button><button onclick="adminDeleteAllPosts()" style="background:rgba(239,68,68,0.9);border:none;color:#fff;border-radius:50px;padding:10px 20px;font-weight:800;cursor:pointer">${icon("trash",14)} מחק הכל</button></div></div>`;
     let html=`<div style="display:flex;gap:8px;margin-bottom:14px"><button onclick="adminSwitchTab('posts')" style="flex:1;background:rgba(20,184,166,0.08);color:#14B8A6;border-radius:50px;padding:8px;font-size:12px;font-weight:800;cursor:pointer">${icon("refresh",14)} רענן (${totalPosts} סה"כ)</button><button onclick="adminDeleteAllPosts()" style="flex:1;background:rgba(239,68,68,0.08);color:#EF4444;border-radius:50px;padding:8px;font-size:12px;font-weight:800;cursor:pointer">${icon("trash",14)} מחק הכל</button></div>`;
     if(pendingPosts.length>0){
       html+=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><h4 style="font-weight:800;font-size:14px;color:#F59E0B;margin:0">⏳ ממתינים לאישור (${pendingPosts.length})</h4><button onclick="adminApproveAllPosts()" style="background:#10B981;border:none;color:#fff;border-radius:50px;padding:7px 14px;font-size:11px;font-weight:800;cursor:pointer">🟢 אשר הכל</button></div>`;
@@ -6981,7 +6981,7 @@ function renderAdminTab(){
     return html;
   }
   if(adminTab==='stories'){
-    if(!adminAllStories.length)return `<div style="text-align:center;padding:40px 20px;color:#64748B"><div style="font-size:54px;margin-bottom:12px">${icon("camera",14)}</div><div style="font-weight:800;font-size:16px">אין סטוריז ממתינים</div></div>`;
+    if(!adminAllStories.length)return `<div style="text-align:center;padding:40px 20px;color:#64748B"><div style="margin-bottom:12px;display:flex;justify-content:center">${miniBadge('camera','#8B5CF6',54)}</div><div style="font-weight:800;font-size:16px">אין סטוריז ממתינים</div></div>`;
     return adminAllStories.map(s=>`
       <div style="background:#fff;border-radius:20px;overflow:hidden;margin-bottom:14px;box-shadow:0 2px 12px rgba(0,0,0,0.07)">
         <div style="position:relative;width:100%;height:220px;background:#0F1A1F">
@@ -7061,7 +7061,7 @@ function renderAdminTab(){
         <button onclick="loadAdminData().then(()=>renderAdminPanel())" style="background:rgba(20,184,166,0.1);color:#14B8A6;border-radius:50px;padding:7px 14px;font-size:12px;font-weight:800;cursor:pointer">${icon("refresh",14)} רענן</button>
         <h4 style="font-weight:900;font-size:16px;margin:0;color:#0F1A1F">${icon("chat",14)} הודעות ישירות</h4>
       </div>
-      ${unread.length===0&&read.length===0?`<div style="text-align:center;padding:48px;color:#64748B"><div style="font-size:48px;margin-bottom:10px">${icon("chat",14)}</div><div style="font-size:15px;font-weight:700">אין הודעות עדיין</div></div>`:''}
+      ${unread.length===0&&read.length===0?`<div style="text-align:center;padding:48px;color:#64748B"><div style="margin-bottom:10px;display:flex;justify-content:center">${miniBadge('chat','#14B8A6',48)}</div><div style="font-size:15px;font-weight:700">אין הודעות עדיין</div></div>`:''}
       ${unread.length>0?`<h4 style="font-weight:900;font-size:14px;margin:0 0 10px;color:#14B8A6">📬 חדשות (${unread.length})</h4>${unread.map(m=>renderMsg(m,true)).join('')}`:''}
       ${read.length>0?`<h4 style="font-weight:900;font-size:14px;margin:${unread.length>0?'16px':'0'} 0 10px;color:#64748B">📂 נקראו (${read.length})</h4>${read.map(m=>renderMsg(m,false)).join('')}`:''}`;
   }
@@ -8966,7 +8966,7 @@ function Profile(){
     ${(()=>{
       const uncat=teacherVideos.filter(v=>!v.cat);
       const showVids=catVids.length>0?catVids:uncat;
-      if(showVids.length===0)return `<div style="background:rgba(255,255,255,0.7);backdrop-filter:blur(10px);border-radius:20px;padding:32px 20px;text-align:center"><div style="font-size:54px;margin-bottom:12px">${icon("video",14)}</div><h3 style="font-weight:900;font-size:16px;margin:0 0 8px;color:#0F1A1F">עדיין לא העלית סרטונים</h3><p style="color:#64748B;font-size:13px;margin:0">לחץ "+ הוסף סרטון" כדי להוסיף</p></div>`;
+      if(showVids.length===0)return `<div style="background:rgba(255,255,255,0.7);backdrop-filter:blur(10px);border-radius:20px;padding:32px 20px;text-align:center"><div style="margin-bottom:12px;display:flex;justify-content:center">${miniBadge('video','#8B5CF6',54)}</div><h3 style="font-weight:900;font-size:16px;margin:0 0 8px;color:#0F1A1F">עדיין לא העלית סרטונים</h3><p style="color:#64748B;font-size:13px;margin:0">לחץ "+ הוסף סרטון" כדי להוסיף</p></div>`;
       const warning=catVids.length===0&&uncat.length>0?`<div style="background:rgba(245,158,11,0.08);border-radius:12px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#92400E;font-weight:700">${icon("alert-triangle",14)} ${uncat.length} סרטונים ללא מקצוע — לחץ "שייך" כדי לשייכם ל${catObj.lbl}</div>`:'';
       return warning+showVids.map(v=>{
         const ytId=v.platform==='youtube'?(v.url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/)([^&?\s]+)/)?.[1]):null;
@@ -9004,7 +9004,7 @@ function Profile(){
     </div>
     ${filteredVids.length===0?`
       <div style="background:rgba(255,255,255,0.7);backdrop-filter:blur(10px);border-radius:20px;padding:32px 20px;text-align:center">
-        <div style="font-size:54px;margin-bottom:12px">${icon("video",14)}</div>
+        <div style="margin-bottom:12px;display:flex;justify-content:center">${miniBadge('video','#8B5CF6',54)}</div>
         <h3 style="font-weight:900;font-size:16px;margin:0 0 8px;color:#0F1A1F">עדיין לא העלית סרטונים</h3>
         <p style="color:#64748B;font-size:13px;line-height:1.7;margin:0 0 18px">עבור ללשונית "⬆️ העלאה" כדי להעלות סרטון ראשון</p>
       </div>
@@ -9066,7 +9066,7 @@ function Profile(){
       </div>
     </div>
     <button onclick="shareTeacher(TEACHERS.find(x=>x.id==='${myUid}'))" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;border-radius:16px;padding:13px;font-weight:900;font-size:14px;color:#fff;cursor:pointer;margin-bottom:14px">${icon("send",14)} שתף פרופיל שלי — קבל יותר הזמנות</button>
-    ${done.length===0?`<div style="background:rgba(255,255,255,0.7);border-radius:18px;padding:28px;text-align:center"><div style="margin-bottom:8px">${icon("dollar",42)}</div><p style="color:#64748B;font-size:13px;margin:0">עוד אין הכנסות. כשתשלים שיעורים הם יופיעו כאן.</p></div>`:`
+    ${done.length===0?`<div style="background:rgba(255,255,255,0.7);border-radius:18px;padding:28px;text-align:center"><div style="margin-bottom:10px">${miniBadge('dollar','#14B8A6',72)}</div><p style="color:#64748B;font-size:13px;margin:0">עוד אין הכנסות. כשתשלים שיעורים הם יופיעו כאן.</p></div>`:`
     <h4 style="font-size:14px;font-weight:800;margin:0 0 10px;color:#0F1A1F">תשלומים אחרונים</h4>
     ${done.slice(0,15).map(b=>`
       <div style="background:#fff;border-radius:16px;padding:13px 15px;margin-bottom:8px;box-shadow:0 2px 10px rgba(0,0,0,0.06);display:flex;align-items:center;justify-content:space-between">
@@ -9110,7 +9110,7 @@ function Profile(){
         <button onclick="(()=>{const link='${_myRefLink()}';const text='הצטרף ל-Drushe דרך הלינק שלי ותקבל ₪5 קרדיט לשיעור הראשון! '+link;if(navigator.share){navigator.share({title:'Drushe – פלטפורמת מורים',text:text,url:link}).catch(()=>{});}else{window.open('https://wa.me/?text='+encodeURIComponent(text),'_blank');}})()" style="background:rgba(255,255,255,.2);color:#fff;border-radius:50px;padding:9px 16px;font-weight:700;cursor:pointer;font-size:12px">${icon("send",12)} שתף</button>
       </div>
     </div>
-    ${[[icon("edit",18),"ערוך פרופיל",isTeacher?"showEditTeacherProfileDialog()":`showEditProfileDialog()`],[icon("dollar",18),"ניהול תשלומים","showPaymentManagement()"],[icon("award",18),"ראה לידרבורד","go('leaderboard')"],[icon("x-circle",18),"התנתקות","confirmLogout()"]].map(([e,l,fn])=>`<div class="card-sm" style="display:flex;align-items:center;gap:13px;cursor:pointer" onclick="${fn}"><span style="display:flex;align-items:center">${e}</span><span style="font-weight:700;font-size:15px;color:${l==="התנתקות"?"#E74C3C":"#1A1A2E"}">${l}</span><span style="margin-right:auto;color:#8A94A6">←</span></div>`).join("")}
+    ${[["edit",'#14B8A6',"ערוך פרופיל",isTeacher?"showEditTeacherProfileDialog()":`showEditProfileDialog()`],["dollar",'#F59E0B',"ניהול תשלומים","showPaymentManagement()"],["award",'#8B5CF6',"ראה לידרבורד","go('leaderboard')"],["x-circle",'#E74C3C',"התנתקות","confirmLogout()"]].map(([ic,col,l,fn])=>`<div class="card-sm" style="display:flex;align-items:center;gap:13px;cursor:pointer" onclick="${fn}">${miniBadge(ic,col,32)}<span style="font-weight:700;font-size:15px;color:${l==="התנתקות"?"#E74C3C":"#1A1A2E"}">${l}</span><span style="margin-right:auto;color:#8A94A6">←</span></div>`).join("")}
     <div style="margin-top:12px;text-align:center">
       <button onclick="localStorage.removeItem('_onboardingDone');showFireToast('✅ Tutorial יאופס בכניסה הבאה')" style="background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.7);border-radius:12px;padding:10px 18px;font-size:13px;cursor:pointer;margin-top:8px">${icon("info",14)} הצג מדריך מחדש</button>
     </div>`;
@@ -9122,7 +9122,7 @@ function Profile(){
     const ago=timeAgoTxt;
     content=teacherAllBookings.length===0?`
       <div style="background:rgba(255,255,255,0.7);backdrop-filter:blur(10px);border-radius:20px;padding:40px 24px;text-align:center;margin-top:10px">
-        <div style="margin-bottom:12px">${icon("calendar",54)}</div>
+        <div style="margin-bottom:14px">${miniBadge('calendar','#06B6D4',80)}</div>
         <h3 style="font-weight:900;font-size:16px;margin:0 0 8px;color:#0F1A1F">אין הזמנות עדיין</h3>
         <p style="color:#64748B;font-size:13px;margin:0">כשתלמידים יזמינו שיעורים הם יופיעו כאן</p>
       </div>
@@ -9177,7 +9177,7 @@ function Profile(){
       <div style="padding:0 14px">
         ${studentBookings.length===0?`
         <div style="background:linear-gradient(135deg,rgba(20,184,166,0.12),rgba(6,182,212,0.12));border:1.5px dashed rgba(20,184,166,0.35);border-radius:22px;padding:20px 16px;text-align:center;margin:-22px 0 16px;position:relative;z-index:2">
-          <div style="margin-bottom:8px">${icon("zap",38)}</div>
+          <div style="margin-bottom:10px">${miniBadge('zap','#14B8A6',60)}</div>
           <div style="font-weight:900;font-size:15px;color:#0F1A1F;margin-bottom:4px">מוכן להתחיל?</div>
           <div style="font-size:12px;color:#64748B;margin-bottom:12px">הזמן את השיעור הראשון שלך עכשיו!</div>
           <button onclick="go('home')" style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:10px 24px;font-weight:900;font-size:13px;cursor:pointer;box-shadow:0 4px 14px rgba(20,184,166,0.4)">${icon("search",14)} חפש מורה</button>
@@ -9446,7 +9446,7 @@ function Community(){
     </div>
   </div>`:"";
   const _isTeacherU=currentUserData?.role==='teacher';
-  const _groupsHtml=(()=>{const openG=communityGroups.filter(g=>g.status==='open'&&(!S.groupSubj||g.subject===S.groupSubj));const hdr=_isTeacherU?`<div style="display:flex;gap:8px;margin-bottom:16px"><button onclick="showCreateGroupDialog()" style="flex:1;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:14px;padding:12px;font-weight:800;font-size:13px;cursor:pointer">+ צור קבוצה</button><button onclick="showTeacherGroupsPanel()" style="flex:1;background:rgba(20,184,166,0.1);color:#14B8A6;border-radius:14px;padding:12px;font-weight:800;font-size:13px;cursor:pointer">${icon("users",14)} הקבוצות שלי</button></div>`:currentUser?`<div style="margin-bottom:14px"><button onclick="showStudentGroupsPanel()" style="width:100%;background:rgba(20,184,166,0.08);color:#14B8A6;border-radius:14px;padding:11px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">${icon("users",14)} הקבוצות שלי${Object.keys(myGroupStatuses).length?' ('+Object.keys(myGroupStatuses).length+')':''}</button></div>`:'';const allSubjs=[...new Set(communityGroups.filter(g=>g.status==='open'&&g.subject).map(g=>g.subject))];const subjFilter=allSubjs.length>1?'<div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px">'+['<button onclick="S.groupSubj=null;render()" style="flex-shrink:0;padding:6px 14px;border-radius:50px;font-size:12px;font-weight:800;cursor:pointer;border:none;background:'+(S.groupSubj?'rgba(100,116,139,0.1)':'linear-gradient(135deg,#14B8A6,#06B6D4)')+';color:'+(S.groupSubj?'#64748B':'#fff')+'">הכל</button>',...allSubjs.map(sid=>{const c=catById(sid);const on=S.groupSubj===sid;return '<button onclick="S.groupSubj=\''+sid+'\';render()" style="flex-shrink:0;padding:6px 14px;border-radius:50px;font-size:12px;font-weight:800;cursor:pointer;border:none;background:'+(on?c.col:'rgba(100,116,139,0.1)')+';color:'+(on?'#fff':'#64748B')+'">'+catIcon(c,13)+' '+c.lbl+'</button>';})].join('')+'</div>':'';if(!openG.length)return hdr+subjFilter+`<div style="text-align:center;padding:40px 20px"><div style="margin-bottom:14px">${icon("home",64)}</div><h3 style="font-weight:900;font-size:18px;margin:0 0 8px">אין קבוצות פעילות</h3><p style="color:#64748B;font-size:13px">${S.groupSubj?'נסה לשנות את הסינון':_isTeacherU?'היה הראשון ליצור קבוצה!':'בקרוב יהיו קבוצות זמינות...'}</p></div>`;return hdr+subjFilter+openG.map(g=>{const cat=catById(g.subject);const spots=Math.max(0,(g.maxStudents||0)-(g.membersCount||0));const spotsHtml=(g.maxStudents||0)>0?spots>0?`<div style="text-align:center;background:rgba(16,185,129,0.1);border-radius:12px;padding:8px 12px;flex-shrink:0"><div style="font-weight:900;font-size:16px;color:#10B981">${spots}</div><div style="font-size:10px;color:#64748B">מקומות</div></div>`:`<div style="background:rgba(239,68,68,0.1);border-radius:12px;padding:8px 12px;flex-shrink:0"><div style="font-size:11px;font-weight:800;color:#EF4444">מלא</div></div>`:'';return `<div class="card" onclick="showGroupDetail('${g.id}')" style="cursor:pointer;margin-bottom:12px;padding:16px 18px"><div style="display:flex;gap:12px;align-items:center"><div style="width:48px;height:48px;border-radius:14px;background:${cat.col}18;display:flex;align-items:center;justify-content:center;flex-shrink:0">${catIcon(cat,26)}</div><div style="flex:1;min-width:0"><div style="font-weight:900;font-size:15px;margin-bottom:3px">${g.title}</div><div style="font-size:12px;color:${cat.col};font-weight:700">${cat.lbl}${g.isMixed?' · 🌈 מעורבת':''}</div></div>${spotsHtml}</div>${g.desc?`<p style="margin:10px 0 0;font-size:13px;color:#64748B;line-height:1.5">${g.desc.substring(0,100)}${g.desc.length>100?'...':''}</p>`:''}<div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">${g.day?`<span style="background:rgba(20,184,166,0.1);color:#14B8A6;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">📅 ${g.day}</span>`:''}${g.time?` <span style="background:rgba(20,184,166,0.1);color:#14B8A6;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">${icon("clock",14)} ${g.time}</span>`:''}${g.location?` <span style="background:rgba(20,184,166,0.1);color:#14B8A6;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">${icon("pin",14)} ${g.location}</span>`:''}${g.price?`<span style="background:rgba(20,184,166,0.1);color:#14B8A6;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">₪${g.price}</span>`:`<span style="background:rgba(16,185,129,0.1);color:#10B981;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">חינם!</span>`}</div></div>`;}).join('');})();
+  const _groupsHtml=(()=>{const openG=communityGroups.filter(g=>g.status==='open'&&(!S.groupSubj||g.subject===S.groupSubj));const hdr=_isTeacherU?`<div style="display:flex;gap:8px;margin-bottom:16px"><button onclick="showCreateGroupDialog()" style="flex:1;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:14px;padding:12px;font-weight:800;font-size:13px;cursor:pointer">+ צור קבוצה</button><button onclick="showTeacherGroupsPanel()" style="flex:1;background:rgba(20,184,166,0.1);color:#14B8A6;border-radius:14px;padding:12px;font-weight:800;font-size:13px;cursor:pointer">${icon("users",14)} הקבוצות שלי</button></div>`:currentUser?`<div style="margin-bottom:14px"><button onclick="showStudentGroupsPanel()" style="width:100%;background:rgba(20,184,166,0.08);color:#14B8A6;border-radius:14px;padding:11px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">${icon("users",14)} הקבוצות שלי${Object.keys(myGroupStatuses).length?' ('+Object.keys(myGroupStatuses).length+')':''}</button></div>`:'';const allSubjs=[...new Set(communityGroups.filter(g=>g.status==='open'&&g.subject).map(g=>g.subject))];const subjFilter=allSubjs.length>1?'<div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px">'+['<button onclick="S.groupSubj=null;render()" style="flex-shrink:0;padding:6px 14px;border-radius:50px;font-size:12px;font-weight:800;cursor:pointer;border:none;background:'+(S.groupSubj?'rgba(100,116,139,0.1)':'linear-gradient(135deg,#14B8A6,#06B6D4)')+';color:'+(S.groupSubj?'#64748B':'#fff')+'">הכל</button>',...allSubjs.map(sid=>{const c=catById(sid);const on=S.groupSubj===sid;return '<button onclick="S.groupSubj=\''+sid+'\';render()" style="flex-shrink:0;padding:6px 14px;border-radius:50px;font-size:12px;font-weight:800;cursor:pointer;border:none;background:'+(on?c.col:'rgba(100,116,139,0.1)')+';color:'+(on?'#fff':'#64748B')+'">'+catIcon(c,13)+' '+c.lbl+'</button>';})].join('')+'</div>':'';if(!openG.length)return hdr+subjFilter+`<div style="text-align:center;padding:40px 20px"><div style="margin-bottom:16px">${miniBadge('home','#8B5CF6',90)}</div><h3 style="font-weight:900;font-size:18px;margin:0 0 8px">אין קבוצות פעילות</h3><p style="color:#64748B;font-size:13px">${S.groupSubj?'נסה לשנות את הסינון':_isTeacherU?'היה הראשון ליצור קבוצה!':'בקרוב יהיו קבוצות זמינות...'}</p></div>`;return hdr+subjFilter+openG.map(g=>{const cat=catById(g.subject);const spots=Math.max(0,(g.maxStudents||0)-(g.membersCount||0));const spotsHtml=(g.maxStudents||0)>0?spots>0?`<div style="text-align:center;background:rgba(16,185,129,0.1);border-radius:12px;padding:8px 12px;flex-shrink:0"><div style="font-weight:900;font-size:16px;color:#10B981">${spots}</div><div style="font-size:10px;color:#64748B">מקומות</div></div>`:`<div style="background:rgba(239,68,68,0.1);border-radius:12px;padding:8px 12px;flex-shrink:0"><div style="font-size:11px;font-weight:800;color:#EF4444">מלא</div></div>`:'';return `<div class="card" onclick="showGroupDetail('${g.id}')" style="cursor:pointer;margin-bottom:12px;padding:16px 18px"><div style="display:flex;gap:12px;align-items:center">${catBadge(cat,48)}<div style="flex:1;min-width:0"><div style="font-weight:900;font-size:15px;margin-bottom:3px">${g.title}</div><div style="font-size:12px;color:${cat.col};font-weight:700">${cat.lbl}${g.isMixed?' · 🌈 מעורבת':''}</div></div>${spotsHtml}</div>${g.desc?`<p style="margin:10px 0 0;font-size:13px;color:#64748B;line-height:1.5">${g.desc.substring(0,100)}${g.desc.length>100?'...':''}</p>`:''}<div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">${g.day?`<span style="background:rgba(20,184,166,0.1);color:#14B8A6;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">📅 ${g.day}</span>`:''}${g.time?` <span style="background:rgba(20,184,166,0.1);color:#14B8A6;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">${icon("clock",14)} ${g.time}</span>`:''}${g.location?` <span style="background:rgba(20,184,166,0.1);color:#14B8A6;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">${icon("pin",14)} ${g.location}</span>`:''}${g.price?`<span style="background:rgba(20,184,166,0.1);color:#14B8A6;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">₪${g.price}</span>`:`<span style="background:rgba(16,185,129,0.1);color:#10B981;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">חינם!</span>`}</div></div>`;}).join('');})();
 
   const _briefsHtml=(()=>{
     const briefs=S.parentBriefs||[];
@@ -9526,12 +9526,12 @@ function Community(){
       </div>
     </div>
     <div style="padding:15px 16px 100px">${S.comTab==='briefs'?_briefsHtml:S.comTab==='groups'?_groupsHtml:S.posts.length===0?`<div style="text-align:center;padding:60px 20px">
-    <div style="font-size:48px;margin-bottom:16px">${icon("chat",14)}</div>
+    <div style="margin-bottom:16px;display:flex;justify-content:center">${miniBadge('chat','#14B8A6',72)}</div>
     <h3 style="color:#0F1A1F;font-weight:800;margin:0 0 8px">עדיין אין פוסטים</h3>
     <p style="color:#64748B;font-size:14px;margin:0 0 20px">היה הראשון לשתף משהו עם הקהילה!</p>
   </div>`:vis.length===0?`
       <div style="background:rgba(255,255,255,0.7);backdrop-filter:blur(12px);border-radius:24px;padding:40px 24px;text-align:center;margin-top:30px">
-        <div style="font-size:64px;margin-bottom:14px">${icon("chat",14)}</div>
+        <div style="margin-bottom:14px;display:flex;justify-content:center">${miniBadge('chat','#14B8A6',64)}</div>
         <h3 style="font-weight:900;font-size:18px;margin:0 0 8px;color:#0F1A1F">${S.areaOnly?'אין פוסטים מהאזור שלך':'היה הראשון לפרסם!'}</h3>
         <p style="color:#64748B;font-size:13px;line-height:1.7;margin:0 0 20px">${S.areaOnly?'נסה להוריד את הסינון או היה הראשון לפרסם מהאזור שלך':'הקהילה ריקה כרגע. שתף שאלה, טיפ או חוויה עם שאר המשתמשים'}</p>
         ${S.areaOnly?`<button onclick="S.areaOnly=false;render()" style="background:rgba(20,184,166,0.1);color:#14B8A6;border-radius:50px;padding:11px 22px;font-weight:800;font-size:13px;cursor:pointer">הצג מכל הארץ</button>`:`<button class="btn bp" style="max-width:240px;margin:0 auto" onclick="S.showCompose=true;render()">${icon("edit",14)} פרסם פוסט ראשון</button>`}
@@ -9977,7 +9977,7 @@ function About(){
     </div>
 
     <div style="background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);border-radius:var(--radius);padding:22px;text-align:center;box-shadow:var(--gp);margin-bottom:18px">
-      <div style="margin-bottom:10px">${icon("zap",34)}</div>
+      <div style="margin-bottom:12px;display:flex;justify-content:center">${miniBadge('zap','#FBBF24',56)}</div>
       <h3 style="color:#fff;margin:0 0 8px;font-weight:900;font-size:17px">רוצה להצטרף לקהילה?</h3>
       <p style="color:rgba(255,255,255,.88);font-size:13px;margin:0 0 14px;line-height:1.6">הצטרף כמורה וגלה שאתה יכול ללמד — ולהרוויח.</p>
       <div style="display:flex;gap:10px;justify-content:center">
@@ -10029,24 +10029,24 @@ function About(){
 
     <h4 style="font-weight:900;font-size:15px;margin:18px 0 12px;color:#14B8A6">👨‍👩‍👧 הורים – מה הגישה שלכם?</h4>
     ${[
-      {e:icon("bar-chart",24),t:'דוח שבועי להורים',d:'דוח שבועי אוטומטי במייל על שיעורי הילד/ה ודירוגים, עם קישור צפייה אישי — בלי צורך בסיסמה.'},
-      {e:icon("chat",24),t:'צפייה בצ\'אטים',d:'כל ההתכתבויות בין ילדכם למורה גלויות לצפייה — פשוט היכנסו עם פרטי ההתחברות של הילד/ה.'},
-      {e:icon("dollar",24),t:'שקיפות בתשלומים',d:'ההורה מקבל עדכון במייל על כל הזמנה ותשלום שמתבצע.'},
+      {ic:'bar-chart',col:'#14B8A6',t:'דוח שבועי להורים',d:'דוח שבועי אוטומטי במייל על שיעורי הילד/ה ודירוגים, עם קישור צפייה אישי — בלי צורך בסיסמה.'},
+      {ic:'chat',col:'#06B6D4',t:'צפייה בצ\'אטים',d:'כל ההתכתבויות בין ילדכם למורה גלויות לצפייה — פשוט היכנסו עם פרטי ההתחברות של הילד/ה.'},
+      {ic:'dollar',col:'#F59E0B',t:'שקיפות בתשלומים',d:'ההורה מקבל עדכון במייל על כל הזמנה ותשלום שמתבצע.'},
     ].map(s=>`
       <div class="card" style="display:flex;gap:12px;align-items:flex-start;margin-bottom:10px">
-        <div style="font-size:28px;width:40px;text-align:center;flex-shrink:0">${s.e}</div>
+        <div style="flex-shrink:0">${miniBadge(s.ic,s.col,40)}</div>
         <div><div style="font-weight:900;font-size:14px;margin-bottom:4px">${s.t}</div><div style="font-size:12px;color:#64748B;line-height:1.6">${s.d}</div></div>
       </div>`).join('')}
 
     <h4 style="font-weight:900;font-size:15px;margin:18px 0 12px;color:#10B981">${icon("user",14)} לתלמידים – איך נראה שיעור?</h4>
     ${[
-      {e:icon("search",24),t:'חיפוש ובחירת מורה',d:'רואים פרופיל מלא – תמונה, וידאו, דירוג, ביקורות ומחיר.'},
-      {e:icon("calendar",24),t:'קביעת שיעור',d:'בוחרים תאריך ושעה מלוח הזמנים של המורה. ההורה מקבל הודעה.'},
-      {e:icon("video",24),t:'שיעור אונליין',d:'השיעור מתקיים דרך הקישור האישי שהמורה הגדיר – Zoom, Google Meet או Teams.'},
-      {e:icon("star",24),t:'דירוג וביקורת',d:'אחרי השיעור שניהם מדרגים אחד את השני. זה בונה אמון בקהילה.'},
+      {ic:'search',col:'#14B8A6',t:'חיפוש ובחירת מורה',d:'רואים פרופיל מלא – תמונה, וידאו, דירוג, ביקורות ומחיר.'},
+      {ic:'calendar',col:'#06B6D4',t:'קביעת שיעור',d:'בוחרים תאריך ושעה מלוח הזמנים של המורה. ההורה מקבל הודעה.'},
+      {ic:'video',col:'#8B5CF6',t:'שיעור אונליין',d:'השיעור מתקיים דרך הקישור האישי שהמורה הגדיר – Zoom, Google Meet או Teams.'},
+      {ic:'star',col:'#F59E0B',t:'דירוג וביקורת',d:'אחרי השיעור שניהם מדרגים אחד את השני. זה בונה אמון בקהילה.'},
     ].map(s=>`
       <div class="card" style="display:flex;gap:12px;align-items:flex-start;margin-bottom:10px">
-        <div style="font-size:28px;width:40px;text-align:center;flex-shrink:0">${s.e}</div>
+        <div style="flex-shrink:0">${miniBadge(s.ic,s.col,40)}</div>
         <div><div style="font-weight:900;font-size:14px;margin-bottom:4px">${s.t}</div><div style="font-size:12px;color:#64748B;line-height:1.6">${s.d}</div></div>
       </div>`).join('')}
 
@@ -10058,7 +10058,7 @@ function About(){
 
   if(tab==="values") content=`
     <p style="color:${C.muted};font-size:14px;margin:0 0 16px;line-height:1.7">5 עקרונות שמנחים כל החלטה שאנחנו מקבלים:</p>
-    ${[[icon("shield",26),"בטיחות מעל הכל","אימות ת.ז., נוכחות הורים וניטור שיחות בכל שלב."],[icon("dollar",26),"נגישות כלכלית","ילד מכל שכבה יוכל ללמוד. מחירים שנקבעים על ידי הילדים."],[icon("star",26),"העצמת ילדים","מורה צעיר רוכש ביטחון, ניסיון ניהולי, והכנסה אמיתית."],[icon("users",26),"קהילה בטוחה","פורום מנוהל, מסונן, עם הורים שותפים בכל שלב."],[icon("bar-chart",26),"איכות ושקיפות","דירוגים הדדיים, תגים, ביקורות אמיתיות לכל מורה."]].map(([e,t,d])=>`<div class="card" style="display:flex;gap:14px;align-items:flex-start"><div style="width:50px;height:50px;border-radius:14px;flex-shrink:0;background:rgba(20,184,166,.08);display:flex;align-items:center;justify-content:center">${e}</div><div><h4 style="margin:0 0 5px;font-weight:900;font-size:15px">${t}</h4><p style="margin:0;font-size:13px;color:${C.muted};line-height:1.6">${d}</p></div></div>`).join("")}`;
+    ${[["shield",'#14B8A6',"בטיחות מעל הכל","אימות ת.ז., נוכחות הורים וניטור שיחות בכל שלב."],["dollar",'#F59E0B',"נגישות כלכלית","ילד מכל שכבה יוכל ללמוד. מחירים שנקבעים על ידי הילדים."],["star",'#EC4899',"העצמת ילדים","מורה צעיר רוכש ביטחון, ניסיון ניהולי, והכנסה אמיתית."],["users",'#8B5CF6',"קהילה בטוחה","פורום מנוהל, מסונן, עם הורים שותפים בכל שלב."],["bar-chart",'#06B6D4',"איכות ושקיפות","דירוגים הדדיים, תגים, ביקורות אמיתיות לכל מורה."]].map(([ic,col,t,d])=>`<div class="card" style="display:flex;gap:14px;align-items:flex-start"><div style="flex-shrink:0">${miniBadge(ic,col,50)}</div><div><h4 style="margin:0 0 5px;font-weight:900;font-size:15px">${t}</h4><p style="margin:0;font-size:13px;color:${C.muted};line-height:1.6">${d}</p></div></div>`).join("")}`;
 
   if(tab==="roadmap"){
     const steps=[{e:icon("info",22),t:"הרעיון נולד",d:"הבנו שחוגים יקרים ושכישרון ילדים יכול לשנות את זה.",yr:"2025",done:true},{e:icon("edit",22),t:"בניית הפרוטוטייפ",d:"פיתוח הפלטפורמה: הרשמה בטוחה, מורים, קהילה, לידרבורד.",yr:"2025",done:true},{e:icon("zap",22),t:"פיילוט ב-5 ערים",d:"השקה עם 50 מורים ו-200 תלמידים.",yr:"2026",done:false},{e:icon("target",22),t:"10,000 משתמשים",d:"קהילה צומחת של ילדים שמלמדים ולומדים ברחבי הארץ.",yr:"2026",done:false},{e:icon("broadcast",22),t:"הרחבה לחו\"ל",d:"השקה לעולם הדובר עברית ואחר כך שפות נוספות.",yr:"2027",done:false}];
@@ -10204,7 +10204,7 @@ function TeacherPending(){
 
           ${rejected?`
           <div style="background:rgba(239,68,68,0.06);border-radius:14px;padding:16px;margin-bottom:14px;text-align:center">
-            <div style="font-size:36px;margin-bottom:8px">${icon("x-circle",14)}</div>
+            <div style="margin-bottom:8px;display:flex;justify-content:center">${miniBadge('x-circle','#EF4444',36)}</div>
             <h4 style="color:#EF4444;font-size:14px;font-weight:800;margin:0 0 8px">הפרופיל לא אושר</h4>
             <p style="color:#64748B;font-size:13px;margin:0 0 12px;line-height:1.6">לצורך פרטים נוספים, פנה למנהל האפליקציה:</p>
             <div style="background:#F1F5F9;border-radius:10px;padding:10px">
@@ -10284,7 +10284,7 @@ function StudentPending(){
           </div>
           ${rejected?`
           <div style="background:rgba(239,68,68,0.1);border-radius:14px;padding:16px;margin-bottom:16px;text-align:center">
-            <div style="font-size:36px;margin-bottom:8px">${icon("x-circle",14)}</div>
+            <div style="margin-bottom:8px;display:flex;justify-content:center">${miniBadge('x-circle','#EF4444',36)}</div>
             <h4 style="color:#EF4444;font-size:14px;font-weight:800;margin:0 0 8px">הבקשה לא אושרה</h4>
             <p style="color:#475569;font-size:13px;margin:0 0 12px;line-height:1.6">לצורך פרטים נוספים, פנה למנהל האפליקציה:</p>
             <div style="background:rgba(255,255,255,0.06);border-radius:10px;padding:10px">
@@ -11332,7 +11332,7 @@ async function showStudentGroupsPanel(){
       <button onclick="document.getElementById('_sgOv')?.remove()" style="background:rgba(20,184,166,0.1);border:none;color:#14B8A6;font-size:18px;cursor:pointer;border-radius:50%;width:32px;height:32px">✕</button>
       <h3 style="font-weight:900;font-size:18px;margin:0">${icon("home",18)} הקבוצות שלי</h3>
     </div>
-    ${html||`<div style="text-align:center;padding:32px 20px"><div style="margin-bottom:12px">${icon("home",54)}</div><p style="color:#64748B;font-size:13px">עדיין לא הצטרפת לקבוצות</p></div>`}
+    ${html||`<div style="text-align:center;padding:32px 20px"><div style="margin-bottom:14px">${miniBadge('home','#8B5CF6',80)}</div><p style="color:#64748B;font-size:13px">עדיין לא הצטרפת לקבוצות</p></div>`}
     <button onclick="document.getElementById(\'_sgOv\')?.remove();S.comTab=\'groups\';go(\'community\')" style="width:100%;background:rgba(20,184,166,0.1);color:#14B8A6;border-radius:50px;padding:12px;font-weight:700;font-size:14px;cursor:pointer;margin-top:8px">← גלה עוד קבוצות</button>
   </div>`;
   document.body.appendChild(ov);
@@ -11496,12 +11496,12 @@ async function _loadParentPortalData(token){
   try{
     const snap=await db.ref('parentTokens/'+token).get();
     if(!snap.exists()){
-      el.innerHTML=`<div style="font-size:48px;margin-bottom:12px">${icon("x-circle",14)}</div><p style="color:#EF4444;font-weight:800;font-size:16px">קישור לא תקף</p><p style="color:#64748B;font-size:13px;margin-top:6px">בקש קישור חדש מצוות Drushe</p>`;
+      el.innerHTML=`<div style="margin-bottom:12px;display:flex;justify-content:center">${miniBadge('x-circle','#EF4444',48)}</div><p style="color:#EF4444;font-weight:800;font-size:16px">קישור לא תקף</p><p style="color:#64748B;font-size:13px;margin-top:6px">בקש קישור חדש מצוות Drushe</p>`;
       return;
     }
     const data=snap.val();
     if(Date.now()>data.expiresAt){
-      el.innerHTML=`<div style="font-size:48px;margin-bottom:12px">${icon("clock",14)}</div><p style="color:#F59E0B;font-weight:800;font-size:16px">קישור פג תוקף</p><p style="color:#64748B;font-size:13px;margin-top:6px">הקישור תקף ל-30 יום בלבד</p>`;
+      el.innerHTML=`<div style="margin-bottom:12px;display:flex;justify-content:center">${miniBadge('clock','#06B6D4',48)}</div><p style="color:#F59E0B;font-weight:800;font-size:16px">קישור פג תוקף</p><p style="color:#64748B;font-size:13px;margin-top:6px">הקישור תקף ל-30 יום בלבד</p>`;
       return;
     }
     const weekLessons=data.weekLessons||[];
@@ -11543,14 +11543,14 @@ async function _loadParentPortalData(token){
         <p style="color:#64748B;font-size:12px;margin:0;line-height:1.6">פורטל הורים של Drushe<br>קישור זה תקף ל-30 יום מקבלת המייל</p>
       </div>`;
   }catch(e){
-    if(el)el.innerHTML=`<div style="font-size:48px;margin-bottom:12px">${icon("alert-triangle",14)}</div><p style="color:#F59E0B;font-weight:800">שגיאה בטעינה</p>`;
+    if(el)el.innerHTML=`<div style="margin-bottom:12px;display:flex;justify-content:center">${miniBadge('alert-triangle','#EF4444',48)}</div><p style="color:#F59E0B;font-weight:800">שגיאה בטעינה</p>`;
   }
 }
 
 function EmailVerify(){
   return `<div class="screen" style="background:linear-gradient(165deg,#ECFEFF 0%,#F0F9FF 50%,#EEF2FF 100%);min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px">
     <div style="background:#fff;border-radius:28px;padding:36px 28px;max-width:360px;width:100%;text-align:center">
-      <div style="font-size:60px;margin-bottom:16px">${icon("mail",14)}</div>
+      <div style="margin-bottom:16px;display:flex;justify-content:center">${miniBadge('mail','#14B8A6',60)}</div>
       <h2 style="font-size:22px;font-weight:900;margin:0 0 10px;color:#0F1A1F">אמת את כתובת המייל</h2>
       <p style="color:#64748B;font-size:14px;line-height:1.7;margin:0 0 24px">שלחנו לך מייל אימות לכתובת<br><strong style="color:#0F1A1F">${currentUser?.email||''}</strong><br><br>פתח/י את המייל ולחץ/י על הקישור — ואז חזור/י לכאן להתחבר.</p>
       <button onclick="auth.currentUser?.reload().then(()=>{if(auth.currentUser?.emailVerified){location.reload();}else{showFireToast('עדיין לא אומת — בדוק/י את המייל');}})" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:14px;padding:14px;font-size:15px;font-weight:800;cursor:pointer;margin-bottom:10px">${icon("check-circle",14)} אימתתי — כנס/י</button>
@@ -11817,7 +11817,7 @@ function showIOSInstallGuide(){
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px);padding:24px;direction:rtl';
   ov.innerHTML=`
     <div style="background:#fff;border-radius:24px;padding:24px;width:100%;max-width:340px;text-align:center">
-      <div style="font-size:54px;margin-bottom:12px">${icon("smartphone",14)}</div>
+      <div style="margin-bottom:12px;display:flex;justify-content:center">${miniBadge('smartphone','#25D366',54)}</div>
       <h3 style="font-weight:900;font-size:20px;margin:0 0 14px;color:#0F1A1F">התקנה ב-iPhone</h3>
       <div style="background:rgba(20,184,166,0.06);border-radius:14px;padding:14px;text-align:right;margin-bottom:16px">
         <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px">
@@ -12540,7 +12540,7 @@ async function sendResetEmail(){
     ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(10px);padding:24px;direction:rtl';
     ov.innerHTML=`
       <div style="background:#fff;border-radius:24px;padding:28px 24px;width:100%;max-width:340px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.4)">
-        <div style="font-size:54px;margin-bottom:12px">${icon("key",14)}</div>
+        <div style="margin-bottom:12px;display:flex;justify-content:center">${miniBadge('key','#F59E0B',54)}</div>
         <h3 style="font-weight:900;font-size:19px;margin:0 0 10px;color:#0F1A1F">שחזור סיסמה</h3>
         ${parentEmail?`
           <p style="color:#64748B;font-size:13px;margin:0 0 14px;line-height:1.7">נשלח קישור לאיפוס סיסמה למייל ההורה:</p>
@@ -12569,7 +12569,7 @@ async function sendResetEmail(){
       ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px);padding:24px;direction:rtl';
       ov.innerHTML=`
         <div style="background:#fff;border-radius:24px;padding:28px 24px;width:100%;max-width:340px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
-          <div style="font-size:54px;margin-bottom:12px">${icon("mail",14)}</div>
+          <div style="margin-bottom:12px;display:flex;justify-content:center">${miniBadge('mail','#14B8A6',54)}</div>
           <h3 style="font-weight:900;font-size:20px;margin:0 0 10px;color:#0F1A1F">מייל איפוס נשלח!</h3>
           <p style="color:#64748B;font-size:13px;margin:0 0 18px;line-height:1.7">שלחנו מייל ל:<br><strong style="color:#14B8A6;font-size:15px">${raw}</strong></p>
           <div style="background:rgba(20,184,166,0.06);border-radius:14px;padding:12px;text-align:right;margin-bottom:16px">
@@ -12619,7 +12619,7 @@ async function sendResetToParentEmail(parentEmail,fakeEmail,btn){
     setTimeout(()=>{
       const ov=document.createElement('div');
       ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px);padding:24px;direction:rtl';
-      ov.innerHTML=`<div style="background:#fff;border-radius:24px;padding:28px 24px;width:100%;max-width:340px;text-align:center"><div style="font-size:54px;margin-bottom:12px">${icon("check-circle",14)}</div><h3 style="font-weight:900;font-size:18px;margin:0 0 10px">הבקשה נשלחה!</h3><p style="color:#64748B;font-size:13px;margin:0 0 16px;line-height:1.7">שלחנו בקשה למנהל ומייל לאבא/אמא:<br><strong style="color:#14B8A6">${escapeHtml(parentEmail)}</strong><br><br>המנהל יצור קשר בהקדם לאיפוס הסיסמה.</p><button onclick="this.closest('div[style*=fixed]').remove()" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;border-radius:50px;padding:13px;font-size:14px;font-weight:800;color:#fff;cursor:pointer">הבנתי 👍</button></div>`;
+      ov.innerHTML=`<div style="background:#fff;border-radius:24px;padding:28px 24px;width:100%;max-width:340px;text-align:center"><div style="margin-bottom:12px;display:flex;justify-content:center">${miniBadge('check-circle','#10B981',54)}</div><h3 style="font-weight:900;font-size:18px;margin:0 0 10px">הבקשה נשלחה!</h3><p style="color:#64748B;font-size:13px;margin:0 0 16px;line-height:1.7">שלחנו בקשה למנהל ומייל לאבא/אמא:<br><strong style="color:#14B8A6">${escapeHtml(parentEmail)}</strong><br><br>המנהל יצור קשר בהקדם לאיפוס הסיסמה.</p><button onclick="this.closest('div[style*=fixed]').remove()" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;border-radius:50px;padding:13px;font-size:14px;font-weight:800;color:#fff;cursor:pointer">הבנתי 👍</button></div>`;
       document.body.appendChild(ov);
       ov.onclick=ev=>{if(ev.target===ov)ov.remove();};
     },200);
