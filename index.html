@@ -3257,9 +3257,9 @@ function showNotificationsPanel(){
   const items=notifications.length===0?
     `<div style="text-align:center;padding:40px 20px"><div style="margin-bottom:12px;display:flex;justify-content:center">${miniBadge('bell','#F59E0B',54)}</div><h3 style="font-weight:900;font-size:17px;margin:0 0 6px;color:#0F1A1F">אין התראות חדשות</h3><p style="color:#64748B;font-size:13px;margin:0">כשתקבל הזמנות או הודעות הן יופיעו כאן</p></div>`:
     notifications.map(n=>{
-      const icons={newBooking:'📚',bookingApproved:'✅',bookingRejected:'❌',bookingCancelled:'🚫',newMessage:'💬',newReview:'⭐',newVideo:'📹',newTeacher:'🎓',newReport:'🚨',newUser:'👋',groupJoin:'🙋',groupApproved:'🎉',groupRejected:'😔',rateLesson:'⭐',lessonSummary:'📖',accountApproved:'🎉',teacherApproved:'🎓',adminMessage:'📣',newPost:'📢',lessonCompleted:'✅',newStory:'📸',briefProposal:'💼',briefAccepted:'🤝',newQuestion:'❓',questionAnswered:'💡',trialReminder:'⏰',emailFailed:'📧',chatDeliveryFailed:'⚠️'};
-      const titles={newBooking:'הזמנת שיעור חדשה',bookingApproved:'ההזמנה אושרה!',bookingRejected:'ההזמנה נדחתה',bookingCancelled:'השיעור בוטל',newMessage:'הודעה חדשה',newReview:'דירוג חדש',newVideo:'סרטון חדש לאישור',newTeacher:'מורה חדש נרשם',newReport:'דיווח חדש!',newUser:'משתמש חדש',groupJoin:'בקשת הצטרפות לקבוצה',groupApproved:'התקבלת לקבוצה!',groupRejected:'הבקשה לא אושרה',rateLesson:'דרג את השיעור',lessonSummary:'סיכום שיעור חדש',accountApproved:'החשבון שלך אושר!',teacherApproved:'פרופיל המורה שלך אושר!',adminMessage:'הודעה מהמנהל',newPost:'פוסט חדש בקהילה',lessonCompleted:'השיעור הסתיים',newStory:'סטורי חדש לאישור',briefProposal:'הצעת מורה לדרוש שלך',briefAccepted:'ההצעה שלך התקבלה!',newQuestion:'שאלה חדשה על הפרופיל',questionAnswered:'המורה ענה על שאלתך',trialReminder:'תזכורת ניסיון חינם',emailFailed:'שליחת מייל נכשלה',chatDeliveryFailed:'הודעת צאט לא הועברה'};
-      const cols={newBooking:'#14B8A6',bookingApproved:'#10B981',bookingRejected:'#EF4444',bookingCancelled:'#F59E0B',newMessage:'#06B6D4',newReview:'#FBBF24',newVideo:'#06B6D4',newTeacher:'#14B8A6',newReport:'#E74C3C',newUser:'#0EA5E9',groupJoin:'#14B8A6',groupApproved:'#10B981',groupRejected:'#EF4444',rateLesson:'#FBBF24',lessonSummary:'#06B6D4',accountApproved:'#10B981',teacherApproved:'#14B8A6',adminMessage:'#06B6D4',newPost:'#F59E0B',lessonCompleted:'#10B981',newStory:'#8B5CF6',briefProposal:'#14B8A6',briefAccepted:'#10B981',newQuestion:'#14B8A6',questionAnswered:'#10B981',trialReminder:'#8B5CF6',emailFailed:'#EF4444',chatDeliveryFailed:'#EF4444'};
+      const icons={newBooking:'📚',bookingApproved:'✅',bookingRejected:'❌',bookingCancelled:'🚫',newMessage:'💬',newReview:'⭐',newVideo:'📹',newTeacher:'🎓',newReport:'🚨',newUser:'👋',groupJoin:'🙋',groupApproved:'🎉',groupRejected:'😔',rateLesson:'⭐',lessonSummary:'📖',accountApproved:'🎉',teacherApproved:'🎓',adminMessage:'📣',newPost:'📢',lessonCompleted:'✅',newStory:'📸',briefProposal:'💼',briefAccepted:'🤝',newQuestion:'❓',questionAnswered:'💡',trialReminder:'⏰',emailFailed:'📧',chatDeliveryFailed:'⚠️',registrationFailed:'🚫'};
+      const titles={newBooking:'הזמנת שיעור חדשה',bookingApproved:'ההזמנה אושרה!',bookingRejected:'ההזמנה נדחתה',bookingCancelled:'השיעור בוטל',newMessage:'הודעה חדשה',newReview:'דירוג חדש',newVideo:'סרטון חדש לאישור',newTeacher:'מורה חדש נרשם',newReport:'דיווח חדש!',newUser:'משתמש חדש',groupJoin:'בקשת הצטרפות לקבוצה',groupApproved:'התקבלת לקבוצה!',groupRejected:'הבקשה לא אושרה',rateLesson:'דרג את השיעור',lessonSummary:'סיכום שיעור חדש',accountApproved:'החשבון שלך אושר!',teacherApproved:'פרופיל המורה שלך אושר!',adminMessage:'הודעה מהמנהל',newPost:'פוסט חדש בקהילה',lessonCompleted:'השיעור הסתיים',newStory:'סטורי חדש לאישור',briefProposal:'הצעת מורה לדרוש שלך',briefAccepted:'ההצעה שלך התקבלה!',newQuestion:'שאלה חדשה על הפרופיל',questionAnswered:'המורה ענה על שאלתך',trialReminder:'תזכורת ניסיון חינם',emailFailed:'שליחת מייל נכשלה',chatDeliveryFailed:'הודעת צאט לא הועברה',registrationFailed:'הרשמה נכשלה'};
+      const cols={newBooking:'#14B8A6',bookingApproved:'#10B981',bookingRejected:'#EF4444',bookingCancelled:'#F59E0B',newMessage:'#06B6D4',newReview:'#FBBF24',newVideo:'#06B6D4',newTeacher:'#14B8A6',newReport:'#E74C3C',newUser:'#0EA5E9',groupJoin:'#14B8A6',groupApproved:'#10B981',groupRejected:'#EF4444',rateLesson:'#FBBF24',lessonSummary:'#06B6D4',accountApproved:'#10B981',teacherApproved:'#14B8A6',adminMessage:'#06B6D4',newPost:'#F59E0B',lessonCompleted:'#10B981',newStory:'#8B5CF6',briefProposal:'#14B8A6',briefAccepted:'#10B981',newQuestion:'#14B8A6',questionAnswered:'#10B981',trialReminder:'#8B5CF6',emailFailed:'#EF4444',chatDeliveryFailed:'#EF4444',registrationFailed:'#EF4444'};
       const ico=icons[n.type]||'🔔';
       const ttl=titles[n.type]||'התראה';
       const col=cols[n.type]||'#14B8A6';
@@ -3289,6 +3289,7 @@ function showNotificationsPanel(){
       else if(n.type==='trialReminder')sub='נשאר/ו '+(n.daysLeft||0)+(n.daysLeft===1?' יום':' ימים')+' — לאחר מכן ₪79/חודש';
       else if(n.type==='emailFailed')sub='אל: '+(n.to||'')+(n.subject?' • '+n.subject:'')+(n.error?' • '+n.error:'');
       else if(n.type==='chatDeliveryFailed')sub='שלב: '+(n.step||'')+(n.otherUid?' • יעד: '+n.otherUid:'')+(n.error?' • '+n.error:'');
+      else if(n.type==='registrationFailed')sub=(n.email||'')+(n.error?' • '+n.error:'');
       else sub=n.message||n.preview||(n.from?'מ-'+n.from:'');
       return `
         <div onclick="markNotificationRead('${n.id}');document.querySelector('._notifPanel')?.remove();${n.type==='bookingApproved'?"go('messages')":n.type==='newBooking'?"adminTab='bookings';showAdminPanel()":n.type==='newTeacher'||n.type==='newReport'?"adminTab='teachers';showAdminPanel()":n.type==='newVideo'?"adminTab='videos';showAdminPanel()":n.type==='newStory'?"adminTab='stories';showAdminPanel()":n.type==='groupJoin'?"showTeacherGroupsPanel()":n.type==='groupApproved'||n.type==='groupRejected'?"S.comTab='groups';go('community')":n.type==='rateLesson'&&n.bookingId?"showRatingDialog('"+n.bookingId+"','"+n.teacherId+"','"+n.teacherName+"')":n.type==='lessonSummary'?"go('messages')":n.type==='briefProposal'?"S.comTab='briefs';go('community')":n.type==='briefAccepted'?"go('messages')":n.type==='newQuestion'?"_notifGoToQA('"+currentUser?.uid+"')":n.type==='questionAnswered'?"_notifGoToQA('"+n.teacherUid+"')":n.type==='trialReminder'?"go('subscribe')":""}" style="background:${n.read?'rgba(255,255,255,0.7)':'#fff'};border-right:4px solid ${col};border-radius:14px;padding:14px;margin-bottom:8px;cursor:pointer;display:flex;align-items:start;gap:12px;${!n.read?'box-shadow:0 4px 14px rgba(20,184,166,0.15)':''}">
@@ -12381,9 +12382,11 @@ async function firebaseRegister(email,password,userData){
       };
       {
         // רשת אמורה כבר לפתור את מרוץ ה-token למעלה (getIdToken(true)), אבל ברשת
-        // איטית/לא יציבה הפער יכול להיות ארוך יותר משנייה — לכן, אם עדיין
-        // PERMISSION_DENIED, מנסים עד 3 פעמים נוספות עם המתנה גדלה (backoff).
-        const delays=[1200,2500,4500];
+        // איטית/לא יציבה (למשל חיבור סלולרי חלש) הפער יכול לחרוג משמעותית משנייה —
+        // ראינו את זה קורה בפועל גם אחרי 3 ניסיונות/~8 שניות, ואז המשתמש מאבד את
+        // כל ההרשמה (חשבון ה-Auth נמחק). מרחיבים את חלון הניסיונות משמעותית —
+        // עדיף שהרשמה תיקח עד חצי דקה מאשר שתיכשל ותמחק את החשבון שוב.
+        const delays=[1000,2000,3500,5500,8000,10000];
         let lastErr=null;
         let written=false;
         for(let attempt=0;attempt<=delays.length&&!written;attempt++){
@@ -12394,6 +12397,7 @@ async function firebaseRegister(email,password,userData){
             lastErr=writeErr;
             if(writeErr.code!=='PERMISSION_DENIED'||attempt===delays.length)throw writeErr;
             console.warn('[firebaseRegister] write got PERMISSION_DENIED, retry',attempt+1,'of',delays.length);
+            if(attempt>=1)showFireToast('⏳ עדיין שומר את החשבון, רגע...');
             await new Promise(r=>setTimeout(r,delays[attempt]));
             await cred.user.getIdToken(true).catch(()=>{});
           }
@@ -12425,6 +12429,8 @@ async function firebaseRegister(email,password,userData){
     }catch(dbErr){
       // rollback: מחק את חשבון ה-Auth שנוצר, כדי שהרשמה מחדש תהיה אפשרית
       console.error('[firebaseRegister] DB write failed:',dbErr.code,dbErr.message);
+      // התרעה למנהל — לפני מחיקת החשבון, כדי שהכתיבה עדיין מורשית (auth != null)
+      notifyAdmin({type:'registrationFailed',email,error:dbErr.code||dbErr.message||'שגיאה לא ידועה'}).catch(()=>{});
       await cred.user.delete().catch(()=>{});
       throw new Error('שגיאה בשמירת פרטי החשבון ['+(dbErr.code||'?')+'] — נסה שוב');
     }
