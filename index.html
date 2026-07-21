@@ -4486,7 +4486,9 @@ async function loadAdminData(){
     const usersData=await usersRes.json();
     const freshUsers=[];
     if(usersData&&typeof usersData==='object'&&!usersData.error)
-      Object.entries(usersData).forEach(([k,v])=>{if(v)freshUsers.push({uid:k,...v});});
+      // uid מגיע אחרי הספרד בכוונה — המפתח האמיתי ב-DB הוא ה-SSOT, לא שדה uid
+      // מיושן שאולי נשמר בתוך הרשומה עצמה בעבר.
+      Object.entries(usersData).forEach(([k,v])=>{if(v)freshUsers.push({...v,uid:k});});
     adminAllUsers=freshUsers;
     // סנכרן adminAlertStudents מ-Firebase ישירות
     adminAlertStudents=[];
@@ -4515,11 +4517,14 @@ async function loadAdminData(){
     document.querySelectorAll('[data-stat="students"]').forEach(el=>el.textContent=realStats.students);
     const teachersSnap=await db.ref('teachers').get();
     adminAllTeachers=[];
-    if(teachersSnap.exists())teachersSnap.forEach(c=>adminAllTeachers.push({uid:c.key,...c.val()}));
+    // uid מגיע אחרי הספרד בכוונה — המפתח האמיתי ב-DB הוא ה-SSOT, לא שדה uid
+    // מיושן שנשמר בתוך teacherData עצמה (אם הוא אי-פעם יתבדר משהוא, פעולות מנהל
+    // כמו אישור/מחיקה יפעלו על המורה הלא-נכון).
+    if(teachersSnap.exists())teachersSnap.forEach(c=>adminAllTeachers.push({...c.val(),uid:c.key}));
     // ודא שרשומת המורה של המנהל תמיד נכללת (גם אם לא נמצאה בסריקה הכללית)
     if(!adminAllTeachers.find(t=>t.uid===currentUser.uid)){
       const mySnap=await db.ref('teachers/'+currentUser.uid).get();
-      if(mySnap.exists()) adminAllTeachers.unshift({uid:currentUser.uid,...mySnap.val()});
+      if(mySnap.exists()) adminAllTeachers.unshift({...mySnap.val(),uid:currentUser.uid});
     }
     // מורים שנרשמו אבל טרם השלימו פרופיל
     adminIncompleteTeachers=adminAllUsers.filter(u=>
