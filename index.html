@@ -7944,11 +7944,6 @@ function Home(){
         return '';
       })()}
 
-      <div id="catSections" style="display:flex;align-items:center;gap:10px;margin-bottom:18px">
-        <h3 style="font-size:17px;font-weight:900;margin:0;color:#0F1A1F">📂 כל הנושאים</h3>
-        <div style="flex:1;height:2px;background:linear-gradient(90deg,rgba(20,184,166,0.25),transparent);border-radius:2px"></div>
-        <span style="font-size:12px;color:#14B8A6;font-weight:700">${CATS.length} קטגוריות</span>
-      </div>
       ${catSections}
 
       ${currentUser&&favorites.length>0?`
