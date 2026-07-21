@@ -68,7 +68,7 @@ input,textarea,select{font-family:inherit;-webkit-appearance:none;appearance:non
   --dark:#0F1A1F;--dark2:#1A2530;
   --card:rgba(255,255,255,0.97);
   --radius:24px;--radius-sm:16px;
-  --shadow:0 10px 40px rgba(20,184,166,0.18);
+  --shadow:0 2px 14px rgba(15,26,31,0.07);
   --shadow-lg:0 20px 60px rgba(20,184,166,0.25);
   --muted:#64748B;--text:#0F1A1F;
   --gp:0 0 32px rgba(20,184,166,0.45);
@@ -90,7 +90,7 @@ input,textarea,select{font-family:inherit;-webkit-appearance:none;appearance:non
 
 /* CARDS */
 .card{background:var(--card);border-radius:var(--radius);padding:18px;margin-bottom:14px;box-shadow:var(--shadow)}
-.card-sm{background:var(--card);border-radius:var(--radius-sm);padding:14px 16px;margin-bottom:10px;box-shadow:0 4px 16px rgba(0,0,0,.08)}
+.card-sm{background:var(--card);border-radius:var(--radius-sm);padding:14px 16px;margin-bottom:10px;box-shadow:0 2px 10px rgba(0,0,0,.05)}
 
 /* NAV */
 .bnav{position:fixed;bottom:0;left:0;right:0;
@@ -7626,7 +7626,7 @@ function Home(){
     const gc=GCOL[g]||'#14B8A6';
     return `<div style="margin-bottom:24px">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:0 2px">
-        <div style="width:36px;height:36px;border-radius:12px;background:linear-gradient(135deg,${gc},${gc}99);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 12px ${gc}30">${catIcon(CATS.find(c=>c.grp===g)||null,18,'#fff')}</div>
+        <div style="width:36px;height:36px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,.06)">${catIcon(CATS.find(c=>c.grp===g)||null,18)}</div>
         <span style="font-weight:900;font-size:16px;color:#0F1A1F">${g}</span>
         <div style="flex:1;height:2px;background:linear-gradient(90deg,${gc}30,transparent);border-radius:2px"></div>
         <span style="font-size:12px;color:${gc};font-weight:700;background:${gc}15;padding:3px 10px;border-radius:50px">${cats.length} נושאים</span>
@@ -7636,8 +7636,8 @@ function Home(){
           const cnt=TEACHERS.filter(t=>
             t.cat===c.id||(Array.isArray(t.cats)&&t.cats.includes(c.id))
           ).length;
-          return `<button onclick="S.catFilter='${c.id}';S.search='';render();window.scrollTo({top:0,behavior:'smooth'})" style="border:none;background:linear-gradient(145deg,#fff,${c.col}06);border:1.5px solid ${c.col}20;border-radius:20px;padding:16px 8px 14px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;text-align:center;box-shadow:0 2px 10px rgba(0,0,0,0.06);transition:all 0.2s;-webkit-tap-highlight-color:transparent">
-            <div style="width:52px;height:52px;border-radius:16px;background:linear-gradient(135deg,${c.col}25,${c.col}10);display:flex;align-items:center;justify-content:center;margin-bottom:2px">${catIcon(c,26)}</div>
+          return `<button onclick="S.catFilter='${c.id}';S.search='';render();window.scrollTo({top:0,behavior:'smooth'})" style="border:none;background:#fff;border-radius:20px;padding:16px 8px 14px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;text-align:center;box-shadow:0 1px 6px rgba(0,0,0,0.05);transition:all 0.2s;-webkit-tap-highlight-color:transparent">
+            <div style="width:52px;height:52px;border-radius:50%;background:#F8FAFC;display:flex;align-items:center;justify-content:center;margin-bottom:2px">${catIcon(c,26)}</div>
             <div style="font-size:12px;font-weight:800;color:#0F1A1F;line-height:1.3">${c.lbl}</div>
             ${cnt>0?`<div style="font-size:10px;font-weight:700;color:${c.col};background:${c.col}15;border-radius:50px;padding:2px 9px;margin-top:1px">${cnt} מורים</div>`:`<div style="font-size:10px;color:#CBD5E1;font-weight:600">בקרוב</div>`}
           </button>`;
@@ -7734,7 +7734,7 @@ function Home(){
         }).join('');
         return `<div style="margin-bottom:20px">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-            <div style="width:28px;height:28px;border-radius:9px;background:linear-gradient(135deg,#14B8A6,#06B6D4);display:flex;align-items:center;justify-content:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>
+            <div style="width:28px;height:28px;border-radius:50%;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.06);display:flex;align-items:center;justify-content:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>
             <span style="font-weight:900;font-size:15px;color:#0F1A1F">סטוריז מורים</span>
           </div>
           <div style="display:flex;gap:14px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;-webkit-overflow-scrolling:touch">
@@ -7891,7 +7891,7 @@ function Home(){
           if(!rec.length)return '';
           return `<div style="margin-bottom:22px">
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
-              <div style="width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,#8B5CF6,#06B6D4);display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
+              <div style="width:32px;height:32px;border-radius:50%;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.06);display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
               <span style="font-weight:900;font-size:15px;color:#0F1A1F">מומלץ בשבילך</span>
             </div>
             ${rec.map(t=>`
