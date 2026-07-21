@@ -7658,15 +7658,14 @@ function showRanksPanel(){
 function Home(){
   const GRPS=["לימודים","אמנות","ספורט","טכנולוגיה","בישול","יופי","חופשיים"];
   const GCOL={"לימודים":"#14B8A6","אמנות":"#E74C3C","ספורט":"#27AE60","טכנולוגיה":"#1ABC9C","בישול":"#FF9800","יופי":"#EC407A","חופשיים":"#FF7043"};
-  const catSections=GRPS.map(g=>{
-    const cats=CATS.filter(c=>c.grp===g);
-    if(!cats.length)return '';
-    const gc=GCOL[g]||'#14B8A6';
-    return `<div style="margin-bottom:24px">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:0 2px">
-        ${catBadge(CATS.find(c=>c.grp===g)||null,36)}
-        <span style="font-weight:900;font-size:16px;color:#0F1A1F">${g}</span>
-        <div style="flex:1;height:2px;background:linear-gradient(90deg,${gc}30,transparent);border-radius:2px"></div>
+  const catSections=(()=>{
+    if(S.groupFilter){
+      const g=S.groupFilter;
+      const cats=CATS.filter(c=>c.grp===g);
+      const gc=GCOL[g]||'#14B8A6';
+      return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+        <button onclick="S.groupFilter=null;render()" style="background:rgba(100,116,139,0.1);border:none;color:#475569;cursor:pointer;border-radius:50%;width:34px;height:34px;flex-shrink:0;font-size:16px">→</button>
+        <span style="font-weight:900;font-size:17px;color:#0F1A1F">${g}</span>
         <span style="font-size:12px;color:${gc};font-weight:700;background:${gc}15;padding:3px 10px;border-radius:50px">${cats.length} נושאים</span>
       </div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
@@ -7680,9 +7679,21 @@ function Home(){
             ${cnt>0?`<div style="font-size:10px;font-weight:700;color:${c.col};background:${c.col}15;border-radius:50px;padding:2px 9px;margin-top:1px">${cnt} מורים</div>`:`<div style="font-size:10px;color:#CBD5E1;font-weight:600">בקרוב</div>`}
           </button>`;
         }).join("")}
-      </div>
+      </div>`;
+    }
+    return `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:18px 8px">
+      ${GRPS.map(g=>{
+        const cats=CATS.filter(c=>c.grp===g);
+        if(!cats.length)return '';
+        const cnt=cats.reduce((s,c)=>s+TEACHERS.filter(t=>t.cat===c.id||(Array.isArray(t.cats)&&t.cats.includes(c.id))).length,0);
+        return `<button onclick="S.groupFilter='${g}';render();window.scrollTo({top:0,behavior:'smooth'})" style="border:none;background:transparent;padding:4px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center">
+          ${catBadge(cats[0],66)}
+          <div style="font-size:13px;font-weight:800;color:#0F1A1F">${g}</div>
+          <div style="font-size:10px;color:${cnt>0?'#14B8A6':'#CBD5E1'};font-weight:700">${cnt>0?cnt+' מורים':'בקרוב'}</div>
+        </button>`;
+      }).join("")}
     </div>`;
-  }).join("");
+  })();
 
   return `<div class="screen">
     <div style="background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);padding:14px 20px 16px;border-radius:0 0 22px 22px;position:relative;overflow:hidden">
