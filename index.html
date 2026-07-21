@@ -3879,6 +3879,12 @@ async function _sendVoiceMessage(blob,otherUid,otherName){
     reader.onload=async()=>{
       const chatId=getChatId(currentUser.uid,otherUid);
       try{
+        // רשום את שני הצדדים כמשתתפי הצ'אט — אותה סיבה כמו ב-sendChatMessage:
+        // בלעדי זה, פנייה ראשונה בהקלטה קולית נכשלת בשקט אצל הצד המקבל.
+        await Promise.all([
+          db.ref('chatParticipants/'+chatId+'/'+currentUser.uid).set(true),
+          db.ref('chatParticipants/'+chatId+'/'+otherUid).set(true)
+        ]).catch(()=>{});
         await db.ref('messages/'+chatId).push({
           from:currentUser.uid,fromName:currentUserData?.name||currentUser.email.split('@')[0],
           to:otherUid,toName:otherName||'',type:'audio',audioData:reader.result,
