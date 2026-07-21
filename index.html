@@ -647,7 +647,7 @@ async function loadRealTeachers(){
           const catObj=catById(mainCat);
 
           TEACHERS.push({
-            id:t.uid||child.key,
+            id:child.key,
             name:t.name,
             age:t.age||16,
             city:t.city,
@@ -5945,7 +5945,7 @@ function renderScheduleEditor(){
   const selLabel=selDate?`יום ${selDayName} ${selDateObj.getDate()}/${selDateObj.getMonth()+1}/${selDateObj.getFullYear()}`:'';
 
   const dayHoursHtml=selDate?`
-    <div style="margin-top:16px;padding:14px;background:rgba(20,184,166,0.06);border-radius:16px"">
+    <div style="margin-top:16px;padding:14px;background:rgba(20,184,166,0.06);border-radius:16px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
         <button onclick="clearDaySchedule('${selDate}')" style="background:rgba(239,68,68,0.1);color:#EF4444;border-radius:50px;padding:5px 10px;font-size:11px;font-weight:800;cursor:pointer">${icon("trash",14)} נקה יום</button>
         <div style="font-weight:800;font-size:13px;color:#06B6D4">📌 ${selLabel}</div>
@@ -7558,23 +7558,23 @@ function showCertificate(type='completion'){
         <h2 style="font-size:24px;font-weight:900;margin:0 0 6px;color:#FBBF24;position:relative;z-index:1;letter-spacing:-0.02em">תעודת הצטיינות</h2>
         <div style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:18px;font-weight:600;letter-spacing:1px;position:relative;z-index:1">CERTIFICATE OF EXCELLENCE</div>
         
-        <div style="background:rgba(255,255,255,0.08);backdrop-filter:blur(10px);border-radius:16px;padding:18px;margin-bottom:16px;position:relative;z-index:1"">
+        <div style="background:rgba(255,255,255,0.08);backdrop-filter:blur(10px);border-radius:16px;padding:18px;margin-bottom:16px;position:relative;z-index:1">
           <div style="font-size:11px;color:rgba(255,255,255,0.6);margin-bottom:6px;font-weight:600">מוענק בזאת ל</div>
           <div style="font-size:22px;font-weight:900;color:#fff;margin-bottom:4px;letter-spacing:-0.01em">${userName}</div>
           <div style="font-size:11px;color:rgba(94,234,212,0.8);font-weight:600">${currentUserData?.role==='teacher'?'מורה ב-Drushe':'תלמיד ב-Drushe'}</div>
         </div>
 
         <div style="display:flex;gap:8px;margin-bottom:16px;position:relative;z-index:1">
-          <div style="flex:1;background:rgba(20,184,166,0.15);border-radius:14px;padding:12px"">
+          <div style="flex:1;background:rgba(20,184,166,0.15);border-radius:14px;padding:12px">
             <div style="font-size:24px;font-weight:900;color:#14B8A6">${lessons}</div>
             <div style="font-size:10px;color:rgba(255,255,255,0.7);font-weight:600">שיעורים</div>
           </div>
           ${isStudent?`
-          <div style="flex:1;background:rgba(20,184,166,0.15);border-radius:14px;padding:12px"">
+          <div style="flex:1;background:rgba(20,184,166,0.15);border-radius:14px;padding:12px">
             <div style="font-size:24px;font-weight:900;color:#14B8A6">${rank.icon}</div>
             <div style="font-size:10px;color:rgba(255,255,255,0.7);font-weight:600">דרגה: ${rank.name}</div>
           </div>`:`
-          <div style="flex:1;background:rgba(6,182,212,0.15);border-radius:14px;padding:12px"">
+          <div style="flex:1;background:rgba(6,182,212,0.15);border-radius:14px;padding:12px">
             <div style="font-size:24px;font-weight:900;color:#06B6D4">${rating}${icon("star",14)}</div>
             <div style="font-size:10px;color:rgba(255,255,255,0.7);font-weight:600">דירוג ממוצע</div>
           </div>`}
@@ -8260,7 +8260,8 @@ function findNearby(){
 
 // ─── TEACHER PROFILE ──────────────────────────────────────────────────────────
 function Teacher(){
-  const t=S.teacher||TEACHERS[0];
+  const t=S.teacher;
+  if(!t){go('home');return `<div class="screen"></div>`;}
   if(S.ratingT===t.id&&!S.ratingDone) return `<div class="screen" style="display:flex;align-items:center;justify-content:center;min-height:100dvh;background:linear-gradient(165deg,#ECFEFF 0%,#F0F9FF 50%,#EEF2FF 100%)">
     <div style="padding:32px 24px;text-align:center;max-width:340px">
       <div style="font-size:56px;margin-bottom:16px">${t.av}</div>
@@ -8319,7 +8320,7 @@ function Teacher(){
       <!-- Stats -->
       <div style="display:flex;gap:10px;margin-bottom:16px">
         <div class="card-sm" style="flex:1;text-align:center;padding:13px 8px;margin-bottom:0"><div style="width:32px;height:32px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;margin:0 auto 4px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div><div style="font-weight:900;font-size:18px">${t.rating||0}</div><div style="font-size:11px;color:${C.muted};font-weight:600">דירוג</div></div>
-        <div class="card-sm" onclick="document.getElementById('_reviewsSection')?.scrollIntoView({behavior:'smooth'})" style="flex:1;text-align:center;padding:13px 8px;margin-bottom:0;cursor:pointer""><div style="width:32px;height:32px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;margin:0 auto 4px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div style="font-weight:900;font-size:18px">${publicTeacherReviews.length}</div><div style="font-size:11px;color:#14B8A6;font-weight:700">ביקורות ↓</div></div>
+        <div class="card-sm" onclick="document.getElementById('_reviewsSection')?.scrollIntoView({behavior:'smooth'})" style="flex:1;text-align:center;padding:13px 8px;margin-bottom:0;cursor:pointer"><div style="width:32px;height:32px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;margin:0 auto 4px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div style="font-weight:900;font-size:18px">${publicTeacherReviews.length}</div><div style="font-size:11px;color:#14B8A6;font-weight:700">ביקורות ↓</div></div>
         <div class="card-sm" style="flex:1;text-align:center;padding:13px 8px;margin-bottom:0"><div style="width:32px;height:32px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;margin:0 auto 4px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></div><div style="font-weight:900;font-size:18px">${t.lessons||0}</div><div style="font-size:11px;color:${C.muted};font-weight:600">שיעורים</div></div>
       </div>
 
@@ -10103,7 +10104,7 @@ function About(){
         </div>
         <p style="margin:0;font-size:13px;color:${C.muted};line-height:1.6">${s.d}</p>
       </div>
-    </div>`).join("")+`<div style="background:linear-gradient(145deg,#0F1A1F,#1A2530);border-radius:var(--radius);padding:22px;text-align:center""><div style="font-size:36px;margin-bottom:8px">🌍</div><h3 style="color:#fff;margin:0 0 8px;font-weight:900">החזון הגדול</h3><p style="color:rgba(255,255,255,.45);font-size:13px;margin:0;line-height:1.7">לעשות את הכישרון של כל ילד נגיש לכל ילד אחר – בכל מקום בעולם.</p></div>`;
+    </div>`).join("")+`<div style="background:linear-gradient(145deg,#0F1A1F,#1A2530);border-radius:var(--radius);padding:22px;text-align:center"><div style="font-size:36px;margin-bottom:8px">🌍</div><h3 style="color:#fff;margin:0 0 8px;font-weight:900">החזון הגדול</h3><p style="color:rgba(255,255,255,.45);font-size:13px;margin:0;line-height:1.7">לעשות את הכישרון של כל ילד נגיש לכל ילד אחר – בכל מקום בעולם.</p></div>`;
   }
 
   return `<div class="screen">
@@ -10116,7 +10117,7 @@ function About(){
         <button onclick="shareApp()" style="margin-top:4px;background:rgba(255,255,255,.1);color:#fff;border-radius:50px;padding:10px 22px;font-weight:700;cursor:pointer;font-size:13px">${icon("send",14)} שתף את Drushe</button>
       </div>
     </div>
-    <div style="padding:0 20px 50px">
+    <div style="padding:0 20px calc(90px + env(safe-area-inset-bottom))">
       <div class="tabs" style="margin:18px 0 20px;flex-wrap:wrap">
         ${[["story","📖 הסיפור"],["safety","🛡 בטיחות"],["values","💎 ערכים"]].map(([id,lbl])=>`<button class="${tab===id?"on":""}" onclick="S.aTab='${id}';render()">${lbl}</button>`).join("")}
       </div>
@@ -11958,13 +11959,6 @@ auth&&auth.onAuthStateChanged(async user=>{
   // (הזמנה, הודעות, רילס וכו') ימשיכו לדרוש הרשמה אמיתית בדיוק כמו היום.
   if(user&&user.isAnonymous){render();return;}
   if(user){
-    // אין כניסה אוטומטית — רק כניסה ידנית מתקבלת (S._loggingIn=true מסמן כניסה ידנית)
-    const _inRegFlow=['safety','parentReg','register','teacherPending','studentPending'].includes(S.screen);
-    if(!S._registering&&!S._loggingIn&&!_inRegFlow){
-      await auth.signOut().catch(()=>{});
-      go('login');
-      return;
-    }
     // בדוק אם המשתמש נחסם על ידי מנהל
     if(!S._registering){
       try{
