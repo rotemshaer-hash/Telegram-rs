@@ -3,6 +3,12 @@ const { defineConfig, devices } = require('@playwright/test');
 module.exports = defineConfig({
   testDir: './tests/e2e',
   timeout: 30000,
+  // The app is a ~1MB single-file bundle — parsing/executing it under
+  // parallel-worker CPU contention can genuinely take longer than the
+  // 5s assertion default, especially on a shared/constrained runner.
+  // That's a slow first paint, not the app being broken, so give
+  // assertions real headroom instead of chasing config-level flakiness.
+  expect: { timeout: 12000 },
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,

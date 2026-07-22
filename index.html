@@ -30,6 +30,42 @@ firebase.initializeApp(firebaseConfig);
 // var (not const/let) prevents TDZ issues if Firebase CDN fails to load
 var auth=null,db=null,storage=null,analytics=null;
 try{auth=firebase.auth();db=firebase.database();storage=firebase.storage();try{analytics=firebase.analytics();}catch(_ae){}}catch(e){console.error('Firebase init failed:',e);}
+
+// ─── ניטור שגיאות client-side ──────────────────────────────────────────────
+// עד עכשיו הדרך היחידה לדעת שמשהו נשבר אצל משתמש הייתה שהוא יספר לנו.
+// זה תופס כל שגיאת JS/Promise שלא נתפסה בכל האפליקציה ושולח לוג ל-DB, מוגבל
+// לפעם אחת לכל שגיאה ייחודית בכל טעינת דף (כדי לא להציף בכתיבות אם שגיאה
+// חוזרת בלולאה). נצפה בפאנל הניהול תחת "שגיאות אפליקציה".
+(function(){
+  var _seen={};
+  function _hash(s){var h=0;for(var i=0;i<s.length;i++){h=((h<<5)-h+s.charCodeAt(i))|0;}return String(h);}
+  window._reportClientError=function(message,extra){
+    try{
+      extra=extra||{};
+      var key=_hash((message||'')+'|'+(extra.source||'')+'|'+(extra.lineno||''));
+      if(_seen[key])return;
+      _seen[key]=true;
+      if(typeof db==='undefined'||!db)return;
+      db.ref('clientErrors').push({
+        message:String(message||'').slice(0,500),
+        stack:String(extra.stack||'').slice(0,1000),
+        source:String(extra.source||''),
+        lineno:extra.lineno||null,
+        lastScreen:(typeof S!=='undefined'&&S)?S.screen:null,
+        uid:(typeof currentUser!=='undefined'&&currentUser)?currentUser.uid:null,
+        userAgent:navigator.userAgent,
+        createdAt:Date.now()
+      }).catch(function(){});
+    }catch(_e){}
+  };
+  window.addEventListener('error',function(e){
+    window._reportClientError(e.message,{source:e.filename,lineno:e.lineno,stack:e.error&&e.error.stack});
+  });
+  window.addEventListener('unhandledrejection',function(e){
+    var reason=e.reason;
+    window._reportClientError((reason&&reason.message)||String(reason),{stack:reason&&reason.stack});
+  });
+})();
 </script>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
@@ -4399,7 +4435,7 @@ async function _requestBrowserNotifPermission(){
   }
 }
 
-let adminAllUsers=[],adminAllTeachers=[],adminAllVideos=[],adminAllReports=[],adminAllBookings=[],adminIncompleteTeachers=[],adminAllPosts=[],adminAllReviews=[],adminAllStories=[];
+let adminAllUsers=[],adminAllTeachers=[],adminAllVideos=[],adminAllReports=[],adminAllBookings=[],adminIncompleteTeachers=[],adminAllPosts=[],adminAllReviews=[],adminAllStories=[],adminAllClientErrors=[];
 let adminAlertStudents=[],adminAlertPosts=[],adminAlertSubscriptions=[],adminContactMessages=[],adminAlertStoriesPending=0; // מקור ראשי לממתינים
 let adminTab='users';
 let _adminPendingCount=0;
@@ -4545,6 +4581,11 @@ async function loadAdminData(){
     adminAllReports=[];
     if(reportsSnap.exists())reportsSnap.forEach(c=>adminAllReports.push({id:c.key,...c.val()}));
     adminAllReports.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+    // שגיאות client-side שנתפסו אוטומטית (window.onerror/unhandledrejection) — ראה _reportClientError
+    const clientErrorsSnap=await db.ref('clientErrors').limitToLast(300).get();
+    adminAllClientErrors=[];
+    if(clientErrorsSnap.exists())clientErrorsSnap.forEach(c=>adminAllClientErrors.push({id:c.key,...c.val()}));
+    adminAllClientErrors.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
     // טען את כל ההזמנות של כל המורים
     adminAllBookings=[];
     const bookingsSnap=await db.ref('teacherBookings').get();
@@ -6699,7 +6740,8 @@ function renderAdminPanel(){
            ['reviews','ביקורות','#FBBF24','<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>',adminAllReviews.filter(r=>!r.approved).length,null],
            ['stories','סטוריז','#F59E0B','<rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>',adminAllStories.length,adminAllStories.length>0?adminAllStories.length:null],
            ['subscriptions','מנויים','#8B5CF6','<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>',adminAlertSubscriptions.length,adminAlertSubscriptions.length>0?adminAlertSubscriptions.length:null],
-           ['stats','סטטיסטיקות','#10B981','<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>',null,null]
+           ['stats','סטטיסטיקות','#10B981','<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>',null,null],
+           ['errors','שגיאות אפליקציה','#EF4444','<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>',adminAllClientErrors.length,adminAllClientErrors.filter(e=>Date.now()-(e.createdAt||0)<24*3600*1000).length]
           ].map(([id,lbl,col,svg,num,badge])=>`
           <div onclick="adminSwitchTab('${id}')" style="background:${adminTab===id?col+'14':'#fff'};border:1.5px solid ${adminTab===id?col:'transparent'};border-radius:20px;padding:16px;display:flex;align-items:center;gap:12px;box-shadow:0 2px 10px rgba(0,0,0,0.05);cursor:pointer;position:relative">
             <div style="width:46px;height:46px;border-radius:14px;background:${col}1F;display:flex;align-items:center;justify-content:center;flex-shrink:0">
@@ -7339,6 +7381,34 @@ function renderAdminTab(){
         <button onclick="_adminPinVerified=false;_verifyAdminPin(()=>{showFireToast('✅ PIN עודכן');_adminPinVerified=true;})" style="width:100%;background:linear-gradient(135deg,#EF4444,#DC2626);border:none;color:#fff;border-radius:50px;padding:11px;font-weight:800;font-size:13px;cursor:pointer">${icon("key",14)} שנה PIN מנהל</button>
       </div>
       ${resetBtn}`;
+  }
+  if(adminTab==='errors'){
+    if(adminAllClientErrors.length===0)return '<div style="text-align:center;padding:40px;color:#64748B">אין שגיאות client-side שנתפסו (עדיין)</div>';
+    // קיבוץ לפי הודעה+מקור — כל רשומה גולמית היא מופע אחד (מוגבל לפעם אחת לכל סשן,
+    // ראה _reportClientError), כך שכאן מציגים ספירה/ראשון/אחרון לכל שגיאה ייחודית.
+    const groups={};
+    adminAllClientErrors.forEach(e=>{
+      const gkey=(e.message||'')+'|'+(e.source||'')+'|'+(e.lineno||'');
+      if(!groups[gkey])groups[gkey]={...e,count:0,firstSeen:e.createdAt,lastSeen:e.createdAt};
+      const g=groups[gkey];
+      g.count++;
+      g.firstSeen=Math.min(g.firstSeen,e.createdAt||0);
+      g.lastSeen=Math.max(g.lastSeen,e.createdAt||0);
+    });
+    const list=Object.values(groups).sort((a,b)=>b.lastSeen-a.lastSeen);
+    return `<div>
+      <div style="font-size:12px;color:#64748B;margin-bottom:12px">${list.length} שגיאות ייחודיות · ${adminAllClientErrors.length} מופעים (300 אחרונים)</div>
+      ${list.map(e=>`
+        <div style="background:#fff;border-radius:16px;padding:14px;margin-bottom:10px;border-right:4px solid #EF4444;box-shadow:0 2px 10px rgba(0,0,0,0.05)">
+          <div style="display:flex;justify-content:space-between;gap:8px;align-items:start">
+            <div style="font-weight:800;font-size:13px;color:#0F1A1F;word-break:break-word">${escapeHtml((e.message||'').substring(0,200))}</div>
+            <span style="background:rgba(239,68,68,0.12);color:#EF4444;border-radius:50px;padding:2px 10px;font-size:11px;font-weight:900;flex-shrink:0">${e.count}×</span>
+          </div>
+          <div style="font-size:11px;color:#94A3B8;margin-top:6px">${e.source?e.source.split('/').pop()+':'+(e.lineno||'?')+' · ':''}${e.lastScreen?'מסך: '+e.lastScreen+' · ':''}${e.userAgent?e.userAgent.substring(0,60):''}</div>
+          <div style="font-size:10px;color:#CBD5E1;margin-top:4px">ראשון: ${new Date(e.firstSeen).toLocaleString('he-IL')} · אחרון: ${new Date(e.lastSeen).toLocaleString('he-IL')}</div>
+          ${e.stack?`<details style="margin-top:6px"><summary style="font-size:11px;color:#06B6D4;cursor:pointer">stack trace</summary><pre style="font-size:10px;color:#64748B;white-space:pre-wrap;word-break:break-word;margin:6px 0 0">${escapeHtml(e.stack)}</pre></details>`:''}
+        </div>`).join('')}
+    </div>`;
   }
   return '';
 }

@@ -20,7 +20,10 @@ test.describe('Drushe smoke tests', () => {
       }
     });
 
-    await page.goto('/');
+    // domcontentloaded, not the default 'load' — the page pulls in external
+    // fonts/analytics/QR-code images that are irrelevant to whether the app
+    // itself booted, and waiting on them made this flaky on slow networks.
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
     await expect(page.locator('#app')).not.toBeEmpty();
     await expect(page.getByText('הצטרף עכשיו')).toBeVisible();
 
@@ -28,13 +31,13 @@ test.describe('Drushe smoke tests', () => {
   });
 
   test('guest browsing reaches the home screen', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
     await page.locator('[onclick="browseAsGuest()"]').click();
     await expect(page.locator('#app')).toContainText('Drushe', { timeout: 10000 });
   });
 
   test('login screen is reachable and has email/password fields', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
     await page.getByText('כבר רשום? התחבר').click();
     await expect(page.locator('#app')).not.toBeEmpty();
   });

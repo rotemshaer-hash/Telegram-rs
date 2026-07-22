@@ -109,6 +109,11 @@
     },
     "adminAlerts":  { ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'", ".write": "auth != null" },
     "adminNotifs":  { ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'", ".write": "auth != null" },
+    "clientErrors": {
+      ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'",
+      ".write": "auth != null",
+      "$errorId": { ".write": "auth != null && !data.exists()" }
+    },
     "parentTokens": {
       "$token": { ".read": true, ".write": "auth.token.email == 'rotemshaer@gmail.com'" }
     },
