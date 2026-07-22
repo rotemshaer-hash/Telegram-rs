@@ -5,6 +5,7 @@
 
     "teachers": {
       ".read": "auth != null",
+      ".indexOn": ["cat", "city", "verified"],
       "$teacherUid": {
         ".write": "auth != null && (auth.uid == $teacherUid || auth.token.email == 'rotemshaer@gmail.com')",
         "verified": {
@@ -22,6 +23,7 @@
     },
 
     "users": {
+      ".indexOn": ["role", "verified"],
       "$uid": {
         ".read": "auth != null && auth.uid == $uid",
         ".write": "auth != null && auth.uid == $uid",
@@ -220,7 +222,7 @@
         }
       }
     },
-    "reports": { ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'", ".write": "auth != null" },
+    "reports": { ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'", ".write": "auth != null", ".indexOn": ["status"] },
     "favorites": {
       "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth != null && auth.uid == $uid" }
     },
