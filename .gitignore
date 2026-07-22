@@ -3,3 +3,12 @@
 # Firebase debug logs
 firebase-debug.log
 .firebase/
+
+# Test tooling
+node_modules/
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+# Sandbox-specific Playwright browser path override — not portable, never commit
+playwright.local.config.js
