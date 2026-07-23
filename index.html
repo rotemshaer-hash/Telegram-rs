@@ -12129,6 +12129,30 @@ auth&&auth.onAuthStateChanged(async user=>{
           go('login');return;
         }
       }catch(e2){}
+      // בדוק users/{uid}/blocked — עד כה adminBlockUser() כתב לשדה הזה אבל שום
+      // דבר לא בדק אותו: "חסימה" בפאנל הניהול לא עשתה בפועל שום דבר, המשתמש
+      // החסום המשיך להתחבר, לשלוח הודעות ולהזמין שיעורים כרגיל. בניגוד ל-
+      // bannedUsers (מחיקת חשבון סופית), זו חסימה הפיכה — לא מוחקים את ה-Auth,
+      // רק מנתקים, כדי ש-adminUnblockUser() יוכל לשחזר גישה.
+      try{
+        const blockedSnap=await db.ref('users/'+user.uid+'/blocked').get();
+        if(blockedSnap.exists()&&blockedSnap.val()===true){
+          await auth.signOut().catch(()=>{});
+          currentUser=null;currentUserData=null;
+          showFireToast('🚫 חשבון זה נחסם על ידי מנהל');
+          go('login');return;
+        }
+      }catch(e2){}
+      // האזן לחסימה בזמן אמת (admin חוסם בזמן שהמשתמש כבר מחובר)
+      db.ref('users/'+user.uid+'/blocked').on('value',async snap=>{
+        if(snap.exists()&&snap.val()===true){
+          db.ref('users/'+user.uid+'/blocked').off('value');
+          await auth.signOut().catch(()=>{});
+          currentUser=null;currentUserData=null;
+          showFireToast('🚫 חשבון זה נחסם על ידי מנהל');
+          go('login');
+        }
+      });
       // האזן לניתוק כפוי (admin מחק בזמן שמשתמש מחובר)
       db.ref('forceSignout/'+user.uid).on('value',async snap=>{
         if(snap.exists()&&snap.val()?.ts){

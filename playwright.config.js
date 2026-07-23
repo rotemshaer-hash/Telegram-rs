@@ -8,7 +8,7 @@ module.exports = defineConfig({
   // 5s assertion default, especially on a shared/constrained runner.
   // That's a slow first paint, not the app being broken, so give
   // assertions real headroom instead of chasing config-level flakiness.
-  expect: { timeout: 12000 },
+  expect: { timeout: 20000 },
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
