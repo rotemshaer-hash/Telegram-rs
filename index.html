@@ -2504,6 +2504,27 @@ function Subscribe(){
   const payRef=S.subPayRef||'';
   const hasPending=currentUserData?.subscription?.status==='pending';
 
+  // App Store/Play Store אוסרות על הפניה לתשלום מחוץ ל-IAP שלהן עבור מנוי
+  // שפותח פונקציונליות בתוך האפליקציה עצמה (בניגוד לשיעור עצמו, שהוא שירות
+  // עולם-אמיתי ופטור). כדי לא להסתכן בדחיית האפליקציה מהחנויות, בגרסה
+  // הנייטיבית (Capacitor) לא מציגים כלל את פרטי התשלום/הרשמה למנוי —
+  // מפנים להשלים באתר. הזמנת שיעורים ותשלום עליהם לא מושפעים בכלל.
+  if(isNativeApp())return `
+  <div class="screen" style="background:linear-gradient(165deg,#ECFEFF 0%,#F0F9FF 50%,#EEF2FF 100%);min-height:100dvh;padding:0;direction:rtl">
+    <div style="padding:24px 20px 20px;text-align:center;background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);border-radius:0 0 28px 28px;position:relative">
+      <button onclick="go('home')" style="position:absolute;top:20px;right:20px;background:rgba(255,255,255,0.15);border:none;color:#fff;border-radius:50px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer">← חזרה</button>
+      <div style="font-size:36px;margin-bottom:8px">🌐</div>
+      <h2 style="color:#fff;font-weight:900;font-size:20px;margin:0 0 4px">מנוי מורים באתר</h2>
+      <p style="color:rgba(255,255,255,0.7);font-size:13px;margin:0">השלימו את הרשמת המנוי מהדפדפן</p>
+    </div>
+    <div style="padding:20px 16px">
+      <div style="background:#fff;border-radius:20px;padding:20px;box-shadow:0 4px 20px rgba(0,0,0,0.08);text-align:center">
+        <p style="font-size:14px;color:#374151;line-height:1.7;margin:0 0 16px">כדי להצטרף כמנוי משלם, יש להיכנס ל-Drushe דרך דפדפן (לא מתוך האפליקציה) ולהשלים שם את ההרשמה למנוי.</p>
+        <a href="https://kidemy-app.netlify.app/" target="_blank" rel="noopener" style="display:inline-block;background:linear-gradient(135deg,#14B8A6,#06B6D4);color:#fff;border-radius:50px;padding:13px 24px;font-weight:800;font-size:14px;text-decoration:none">${icon("search",14)} פתח את Drushe בדפדפן</a>
+      </div>
+    </div>
+  </div>`;
+
   if(step===2||hasPending) return `
   <div class="screen" style="background:linear-gradient(165deg,#ECFEFF 0%,#F0F9FF 50%,#EEF2FF 100%);min-height:100dvh;padding:0;direction:rtl">
     <div style="padding:24px 20px 20px;text-align:center;background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);border-radius:0 0 28px 28px">
@@ -4418,6 +4439,13 @@ function genPayRef(bookingId){
 }
 function isAdmin(){
   return currentUser&&ADMIN_EMAILS.includes(currentUser.email?.toLowerCase());
+}
+
+// האם רצים בתוך העטיפה הנייטיבית (Capacitor) ולא בדפדפן/PWA רגיל.
+// Capacitor מזריק window.Capacitor אוטומטית לכל דף שנטען בתוך ה-WebView
+// שלו — אין צורך לייבא כלום כדי לבדוק את זה.
+function isNativeApp(){
+  try{return typeof Capacitor!=='undefined'&&Capacitor?.isNativePlatform?.();}catch(_e){return false;}
 }
 
 // ─── Browser Push Notifications (zero-setup, no email needed) ────────────────
