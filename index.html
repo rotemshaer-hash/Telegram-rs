@@ -7902,7 +7902,7 @@ function Home(){
   return `<div class="screen">
     <div style="background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);padding:14px 20px 16px;border-radius:0 0 22px 22px;position:relative;overflow:hidden">
       <div style="display:flex;justify-content:space-between;align-items:center;position:relative;z-index:1">
-        <button onclick="currentUser?go('profile'):go('login')" style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.25);border:2px solid rgba(255,255,255,.4);font-size:19px;cursor:pointer;backdrop-filter:blur(10px)">${currentUserData?.photo?`<img src="${currentUserData.photo}" style="width:100%;height:100%;border-radius:50%;object-fit:cover" alt="">`:'👤'}</button>
+        <button onclick="currentUser?go('profile'):go('login')" style="width:40px;height:40px;border-radius:42% 58% 63% 37%/45% 40% 60% 55%;background:rgba(255,255,255,.25);border:2px solid rgba(255,255,255,.4);font-size:19px;cursor:pointer;backdrop-filter:blur(10px);overflow:hidden">${currentUserData?.photo?`<img src="${currentUserData.photo}" style="width:100%;height:100%;border-radius:42% 58% 63% 37%/45% 40% 60% 55%;object-fit:cover" alt="">`:'👤'}</button>
         <span style="font-size:22px;font-weight:900;letter-spacing:-.5px"><span style="color:#fff">Dru</span><span style="color:#A78BFA">s</span><span style="color:#5EEAD4">he</span></span>
         <div style="display:flex;gap:6px">
           <button onclick="shareApp()" style="background:rgba(255,255,255,.2);border:none;color:#fff;cursor:pointer;border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center" title="שתף את Drushe"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
@@ -7925,28 +7925,21 @@ function Home(){
 
     <div style="padding:16px 20px 100px">
       <!-- Drils (רילס) discovery entry point -->
-      <button onclick="openDiscover()" style="width:100%;border:none;background:transparent;cursor:pointer;text-align:right;margin-bottom:24px;padding:2px;display:flex;align-items:center;gap:14px;-webkit-tap-highlight-color:transparent">
-        <div style="position:relative;flex-shrink:0;width:60px;height:60px">
-          <div style="position:absolute;inset:-10px;border-radius:50%;background:radial-gradient(circle,rgba(94,234,212,.4) 0%,rgba(167,139,250,.2) 55%,transparent 75%)"></div>
-          <div style="position:relative;width:60px;height:60px;border-radius:50%;background:linear-gradient(150deg,#5EEAD4 0%,#A78BFA 55%,#F0ABFC 100%);display:flex;align-items:center;justify-content:center;box-shadow:0 6px 18px rgba(139,92,246,.4)">
-            <div style="width:42px;height:42px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden"><img src="/icon-192.png" alt="" style="width:100%;height:100%;object-fit:cover"></div>
+      <button onclick="openDiscover()" style="width:100%;border:none;background:transparent;cursor:pointer;margin-bottom:24px;padding:2px;display:flex;flex-direction:column;align-items:center;gap:6px;-webkit-tap-highlight-color:transparent">
+        <div style="position:relative;flex-shrink:0;width:89px;height:89px;margin:2px 0">
+          <div style="position:absolute;inset:-14px;border-radius:50%;background:radial-gradient(circle,rgba(94,234,212,.4) 0%,rgba(167,139,250,.2) 55%,transparent 75%)"></div>
+          <div style="position:relative;width:89px;height:89px;border-radius:50%;background:linear-gradient(150deg,#5EEAD4 0%,#A78BFA 55%,#F0ABFC 100%);display:flex;align-items:center;justify-content:center;box-shadow:0 6px 18px rgba(139,92,246,.4)">
+            <div style="width:62px;height:62px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden"><img src="/icon-192.png" alt="" style="width:100%;height:100%;object-fit:cover"></div>
           </div>
-          <div style="position:absolute;bottom:-3px;left:-3px;width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,#14B8A6,#8b2fc9);border:2.5px solid #ECFEFF;display:flex;align-items:center;justify-content:center;color:#fff;font-size:9px">▶</div>
+          <div style="position:absolute;bottom:-2px;left:-2px;width:29px;height:29px;border-radius:50%;background:linear-gradient(135deg,#14B8A6,#8b2fc9);border:2.5px solid #ECFEFF;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px">▶</div>
         </div>
-        <div style="flex:1;min-width:0">
-          <div style="display:flex;align-items:center;gap:7px;margin-bottom:2px">
-            <span style="font-weight:900;font-size:16px;color:#0F1A1F">דרילס</span>
-            <span style="background:linear-gradient(135deg,#5EEAD4,#A78BFA);color:#fff;font-size:9px;font-weight:800;padding:2.5px 9px;border-radius:50px;flex-shrink:0">חדש 🔥</span>
-          </div>
-          <div style="color:#64748B;font-size:12px">גלה מורים בסרטון · כל התחומים</div>
-        </div>
-        <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:4px">
+        <div style="display:flex;align-items:center;gap:6px;margin-top:2px">
           <div style="display:flex;align-items:center">
             <div style="width:18px;height:18px;border-radius:50%;border:1.5px solid #ECFEFF;background:linear-gradient(160deg,#14B8A6,#06B6D4);display:flex;align-items:center;justify-content:center;font-size:7px;flex-shrink:0;box-shadow:0 1px 4px rgba(0,0,0,.1)">🎓</div>
             <div style="width:18px;height:18px;border-radius:50%;border:1.5px solid #ECFEFF;background:linear-gradient(160deg,#F59E0B,#EF4444);display:flex;align-items:center;justify-content:center;font-size:7px;flex-shrink:0;margin-inline-start:-6px;box-shadow:0 1px 4px rgba(0,0,0,.1)">🎨</div>
             <div style="width:18px;height:18px;border-radius:50%;border:1.5px solid #ECFEFF;background:#94A3B8;display:flex;align-items:center;justify-content:center;font-size:6.5px;font-weight:800;color:#fff;flex-shrink:0;margin-inline-start:-6px;box-shadow:0 1px 4px rgba(0,0,0,.1)">+${Math.max(realStats.teachers-2,0)}</div>
           </div>
-          <div style="color:#A78BFA;font-size:9px;font-weight:800">גלוש ‹</div>
+          <div style="color:#A78BFA;font-size:11px;font-weight:800">גלוש ‹</div>
         </div>
       </button>
 
