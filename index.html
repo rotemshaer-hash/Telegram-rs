@@ -549,6 +549,7 @@ const _SVGP={
   'send':`<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>`,
   gift:`<polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>`,
   zap:`<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>`,
+  briefcase:`<rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>`,
 };
 function icon(name,size=16,color='currentColor'){
   const p=_SVGP[name];
@@ -1236,19 +1237,21 @@ function BNav(active){
     nearby:`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>`,
     community:`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>`,
     messages:`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`,
+    jobs:`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>`,
     about:`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
   };
   const items=[
     {id:"home",     lbl:"בית"},
     {id:"nearby",   lbl:"קרוב אליי"},
     {id:"community",lbl:"קהילה"},
+    {id:"jobs",     lbl:"דרושים", special:true},
     {id:"messages", lbl:"הודעות",badge:userChats.filter(c=>c.unread).length||null},
     {id:"about",    lbl:"אודות"},
   ];
   return `<nav class="bnav">${items.map(it=>`
     <button onclick="go('${it.id}')" class="${active===it.id?"active":""}">
-      <span class="nb-icon">${svgs[it.id]||""}${it.badge&&active!==it.id?`<span class="nb-badge">${it.badge}</span>`:""}</span>
-      <span class="nb-lbl">${it.lbl}</span>
+      <span class="nb-icon" style="${it.special?'display:flex;align-items:center;justify-content:center;width:27px;height:27px;border-radius:42% 58% 63% 37%/45% 40% 60% 55%;background:linear-gradient(135deg,#8B5CF6,#A78BFA);margin:0 auto;box-shadow:0 3px 8px rgba(139,92,246,0.4)':''}">${svgs[it.id]||""}${it.badge&&active!==it.id?`<span class="nb-badge">${it.badge}</span>`:""}</span>
+      <span class="nb-lbl" style="${it.special?'color:#8B5CF6;font-weight:900':''}">${it.lbl}</span>
       ${active===it.id?"<span class='nb-dot'></span>":""}
     </button>`).join("")}</nav>`;
 }
@@ -3314,9 +3317,9 @@ function showNotificationsPanel(){
   const items=notifications.length===0?
     `<div style="text-align:center;padding:40px 20px"><div style="margin-bottom:12px;display:flex;justify-content:center">${miniBadge('bell','#F59E0B',54)}</div><h3 style="font-weight:900;font-size:17px;margin:0 0 6px;color:#0F1A1F">אין התראות חדשות</h3><p style="color:#64748B;font-size:13px;margin:0">כשתקבל הזמנות או הודעות הן יופיעו כאן</p></div>`:
     notifications.map(n=>{
-      const icons={newBooking:'📚',bookingApproved:'✅',bookingRejected:'❌',bookingCancelled:'🚫',newMessage:'💬',newReview:'⭐',newVideo:'📹',newTeacher:'🎓',newReport:'🚨',newUser:'👋',groupJoin:'🙋',groupApproved:'🎉',groupRejected:'😔',rateLesson:'⭐',lessonSummary:'📖',accountApproved:'🎉',teacherApproved:'🎓',adminMessage:'📣',newPost:'📢',lessonCompleted:'✅',newStory:'📸',briefProposal:'💼',briefAccepted:'🤝',newQuestion:'❓',questionAnswered:'💡',trialReminder:'⏰',emailFailed:'📧',chatDeliveryFailed:'⚠️',registrationFailed:'🚫'};
-      const titles={newBooking:'הזמנת שיעור חדשה',bookingApproved:'ההזמנה אושרה!',bookingRejected:'ההזמנה נדחתה',bookingCancelled:'השיעור בוטל',newMessage:'הודעה חדשה',newReview:'דירוג חדש',newVideo:'סרטון חדש לאישור',newTeacher:'מורה חדש נרשם',newReport:'דיווח חדש!',newUser:'משתמש חדש',groupJoin:'בקשת הצטרפות לקבוצה',groupApproved:'התקבלת לקבוצה!',groupRejected:'הבקשה לא אושרה',rateLesson:'דרג את השיעור',lessonSummary:'סיכום שיעור חדש',accountApproved:'החשבון שלך אושר!',teacherApproved:'פרופיל המורה שלך אושר!',adminMessage:'הודעה מהמנהל',newPost:'פוסט חדש בקהילה',lessonCompleted:'השיעור הסתיים',newStory:'סטורי חדש לאישור',briefProposal:'הצעת מורה לדרוש שלך',briefAccepted:'ההצעה שלך התקבלה!',newQuestion:'שאלה חדשה על הפרופיל',questionAnswered:'המורה ענה על שאלתך',trialReminder:'תזכורת ניסיון חינם',emailFailed:'שליחת מייל נכשלה',chatDeliveryFailed:'הודעת צאט לא הועברה',registrationFailed:'הרשמה נכשלה'};
-      const cols={newBooking:'#14B8A6',bookingApproved:'#10B981',bookingRejected:'#EF4444',bookingCancelled:'#F59E0B',newMessage:'#06B6D4',newReview:'#FBBF24',newVideo:'#06B6D4',newTeacher:'#14B8A6',newReport:'#E74C3C',newUser:'#0EA5E9',groupJoin:'#14B8A6',groupApproved:'#10B981',groupRejected:'#EF4444',rateLesson:'#FBBF24',lessonSummary:'#06B6D4',accountApproved:'#10B981',teacherApproved:'#14B8A6',adminMessage:'#06B6D4',newPost:'#F59E0B',lessonCompleted:'#10B981',newStory:'#8B5CF6',briefProposal:'#14B8A6',briefAccepted:'#10B981',newQuestion:'#14B8A6',questionAnswered:'#10B981',trialReminder:'#8B5CF6',emailFailed:'#EF4444',chatDeliveryFailed:'#EF4444',registrationFailed:'#EF4444'};
+      const icons={newBooking:'📚',bookingApproved:'✅',bookingRejected:'❌',bookingCancelled:'🚫',newMessage:'💬',newReview:'⭐',newVideo:'📹',newTeacher:'🎓',newReport:'🚨',newUser:'👋',groupJoin:'🙋',groupApproved:'🎉',groupRejected:'😔',rateLesson:'⭐',lessonSummary:'📖',accountApproved:'🎉',teacherApproved:'🎓',adminMessage:'📣',newPost:'📢',lessonCompleted:'✅',newStory:'📸',briefProposal:'💼',briefAccepted:'🤝',newQuestion:'❓',questionAnswered:'💡',trialReminder:'⏰',emailFailed:'📧',chatDeliveryFailed:'⚠️',registrationFailed:'🚫',employerInquiry:'💼'};
+      const titles={newBooking:'הזמנת שיעור חדשה',bookingApproved:'ההזמנה אושרה!',bookingRejected:'ההזמנה נדחתה',bookingCancelled:'השיעור בוטל',newMessage:'הודעה חדשה',newReview:'דירוג חדש',newVideo:'סרטון חדש לאישור',newTeacher:'מורה חדש נרשם',newReport:'דיווח חדש!',newUser:'משתמש חדש',groupJoin:'בקשת הצטרפות לקבוצה',groupApproved:'התקבלת לקבוצה!',groupRejected:'הבקשה לא אושרה',rateLesson:'דרג את השיעור',lessonSummary:'סיכום שיעור חדש',accountApproved:'החשבון שלך אושר!',teacherApproved:'פרופיל המורה שלך אושר!',adminMessage:'הודעה מהמנהל',newPost:'פוסט חדש בקהילה',lessonCompleted:'השיעור הסתיים',newStory:'סטורי חדש לאישור',briefProposal:'הצעת מורה לדרוש שלך',briefAccepted:'ההצעה שלך התקבלה!',newQuestion:'שאלה חדשה על הפרופיל',questionAnswered:'המורה ענה על שאלתך',trialReminder:'תזכורת ניסיון חינם',emailFailed:'שליחת מייל נכשלה',chatDeliveryFailed:'הודעת צאט לא הועברה',registrationFailed:'הרשמה נכשלה',employerInquiry:'פנייה חדשה מחברה — דרושים'};
+      const cols={newBooking:'#14B8A6',bookingApproved:'#10B981',bookingRejected:'#EF4444',bookingCancelled:'#F59E0B',newMessage:'#06B6D4',newReview:'#FBBF24',newVideo:'#06B6D4',newTeacher:'#14B8A6',newReport:'#E74C3C',newUser:'#0EA5E9',groupJoin:'#14B8A6',groupApproved:'#10B981',groupRejected:'#EF4444',rateLesson:'#FBBF24',lessonSummary:'#06B6D4',accountApproved:'#10B981',teacherApproved:'#14B8A6',adminMessage:'#06B6D4',newPost:'#F59E0B',lessonCompleted:'#10B981',newStory:'#8B5CF6',briefProposal:'#14B8A6',briefAccepted:'#10B981',newQuestion:'#14B8A6',questionAnswered:'#10B981',trialReminder:'#8B5CF6',emailFailed:'#EF4444',chatDeliveryFailed:'#EF4444',registrationFailed:'#EF4444',employerInquiry:'#8B5CF6'};
       const ico=icons[n.type]||'🔔';
       const ttl=titles[n.type]||'התראה';
       const col=cols[n.type]||'#14B8A6';
@@ -3347,6 +3350,7 @@ function showNotificationsPanel(){
       else if(n.type==='emailFailed')sub='אל: '+(n.to||'')+(n.subject?' • '+n.subject:'')+(n.error?' • '+n.error:'');
       else if(n.type==='chatDeliveryFailed')sub='שלב: '+(n.step||'')+(n.otherUid?' • יעד: '+n.otherUid:'')+(n.error?' • '+n.error:'');
       else if(n.type==='registrationFailed')sub=(n.email||'')+(n.error?' • '+n.error:'');
+      else if(n.type==='employerInquiry')sub=(n.company||'')+(n.contact?' • '+n.contact:'')+(n.email?' • '+n.email:'');
       else sub=n.message||n.preview||(n.from?'מ-'+n.from:'');
       return `
         <div onclick="markNotificationRead('${n.id}');document.querySelector('._notifPanel')?.remove();${n.type==='bookingApproved'?"go('messages')":n.type==='newBooking'?"adminTab='bookings';showAdminPanel()":n.type==='newTeacher'||n.type==='newReport'?"adminTab='teachers';showAdminPanel()":n.type==='newVideo'?"adminTab='videos';showAdminPanel()":n.type==='newStory'?"adminTab='stories';showAdminPanel()":n.type==='groupJoin'?"showTeacherGroupsPanel()":n.type==='groupApproved'||n.type==='groupRejected'?"S.comTab='groups';go('community')":n.type==='rateLesson'&&n.bookingId?"showRatingDialog('"+n.bookingId+"','"+n.teacherId+"','"+n.teacherName+"')":n.type==='lessonSummary'?"go('messages')":n.type==='briefProposal'?"S.comTab='briefs';go('community')":n.type==='briefAccepted'?"go('messages')":n.type==='newQuestion'?"_notifGoToQA('"+currentUser?.uid+"')":n.type==='questionAnswered'?"_notifGoToQA('"+n.teacherUid+"')":n.type==='trialReminder'?"go('subscribe')":""}" style="background:${n.read?'rgba(255,255,255,0.7)':'#fff'};border-right:4px solid ${col};border-radius:14px;padding:14px;margin-bottom:8px;cursor:pointer;display:flex;align-items:start;gap:12px;${!n.read?'box-shadow:0 4px 14px rgba(20,184,166,0.15)':''}">
@@ -10170,6 +10174,76 @@ function Leaderboard(){
   </div>`;
 }
 
+// ─── JOBS (גיוס כישרונות צעירים — עמוד לחברות) ────────────────────────────────
+async function submitEmployerInquiry(){
+  const btn=document.getElementById('_jobsSubmitBtn');
+  const company=document.getElementById('_jobsCompany')?.value.trim();
+  const contact=document.getElementById('_jobsContact')?.value.trim();
+  const email=document.getElementById('_jobsEmail')?.value.trim();
+  const phone=document.getElementById('_jobsPhone')?.value.trim();
+  const message=document.getElementById('_jobsMsg')?.value.trim();
+  if(!company||!contact||!email){showFireToast('❌ נא למלא שם חברה, איש קשר ומייל');return;}
+  try{
+    if(btn){btn.disabled=true;btn.textContent='שולח...';}
+    await db.ref('employerInquiries').push({company,contact,email,phone:phone||'',message:message||'',createdAt:Date.now(),status:'new'});
+    notifyAdmin({type:'employerInquiry',company,contact,email}).catch(()=>{});
+    sendAdminEmail('💼 פנייה חדשה מחברה — דרושים',
+      `חברה מעוניינת לגייס דרך Drushe!\n\nחברה: ${company}\nאיש קשר: ${contact}\nמייל: ${email}\nטלפון: ${phone||'—'}\nהודעה: ${message||'—'}\n\nענה ישירות למייל: ${email}`
+    ).catch(()=>{});
+    showFireToast('✅ הפנייה נשלחה! ניצור קשר בהקדם');
+    ['_jobsCompany','_jobsContact','_jobsEmail','_jobsPhone','_jobsMsg'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  }catch(e){showFireToast('❌ '+(e.message||'שגיאה'));}
+  finally{if(btn){btn.disabled=false;btn.textContent='שלח פנייה →';}}
+}
+
+function Jobs(){
+  return `<div class="screen" style="background:linear-gradient(165deg,#ECFEFF 0%,#F0F9FF 50%,#EEF2FF 100%);padding-bottom:100px">
+    <div style="background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);padding:32px 20px 44px;border-radius:0 0 32px 32px;text-align:center;color:#fff;position:relative;overflow:hidden">
+      <div style="position:absolute;top:-60px;left:-60px;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,.06)"></div>
+      <button onclick="back()" style="position:absolute;top:20px;right:20px;background:rgba(255,255,255,.15);border:none;color:#fff;font-size:13px;cursor:pointer;border-radius:50px;padding:8px 16px;font-weight:700;z-index:2">← חזור</button>
+      <div style="margin:34px auto 14px;display:flex;justify-content:center;position:relative;z-index:1">${miniBadge('briefcase','#8B5CF6',64)}</div>
+      <h1 style="font-size:23px;font-weight:900;margin:0 0 8px;position:relative;z-index:1">מחפשים כוח אדם צעיר ואנרגטי?</h1>
+      <p style="color:rgba(255,255,255,.8);font-size:13.5px;margin:0;line-height:1.7;max-width:300px;margin-left:auto;margin-right:auto;position:relative;z-index:1">גייסו ישירות ממאגר בני הנוער המוכשרים והמאומתים של Drushe</p>
+    </div>
+
+    <div style="padding:18px 20px 0">
+      <div style="display:flex;gap:10px;margin-bottom:18px">
+        <div class="card-sm" style="flex:1;text-align:center;padding:14px 6px;margin-bottom:0">${miniBadge('users','#8B5CF6',38)}<div style="font-weight:900;font-size:17px;color:#0F1A1F;margin-top:6px">${realStats.teachers||0}+</div><div style="font-size:10px;color:#64748B;font-weight:700">מורים צעירים</div></div>
+        <div class="card-sm" style="flex:1;text-align:center;padding:14px 6px;margin-bottom:0">${miniBadge('tag','#06B6D4',38)}<div style="font-weight:900;font-size:17px;color:#0F1A1F;margin-top:6px">${CATS.length}+</div><div style="font-size:10px;color:#64748B;font-weight:700">תחומי כישרון</div></div>
+        <div class="card-sm" style="flex:1;text-align:center;padding:14px 6px;margin-bottom:0">${miniBadge('shield','#10B981',38)}<div style="font-weight:900;font-size:17px;color:#0F1A1F;margin-top:6px">100%</div><div style="font-size:10px;color:#64748B;font-weight:700">מאומתים אישית</div></div>
+      </div>
+
+      <h3 style="font-weight:900;font-size:16px;margin:0 0 12px;color:#0F1A1F">למה לגייס דרך Drushe?</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
+        ${[["zap",'#F59E0B',"אנרגיה ומוטיבציה","דור צעיר שרוצה להוכיח את עצמו"],["tag",'#8B5CF6',"מגוון כישרונות",CATS.length+" תחומים — מלימודים ועד טכנולוגיה"],["shield",'#10B981',"בפיקוח הורים",'כל קשר עובר דרכנו ובאישור הורה מפורש'],["clock",'#06B6D4',"זמינות גמישה","מתאימים את עצמם סביב הלימודים"]].map(([ic,col,t,d])=>`<div class="card" style="text-align:center;padding:16px;box-shadow:0 2px 10px rgba(0,0,0,.05)"><div style="margin-bottom:10px;display:flex;justify-content:center">${miniBadge(ic,col,44)}</div><div style="font-weight:800;font-size:13px;color:#0F1A1F">${t}</div><div style="font-size:11px;color:#64748B;margin-top:4px;line-height:1.4">${d}</div></div>`).join("")}
+      </div>
+
+      <h3 style="font-weight:900;font-size:16px;margin:0 0 12px;color:#0F1A1F">איך זה עובד</h3>
+      ${[
+        {n:'1',t:'אתם פונים אלינו',d:'ממלאים את הטופס למטה עם פרטי החברה וסוג הכישרון שאתם מחפשים.',c:'#F59E0B'},
+        {n:'2',t:'הצוות שלנו בודק ומתאם',d:'אנחנו בוחנים את הפנייה ומאתרים מורים מתאימים מהמאגר שלנו.',c:'#EC4899'},
+        {n:'3',t:'חיבור בטוח ומפוקח',d:'יצירת קשר עם קטין מתבצעת רק דרכנו ובליווי ואישור הורה מפורש — לעולם לא ישירות.',c:'#8B5CF6'}
+      ].map(s=>`<div style="display:flex;gap:14px;margin-bottom:14px"><div style="width:34px;height:34px;border-radius:50%;background:${s.c};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:15px;flex-shrink:0">${s.n}</div><div><div style="font-weight:800;font-size:14px;color:#0F1A1F;margin-bottom:2px">${s.t}</div><div style="font-size:12.5px;color:#64748B;line-height:1.6">${s.d}</div></div></div>`).join("")}
+
+      <div class="warn" style="margin:6px 0 20px"><span>${icon("shield",14)}</span><span>אנחנו לא חושפים פרטי קטינים ישירות לחברות. כל פנייה מתחילה איתנו, ומתקדמת רק בליווי ואישור הורה מפורש.</span></div>
+
+      <div class="card" style="padding:20px">
+        <h3 style="margin:0 0 4px;font-weight:900;font-size:16px;color:#0F1A1F">${icon("mail",14)} פנו אלינו</h3>
+        <p style="margin:0 0 16px;font-size:12.5px;color:#64748B">נחזור אליכם תוך יום עסקים</p>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <input id="_jobsCompany" placeholder="שם החברה" class="inp" style="border-radius:14px">
+          <input id="_jobsContact" placeholder="איש/אשת קשר" class="inp" style="border-radius:14px">
+          <input id="_jobsEmail" type="email" placeholder="אימייל" class="inp" style="border-radius:14px">
+          <input id="_jobsPhone" placeholder="טלפון (אופציונלי)" class="inp" style="border-radius:14px">
+          <textarea id="_jobsMsg" placeholder="איזה כישרון אתם מחפשים?" style="min-height:80px;resize:none;border-radius:14px;border:1.5px solid rgba(100,116,139,0.2);padding:12px;font-size:14px;font-family:inherit;direction:rtl"></textarea>
+          <button id="_jobsSubmitBtn" onclick="submitEmployerInquiry()" style="background:linear-gradient(135deg,#8B5CF6,#A78BFA);border:none;color:#fff;border-radius:50px;padding:14px;font-weight:900;font-size:14px;cursor:pointer;margin-top:4px;box-shadow:0 4px 16px rgba(139,92,246,0.35)">שלח פנייה →</button>
+        </div>
+      </div>
+    </div>
+    ${BNav("jobs")}
+  </div>`;
+}
+
 // ─── ABOUT ────────────────────────────────────────────────────────────────────
 function About(){
   const tab=S.aTab;
@@ -11770,7 +11844,7 @@ function EmailVerify(){
   </div>`;
 }
 
-const SCREENS={splash:Splash,safety:Safety,parentReg:ParentReg,register:Register,login:Login,regSuccess:RegSuccess,emailVerify:EmailVerify,teacherSetup:TeacherSetup,teacherPending:TeacherPending,studentPending:StudentPending,home:Home,nearby:Nearby,teacher:Teacher,booking:Booking,messages:Messages,chat:Chat,profile:Profile,community:Community,leaderboard:Leaderboard,about:About,parentPortal:ParentPortal,weeklySchedule:WeeklySchedule,subscribe:Subscribe,discover:Discover};
+const SCREENS={splash:Splash,safety:Safety,parentReg:ParentReg,register:Register,login:Login,regSuccess:RegSuccess,emailVerify:EmailVerify,teacherSetup:TeacherSetup,teacherPending:TeacherPending,studentPending:StudentPending,home:Home,nearby:Nearby,teacher:Teacher,booking:Booking,messages:Messages,chat:Chat,profile:Profile,community:Community,leaderboard:Leaderboard,about:About,parentPortal:ParentPortal,weeklySchedule:WeeklySchedule,subscribe:Subscribe,discover:Discover,jobs:Jobs};
 
 function _hs(inp){
   S.search=inp.value;

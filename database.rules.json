@@ -244,6 +244,7 @@
       "$uid": { ".read": "auth != null", ".write": "auth.uid == $uid || auth.token.email == 'rotemshaer@gmail.com'" }
     },
     "contactMessages": { ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'", ".write": "auth != null" },
+    "employerInquiries": { ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'", ".write": "auth != null" },
     "pendingCategories": { ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'", ".write": "auth != null" },
     "stories": {
       ".read": "auth != null",
