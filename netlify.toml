@@ -3,6 +3,14 @@
   publish = "."
   command = ""
 
+[functions]
+  directory = "netlify/functions"
+
+[[redirects]]
+  from = "/api/ai-assistant"
+  to = "/.netlify/functions/ai-assistant"
+  status = 200
+
 [[headers]]
   for = "/*"
   [headers.values]

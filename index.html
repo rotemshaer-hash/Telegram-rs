@@ -7930,6 +7930,7 @@ function Home(){
         <input id="homeSearch" value="${S.search||''}" oninput="_hs(this)" placeholder="חפש מורה, נושא, עיר..." style="border:none;outline:none;flex:1;font-size:15px;direction:rtl;background:transparent;color:#0F1A1F;font-family:inherit">
         <button id="_hsX" onclick="S.search='';document.getElementById('homeSearch').value='';_hs({value:''})" style="background:rgba(15,26,31,0.08);border:none;color:#0F1A1F;cursor:pointer;border-radius:50%;width:24px;height:24px;font-size:12px;display:flex;align-items:center;justify-content:center;visibility:${S.search?'visible':'hidden'};pointer-events:${S.search?'auto':'none'}">✕</button>
         <span id="_hsIcon" style="color:rgba(15,26,31,.4);font-size:14px;visibility:${S.search?'hidden':'visible'}">⌨</span>
+        <button onclick="go('aiAssistant')" title="חיפוש חכם עם AI" style="background:linear-gradient(135deg,#8B5CF6,#EC4899);border:none;color:#fff;cursor:pointer;border-radius:50%;width:30px;height:30px;flex-shrink:0;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(139,92,246,0.4)">✨</button>
       </div>
     </div>
 
@@ -10258,6 +10259,135 @@ function Jobs(){
   </div>`;
 }
 
+// ─── DRUSHE AI ────────────────────────────────────────────────────────────────
+// חיפוש בשפה טבעית + שאלות ותשובות מבוססות Claude, דרך פונקציית שרת ב-Netlify
+// (netlify/functions/ai-assistant.js) — המפתח של Anthropic נשאר בצד השרת בלבד.
+async function _aiCall(mode,message){
+  const res=await fetch('/api/ai-assistant',{
+    method:'POST',
+    headers:{'content-type':'application/json'},
+    body:JSON.stringify({mode,message})
+  });
+  const data=await res.json().catch(()=>({}));
+  if(!res.ok)throw new Error(data?.error||'שגיאת שרת');
+  return data;
+}
+
+async function submitAISearch(){
+  const inp=document.getElementById('_aiSearchInput');
+  const q=(inp?.value||'').trim();
+  if(!q)return;
+  S.aiLoading=true;S.aiSearchResult=null;render();
+  try{
+    const data=await _aiCall('search',q);
+    const matches=TEACHERS.filter(t=>{
+      if(data.categories.length&&!data.categories.includes(t.cat)&&!(t.cats||[]).some(c=>data.categories.includes(c)))return false;
+      if(data.city&&t.city&&!t.city.includes(data.city)&&!data.city.includes(t.city))return false;
+      if(data.maxPrice&&t.price>data.maxPrice)return false;
+      return true;
+    }).sort((a,b)=>(b.rating||0)-(a.rating||0));
+    S.aiSearchResult={...data,matches};
+  }catch(e){showFireToast('❌ '+e.message);}
+  S.aiLoading=false;render();
+}
+
+async function submitAIAsk(){
+  const inp=document.getElementById('_aiAskInput');
+  const q=(inp?.value||'').trim();
+  if(!q)return;
+  if(!S.aiChatLog)S.aiChatLog=[];
+  S.aiChatLog.push({role:'user',text:q});
+  inp.value='';
+  S.aiLoading=true;render();
+  try{
+    const data=await _aiCall('ask',q);
+    S.aiChatLog.push({role:'assistant',text:data.answer});
+  }catch(e){
+    S.aiChatLog.push({role:'assistant',text:'❌ לא הצלחתי לענות כרגע ('+e.message+'). אפשר לשאול את צוות Drushe ישירות בוואטסאפ.'});
+  }
+  S.aiLoading=false;render();
+  setTimeout(()=>{const el=document.getElementById('_aiChatLog');if(el)el.scrollTop=el.scrollHeight;},30);
+}
+
+function AIAssistant(){
+  const mode=S.aiMode||'search';
+  return `<div class="screen">
+    <div style="background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);padding:22px 20px 24px;border-radius:0 0 32px 32px;color:#fff;position:relative;overflow:hidden">
+      <div style="position:absolute;top:-50px;left:-40px;width:160px;height:160px;border-radius:50%;background:rgba(139,47,201,0.35);filter:blur(10px)"></div>
+      <div style="position:absolute;bottom:-60px;right:-50px;width:180px;height:180px;border-radius:50%;background:rgba(6,182,212,0.25);filter:blur(10px)"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;position:relative;z-index:1">
+        <button onclick="back()" style="background:rgba(255,255,255,.15);border:none;color:#fff;font-size:14px;cursor:pointer;border-radius:50px;padding:8px 14px;font-weight:700">← חזור</button>
+        <h2 style="font-size:20px;font-weight:900;margin:0;display:flex;align-items:center;gap:8px">Drushe AI ${miniBadge('zap','#8B5CF6',30)}</h2>
+      </div>
+      <p style="color:rgba(255,255,255,.75);font-size:12.5px;margin:0 0 14px;position:relative;z-index:1">חיפוש חכם או שאלה על בטיחות ומדיניות — מבוסס Claude</p>
+      <div style="display:flex;gap:4px;background:rgba(255,255,255,0.12);border-radius:12px;padding:3px;position:relative;z-index:1">
+        <button onclick="S.aiMode='search';render()" style="flex:1;padding:8px;border:none;border-radius:10px;font-weight:800;font-size:13px;cursor:pointer;transition:all .2s;background:${mode==='search'?'rgba(255,255,255,0.9)':'transparent'};color:${mode==='search'?'#0F1A1F':'rgba(255,255,255,0.85)'}">🔍 חיפוש חכם</button>
+        <button onclick="S.aiMode='ask';render()" style="flex:1;padding:8px;border:none;border-radius:10px;font-weight:800;font-size:13px;cursor:pointer;transition:all .2s;background:${mode==='ask'?'rgba(255,255,255,0.9)':'transparent'};color:${mode==='ask'?'#0F1A1F':'rgba(255,255,255,0.85)'}">💬 שאלות ותשובות</button>
+      </div>
+    </div>
+    <div style="padding:18px 20px 100px">
+      ${mode==='search'?_aiSearchTab():_aiAskTab()}
+    </div>
+    ${BNav("home")}
+  </div>`;
+}
+
+function _aiSearchTab(){
+  const r=S.aiSearchResult;
+  return `
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <input id="_aiSearchInput" placeholder="לדוגמה: מורה לגיטרה בזול בתל אביב" class="inp" style="flex:1" onkeydown="if(event.key==='Enter')submitAISearch()">
+      <button onclick="submitAISearch()" style="background:linear-gradient(135deg,#8B5CF6,#EC4899);border:none;color:#fff;border-radius:14px;padding:0 18px;font-weight:800;font-size:14px;cursor:pointer;flex-shrink:0">${S.aiLoading?'⏳':'חפש'}</button>
+    </div>
+    ${!r&&!S.aiLoading?`
+      <div style="text-align:center;padding:30px 10px">
+        <div style="margin-bottom:14px;display:flex;justify-content:center">${miniBadge('search','#8B5CF6',60)}</div>
+        <h3 style="font-weight:900;font-size:16px;margin:0 0 6px;color:#0F1A1F">תכתוב מה שאתה מחפש, במילים שלך</h3>
+        <p style="color:#64748B;font-size:13px;line-height:1.6;margin:0">Claude יבין את הכוונה ויתאים מהמורים האמיתיים באפליקציה — לא ממציא כלום.</p>
+      </div>`:''}
+    ${S.aiLoading?`<div style="text-align:center;padding:30px;color:#8B5CF6;font-weight:800">⏳ Claude חושב...</div>`:''}
+    ${r?`
+      <div style="background:linear-gradient(135deg,rgba(139,92,246,0.08),rgba(236,72,153,0.05));border-radius:16px;padding:14px 16px;margin-bottom:16px;font-size:13px;color:#0F1A1F;line-height:1.6">
+        ✨ ${escapeHtml(r.reasoning||'')}
+      </div>
+      ${r.matches.length===0?`
+        <div style="text-align:center;padding:20px;color:#64748B;font-size:13px">לא נמצאו מורים מתאימים כרגע. נסה לנסח אחרת או ${icon('search',14)} חפש ידנית.</div>
+      `:r.matches.map(t=>`
+        <button class="tc" onclick="go('teacher',{teacher:TEACHERS.find(x=>x.id==='${t.id}')})">
+          <div class="tc-av" style="background:${t.col}20;overflow:hidden">${t.photo?avatarHtml(t.photo,t.name,52,'16px'):t.av}${t.online?`<div class="online-dot"></div>`:""}</div>
+          <div style="flex:1">
+            <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-weight:800;font-size:14px">${escapeHtml(t.name||'')}</span><span style="font-weight:900;font-size:14px;color:var(--p)">₪${t.price}</span></div>
+            <div style="font-size:12px;color:${C.muted};margin-top:3px">${CATS.find(c=>c.id===t.cat)?.lbl||''} • ${escapeHtml(t.city||'')}</div>
+            <div style="margin-top:4px;color:#FFD23F;font-weight:700;font-size:12px">${t.rating>0?stars(t.rating):'חדש 🆕'}</div>
+          </div>
+        </button>`).join('')}
+    `:''}
+  `;
+}
+
+function _aiAskTab(){
+  const log=S.aiChatLog||[];
+  return `
+    <div id="_aiChatLog" style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px;max-height:52vh;overflow-y:auto">
+      ${log.length===0?`
+        <div style="text-align:center;padding:30px 10px">
+          <div style="margin-bottom:14px;display:flex;justify-content:center">${miniBadge('shield','#06B6D4',60)}</div>
+          <h3 style="font-weight:900;font-size:16px;margin:0 0 6px;color:#0F1A1F">שאל על בטיחות, הרשמה, תשלומים...</h3>
+          <p style="color:#64748B;font-size:13px;line-height:1.6;margin:0">התשובות מבוססות אך ורק על המדיניות האמיתית של Drushe.</p>
+        </div>`:''}
+      ${log.map(m=>`
+        <div style="display:flex;${m.role==='user'?'justify-content:flex-end':'justify-content:flex-start'}">
+          <div style="max-width:82%;background:${m.role==='user'?'linear-gradient(135deg,#14B8A6,#06B6D4)':'rgba(139,92,246,0.08)'};color:${m.role==='user'?'#fff':'#0F1A1F'};border-radius:16px;padding:11px 14px;font-size:13.5px;line-height:1.6">${escapeHtml(m.text)}</div>
+        </div>`).join('')}
+      ${S.aiLoading?`<div style="color:#8B5CF6;font-weight:800;font-size:13px">⏳ Claude חושב...</div>`:''}
+    </div>
+    <div style="display:flex;gap:8px">
+      <input id="_aiAskInput" placeholder="מה תרצה לשאול?" class="inp" style="flex:1" onkeydown="if(event.key==='Enter')submitAIAsk()">
+      <button onclick="submitAIAsk()" style="background:linear-gradient(135deg,#06B6D4,#14B8A6);border:none;color:#fff;border-radius:14px;padding:0 18px;font-weight:800;font-size:14px;cursor:pointer;flex-shrink:0">${S.aiLoading?'⏳':'שלח'}</button>
+    </div>
+  `;
+}
+
 // ─── ABOUT ────────────────────────────────────────────────────────────────────
 function About(){
   const tab=S.aTab;
@@ -11858,7 +11988,7 @@ function EmailVerify(){
   </div>`;
 }
 
-const SCREENS={splash:Splash,safety:Safety,parentReg:ParentReg,register:Register,login:Login,regSuccess:RegSuccess,emailVerify:EmailVerify,teacherSetup:TeacherSetup,teacherPending:TeacherPending,studentPending:StudentPending,home:Home,nearby:Nearby,teacher:Teacher,booking:Booking,messages:Messages,chat:Chat,profile:Profile,community:Community,leaderboard:Leaderboard,about:About,parentPortal:ParentPortal,weeklySchedule:WeeklySchedule,subscribe:Subscribe,discover:Discover,jobs:Jobs};
+const SCREENS={splash:Splash,safety:Safety,parentReg:ParentReg,register:Register,login:Login,regSuccess:RegSuccess,emailVerify:EmailVerify,teacherSetup:TeacherSetup,teacherPending:TeacherPending,studentPending:StudentPending,home:Home,nearby:Nearby,teacher:Teacher,booking:Booking,messages:Messages,chat:Chat,profile:Profile,community:Community,leaderboard:Leaderboard,about:About,parentPortal:ParentPortal,weeklySchedule:WeeklySchedule,subscribe:Subscribe,discover:Discover,jobs:Jobs,aiAssistant:AIAssistant};
 
 function _hs(inp){
   S.search=inp.value;
