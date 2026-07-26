@@ -6875,6 +6875,7 @@ function renderAdminTab(){
           ${!u._fromAlert?(u.blocked?
             `<button onclick="adminUnblockUser('${u.uid}')" style="flex:1;background:#10B981;border:none;color:#fff;border-radius:50px;padding:8px;font-size:11px;font-weight:800;cursor:pointer">${icon("unlock",14)} שחרר חסימה</button>`:
             `<button onclick="adminBlockUser('${u.uid}')" style="flex:1;background:rgba(231,76,60,0.85);border:none;color:#fff;border-radius:50px;padding:8px;font-size:11px;font-weight:800;cursor:pointer">⛔ חסימה</button>`):''}
+          ${!u._fromAlert?`<button onclick="adminDeleteUser('${u.uid}','${jsAttrEscape(u.name||u.email||'')}','student')" title="מחק לצמיתות" style="flex-shrink:0;background:rgba(239,68,68,0.1);color:#EF4444;border-radius:50px;padding:8px 12px;font-size:11px;font-weight:800;cursor:pointer">${icon("trash",14)}</button>`:''}
         </div>
       </div>`;
     let studentListHtml='';
