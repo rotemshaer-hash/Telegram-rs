@@ -995,6 +995,11 @@ function go(scr,extra={}){
     listenTeacherVideos();
     loadUserChats(); // רענן תיבת הודעות בעת כניסה לפרופיל
   }
+  if(scr==='messages'&&currentUser){
+    // בלי זה, שיחה ראשונה ממישהו חדש (שעדיין לא ב-userChats המקומי) לא הייתה
+    // מופיעה עד רענון ידני או כניסה לפרופיל — הצד המקבל היה רואה "שום דבר לא הגיע"
+    loadUserChats().then(()=>{setupConvListeners();render();});
+  }
   if(scr==='teacher'&&(extra.teacher||S.teacher)){
     const tid=(extra.teacher||S.teacher)?.id;
     if(tid){
