@@ -4604,7 +4604,17 @@ async function loadAdminData(){
     adminIncompleteTeachers=adminAllUsers.filter(u=>
       u.role==='teacher' && !adminAllTeachers.find(t=>t.uid===u.uid)
     );
-    const videosSnap=await db.ref('videos').get();
+    // כל השאילתות הבאות בלתי-תלויות אחת בשנייה (רק בתלמידי המורים שכבר נטענו
+    // למעלה) — מריצים אותן במקביל במקום ברצף כדי שפתיחת הפאנל לא תיראה תקועה.
+    const [videosSnap,reportsSnap,clientErrorsSnap,bookingsSnap,reviewsSnap,pendingSnap,storiesSnap]=await Promise.all([
+      db.ref('videos').get(),
+      db.ref('reports').get(),
+      db.ref('clientErrors').limitToLast(300).get(),
+      db.ref('teacherBookings').get(),
+      db.ref('reviews').get(),
+      db.ref('pendingReviews').get(),
+      db.ref('stories').orderByChild('status').equalTo('pending').get(),
+    ]);
     adminAllVideos=[];
     if(videosSnap.exists()){
       videosSnap.forEach(teacherEntry=>{
@@ -4614,18 +4624,15 @@ async function loadAdminData(){
         });
       });
     }
-    const reportsSnap=await db.ref('reports').get();
     adminAllReports=[];
     if(reportsSnap.exists())reportsSnap.forEach(c=>adminAllReports.push({id:c.key,...c.val()}));
     adminAllReports.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
     // שגיאות client-side שנתפסו אוטומטית (window.onerror/unhandledrejection) — ראה _reportClientError
-    const clientErrorsSnap=await db.ref('clientErrors').limitToLast(300).get();
     adminAllClientErrors=[];
     if(clientErrorsSnap.exists())clientErrorsSnap.forEach(c=>adminAllClientErrors.push({id:c.key,...c.val()}));
     adminAllClientErrors.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
     // טען את כל ההזמנות של כל המורים
     adminAllBookings=[];
-    const bookingsSnap=await db.ref('teacherBookings').get();
     if(bookingsSnap.exists()){
       bookingsSnap.forEach(teacherEntry=>{
         const tid=teacherEntry.key;
@@ -4637,7 +4644,6 @@ async function loadAdminData(){
     // טען ביקורות מכל המורים (reviews/) + תור גיבוי (pendingReviews/)
     adminAllReviews=[];
     const seenIds=new Set();
-    const reviewsSnap=await db.ref('reviews').get();
     if(reviewsSnap.exists()){
       reviewsSnap.forEach(teacherEntry=>{
         const tid=teacherEntry.key;
@@ -4650,7 +4656,6 @@ async function loadAdminData(){
       });
     }
     // גיבוי: pendingReviews/ — ביקורות ישירות שאולי לא הגיעו ל-reviews/
-    const pendingSnap=await db.ref('pendingReviews').get();
     if(pendingSnap.exists()){
       pendingSnap.forEach(r=>{
         const rv=r.val();
@@ -4664,7 +4669,6 @@ async function loadAdminData(){
     }
     adminAllReviews.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
     // טען סטוריז ממתינים
-    const storiesSnap=await db.ref('stories').orderByChild('status').equalTo('pending').get();
     adminAllStories=[];
     if(storiesSnap.exists())storiesSnap.forEach(c=>adminAllStories.push({id:c.key,...c.val()}));
     adminAllStories.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
@@ -6597,6 +6601,9 @@ async function _verifyAdminPin(onSuccess){
 
 function showAdminPanel(forceTab=null){
   if(!isAdmin()){showFireToast('🚫 אין הרשאת מנהל');return;}
+  // משוב מיידי — טעינת כל נתוני הניהול לוקחת כמה שניות, ובלי זה נראה שהלחיצה
+  // לא נקלטה והמנהל לוחץ כמה פעמים / מרענן.
+  if(!document.getElementById('_adminPanel'))showFireToast('⏳ טוען פאנל ניהול...');
   // auto-clear unread contact messages when admin opens the panel
   const unreadMsgs=adminContactMessages.filter(m=>!m.read);
   if(unreadMsgs.length){
@@ -7927,10 +7934,9 @@ function Home(){
       <h2 style="color:#0F1A1F;font-size:19px;font-weight:900;margin:0 0 14px">מה תרצה ללמוד היום?</h2>
       <div style="background:#fff;border:1px solid #E7EDEC;border-radius:50px;padding:12px 18px;display:flex;align-items:center;gap:10px;box-shadow:0 2px 10px rgba(0,0,0,.05)">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#0F1A1F" stroke-opacity=".55" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-        <input id="homeSearch" value="${S.search||''}" oninput="_hs(this)" placeholder="חפש מורה, נושא, עיר..." style="border:none;outline:none;flex:1;font-size:15px;direction:rtl;background:transparent;color:#0F1A1F;font-family:inherit">
-        <button id="_hsX" onclick="S.search='';document.getElementById('homeSearch').value='';_hs({value:''})" style="background:rgba(15,26,31,0.08);border:none;color:#0F1A1F;cursor:pointer;border-radius:50%;width:24px;height:24px;font-size:12px;display:flex;align-items:center;justify-content:center;visibility:${S.search?'visible':'hidden'};pointer-events:${S.search?'auto':'none'}">✕</button>
-        <span id="_hsIcon" style="color:rgba(15,26,31,.4);font-size:14px;visibility:${S.search?'hidden':'visible'}">⌨</span>
-        <button onclick="go('aiAssistant')" title="חיפוש חכם עם AI" style="background:linear-gradient(135deg,#8B5CF6,#EC4899);border:none;color:#fff;cursor:pointer;border-radius:50%;width:30px;height:30px;flex-shrink:0;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(139,92,246,0.4)">✨</button>
+        <input id="homeSearch" value="${S.search||''}" oninput="_hs(this)" placeholder="חפש מורה, נושא, עיר..." style="border:none;outline:none;flex:1;min-width:0;font-size:15px;direction:rtl;background:transparent;color:#0F1A1F;font-family:inherit">
+        <button id="_hsX" onclick="S.search='';document.getElementById('homeSearch').value='';_hs({value:''})" style="background:rgba(15,26,31,0.08);border:none;color:#0F1A1F;cursor:pointer;border-radius:50%;width:24px;height:24px;font-size:12px;flex-shrink:0;display:flex;align-items:center;justify-content:center;visibility:${S.search?'visible':'hidden'};pointer-events:${S.search?'auto':'none'}">✕</button>
+        <button id="_hsIcon" onclick="go('aiAssistant')" title="חיפוש חכם עם AI" style="background:linear-gradient(135deg,#8B5CF6,#EC4899);border:none;color:#fff;cursor:pointer;border-radius:50%;width:26px;height:26px;flex-shrink:0;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(139,92,246,0.4);visibility:${S.search?'hidden':'visible'};pointer-events:${S.search?'none':'auto'}">✨</button>
       </div>
     </div>
 
