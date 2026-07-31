@@ -148,7 +148,7 @@ input,textarea,select{font-family:inherit;-webkit-appearance:none;appearance:non
    העותקים היא תו מפריד נראה (לא padding ריק) — פסק ריק בין העותקים היה
    "נעלם" מהעין כשהוא עצמו גולל לתוך המסך, ונראה כאילו הפס התרוקן לרגע. */
 .support-ticker{background:linear-gradient(90deg,#3B82F6,#8B5CF6);overflow:hidden;white-space:nowrap;padding:5px 0 max(5px,env(safe-area-inset-bottom));cursor:pointer;direction:ltr}
-.support-ticker-track{display:inline-flex;animation:supportMarquee 28s linear infinite}
+.support-ticker-track{display:inline-flex;animation:supportMarquee 28s linear infinite reverse}
 .support-ticker-track span{color:#fff;font-weight:800;font-size:11.5px;direction:rtl}
 @keyframes supportMarquee{from{transform:translateX(0)}to{transform:translateX(-25%)}}
 @media (prefers-reduced-motion:reduce){.support-ticker-track{animation:none}}
