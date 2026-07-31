@@ -990,6 +990,17 @@ _restoreRegSession();
 // שמור קוד הפניה מ-URL לסשן (לפני כל דבר אחר)
 (function(){try{const ref=new URLSearchParams(window.location.search).get('ref');if(ref)sessionStorage.setItem('_kidRefCode',ref);}catch(_){}})();
 // ─── ROUTER ───────────────────────────────────────────────────────────────────
+// html,body{overflow-x:hidden} עם overflow-y לא מוגדר גורם לדפדפן לחשב
+// overflow-y כ-auto (כלל ה-CSS: אם ציר אחד לא visible, הציר השני הופך מ-visible ל-auto) —
+// כלומר body עצמו הופך למיכל הגלילה בפועל, לא window/documentElement. לכן איפוס גלילה
+// בניווט חייב לאפס גם את body.scrollTop, אחרת מסך חדש "יורש" את מיקום הגלילה מהמסך הקודם.
+function _resetScroll(){
+  window.scrollTo(0,0);
+  document.documentElement.scrollTop=0;
+  document.body.scrollTop=0;
+  const app=document.getElementById('app');
+  if(app)app.scrollTop=0;
+}
 function go(scr,extra={}){
   if(scr==='register'){S.safetyConfirmed=true;_saveRegSession();if(!S.parentRegData)scr='parentReg';}
   if(scr!=="splash")S.prev=S.screen;
@@ -1030,8 +1041,7 @@ function go(scr,extra={}){
   if(scr==='discover')loadDiscoverFeed();
   history.pushState({screen:scr,prev:S.prev},'');
   render();
-  window.scrollTo(0,0);
-  document.getElementById('app').scrollTop=0;
+  _resetScroll();
   if(scr==='teacher'&&!('teacherCat' in extra))S.teacherCat=null;
 }
 function back(){
@@ -1040,14 +1050,14 @@ function back(){
   S.screen=prev;
   history.pushState({screen:prev,prev:'home'},'');
   render();
-  window.scrollTo(0,0);
+  _resetScroll();
 }
 window.addEventListener('popstate',()=>{
   const prev=S.prev||'home';
   S.prev='home';
   S.screen=prev;
   render();
-  window.scrollTo(0,0);
+  _resetScroll();
 });
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
