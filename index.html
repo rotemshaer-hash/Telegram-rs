@@ -146,7 +146,7 @@ input,textarea,select{font-family:inherit;-webkit-appearance:none;appearance:non
    שתי עותקים זהים של הטקסט זה לצד זה, שמחליקים יחד ב-50% מרוחבם —
    כך שברגע שהעותק הראשון יוצא מהמסך, השני כבר תופס בדיוק את מקומו
    (לולאה רציפה, בלי קפיצה נראית). */
-.support-ticker{background:linear-gradient(90deg,#3B82F6,#8B5CF6);overflow:hidden;white-space:nowrap;padding:5px 0;cursor:pointer}
+.support-ticker{background:linear-gradient(90deg,#3B82F6,#8B5CF6);overflow:hidden;white-space:nowrap;padding:5px 0 max(5px,env(safe-area-inset-bottom));cursor:pointer}
 .support-ticker-track{display:inline-flex;animation:supportMarquee 16s linear infinite}
 .support-ticker-track span{color:#fff;font-weight:800;font-size:11.5px;padding-inline-end:60px}
 @keyframes supportMarquee{from{transform:translateX(0)}to{transform:translateX(-50%)}}
@@ -1265,15 +1265,15 @@ function BNav(active){
     {id:"about",    lbl:"אודות"},
   ];
   return `<div style="position:fixed;bottom:0;left:0;right:0;z-index:90">
-    <div class="support-ticker" onclick="go('support')">
-      <div class="support-ticker-track"><span>${supportTickerText()}</span><span aria-hidden="true">${supportTickerText()}</span></div>
-    </div>
-    <nav class="bnav" style="position:static">${items.map(it=>`
+    <nav class="bnav" style="position:static;padding-bottom:8px">${items.map(it=>`
       <button onclick="go('${it.id}')" class="${active===it.id?"active":""}">
         <span class="nb-icon" style="${it.special?'display:flex;align-items:center;justify-content:center;width:27px;height:27px;border-radius:42% 58% 63% 37%/45% 40% 60% 55%;background:linear-gradient(135deg,#8B5CF6,#A78BFA);margin:0 auto;box-shadow:0 3px 8px rgba(139,92,246,0.4)':''}">${svgs[it.id]||""}${it.badge&&active!==it.id?`<span class="nb-badge">${it.badge}</span>`:""}</span>
         <span class="nb-lbl" style="${it.special?'color:#8B5CF6;font-weight:900':''}">${it.lbl}</span>
         ${active===it.id?"<span class='nb-dot'></span>":""}
       </button>`).join("")}</nav>
+    <div class="support-ticker" onclick="go('support')">
+      <div class="support-ticker-track"><span>${supportTickerText()}</span><span aria-hidden="true">${supportTickerText()}</span></div>
+    </div>
   </div>`;
 }
 function supportTickerText(){
