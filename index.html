@@ -143,13 +143,14 @@ input,textarea,select{font-family:inherit;-webkit-appearance:none;appearance:non
 .nb-badge{position:absolute;top:-4px;right:-7px;background:#E74C3C;color:#fff;font-size:8px;font-weight:900;border-radius:50%;width:15px;height:15px;display:flex;align-items:center;justify-content:center}
 
 /* SUPPORT TICKER — פס רץ קבוע מעל הניווט התחתון, מקשר למסך התמיכה.
-   שתי עותקים זהים של הטקסט זה לצד זה, שמחליקים יחד ב-50% מרוחבם —
-   כך שברגע שהעותק הראשון יוצא מהמסך, השני כבר תופס בדיוק את מקומו
-   (לולאה רציפה, בלי קפיצה נראית). */
-.support-ticker{background:linear-gradient(90deg,#3B82F6,#8B5CF6);overflow:hidden;white-space:nowrap;padding:5px 0 max(5px,env(safe-area-inset-bottom));cursor:pointer}
-.support-ticker-track{display:inline-flex;animation:supportMarquee 16s linear infinite}
-.support-ticker-track span{color:#fff;font-weight:800;font-size:11.5px;padding-inline-end:60px}
-@keyframes supportMarquee{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+   4 עותקים זהים של הטקסט ברצף, שמחליקים יחד ב-25% מרוחב המסלול (רוחב עותק
+   אחד בדיוק) — כך שתמיד יש טקסט גלוי, בלי תלות ברוחב המסך. הפרדה בין
+   העותקים היא תו מפריד נראה (לא padding ריק) — פסק ריק בין העותקים היה
+   "נעלם" מהעין כשהוא עצמו גולל לתוך המסך, ונראה כאילו הפס התרוקן לרגע. */
+.support-ticker{background:linear-gradient(90deg,#3B82F6,#8B5CF6);overflow:hidden;white-space:nowrap;padding:5px 0 max(5px,env(safe-area-inset-bottom));cursor:pointer;direction:ltr}
+.support-ticker-track{display:inline-flex;animation:supportMarquee 28s linear infinite}
+.support-ticker-track span{color:#fff;font-weight:800;font-size:11.5px;direction:rtl}
+@keyframes supportMarquee{from{transform:translateX(0)}to{transform:translateX(-25%)}}
 @media (prefers-reduced-motion:reduce){.support-ticker-track{animation:none}}
 
 /* REFRESH BTN */
@@ -1272,12 +1273,12 @@ function BNav(active){
         ${active===it.id?"<span class='nb-dot'></span>":""}
       </button>`).join("")}</nav>
     <div class="support-ticker" onclick="go('support')">
-      <div class="support-ticker-track"><span>${supportTickerText()}</span><span aria-hidden="true">${supportTickerText()}</span></div>
+      <div class="support-ticker-track">${[0,1,2,3].map(i=>`<span${i>0?' aria-hidden="true"':''}>${supportTickerText()}&nbsp;&nbsp;•&nbsp;&nbsp;</span>`).join('')}</div>
     </div>
   </div>`;
 }
 function supportTickerText(){
-  return '💙 מרגיש/ה לא בסדר? אתם/ן לא לבד — תמיכה נגד אלימות ברשת ועזרה נפשית — תמיד כאן בשבילך 💙';
+  return '💙 אלימות ברשת, בריונות, או פשוט יום קשה — יש אנשים אמיתיים שרוצים לעזור. אתם/ן לא לבד. אנחנו כאן תמיד בשבילך 💙';
 }
 
 // ─── SHARE SYSTEM ─────────────────────────────────────────────────────────────
