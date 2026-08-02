@@ -10400,9 +10400,14 @@ function _aiSearchTab(){
   `;
 }
 
+function clearAIChatLog(){
+  S.aiChatLog=[];
+  render();
+}
 function _aiAskTab(){
   const log=S.aiChatLog||[];
   return `
+    ${log.length?`<div style="display:flex;justify-content:flex-end;margin-bottom:8px"><button onclick="clearAIChatLog()" style="background:transparent;border:none;color:#94A3B8;font-size:12px;font-weight:700;cursor:pointer;padding:4px 6px">🗑 נקה שיחה</button></div>`:''}
     <div id="_aiChatLog" style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px;max-height:52vh;overflow-y:auto">
       ${log.length===0?`
         <div style="text-align:center;padding:30px 10px">
