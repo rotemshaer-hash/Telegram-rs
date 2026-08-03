@@ -803,7 +803,7 @@ async function loadRealTeachers(){
     // עדכן אלמנט הספירה בדף הבית אם כבר רונדר
     const homeStatEl=document.querySelector('[data-stat="students"]');
     if(homeStatEl)homeStatEl.textContent=realStats.students;
-    if(['home','nearby'].includes(S.screen))render();
+    if(['home','nearby'].includes(S.screen))renderSoon();
   }catch(e){console.warn('Failed to load teachers:',e);teachersLoaded=true;}
 }
 
@@ -2669,7 +2669,7 @@ function loadStories(){
     });
     STORIES.sort((a,b)=>b.createdAt-a.createdAt);
     MY_PENDING_STORIES.sort((a,b)=>b.createdAt-a.createdAt);
-    if(S.screen==='home')render();
+    if(S.screen==='home')renderSoon();
   });
 }
 
@@ -12158,6 +12158,16 @@ function render(){
   }
 }
 
+// רינדור "בקרוב" — מאחד פרץ של קריאות render() סמוכות (טעינות רקע שמסתיימות
+// אחת אחרי השנייה אחרי התחברות: מורים, סטוריז, שיחות) לרינדור אחד, במקום
+// שהמסך "יקפוץ" 2-3 פעמים עד שהוא מתייצב. לשימוש רק מתוך callbacks אסינכרוניים
+// שלא נשענים על DOM מעודכן מיד אחרי הקריאה — כל שאר הקוד ממשיך לקרוא render() רגיל.
+let _renderSoonT=null;
+function renderSoon(){
+  clearTimeout(_renderSoonT);
+  _renderSoonT=setTimeout(()=>{_renderSoonT=null;render();},180);
+}
+
 initDarkMode();
 render();
 
@@ -12647,7 +12657,7 @@ auth&&auth.onAuthStateChanged(async user=>{
           userChats.sort((a,b)=>(b.lastTime||0)-(a.lastTime||0));
         }
         // טען מחדש רק להתראות חדשות אמיתיות
-        loadNotifications().then(()=>{if(S.screen&&!['register','parentReg','safety','teacherSetup'].includes(S.screen))render();});
+        loadNotifications().then(()=>{if(S.screen&&!['register','parentReg','safety','teacherSetup'].includes(S.screen))renderSoon();});
       });
       // האזנה בזמן אמת לשיחות (לעדכון תג הודעות שלא נקראו)
       db.ref('userChats/'+user.uid).on('value',snap=>{
@@ -12655,7 +12665,7 @@ auth&&auth.onAuthStateChanged(async user=>{
         if(snap.exists())snap.forEach(c=>userChats.push(c.val()));
         userChats.sort((a,b)=>(b.lastTime||0)-(a.lastTime||0));
         setupConvListeners();
-        if(!['register','parentReg','safety','teacherSetup'].includes(S.screen))render();
+        if(!['register','parentReg','safety','teacherSetup'].includes(S.screen))renderSoon();
       });
       // האזנה ל-adminNotifs (מורים חדשים, סרטונים, משתמשים) – ללא חיפוש UID
       if(isAdmin()){
