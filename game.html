@@ -243,7 +243,7 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
              radial-gradient(ellipse at 80% 80%,rgba(0,200,255,.35) 0%,transparent 48%),
              linear-gradient(160deg,#001852 0%,#002FA0 55%,#003FAA 100%);
 }
-.eico{font-size:80px;line-height:1;margin-bottom:14px;animation:bounce 0.7s ease-in-out infinite}
+.eico{font-size:80px;line-height:1;margin-bottom:14px;animation:bounce 0.7s ease-in-out infinite;display:flex;align-items:center;justify-content:center;min-height:80px}
 .etit{
   font-size:30px;font-weight:900;text-align:center;margin-bottom:8px;
   background:linear-gradient(90deg,#FFFFFF,#70D8FF,#0070FF,#FFFFFF);
@@ -276,6 +276,27 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
   padding:14px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:transform .15s;
 }
 .ebs:active{transform:scale(.95)}
+.esh{
+  width:100%;padding:13px;border-radius:22px;
+  background:linear-gradient(135deg,rgba(0,255,221,.12),rgba(139,47,201,.12));
+  border:1.5px solid #00FFDD;color:#00FFDD;font-size:15px;font-weight:700;
+  cursor:pointer;font-family:inherit;transition:transform .15s;
+}
+.esh:active{transform:scale(.95)}
+#score-card-modal{
+  position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.88);
+  display:none;align-items:center;justify-content:center;flex-direction:column;gap:16px;
+}
+#score-card-modal.show{display:flex}
+#score-card-wrap{
+  width:min(88vw,420px);aspect-ratio:1/1;border-radius:18px;overflow:hidden;
+  box-shadow:0 0 48px rgba(0,255,221,.25);
+}
+#score-card-close{
+  background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.2);
+  color:#fff;font-size:15px;font-weight:700;padding:12px 36px;border-radius:14px;cursor:pointer;
+  font-family:inherit;
+}
 
 /* ── CONFETTI ── */
 .cf{position:fixed;top:-12px;border-radius:2px;animation:cff linear forwards;z-index:999}
@@ -986,7 +1007,14 @@ html,body{height:100%;font-family:'Rubik','Arial',sans-serif;overflow:hidden;use
       <button class="ebm" style="flex:1;background:linear-gradient(135deg,#1E90FF,#0055DD);box-shadow:0 8px 32px rgba(0,100,255,.35)" onclick="shareResult()">📤 שתף</button>
     </div>
     <button class="ebs" onclick="goHome()">🏠 החלף רמה</button>
+    <button class="esh" onclick="showShareCard()">📊 כרטיס ניקוד</button>
   </div>
+</div>
+
+<!-- Score Card Modal -->
+<div id="score-card-modal">
+  <div id="score-card-wrap"></div>
+  <button id="score-card-close" onclick="closeShareCard()">✕ סגור</button>
 </div>
 
 <!-- Feedback overlay -->
@@ -1310,8 +1338,35 @@ function buildMap() {
   const cp = document.createElement('div');
   cp.id = 'city-pin';
   cp.innerHTML = '<svg viewBox="0 0 100 137" width="38" height="52" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="mpg" x1="25%" y1="0%" x2="75%" y2="100%"><stop offset="0%" stop-color="#A4E4FF"/><stop offset="55%" stop-color="#5BB8FF"/><stop offset="100%" stop-color="#2A6AEF"/></linearGradient><radialGradient id="mph" cx="38%" cy="26%" r="52%"><stop offset="0%" stop-color="rgba(255,255,255,.5)"/><stop offset="100%" stop-color="rgba(255,255,255,0)"/></radialGradient></defs><path d="M50,3C24,3,3,24,3,50c0,34,47,84,47,84s47-50,47-84C97,24,76,3,50,3z" fill="url(#mpg)"/><path d="M50,3C24,3,3,24,3,50c0,34,47,84,47,84s47-50,47-84C97,24,76,3,50,3z" fill="url(#mph)"/><circle cx="50" cy="43" r="40" fill="white"/></svg>';
+  if(!PIN_NEUTRAL) PIN_NEUTRAL = cp.innerHTML;
   inner.appendChild(cp);
   _initMapZoom();
+}
+
+// ── SVG DESIGN ASSETS ──────────────────────────────────
+let PIN_NEUTRAL = '';
+const PIN_CORRECT = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 52" width="38" height="52"><defs><filter id="glow-ok" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="2" result="b"/><feComposite in="SourceGraphic" in2="b" operator="over"/></filter></defs><path d="M20 2 C10.06 2 2 10.06 2 20 C2 32.5 20 50 20 50 C20 50 38 32.5 38 20 C38 10.06 29.94 2 20 2 Z" fill="#0F1A1F" stroke="#00FFDD" stroke-width="3" filter="url(#glow-ok)"/><circle cx="20" cy="20" r="11" fill="#00FFDD"/><path d="M14 20 L18 24 L26 15" stroke="#0F1A1F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>`;
+const PIN_WRONG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 52" width="38" height="52"><defs><filter id="glow-no" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="2" result="b"/><feComposite in="SourceGraphic" in2="b" operator="over"/></filter></defs><path d="M20 2 C10.06 2 2 10.06 2 20 C2 32.5 20 50 20 50 C20 50 38 32.5 38 20 C38 10.06 29.94 2 20 2 Z" fill="#0F1A1F" stroke="#FF355E" stroke-width="3" filter="url(#glow-no)"/><circle cx="20" cy="20" r="11" fill="#FF355E"/><path d="M15 15 L25 25 M25 15 L15 25" stroke="#0F1A1F" stroke-width="3" stroke-linecap="round" fill="none"/></svg>`;
+const TROPHY_GOLD = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="140" height="140"><defs><linearGradient id="eg-gold" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#FFD700"/><stop offset="100%" stop-color="#FFAA00"/></linearGradient><filter id="eg-gold-glow"><feGaussianBlur stdDeviation="8" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><path d="M130 330 L270 330 L250 280 L150 280 Z" fill="#8b2fc9"/><rect x="120" y="330" width="160" height="25" rx="5" fill="#FFAA00" filter="url(#eg-gold-glow)"/><path d="M185 220 L215 220 L210 280 L190 280 Z" fill="url(#eg-gold)"/><path d="M120 90 L280 90 C280 190 240 230 200 230 C160 230 120 190 120 90 Z" fill="url(#eg-gold)" filter="url(#eg-gold-glow)"/><path d="M120 110 C80 110 80 170 130 180" fill="none" stroke="#FFAA00" stroke-width="12" stroke-linecap="round"/><path d="M280 110 C320 110 320 170 270 180" fill="none" stroke="#FFAA00" stroke-width="12" stroke-linecap="round"/><polygon points="200,125 207,145 228,145 211,157 217,177 200,165 183,177 189,157 172,145 193,145" fill="#0F1A1F"/></svg>`;
+const MEDAL_SILVER = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="140" height="140"><defs><linearGradient id="eg-silver" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#FFFFFF"/><stop offset="100%" stop-color="#A0B2C6"/></linearGradient><filter id="eg-cyan-glow"><feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><polygon points="150,40 175,180 120,40" fill="#8b2fc9"/><polygon points="250,40 225,180 280,40" fill="#00FFDD"/><circle cx="200" cy="240" r="90" fill="url(#eg-silver)" filter="url(#eg-cyan-glow)"/><circle cx="200" cy="240" r="72" fill="#0F1A1F" stroke="#00FFDD" stroke-width="4"/><circle cx="200" cy="240" r="60" fill="url(#eg-silver)"/><text x="200" y="262" font-family="sans-serif" font-size="65" font-weight="900" fill="#0F1A1F" text-anchor="middle">2</text></svg>`;
+const MEDAL_BRONZE = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="140" height="140"><defs><linearGradient id="eg-bronze" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#E59866"/><stop offset="100%" stop-color="#8C4600"/></linearGradient></defs><polygon points="150,40 175,180 120,40" fill="#00FFDD"/><polygon points="250,40 225,180 280,40" fill="#8b2fc9"/><circle cx="200" cy="240" r="90" fill="url(#eg-bronze)"/><circle cx="200" cy="240" r="72" fill="#0F1A1F" stroke="#FFAA00" stroke-width="4"/><circle cx="200" cy="240" r="60" fill="url(#eg-bronze)"/><text x="200" y="262" font-family="sans-serif" font-size="65" font-weight="900" fill="#0F1A1F" text-anchor="middle">3</text></svg>`;
+
+function _shareCardSvg(sc,tot){
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1080" width="100%" height="100%"><defs><linearGradient id="sc-border" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00FFDD"/><stop offset="50%" stop-color="#8b2fc9"/><stop offset="100%" stop-color="#FFAA00"/></linearGradient><filter id="sc-glow" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="15" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><rect width="1080" height="1080" fill="#0F1A1F"/><path d="M0 100 L1080 100 M0 200 L1080 200 M0 300 L1080 300 M0 400 L1080 400 M0 500 L1080 500 M0 600 L1080 600 M0 700 L1080 700 M0 800 L1080 800 M0 900 L1080 900" stroke="#8b2fc9" stroke-width="1" opacity="0.15"/><path d="M100 0 L100 1080 M200 0 L200 1080 M300 0 L300 1080 M400 0 L400 1080 M500 0 L500 1080 M600 0 L600 1080 M700 0 L700 1080 M800 0 L800 1080 M900 0 L900 1080" stroke="#00FFDD" stroke-width="1" opacity="0.15"/><rect x="50" y="50" width="980" height="980" rx="40" fill="none" stroke="url(#sc-border)" stroke-width="8" filter="url(#sc-glow)"/><text x="540" y="160" font-family="sans-serif" font-size="52" font-weight="bold" fill="#00FFDD" text-anchor="middle">גאוגרפיה אינטראקטיבית</text><circle cx="540" cy="460" r="180" fill="none" stroke="#8b2fc9" stroke-width="4" opacity="0.6"/><ellipse cx="540" cy="460" rx="180" ry="70" fill="none" stroke="#00FFDD" stroke-width="3" opacity="0.8"/><ellipse cx="540" cy="460" rx="70" ry="180" fill="none" stroke="#00FFDD" stroke-width="3" opacity="0.8"/><circle cx="540" cy="460" r="12" fill="#FFAA00" filter="url(#sc-glow)"/><rect x="190" y="700" width="700" height="220" rx="25" fill="#0F1A1F" stroke="#00FFDD" stroke-width="4" opacity="0.9"/><text x="540" y="780" font-family="sans-serif" font-size="38" font-weight="bold" fill="#FFFFFF" text-anchor="middle">התוצאה שלי!</text><text x="540" y="870" font-family="sans-serif" font-size="80" font-weight="900" fill="#FFAA00" text-anchor="middle">${sc}/${tot}</text></svg>`;
+}
+
+function showSvgPin(isCorrect){
+  const pin=document.getElementById('city-pin');
+  if(!pin) return;
+  pin.innerHTML=isCorrect?PIN_CORRECT:PIN_WRONG;
+  pin.style.filter=isCorrect?'drop-shadow(0 6px 18px rgba(0,255,221,.8))':'drop-shadow(0 6px 18px rgba(255,53,94,.8))';
+}
+function showShareCard(){
+  document.getElementById('score-card-wrap').innerHTML=_shareCardSvg(score,TOTAL);
+  document.getElementById('score-card-modal').classList.add('show');
+}
+function closeShareCard(){
+  document.getElementById('score-card-modal').classList.remove('show');
 }
 
 let _markerXY = null, _animRaf = null, _tapXY = null;
@@ -1326,9 +1381,10 @@ function placeMarker(lat, lng, radiusKm) {
   _markerXY = {cx, cy, baseR};
   if (_animRaf) { cancelAnimationFrame(_animRaf); _animRaf = null; }
   _playSound('ping');
-  // Position SVG pin with tip anchored at city location
+  // Position SVG pin with tip anchored at city location (restore neutral/blue pin)
   const pin = document.getElementById('city-pin');
   if (pin) {
+    if (PIN_NEUTRAL) { pin.innerHTML = PIN_NEUTRAL; pin.style.filter = ''; }
     pin.style.left = (cx - 19) + 'px';
     pin.style.top = (cy - 51) + 'px';
     pin.style.display = 'block';
@@ -2016,6 +2072,7 @@ function checkAnswer(idx){
   const ok=idx===correctIdx;
   document.getElementById('btn'+idx).classList.add(ok?'ok':'no');
   if(!ok) document.getElementById('btn'+correctIdx).classList.add('ok');
+  showSvgPin(ok);
   if(ok){
     score++;
     document.getElementById('scoreVal').textContent=score;
@@ -2309,13 +2366,15 @@ function endMultiplayer(){
 
 function endGame(){
   const p=score/TOTAL;
-  let ico,ttl,str,msg;
-  if(p===1)    {ico='🏆';ttl='מושלם לחלוטין!';str='⭐⭐⭐⭐⭐';msg='תוצאה מושלמת! אתה אלוף ידיעת הארץ!'}
-  else if(p>=.8){ico='🎉';ttl='כל הכבוד!';    str='⭐⭐⭐⭐';  msg='תוצאה מצוינת! אתה מכיר את ישראל יפה מאוד!'}
-  else if(p>=.6){ico='😊';ttl='יפה מאוד!';    str='⭐⭐⭐';    msg='תוצאה טובה! עוד קצת אימון ותגיע למקסימום!'}
-  else if(p>=.4){ico='📚';ttl='ממשיכים!';     str='⭐⭐';      msg='נסה שוב ותשפר את הציון שלך!'}
-  else          {ico='💪';ttl='אל תתייאש!';   str='⭐';        msg='כל ניסיון מלמד! תנסה שוב!'}
-  document.getElementById('eico').textContent=ico;
+  let svgIco='',ico='',ttl,str,msg;
+  if(p===1)    {svgIco=TROPHY_GOLD; ttl='מושלם לחלוטין!';str='⭐⭐⭐⭐⭐';msg='תוצאה מושלמת! אתה אלוף ידיעת הארץ!'}
+  else if(p>=.8){svgIco=MEDAL_SILVER;ttl='כל הכבוד!';   str='⭐⭐⭐⭐';  msg='תוצאה מצוינת! אתה מכיר את ישראל יפה מאוד!'}
+  else if(p>=.6){svgIco=MEDAL_BRONZE;ttl='יפה מאוד!';   str='⭐⭐⭐';    msg='תוצאה טובה! עוד קצת אימון ותגיע למקסימום!'}
+  else if(p>=.4){ico='📚';            ttl='ממשיכים!';    str='⭐⭐';      msg='נסה שוב ותשפר את הציון שלך!'}
+  else          {ico='💪';            ttl='אל תתייאש!';  str='⭐';        msg='כל ניסיון מלמד! תנסה שוב!'}
+  const eicoEl=document.getElementById('eico');
+  if(svgIco){eicoEl.innerHTML=svgIco;eicoEl.style.fontSize='0';}
+  else{eicoEl.textContent=ico;eicoEl.style.fontSize='';}
   document.getElementById('etit').textContent=ttl;
   document.getElementById('enum').textContent=`${score}/${TOTAL}`;
   document.getElementById('estr').textContent=str;
