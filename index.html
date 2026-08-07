@@ -13268,7 +13268,7 @@ function confirmLogout(){
 function showFireToast(msg){
   const old=document.getElementById('_ft');if(old)old.remove();
   const t=document.createElement('div');t.id='_ft';
-  t.style.cssText='position:fixed;bottom:110px;left:50%;transform:translateX(-50%);background:#1A1A2E;color:#fff;padding:13px 22px;border-radius:50px;font-size:14px;font-weight:700;z-index:9999;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,.35);direction:rtl;max-width:92vw';
+  t.style.cssText='position:fixed;bottom:110px;left:50%;transform:translateX(-50%);background:#1A1A2E;color:#fff;padding:13px 22px;border-radius:50px;font-size:14px;font-weight:700;z-index:9999;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,.35);direction:rtl;max-width:92vw;pointer-events:none';
   t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),3500);
 }
 
