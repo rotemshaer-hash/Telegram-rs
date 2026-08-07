@@ -571,6 +571,11 @@ function icon(name,size=16,color='currentColor'){
 
 
 const TEACHERS=[]; // נטען מ-Firebase
+// ── מצב הדגמה (?demo=1) ──────────────────────────────────────────────────────
+// מזריק נתוני דוגמה מלאים (מורים, ביקורות, פוסטים) לתוך המשתנים בזיכרון בלבד —
+// שום דבר לא נכתב ל-Firebase ואף משתמש אמיתי לא רואה את זה. מיועד להדגמות
+// (משקיעים וכו') כדי שהמסכים לא ייראו ריקים. כיבוי = פשוט לפתוח בלי ?demo=1.
+const DEMO_MODE=new URLSearchParams(location.search).get('demo')==='1';
 let teachersLoaded=false;
 const DISCOVER_FEED=[]; // פיד "רילס" - סרטונים מאושרים מכל המורים, נטען מ-Firebase
 let discoverFeedLoaded=false;
@@ -582,6 +587,11 @@ let publicTeacherQA=[];
 let _qaAnsweringId=null;
 async function loadPublicTeacherReviews(teacherId){
   if(!teacherId)return;
+  if(DEMO_MODE){
+    publicTeacherReviews=(DEMO_REVIEWS[teacherId]||[]).map((r,i)=>({id:teacherId+'_r'+i,...r}));
+    window._myPendingReview=null;
+    return;
+  }
   try{
     const snap=await db.ref('reviews/'+teacherId).get();
     publicTeacherReviews=[];
@@ -741,9 +751,56 @@ async function loadPublicTeacherVideos(teacherId){
   }catch(e){}
 }
 
+// ── נתוני הדגמה (בשימוש רק כאשר DEMO_MODE) ───────────────────────────────────
+const DEMO_TEACHERS=[
+  {id:'demo_noa', name:'נועה לוי', age:17, city:'תל אביב', cat:'guitar', price:60, rating:4.9, reviews:27, lessons:84, desc:'מנגנת גיטרה 6 שנים ומלמדת מתחילים בגובה העיניים. נתחיל מהשיר שאתם הכי אוהבים.', tags:['אקורדים','שירים בעברית','פינגרסטייל'], whyTeach:'כי אין הרגשה טובה יותר מלראות תלמיד מנגן שיר שלם בפעם הראשונה.', proudOf:'תלמידה שהתחילה מאפס ותוך חצי שנה ניגנה בטקס בית הספר.', typicalLesson:'חימום קצר, אקורד חדש, ומיד מיישמים אותו בתוך שיר אמיתי.'},
+  {id:'demo_itay', name:'איתי כהן', age:16, city:'חיפה', cat:'math', price:50, rating:4.8, reviews:19, lessons:63, desc:'עוזר בשיעורי בית ומתכונן למבחנים במתמטיקה לחטיבה ולתיכון. סבלני ומסביר עד שמבינים.', tags:['אלגברה','גאומטריה','הכנה למבחן'], whyTeach:'אני זוכר כמה מתמטיקה הפחידה אותי — ואני אוהב להראות שאפשר אחרת.', proudOf:'תלמיד שעלה מ-60 ל-90 במבחן מפרכת.', typicalLesson:'עוברים על מה שקשה, פותרים יחד, ואז תרגיל אחד לבד לוודא שהבנת.'},
+  {id:'demo_yael', name:'יעל אברהם', age:17, city:'תל אביב', cat:'coding', price:70, rating:5.0, reviews:15, lessons:41, desc:'מלמדת תכנות מאפס — Scratch לצעירים, Python למתקדמים. בונים פרויקט אמיתי כבר מהשיעור הראשון.', tags:['Python','Scratch','משחקים'], whyTeach:'קוד זה כמו קסם — אתה כותב משהו והוא קורה. אני אוהבת להעביר את זה.', proudOf:'קבוצת תלמידים שבנתה משחק ופרסמה אותו אונליין.', typicalLesson:'רעיון קטן, כותבים אותו יחד, ורואים אותו רץ על המסך.'},
+  {id:'demo_omer', name:'עומר פרץ', age:16, city:'ראשון לציון', cat:'football', price:45, rating:4.7, reviews:22, lessons:58, desc:'שחקן נוער שמלמד כדורגל לילדים — כדרור, בעיטות, וכושר. אימונים כיפיים ובבטיחות.', tags:['כדרור','בעיטות','כושר'], whyTeach:'ספורט נתן לי ביטחון עצמי, ואני רוצה לתת את זה לילדים אחרים.', proudOf:'ילד ביישן שנפתח לגמרי אחרי חודש של אימונים.', typicalLesson:'חימום, תרגיל טכני, ומשחק קטן לסיום.'},
+  {id:'demo_shira', name:'שירה מזרחי', age:17, city:'ירושלים', cat:'english', price:55, rating:4.9, reviews:31, lessons:96, desc:'דוברת אנגלית שוטפת ומלמדת שיחה, דקדוק והכנה לבגרות. שיעורים בגובה העיניים ובלי לחץ.', tags:['שיחה','דקדוק','בגרות'], whyTeach:'אנגלית פותחת עולם שלם — סרטים, חברים, עתיד. כיף להיות חלק מזה.', proudOf:'תלמידה שהתחילה לפחד לדבר וסיימה בהצגת פרויקט באנגלית.', typicalLesson:'מדברים על נושא שמעניין אותך — וכך לומדים מילים חדשות בטבעיות.'},
+  {id:'demo_daniel', name:'דניאל בר', age:15, city:'רמת גן', cat:'chess', price:40, rating:4.6, reviews:12, lessons:34, desc:'שחקן שחמט תחרותי שמלמד מתחילים ומתקדמים. פותחים, טקטיקות, וחשיבה קדימה.', tags:['פתיחות','טקטיקה','אסטרטגיה'], whyTeach:'שחמט לימד אותי לחשוב לפני שאני פועל — שיעור לכל החיים.', proudOf:'תלמיד שניצח בטורניר בית ספר אחרי חודשיים.', typicalLesson:'מנתחים משחק, לומדים תבנית חדשה, ומשחקים אותה יחד.'},
+  {id:'demo_maya', name:'מאיה גולן', age:16, city:'הרצליה', cat:'art', price:50, rating:4.8, reviews:18, lessons:47, desc:'מציירת ומלמדת רישום, צבע ואיור. כל אחד יכול לצייר — רק צריך את ההכוונה הנכונה.', tags:['רישום','צבעי מים','איור'], whyTeach:'אמנות היא שפה — אני אוהבת ללמד ילדים לספר בה את עצמם.', proudOf:'תערוכה קטנה שהתלמידים שלי הציגו בסוף השנה.', typicalLesson:'מתרגלים טכניקה אחת ומיישמים אותה ביצירה אישית.'},
+  {id:'demo_ron', name:'רון שלו', age:17, city:'באר שבע', cat:'science', price:60, rating:4.9, reviews:24, lessons:71, desc:'חובב מדע שמלמד פיזיקה, כימיה וביולוגיה בעזרת ניסויים פשוטים והמון סקרנות.', tags:['פיזיקה','כימיה','ניסויים'], whyTeach:'מדע זה לשאול "למה?" ולמצוא תשובה — אין דבר מגניב מזה.', proudOf:'תלמיד שהכין פרויקט מדעי שזכה בתחרות אזורית.', typicalLesson:'שאלה מהחיים, ניסוי קטן, וההסבר המדעי מאחוריו.'},
+];
+const DEMO_REVIEWS={
+  demo_noa:[{fromName:'רותם ס.',stars:5,review:'נועה מדהימה! למדתי לנגן שיר שלם תוך שלושה שיעורים.',createdAt:Date.now()-86400000*3},{fromName:'הורה של ליאור',stars:5,review:'הבן שלי מחכה לשיעור כל שבוע. סבלנית ומקצועית.',createdAt:Date.now()-86400000*12},{fromName:'עדי מ.',stars:4,review:'שיעורים כיפיים, ממליצה בחום.',createdAt:Date.now()-86400000*20}],
+  demo_itay:[{fromName:'הורה של נועם',stars:5,review:'העלה את הציון של הבן שלי משמעותית. מסביר בגובה העיניים.',createdAt:Date.now()-86400000*5},{fromName:'שי ל.',stars:5,review:'סוף סוף הבנתי גאומטריה. תודה איתי!',createdAt:Date.now()-86400000*15}],
+  demo_yael:[{fromName:'הורה של דור',stars:5,review:'הילד בנה משחק אמיתי ומאוד גאה בעצמו. יעל אלופה.',createdAt:Date.now()-86400000*4},{fromName:'תמר כ.',stars:5,review:'הכי כיף ללמוד קוד ככה. ממליצה!',createdAt:Date.now()-86400000*10}],
+  demo_shira:[{fromName:'הורה של יעל',stars:5,review:'השיחה באנגלית של הבת שלי השתפרה פלאים.',createdAt:Date.now()-86400000*6},{fromName:'איתמר ד.',stars:5,review:'שירה עשתה לי סדר לפני הבגרות. תותחית.',createdAt:Date.now()-86400000*18}],
+};
+const DEMO_POSTS=[
+  {id:'demo_p1', author:'נועה לוי', av:'🎸', col:'#14B8A6', role:'מורה', area:'תל אביב', pcat:'guitar', text:'טיפ קטן למתחילים בגיטרה: אל תוותרו בשבועיים הראשונים — שם האצבעות כואבות, אבל אחרי זה זה רק כיף 🎶', postType:'text', likes:14, likedBy:{}, reps:[{author:'רותם',text:'כל כך נכון! תודה 🙏'}], createdAt:Date.now()-3600000*2, status:'approved'},
+  {id:'demo_p2', author:'איתי כהן', av:'📐', col:'#14B8A6', role:'מורה', area:'חיפה', pcat:'math', text:'מישהו צריך עזרה בהכנה למבחן מתמטיקה של סוף החודש? יש לי כמה מקומות פנויים השבוע 📚', postType:'text', likes:8, likedBy:{}, reps:[], createdAt:Date.now()-3600000*7, status:'approved'},
+  {id:'demo_p3', author:'מאיה גולן', av:'🎨', col:'#E74C3C', role:'מורה', area:'הרצליה', pcat:'art', text:'התלמידים שלי סיימו סדרת רישומים מהממת השבוע. כל כך גאה בהם! מי שרוצה להתחיל לצייר — זה הזמן 🖌', postType:'text', likes:21, likedBy:{}, reps:[{author:'הורה של נועם',text:'איזה יופי! ניצור קשר'}], createdAt:Date.now()-3600000*26, status:'approved'},
+  {id:'demo_p4', author:'דנה (תלמידה)', av:'😊', col:'#8B5CF6', role:'תלמיד', area:'רמת גן', pcat:'general', text:'רק רציתי להגיד תודה לקהילה — מצאתי פה מורה לאנגלית מהמם ושיפרתי את הציון שלי בגדול 💙', postType:'text', likes:33, likedBy:{}, reps:[], createdAt:Date.now()-3600000*50, status:'approved'},
+];
+function _applyDemoTeachers(){
+  TEACHERS.length=0;
+  const cities=new Set();
+  DEMO_TEACHERS.forEach(t=>{
+    const catObj=catById(t.cat);
+    TEACHERS.push({
+      id:t.id, name:t.name, age:t.age, city:t.city, area:t.city,
+      cat:t.cat, cats:[t.cat], customCats:[], price:t.price,
+      rating:t.rating, reviews:t.reviews, lessons:t.lessons,
+      mode:['online'], av:catObj.em, photo:null, col:catObj.col,
+      badge:'מורה מוסמך', ageVerified:true, meetingLink:'', online:true, group:false,
+      desc:t.desc, freeTrial:true, gps:null, schedule:null, tags:t.tags,
+      catProfiles:{}, whyTeach:t.whyTeach, proudOf:t.proudOf, typicalLesson:t.typicalLesson,
+    });
+    cities.add(t.city);
+  });
+  realStats.teachers=TEACHERS.length;
+  realStats.students=248; // מספר תלמידים לדוגמה
+  realStats.cities=cities.size;
+  teachersLoaded=true;
+  rebuildLeaderboard();
+}
+
 // טעינת מורים אמיתיים מ-Firebase
 async function loadRealTeachers(){
   loadCommunityGroups();
+  if(DEMO_MODE){_applyDemoTeachers();if(['home','nearby'].includes(S.screen))renderSoon();return;}
   try{
     const snap=await db.ref('teachers').get();
     TEACHERS.length=0;
@@ -800,6 +857,7 @@ async function loadRealTeachers(){
     realStats.teachers=TEACHERS.length;
     realStats.cities=cities.size;
     teachersLoaded=true;
+    rebuildLeaderboard(); // בלי זה הלידרבורד תמיד ריק — rebuildLeaderboard לא נקרא בשום מקום אחר
     // עדכן אלמנט הספירה בדף הבית אם כבר רונדר
     const homeStatEl=document.querySelector('[data-stat="students"]');
     if(homeStatEl)homeStatEl.textContent=realStats.students;
@@ -9924,6 +9982,10 @@ async function postNew(){
 
 let postsListener=null;
 async function loadCommunityPosts(){
+  if(DEMO_MODE){
+    S.posts=DEMO_POSTS.map(p=>({...p,time:timeAgoTxt(p.createdAt),liked:false}));
+    postsLoaded=true;renderSoon();return;
+  }
   try{
     // בלי orderByChild - לא דורש index ב-Firebase Rules
     const snap=await db.ref('communityPosts').limitToLast(50).get();
