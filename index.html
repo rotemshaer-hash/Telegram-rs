@@ -12228,7 +12228,9 @@ function render(){
 let _renderSoonT=null;
 function renderSoon(){
   clearTimeout(_renderSoonT);
-  _renderSoonT=setTimeout(()=>{_renderSoonT=null;render();},180);
+  // 320ms: מספיק רחב כדי לאחד את גל הטעינות אחרי פתיחה (מורים+סטוריז+שיחות
+  // מגיעים בדרך כלל בטווח הזה) לרינדור אחד, כך שהדף לא "קופץ" כמה פעמים.
+  _renderSoonT=setTimeout(()=>{_renderSoonT=null;render();},320);
 }
 
 initDarkMode();
