@@ -4085,6 +4085,9 @@ function containsProfanity(text){
 
 async function sendChatMessage(otherUid,otherName){
   if(!currentUser){showFireToast('❌ לא מחובר');return;}
+  // מונע יצירת רשומת שיחה עם מזהה חסר (userChats/<uid>/undefined) שגרמה בעבר
+  // לשיחת-רפאים "משתמש" ריקה ברשימת ההודעות.
+  if(!otherUid||otherUid==='undefined'){showFireToast('❌ שגיאה בזיהוי הנמען');return;}
   const inp=document.getElementById('chatInputBox');
   if(!inp||!inp.value.trim())return;
   const now=Date.now();
@@ -4395,12 +4398,19 @@ async function _saveLessonSummary(bookingId,enc){
 }
 
 let userChats=[];
+// רשומת שיחה תקינה: יש ערך אובייקט, יש otherUid אמיתי, והמפתח אינו "undefined".
+// רשומות פגומות (מפתח "undefined" / otherUid ריק) נוצרו בעבר מבאג שבו נכתבה
+// שיחה עם מזהה חסר — הן מוצגות באפליקציה כ"משתמש" ריק שנפתח לצ'אט ריק, ולכן
+// מסננים אותן גם בטעינה וגם במאזין בזמן-אמת.
+function _isValidChat(v,key){
+  return !!(v&&typeof v==='object'&&v.otherUid&&v.otherUid!=='undefined'&&key&&key!=='undefined');
+}
 async function loadUserChats(){
   if(!currentUser)return;
   try{
     const snap=await db.ref('userChats/'+currentUser.uid).get();
     userChats=[];
-    if(snap.exists())snap.forEach(c=>userChats.push(c.val()));
+    if(snap.exists())snap.forEach(c=>{if(_isValidChat(c.val(),c.key))userChats.push(c.val());});
     userChats.sort((a,b)=>(b.lastTime||0)-(a.lastTime||0));
   }catch(e){}
 }
@@ -12727,7 +12737,7 @@ auth&&auth.onAuthStateChanged(async user=>{
       // האזנה בזמן אמת לשיחות (לעדכון תג הודעות שלא נקראו)
       db.ref('userChats/'+user.uid).on('value',snap=>{
         userChats=[];
-        if(snap.exists())snap.forEach(c=>userChats.push(c.val()));
+        if(snap.exists())snap.forEach(c=>{if(_isValidChat(c.val(),c.key))userChats.push(c.val());});
         userChats.sort((a,b)=>(b.lastTime||0)-(a.lastTime||0));
         setupConvListeners();
         if(!['register','parentReg','safety','teacherSetup'].includes(S.screen))renderSoon();
