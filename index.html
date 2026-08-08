@@ -12220,9 +12220,11 @@ function render(){
     });
   }
 
-  document.querySelectorAll("[data-tid]").forEach(el=>{
-    el.addEventListener("click",()=>{const tid=parseInt(el.dataset.tid);S.teacher=TEACHERS.find(t=>t.id===tid)||TEACHERS[0];go("teacher");});
-  });
+  // כרטיסי המורים כבר נושאים onclick תקין שמוצא את המורה לפי ה-id המדויק.
+  // המאזין הישן שהיה כאן עשה parseInt() על ה-id — טוב לימי המוק עם מזהים
+  // מספריים, אבל למורים אמיתיים (מזהי Firebase כמו "KOtZyt…") parseInt מחזיר
+  // NaN, ההתאמה נכשלת, ונופלת ל-TEACHERS[0] — כלומר כל כרטיס פתח את המורה
+  // הראשון ברשימה. הוסר; ה-onclick המוטבע לבדו הוא הנכון.
   if(S.screen==="chat"){const el=document.getElementById("chatMsgs");if(el)setTimeout(()=>el.scrollTop=el.scrollHeight,50);}
   if(S.screen==="profile"&&isAdmin())setTimeout(_checkAdminBadge,200);
   if(S.screen==='teacher'&&S.teacher?.id&&currentUser?.uid!==S.teacher.id&&db){
