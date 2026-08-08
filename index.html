@@ -12780,22 +12780,32 @@ auth&&auth.onAuthStateChanged(async user=>{
         });
       }
 
+      // חתימה קלה של רשימת השיחות — כדי לרנדר מחדש רק כשבאמת השתנתה
+      // (שיחה חדשה, הודעה חדשה, או שינוי בסטטוס נקרא/לא-נקרא), בלי להבהב סתם.
+      const _ucSig=()=>userChats.map(c=>c.otherUid+':'+(c.lastTime||0)+':'+(c.unread?1:0)).join('|');
       // ── active poll: every 30s + on foreground restore ──────────────────────
+      // חשוב: loadUserChats מגלה שיחות חדשות (למשל הודעה שהגיעה בזמן שהאפליקציה
+      // ברקע והמאזין בזמן-אמת פספס אותה), אבל בלי render() מפורש המסך לא היה
+      // מתעדכן — שיחה חדשה "נתקעה" מוסתרת עד ניווט ידני. עכשיו מרנדרים על כל שינוי.
       if(_chatPollInterval)clearInterval(_chatPollInterval);
       _chatPollInterval=setInterval(async()=>{
         if(!currentUser)return;
+        const _before=_ucSig();
         await loadUserChats();
         setupConvListeners();
         await pollForNewMessages();
+        if(_ucSig()!==_before)render();
       },30000);
       // wake poll — fires when user brings the PWA to foreground
       if(!window._kidemy_visibilityBound){
         window._kidemy_visibilityBound=true;
         document.addEventListener('visibilitychange',async()=>{
           if(document.visibilityState==='visible'&&currentUser){
+            const _before=_ucSig();
             await loadUserChats();
             setupConvListeners();
             await pollForNewMessages();
+            if(_ucSig()!==_before)render();
           }
         });
       }
