@@ -23,7 +23,7 @@
     },
 
     "users": {
-      ".indexOn": ["role", "verified"],
+      ".indexOn": ["role", "verified", "email"],
       "$uid": {
         ".read": "auth != null && auth.uid == $uid",
         ".write": "auth != null && auth.uid == $uid",
@@ -132,6 +132,7 @@
     "reviews": {
       ".read": "auth != null",
       "$teacherId": {
+        ".indexOn": ["from"],
         "$reviewId": {
           ".write": "auth != null && (!data.exists() && newData.child('from').val() == auth.uid || data.child('from').val() == auth.uid || auth.token.email == 'rotemshaer@gmail.com')",
           "approved": {
@@ -165,6 +166,7 @@
     "teacherQA": {
       "$teacherUid": {
         ".read": "auth != null",
+        ".indexOn": ["askedAt"],
         "$qaId": {
           ".write": "auth != null && (!data.exists() && newData.child('askerUid').val() == auth.uid || auth.uid == $teacherUid || data.child('askerUid').val() == auth.uid || auth.token.email == 'rotemshaer@gmail.com')"
         }
@@ -248,6 +250,7 @@
     "pendingCategories": { ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'", ".write": "auth != null" },
     "stories": {
       ".read": "auth != null",
+      ".indexOn": ["status"],
       "$storyId": {
         ".write": "auth != null && (!data.exists() && newData.child('uid').val() == auth.uid || data.child('uid').val() == auth.uid || auth.token.email == 'rotemshaer@gmail.com')",
         "status": {
