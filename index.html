@@ -964,7 +964,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.71';
+const APP_VERSION='4.9.72';
 const APP_BUILD='08-08-2026';
 
 // ─── ANALYTICS ────────────────────────────────────────────────────────────────
@@ -12517,7 +12517,10 @@ if(typeof auth==='undefined'||!auth){
   setTimeout(()=>showFireToast('❌ Firebase לא נטען — רענן את הדף (F5)'),500);
 }
 auth&&auth.onAuthStateChanged(async user=>{
-  if(user){loadRealTeachers();}
+  // טוענים מורים וסטוריז יחד, מוקדם ככל האפשר, כדי ששני העדכונים של דף הבית
+  // יגיעו קרוב זה לזה ויתאחדו לרינדור אחד (renderSoon) — אחרת loadStories נקרא
+  // הרבה יותר מאוחר בזרימה, והדף "קפץ" פעם נוספת כשהסטוריז הופיעו.
+  if(user){loadRealTeachers();loadStories();}
   // אורח אנונימי (עיין כאורח) — מאפשר קריאת נתונים ציבוריים (auth != null) בלי חשבון אמיתי.
   // currentUser נשאר null בכוונה, כדי שכל בדיקות "האם מחובר" הקיימות באפליקציה
   // (הזמנה, הודעות, רילס וכו') ימשיכו לדרוש הרשמה אמיתית בדיוק כמו היום.
@@ -12672,7 +12675,6 @@ auth&&auth.onAuthStateChanged(async user=>{
       await loadStudentBookings();
       await loadParentChildren();
       await loadFavorites();
-      loadStories();
       loadDiscoverFeed(); // טעינה מוקדמת ברקע כדי שדרילס ייפתח מיידית כשלוחצים עליו
       await loadNotifications();
       await loadMyGroupStatuses();
