@@ -609,7 +609,11 @@ async function loadPublicTeacherReviews(teacherId){
 async function loadTeacherQA(teacherUid){
   if(!teacherUid)return;
   try{
-    const snap=await db.ref('teacherQA/'+teacherUid).orderByChild('askedAt').limitToLast(20).get();
+    // בעבר: orderByChild('askedAt') — אבל אין ".indexOn":"askedAt" בכללי האבטחה
+    // ל-teacherQA, כך שהשאילתה נכשלה וה-catch רוקן את הרשימה — השאלות היו
+    // קיימות במסד אבל המורה ראה "0 שאלות". limitToLast לבד ממיין לפי מפתח
+    // (תמיד מאונדקס), והמיון לפי askedAt נעשה ממילא בצד הלקוח בהמשך.
+    const snap=await db.ref('teacherQA/'+teacherUid).limitToLast(30).get();
     publicTeacherQA=[];
     if(snap.exists())snap.forEach(c=>publicTeacherQA.push({id:c.key,...c.val()}));
     publicTeacherQA.sort((a,b)=>(b.askedAt||0)-(a.askedAt||0));
@@ -964,7 +968,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.72';
+const APP_VERSION='4.9.73';
 const APP_BUILD='08-08-2026';
 
 // ─── ANALYTICS ────────────────────────────────────────────────────────────────
