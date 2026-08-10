@@ -158,6 +158,9 @@ input,textarea,select{font-family:inherit;-webkit-appearance:none;appearance:non
 .rfsh-btn:active{transform:scale(.9)}
 .rfsh-btn.spinning svg,.rfsh-btn.spinning{animation:rfsh-spin .7s linear infinite}
 @keyframes rfsh-spin{to{transform:rotate(360deg)}}
+/* PULL-TO-REFRESH — אינדיקטור עגול שיורד מלמעלה בזמן משיכה */
+.ptr{position:fixed;top:0;left:50%;margin-left:-21px;z-index:200;width:42px;height:42px;border-radius:50%;background:#14B8A6;color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(20,184,166,0.5);font-size:22px;font-weight:700;opacity:0;transform:translateY(-64px);pointer-events:none;will-change:transform,opacity}
+.ptr.spin{animation:rfsh-spin .7s linear infinite}
 
 /* BTNS */
 .btn{border:none;cursor:pointer;font-family:inherit;font-weight:800;border-radius:50px;padding:15px 24px;font-size:16px;display:block;width:100%;transition:transform .15s}
@@ -968,7 +971,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.74';
+const APP_VERSION='4.9.75';
 const APP_BUILD='08-08-2026';
 
 // ─── ANALYTICS ────────────────────────────────────────────────────────────────
@@ -1121,6 +1124,47 @@ window.addEventListener('popstate',()=>{
   render();
   _resetScroll();
 });
+
+// ─── PULL-TO-REFRESH ──────────────────────────────────────────────────────────
+// משיכה למטה בראש המסך מרעננת (במקום כפתור צף). הסף גבוה בכוונה (TRIGGER=95px)
+// עם השהיה/התנגדות (DAMP) — כדי שלא יופעל במשיכות עדינות או בטעות. פעיל רק
+// כשגוללים בראש העמוד, במסכים שתומכים ברענון (לא צ'אט/דיאלוגים/מסכי הרשמה).
+(function(){
+  const TRIGGER=95, DAMP=0.5, MAXPULL=150;
+  const NO_PTR=new Set(['splash','login','register','safety','parentReg','teacherReg','teacherPending','studentPending','regSuccess','parentPortal','weeklySchedule','discover','chat','emailVerify','subscribe']);
+  let startY=0, active=false, pulled=0, refreshing=false, _ind=null;
+  const topScroll=()=>window.scrollY||document.documentElement.scrollTop||document.body.scrollTop||0;
+  // רק דיאלוג *גלוי* חוסם משיכה-לרענון — לא אלמנטים תמידיים מוסתרים כמו
+  // אזהרת-דסקטופ (#_desktopWarn, display:none) או טוסט (#_ft, pointer-events:none).
+  const dialogOpen=()=>[...document.querySelectorAll('[style*="z-index:9999"],[style*="z-index:99999"],._qaDlg,._intDlg')]
+    .some(el=>el.id!=='_desktopWarn'&&el.id!=='_ft'&&getComputedStyle(el).display!=='none'&&el.getBoundingClientRect().height>0);
+  const canPTR=()=>!refreshing && !NO_PTR.has(S.screen) && !dialogOpen();
+  function ind(){ if(!_ind){_ind=document.createElement('div');_ind.className='ptr';_ind.textContent='↻';document.body.appendChild(_ind);} return _ind; }
+  function place(y,rot,op,anim){ const e=ind(); e.style.transition=anim?'transform .22s,opacity .22s':'none'; e.style.transform='translateY('+y+'px) rotate('+rot+'deg)'; e.style.opacity=op; }
+  function hide(){ if(_ind){_ind.classList.remove('spin');place(-64,0,0,true);} }
+  document.addEventListener('touchstart',e=>{
+    if(e.touches.length!==1||topScroll()>2||!canPTR()){active=false;return;}
+    startY=e.touches[0].clientY; active=true; pulled=0;
+  },{passive:true});
+  document.addEventListener('touchmove',e=>{
+    if(!active)return;
+    const dy=e.touches[0].clientY-startY;
+    if(dy<=0||topScroll()>2){active=false;place(-64,0,0,true);return;}
+    pulled=dy;
+    const prog=Math.min(dy/TRIGGER,1);
+    const y=-64+Math.min(dy*DAMP,MAXPULL*DAMP)+24; // יורד ככל שמושכים
+    place(Math.min(y,60), prog*180, prog, false);
+    if(dy>8)e.preventDefault(); // עוצר את ה-overscroll הטבעי רק כשמושכים ממש
+  },{passive:false});
+  document.addEventListener('touchend',()=>{
+    if(!active)return; active=false;
+    if(pulled>=TRIGGER && canPTR()){
+      refreshing=true;
+      const e=ind(); e.style.transition='transform .18s'; e.style.transform='translateY(24px) rotate(0deg)'; e.style.opacity='1'; e.classList.add('spin');
+      Promise.resolve(refreshCurrentScreen()).catch(()=>{}).finally(()=>{ refreshing=false; hide(); });
+    } else { hide(); }
+  },{passive:true});
+})();
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 function escapeHtml(s){if(!s)return '';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
@@ -12203,9 +12247,8 @@ function render(){
   const _discoverPrevScroll=_discoverScroller?_discoverScroller.scrollTop:0;
 
   const fn=SCREENS[S.screen]||Home;
-  const noRefreshScreens=['splash','login','register','safety','parentReg','teacherReg','teacherPending','studentPending','regSuccess','parentPortal','weeklySchedule','discover'];
-  const showRefresh=!noRefreshScreens.includes(S.screen);
-  document.getElementById("app").innerHTML=fn()+SharePanel()+(showRefresh?`<button id="_rfshBtn" class="rfsh-btn" onclick="refreshCurrentScreen()" title="רענן">↻</button>`:'')
+  // הרענון נעשה עכשיו במשיכה למטה (pull-to-refresh) במקום כפתור צף.
+  document.getElementById("app").innerHTML=fn()+SharePanel()
 
   if(S.screen==='discover'){
     const _ds=document.getElementById('_discoverScroller');
