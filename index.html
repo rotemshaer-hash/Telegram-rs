@@ -968,7 +968,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.73';
+const APP_VERSION='4.9.74';
 const APP_BUILD='08-08-2026';
 
 // ─── ANALYTICS ────────────────────────────────────────────────────────────────
@@ -12242,11 +12242,17 @@ function render(){
 // שהמסך "יקפוץ" 2-3 פעמים עד שהוא מתייצב. לשימוש רק מתוך callbacks אסינכרוניים
 // שלא נשענים על DOM מעודכן מיד אחרי הקריאה — כל שאר הקוד ממשיך לקרוא render() רגיל.
 let _renderSoonT=null;
+// חלון "התייצבות" אחרי התחברות: הטעינות ברקע (מורים, סטוריז, שיחות, התראות)
+// מסתיימות פרוסות על פני ~1-2 שניות — חלקן מוקדם וחלקן מאוחר (אחרי שרשרת
+// awaits). חלון איחוד קצר (320ms) לא תפס את המאוחרות, אז הדף עדיין "קפץ"
+// פעם שנייה. עד _initLoadUntil אנחנו דוחים כל renderSoon לאותה נקודה בזמן —
+// כך כל גל הטעינה הראשוני מתאחד לרינדור אחד בלבד.
+let _initLoadUntil=0;
 function renderSoon(){
   clearTimeout(_renderSoonT);
-  // 320ms: מספיק רחב כדי לאחד את גל הטעינות אחרי פתיחה (מורים+סטוריז+שיחות
-  // מגיעים בדרך כלל בטווח הזה) לרינדור אחד, כך שהדף לא "קופץ" כמה פעמים.
-  _renderSoonT=setTimeout(()=>{_renderSoonT=null;render();},320);
+  const now=Date.now();
+  const delay=now<_initLoadUntil?Math.max(60,_initLoadUntil-now):320;
+  _renderSoonT=setTimeout(()=>{_renderSoonT=null;render();},delay);
 }
 
 initDarkMode();
@@ -12668,6 +12674,10 @@ auth&&auth.onAuthStateChanged(async user=>{
       S._loggingIn=false;S._registering=false;
       if(S.screen==='splash'||S.screen==='login'){
         go('home');
+        // חלון התייצבות: כל עדכוני הרקע ב-1.8 השניות הבאות יתאחדו לרינדור אחד
+        // במקום כמה קפיצות נפרדות (מורים מוקדם, שיחות/התראות מאוחר יותר, אחרי
+        // שרשרת ה-awaits). אינטראקציות משתמש עדיין מרנדרות מיד (render ישיר).
+        _initLoadUntil=Date.now()+1800;
         setTimeout(showOnboarding,800);
         if(currentUserData?.role==='student'&&!currentUserData?.interests&&!isAdmin()){
           setTimeout(showInterestsPicker,1800);
@@ -12763,7 +12773,7 @@ auth&&auth.onAuthStateChanged(async user=>{
             else if(n.type==='newStory')_sendBrowserNotif('📸 סטורי חדש ממתין לאישור',n.teacherName||'');
             else if(n.type==='newUser')_sendBrowserNotif('👋 משתמש חדש',`${n.from||''} · ${n.userEmail||''}`);
           }
-          loadNotifications().then(()=>{if(S.screen&&!['register','parentReg','safety','teacherSetup'].includes(S.screen))render();});
+          loadNotifications().then(()=>{if(S.screen&&!['register','parentReg','safety','teacherSetup'].includes(S.screen))renderSoon();});
         });
       }
 
