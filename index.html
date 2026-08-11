@@ -971,7 +971,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.75';
+const APP_VERSION='4.9.76';
 const APP_BUILD='08-08-2026';
 
 // ─── ANALYTICS ────────────────────────────────────────────────────────────────
@@ -8585,12 +8585,12 @@ function Nearby(){
       </div>`;
   }
   return `<div class="screen">
-    <div style="background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);padding:20px 20px 28px;border-radius:0 0 32px 32px;color:#fff;position:relative;overflow:hidden">
+    <div style="background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);padding:14px 20px 16px;border-radius:0 0 22px 22px;color:#fff;position:relative;overflow:hidden">
       <div style="position:absolute;top:-50px;left:-50px;width:160px;height:160px;border-radius:50%;background:rgba(255,255,255,0.08)"></div>
       <div style="position:absolute;bottom:-60px;right:-40px;width:170px;height:170px;border-radius:50%;background:rgba(6,182,212,0.2);filter:blur(10px)"></div>
       <button onclick="back()" style="background:rgba(255,255,255,.2);border:none;color:#fff;font-size:14px;cursor:pointer;border-radius:50px;padding:8px 16px;font-weight:700;position:relative;z-index:1">← חזור</button>
-      <h2 style="color:#fff;font-size:22px;font-weight:900;margin:14px 0 4px;position:relative;z-index:1;display:flex;align-items:center;gap:8px">${miniBadge('pin','#14B8A6',30)}קרוב אליי</h2>
-      <p style="color:rgba(255,255,255,.85);font-size:12px;margin:0;position:relative;z-index:1">מורים לפי GPS אמיתי</p>
+      <h2 style="color:#fff;font-size:22px;font-weight:900;margin:8px 0 4px;position:relative;z-index:1;display:flex;align-items:center;gap:8px">${miniBadge('pin','#14B8A6',30)}קרוב אליי</h2>
+      <p style="color:rgba(255,255,255,.85);font-size:12px;margin:0;position:relative;z-index:1">מורים קרובים, לפי מיקום אמיתי</p>
     </div>
     ${content}
     ${BNav("nearby")}
@@ -9098,7 +9098,7 @@ function Messages(){
   const cancelled=bookingsSource.filter(b=>b.status==='cancelled');
 
   return `<div class="screen">
-    <div style="background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);padding:24px 20px 32px;border-radius:0 0 32px 32px;color:#fff;position:relative;overflow:hidden">
+    <div style="background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);padding:14px 20px 16px;border-radius:0 0 22px 22px;color:#fff;position:relative;overflow:hidden">
       <div style="position:absolute;top:-60px;right:-60px;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,0.08)"></div>
       <div style="position:absolute;bottom:-50px;left:-40px;width:150px;height:150px;border-radius:50%;background:rgba(139,47,201,0.3);filter:blur(10px)"></div>
       <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;position:relative;z-index:1">
@@ -9106,7 +9106,7 @@ function Messages(){
           <button onclick="back()" style="background:rgba(255,255,255,.2);border:none;color:#fff;font-size:14px;cursor:pointer;border-radius:50px;padding:8px 14px;font-weight:700">← חזור</button>
           <button onclick="go('weeklySchedule')" style="background:rgba(255,255,255,.15);color:#fff;font-size:12px;cursor:pointer;border-radius:50px;padding:8px 12px;font-weight:800;display:flex;align-items:center;gap:5px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> לוח</button>
         </div>
-        <div style="text-align:right"><h2 style="font-size:22px;font-weight:900;margin:0;display:flex;align-items:center;gap:8px;justify-content:flex-end;flex-wrap:wrap">${isTeacherRole?'הודעות והזמנות':'הודעות ושיעורים'}${isTeacherRole?'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>':'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>'}</h2><p style="color:rgba(255,255,255,.85);font-size:12px;margin:4px 0 0">${approved.length} שיעורים פעילים</p></div>
+        <div style="text-align:right"><h2 style="font-size:22px;font-weight:900;margin:0;display:flex;align-items:center;gap:8px;justify-content:flex-end;flex-wrap:wrap">${isTeacherRole?'הודעות והזמנות':'הודעות ושיעורים'}${isTeacherRole?'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>':'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>'}</h2><p style="color:rgba(255,255,255,.85);font-size:12px;margin:4px 0 0">השיחות שלך, במקום אחד</p></div>
       </div>
     </div>
     <div style="padding:16px 20px 100px">
@@ -10706,12 +10706,12 @@ function About(){
   }
 
   return `<div class="screen">
-    <div style="background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);padding:38px 20px 46px;position:relative;overflow:hidden;color:#fff">
+    <div style="background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);padding:16px 20px 20px;position:relative;overflow:hidden;color:#fff">
       <div style="position:absolute;top:-60px;left:-60px;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,rgba(20,184,166,.12),transparent)"></div>
-      <button onclick="back()" style="background:rgba(255,255,255,.08);color:#fff;font-size:13px;cursor:pointer;border-radius:50px;padding:8px 16px;font-weight:700;margin-bottom:22px;display:block">← חזור</button>
+      <button onclick="back()" style="background:rgba(255,255,255,.08);color:#fff;font-size:13px;cursor:pointer;border-radius:50px;padding:8px 16px;font-weight:700;margin-bottom:10px;display:block">← חזור</button>
       <div style="text-align:center;position:relative;z-index:1">
         <h1 style="font-size:28px;font-weight:900;margin:0 0 8px"><span style="color:#fff">Dru</span><span style="color:#A78BFA">s</span><span style="color:#5EEAD4">he</span></h1>
-        <p style="color:rgba(255,255,255,.5);font-size:14px;margin:0 0 22px;line-height:1.8;max-width:300px;margin-left:auto;margin-right:auto">פלטפורמה בטוחה לשיעורים פרטיים.</p>
+        <p style="color:rgba(255,255,255,.5);font-size:14px;margin:0 0 12px;line-height:1.8;max-width:300px;margin-left:auto;margin-right:auto">ילדים מלמדים ילדים — בפיקוח הורים מלא</p>
         <button onclick="shareApp()" style="margin-top:4px;background:rgba(255,255,255,.1);color:#fff;border-radius:50px;padding:10px 22px;font-weight:700;cursor:pointer;font-size:13px">${icon("send",14)} שתף את Drushe</button>
       </div>
     </div>
