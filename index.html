@@ -971,7 +971,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.79';
+const APP_VERSION='4.9.80';
 const APP_BUILD='08-08-2026';
 
 // ─── ANALYTICS ────────────────────────────────────────────────────────────────
@@ -1384,7 +1384,7 @@ function BNav(active){
   return `<div style="position:fixed;bottom:0;left:0;right:0;z-index:90">
     <nav class="bnav" style="position:static;padding-bottom:8px">${items.map(it=>`
       <button onclick="go('${it.id}')" class="${active===it.id?"active":""}">
-        <span class="nb-icon" style="${it.special?'display:flex;align-items:center;justify-content:center;width:27px;height:27px;border-radius:42% 58% 63% 37%/45% 40% 60% 55%;background:linear-gradient(135deg,#8B5CF6,#A78BFA);margin:0 auto;box-shadow:0 3px 8px rgba(139,92,246,0.4)':''}">${svgs[it.id]||""}${it.badge&&active!==it.id?`<span class="nb-badge">${it.badge}</span>`:""}</span>
+        <span class="nb-icon"${it.id==='messages'?' id="_msgNavIcon"':''} style="${it.special?'display:flex;align-items:center;justify-content:center;width:27px;height:27px;border-radius:42% 58% 63% 37%/45% 40% 60% 55%;background:linear-gradient(135deg,#8B5CF6,#A78BFA);margin:0 auto;box-shadow:0 3px 8px rgba(139,92,246,0.4)':''}">${svgs[it.id]||""}${it.badge&&active!==it.id?`<span class="nb-badge">${it.badge}</span>`:""}</span>
         <span class="nb-lbl" style="${it.special?'color:#8B5CF6;font-weight:900':''}">${it.lbl}</span>
         ${active===it.id?"<span class='nb-dot'></span>":""}
       </button>`).join("")}</nav>
@@ -3994,6 +3994,19 @@ function teardownConvListeners(){
 // ── Active poll: check each known chat for new messages via .get() ──────────
 // More reliable than limitToLast(1) listeners which miss messages sent while
 // app is backgrounded / WebSocket reconnects. Runs every 30s + on foreground.
+// עדכון תג ההודעות בסרגל התחתון בלבד — בלי רינדור מלא של המסך (שמהבהב/קופץ
+// כי הוא בונה מחדש את כל כרטיסי המורים והתמונות). לשימוש כשמשתמש נמצא במסך
+// שלא מציג את רשימת השיחות (בית/קהילה וכו') — שם רק התג צריך להתעדכן.
+function _refreshMsgBadge(){
+  const icon=document.getElementById('_msgNavIcon');
+  if(!icon)return;
+  const n=userChats.filter(c=>c.unread).length;
+  const existing=icon.querySelector('.nb-badge');
+  if(n>0){
+    if(existing)existing.textContent=n;
+    else{const b=document.createElement('span');b.className='nb-badge';b.textContent=n;icon.appendChild(b);}
+  }else if(existing){existing.remove();}
+}
 async function pollForNewMessages(){
   if(!currentUser||!userChats.length)return;
   const myUid=currentUser.uid;
@@ -4019,7 +4032,9 @@ async function pollForNewMessages(){
   }));
   if(changed){
     userChats.sort((a,b)=>(b.lastTime||0)-(a.lastTime||0));
-    render();
+    // במסך ההודעות/צ'אט צריך רינדור מלא (הרשימה עצמה משתנה); בכל מסך אחר
+    // מספיק לעדכן את התג — כדי לא לצייר מחדש את הבית ולגרום לקפיצה בכניסה.
+    if(S.screen==='messages'||S.screen==='chat')render();else _refreshMsgBadge();
   }
 }
 
@@ -12825,7 +12840,10 @@ auth&&auth.onAuthStateChanged(async user=>{
         // נוסף כאן הוא בדיוק הקפיצה השנייה בכניסה. מדלגים עליו; שינויים אמיתיים
         // (הודעה חדשה) יורים בהפעלות הבאות ומרנדרים כרגיל.
         if(_ucFirstFire){_ucFirstFire=false;return;}
-        if(!['register','parentReg','safety','teacherSetup'].includes(S.screen))renderSoon();
+        // רק מסך ההודעות/צ'אט מציג את רשימת השיחות — שם רינדור מלא. בכל מסך אחר
+        // מעדכנים רק את התג בסרגל התחתון, בלי לצייר מחדש את כל המסך (=בלי קפיצה).
+        if(S.screen==='messages'||S.screen==='chat')renderSoon();
+        else if(!['register','parentReg','safety','teacherSetup'].includes(S.screen))_refreshMsgBadge();
       });
       // האזנה ל-adminNotifs (מורים חדשים, סרטונים, משתמשים) – ללא חיפוש UID
       if(isAdmin()){
