@@ -971,7 +971,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.77';
+const APP_VERSION='4.9.78';
 const APP_BUILD='08-08-2026';
 
 // ─── ANALYTICS ────────────────────────────────────────────────────────────────
@@ -12802,11 +12802,17 @@ auth&&auth.onAuthStateChanged(async user=>{
         loadNotifications().then(()=>{if(S.screen&&!['register','parentReg','safety','teacherSetup'].includes(S.screen))renderSoon();});
       });
       // האזנה בזמן אמת לשיחות (לעדכון תג הודעות שלא נקראו)
+      let _ucFirstFire=true;
       db.ref('userChats/'+user.uid).on('value',snap=>{
         userChats=[];
         if(snap.exists())snap.forEach(c=>{if(_isValidChat(c.val(),c.key))userChats.push(c.val());});
         userChats.sort((a,b)=>(b.lastTime||0)-(a.lastTime||0));
         setupConvListeners();
+        // ההפעלה הראשונה של המאזין יורה מיד עם ההצמדה — בסוף שרשרת הטעינה,
+        // אחרי חלון ההתייצבות — עם נתונים ש-loadUserChats כבר טען ורינדר. רינדור
+        // נוסף כאן הוא בדיוק הקפיצה השנייה בכניסה. מדלגים עליו; שינויים אמיתיים
+        // (הודעה חדשה) יורים בהפעלות הבאות ומרנדרים כרגיל.
+        if(_ucFirstFire){_ucFirstFire=false;return;}
         if(!['register','parentReg','safety','teacherSetup'].includes(S.screen))renderSoon();
       });
       // האזנה ל-adminNotifs (מורים חדשים, סרטונים, משתמשים) – ללא חיפוש UID
