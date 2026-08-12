@@ -971,7 +971,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.78';
+const APP_VERSION='4.9.79';
 const APP_BUILD='08-08-2026';
 
 // ─── ANALYTICS ────────────────────────────────────────────────────────────────
@@ -2762,6 +2762,7 @@ let teacherAllBookings=[];
 let STORIES=[];
 let MY_PENDING_STORIES=[];
 
+let storiesLoaded=false;
 function loadStories(){
   if(!db)return;
   db.ref('stories').on('value',snap=>{
@@ -2775,6 +2776,7 @@ function loadStories(){
     });
     STORIES.sort((a,b)=>b.createdAt-a.createdAt);
     MY_PENDING_STORIES.sort((a,b)=>b.createdAt-a.createdAt);
+    storiesLoaded=true;
     if(S.screen==='home')renderSoon();
   });
 }
@@ -12722,6 +12724,16 @@ auth&&auth.onAuthStateChanged(async user=>{
       // ── ניווט מיידי — כל שאר הטעינה ברקע ────────────────────────
       S._loggingIn=false;S._registering=false;
       if(S.screen==='splash'||S.screen==='login'){
+        // המתן קצר לטעינת מורים+סטוריז לפני שמציגים את הבית — כך הרינדור הראשון
+        // כבר מלא בתוכן, במקום בית ריק שמתמלא רגע אחר כך (=הקפיצה היחידה שנשארה
+        // בכניסה). מוגבל ל-1.2 שנ' כדי לא לתקוע את הכניסה ברשת איטית; בדרך כלל
+        // הטעינה כבר הסתיימה (התחילה מוקדם ב-onAuthStateChanged) והמתנה ~0.
+        if(!(teachersLoaded&&storiesLoaded)){
+          await Promise.race([
+            new Promise(r=>{const _i=setInterval(()=>{if(teachersLoaded&&storiesLoaded){clearInterval(_i);r();}},50);}),
+            new Promise(r=>setTimeout(r,1200))
+          ]);
+        }
         go('home');
         // חלון התייצבות: כל עדכוני הרקע ב-1.8 השניות הבאות יתאחדו לרינדור אחד
         // במקום כמה קפיצות נפרדות (מורים מוקדם, שיחות/התראות מאוחר יותר, אחרי
