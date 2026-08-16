@@ -37,6 +37,16 @@ Drushe — אפליקציית שיעורים פרטיים שבה בני נוער
 - כותרות אודות/הודעות/קרוב-אליי: הוקטנו לגובה של דף הבית + תת-כותרות חדשות.
 - דף מחיקת חשבון: `delete-account.html` (חי) — נדרש ל-Data Safety.
 - חוקי Firebase (`database.rules.json`): פורסמו ידנית בקונסולה (אינדקסים + תיקון `!=true`).
+- **תוקן ה-workflow "Deploy Firebase Rules"** — נכשל ב-19 ההרצות האחרונות.
+  שורש הבעיה: `firebase deploy --only database,storage` בפקודה אחת. חוקי
+  ה-database עברו ולידציה, ואז השלב של storage נפל ב-403 על
+  `serviceusage.services.get` והפיל את כל הפקודה לפני השמירה. כלומר הרשאה
+  חסרה ביעד אחד חסמה יעד אחר לגמרי — ולכן החוקים פורסמו ידנית חודשים.
+  הפריסה פוצלה לשני שלבים, ו-database נפרס תמיד.
+  ⬜ עדיין צריך: להעניק ל-service account את התפקיד
+  **Service Usage Consumer** (`roles/serviceusage.serviceUsageConsumer`)
+  בפרויקט `kidemy-83a17` דרך https://console.cloud.google.com/iam-admin/iam
+  — בלעדיו שלב ה-storage ימשיך להיכשל (אבל כבר לא יחסום את ה-database).
 
 ## Google Play — סטטוס פרסום (המשימה הפעילה)
 מיקום: מרכז שליטה של האפליקציה ב-Play Console.
@@ -97,7 +107,8 @@ Drushe — אפליקציית שיעורים פרטיים שבה בני נוער
 - `auth.signOut` עטוף פעם אחת כדי לנתק את הטוקן **לפני** היציאה (אחריה חוקי
   ה-DB כבר דוחים את המחיקה). אין בקוד פונקציית logout אחת — היציאה נקראת
   ישירות מ-onclick בעשרות מקומות — ולכן עטיפה היא נקודת החיבור היחידה.
-- חוק חדש ב-`database.rules.json` תחת `fcmTokens` (**צריך פרסום ידני בקונסולה**).
+- חוק חדש ב-`database.rules.json` תחת `fcmTokens` — נפרס אוטומטית במיזוג ל-main
+  (ראה למטה; ה-workflow תוקן ולא צריך יותר פרסום ידני).
 - `scripts/write-google-services.sh` + שלב בשני ה-jobs ב-`build-android.yml`.
 
 **⬜ מה חסר כדי שזה יעבוד — רק המשתמש יכול לספק:**

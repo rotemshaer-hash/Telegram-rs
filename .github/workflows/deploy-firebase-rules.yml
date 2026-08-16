@@ -17,9 +17,23 @@ jobs:
         with:
           node-version: '20'
       - run: npm install -g firebase-tools
-      - name: Deploy Firebase Rules
+      - name: Write service account credentials
         env:
           GOOGLE_APPLICATION_CREDENTIALS_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: echo "$GOOGLE_APPLICATION_CREDENTIALS_JSON" > /tmp/sa.json
+
+      # database ו-storage היו פריסה אחת (--only database,storage). firebase
+      # מריץ אותן בסדר, ו-storage נכשל ב-403 על serviceusage.services.get —
+      # מה שהפיל את כל הפקודה *אחרי* שחוקי ה-database כבר עברו ולידציה אך
+      # לפני שנשמרו. התוצאה: כל פריסת חוקים נכשלה בגלל הרשאה חסרה ביעד אחר,
+      # ולכן החוקים פורסמו ידנית בקונסולה במשך חודשים.
+      # הפרדה לשני שלבים מנתקת את התלות: חוקי ה-database נפרסים תמיד.
+      - name: Deploy database rules
+        run: GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa.json firebase deploy --only database --project kidemy-83a17 --non-interactive
+
+      - name: Deploy storage rules
         run: |
-          echo "$GOOGLE_APPLICATION_CREDENTIALS_JSON" > /tmp/sa.json
-          GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa.json firebase deploy --only database,storage --project kidemy-83a17 --non-interactive
+          if ! GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa.json firebase deploy --only storage --project kidemy-83a17 --non-interactive; then
+            echo "::error::Storage rules were not deployed. The service account in the FIREBASE_SERVICE_ACCOUNT secret needs the 'Service Usage Consumer' role (roles/serviceusage.serviceUsageConsumer) on project kidemy-83a17 — grant it at https://console.cloud.google.com/iam-admin/iam?project=kidemy-83a17. Database rules above already deployed."
+            exit 1
+          fi
