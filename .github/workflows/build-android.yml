@@ -65,6 +65,9 @@ jobs:
           EOF
       - name: Build signed release AAB
         working-directory: mobile/android
+        env:
+          # מספר הריצה עולה מונוטונית, ולכן כל AAB מקבל versionCode גבוה מקודמו
+          ANDROID_VERSION_CODE: ${{ github.run_number }}
         run: ./gradlew bundleRelease
       - name: Upload signed AAB
         uses: actions/upload-artifact@v4
