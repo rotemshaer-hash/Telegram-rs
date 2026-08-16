@@ -3,10 +3,16 @@ name: Build Android App
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    # ענפי claude/** בונים אוטומטית כדי שאפשר יהיה לאמת שינוי נייטיב מיד
+    # אחרי push, בלי שמישהו יצטרך לבחור ענף ידנית ב-Run workflow — בחירה
+    # שקל לפספס, ואז הבנייה רצה על main ובודקת קוד אחר לגמרי.
+    branches:
+      - main
+      - 'claude/**'
     paths:
       - 'mobile/**'
       - '.github/workflows/build-android.yml'
+      - 'scripts/write-google-services.sh'
 
 jobs:
   build:
