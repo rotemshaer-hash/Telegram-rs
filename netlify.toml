@@ -11,6 +11,11 @@
   to = "/.netlify/functions/ai-assistant"
   status = 200
 
+[[redirects]]
+  from = "/api/send-push"
+  to = "/.netlify/functions/send-push"
+  status = 200
+
 [[headers]]
   for = "/*"
   [headers.values]

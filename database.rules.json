@@ -121,6 +121,7 @@
     },
     "fcmTokens": {
       ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'",
+      ".indexOn": ["uid"],
       "$token": {
         ".write": "auth != null && ((newData.exists() && newData.child('uid').val() == auth.uid) || (!newData.exists() && data.child('uid').val() == auth.uid))",
         ".validate": "newData.hasChildren(['uid', 'updatedAt']) && newData.child('updatedAt').isNumber()"

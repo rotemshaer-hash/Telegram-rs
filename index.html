@@ -971,7 +971,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.81';
+const APP_VERSION='4.9.82';
 const APP_BUILD='08-08-2026';
 
 // ─── ANALYTICS ────────────────────────────────────────────────────────────────
@@ -4122,6 +4122,7 @@ async function _sendVoiceMessage(blob,otherUid,otherName){
           notifyAdmin({type:'chatDeliveryFailed',chatId,otherUid,step:'userChats-voice',error:e?.message||'שגיאה לא ידועה'}).catch(()=>{});
         });
         db.ref('notifications/'+otherUid).push({type:'newMessage',from:currentUserData?.name||'',fromUid:currentUser.uid,preview:'🎤 הודעה קולית',read:false,createdAt:Date.now()}).catch(()=>{});
+        _sendPushToUser(otherUid).catch(()=>{});
         showFireToast('✅ ההקלטה נשלחה!');
       }catch(e){showFireToast('❌ '+e.message);}
       resolve();
@@ -4219,7 +4220,25 @@ async function sendChatMessage(otherUid,otherName){
         createdAt:Date.now()
       });
     }catch(notifErr){console.warn('Could not send notification:',notifErr);}
+    // התראת Push למכשיר של הנמען — מגיעה גם כשהאפליקציה שלו סגורה, בניגוד
+    // לרשומה שנכתבה למעלה שנראית רק כשהוא פותח את האפליקציה.
+    _sendPushToUser(otherUid).catch(()=>{});
   }catch(e){showFireToast('❌ '+e.message);}
+}
+
+// שולח בקשת Push דרך Netlify Function. השרת הוא זה שמאמת מי השולח וקורא את
+// תוכן ההודעה מהמסד — כאן לא נשלח טקסט ולא זהות, כי לשניהם הוא לא היה מאמין
+// ממילא. כישלון כאן לא נוגע בהודעה עצמה, שכבר נשמרה.
+async function _sendPushToUser(toUid){
+  if(!currentUser||!toUid)return;
+  try{
+    const idToken=await currentUser.getIdToken();
+    await fetch('/api/send-push',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({idToken,toUid,type:'newMessage'})
+    });
+  }catch(e){console.warn('[push] send failed:',e);}
 }
 
 async function sendAdminNotification(toUid, toName, text){
