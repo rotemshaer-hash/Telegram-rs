@@ -26,6 +26,10 @@ jobs:
       - name: Sync Capacitor Android project
         working-directory: mobile
         run: npx cap sync android
+      - name: Write google-services.json
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: bash scripts/write-google-services.sh
       - name: Build debug APK
         working-directory: mobile/android
         run: ./gradlew assembleDebug
@@ -53,6 +57,10 @@ jobs:
       - name: Sync Capacitor Android project
         working-directory: mobile
         run: npx cap sync android
+      - name: Write google-services.json
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: bash scripts/write-google-services.sh
       - name: Decode signing keystore
         run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > mobile/android/app/drushe-release.jks
       - name: Write keystore.properties

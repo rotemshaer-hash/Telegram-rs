@@ -13,4 +13,5 @@ ios/App/App.xcodeproj/xcuserdata/
 *.p12
 *.mobileprovision
 android/keystore.properties
+android/app/google-services.json
 testers.csv

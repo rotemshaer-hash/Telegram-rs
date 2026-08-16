@@ -119,6 +119,13 @@
     "parentTokens": {
       "$token": { ".read": true, ".write": "auth.token.email == 'rotemshaer@gmail.com'" }
     },
+    "fcmTokens": {
+      ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'",
+      "$token": {
+        ".write": "auth != null && ((newData.exists() && newData.child('uid').val() == auth.uid) || (!newData.exists() && data.child('uid').val() == auth.uid))",
+        ".validate": "newData.hasChildren(['uid', 'updatedAt']) && newData.child('updatedAt').isNumber()"
+      }
+    },
     "parentLinks": {
       "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth != null && auth.uid == $uid" }
     },

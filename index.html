@@ -971,7 +971,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.80';
+const APP_VERSION='4.9.81';
 const APP_BUILD='08-08-2026';
 
 // ─── ANALYTICS ────────────────────────────────────────────────────────────────
@@ -4632,6 +4632,81 @@ async function _requestBrowserNotifPermission(){
     const p=await Notification.requestPermission();
     if(p==='granted')showFireToast('🔔 התראות הודלקו! תקבל התראה בדפדפן על כל מורה חדש.');
   }
+}
+
+// ─── Native Push Notifications (Capacitor + FCM) ────────────────────────────
+// התראות דפדפן (_sendBrowserNotif) מגיעות רק כשהדף פתוח. באפליקציה המותקנת
+// זה חסר תועלת: המשתמש סוגר אותה ולא יודע שהגיעה הודעה או הזמנת שיעור. FCM
+// מגיע גם כשהאפליקציה סגורה לגמרי, ולכן זה הערוץ הנייטיבי האמיתי.
+//
+// הפלאגין נחשף כ-Capacitor.Plugins.PushNotifications בתוך ה-WebView בלבד.
+// התוכן כאן נטען מרחוק (server.url ב-capacitor.config.json) ולכן אין כאן bundle
+// לייבא ממנו — הגישה דרך ה-global היא הדרך הנתמכת במצב הזה.
+//
+// המיפוי נשמר כ-fcmTokens/<token> = {uid} ולא כ-users/<uid>/fcmToken, כי הטוקן
+// שייך למכשיר ולא לחשבון: אם שני חשבונות משתמשים באותו מכשיר, מפתח לפי טוקן
+// נדרס אוטומטית לבעלים האחרון, בעוד מפתח לפי uid היה משאיר את הטוקן תלוי גם
+// אצל המשתמש הקודם — וההתראות שלו (כולל תצוגה מקדימה של הודעות) היו ממשיכות
+// להגיע למכשיר של מישהו אחר. גם ריבוי מכשירים למשתמש אחד עובד ככה מעצמו.
+let _pushToken=null,_pushSetupStarted=false;
+
+async function _registerNativePush(){
+  if(_pushSetupStarted||!isNativeApp()||!currentUser)return;
+  const Push=window.Capacitor?.Plugins?.PushNotifications;
+  if(!Push)return; // בילד בלי הפלאגין (או דפדפן) — אין מה לעשות
+  _pushSetupStarted=true;
+  try{
+    let perm=await Push.checkPermissions();
+    if(perm.receive==='prompt'||perm.receive==='prompt-with-rationale')perm=await Push.requestPermissions();
+    if(perm.receive!=='granted'){_pushSetupStarted=false;return;}
+
+    Push.addListener('registration',t=>{
+      const token=t?.value;
+      if(!token||!currentUser)return;
+      _pushToken=token;
+      db.ref('fcmTokens/'+token).set({uid:currentUser.uid,updatedAt:Date.now()}).catch(()=>{});
+    });
+    Push.addListener('registrationError',e=>console.warn('[push] registration failed:',e));
+
+    // הודעה שהגיעה בזמן שהאפליקציה בחזית — אנדרואיד לא מציג אותה מעצמו
+    Push.addListener('pushNotificationReceived',n=>{
+      const title=n?.title||'🔔 התראה חדשה';
+      showFireToast(n?.body?(title+' · '+n.body):title);
+      loadNotifications().then(()=>renderSoon()).catch(()=>{});
+    });
+
+    // המשתמש הקיש על ההתראה — פותחים את המסך הרלוונטי
+    Push.addListener('pushNotificationActionPerformed',ev=>{
+      const d=ev?.notification?.data||{};
+      if(d.fromUid){S.chat={otherUid:d.fromUid,otherName:d.fromName||'משתמש'};go('chat');}
+      else go('notifications');
+    });
+
+    await Push.register();
+  }catch(e){_pushSetupStarted=false;console.warn('[push] setup failed:',e);}
+}
+
+// מנתק את הטוקן לפני היציאה, כדי שמכשיר שנשאר בלי משתמש מחובר לא ימשיך לקבל
+// התראות של החשבון הקודם (הן כוללות תצוגה מקדימה של הודעות).
+// חייב לרוץ *לפני* signOut: חוקי ה-DB דורשים auth.uid, ואחרי היציאה המחיקה
+// כבר נדחית.
+async function _unregisterNativePush(){
+  const token=_pushToken;
+  _pushToken=null;_pushSetupStarted=false;
+  if(!token||!db)return;
+  try{await db.ref('fcmTokens/'+token).remove();}catch(_e){/* נדרס ממילא בהתחברות הבאה */}
+}
+
+// היציאה בקוד נעשית ב-auth.signOut() ישירות מתוך onclick בעשרות מקומות, ואין
+// פונקציית logout אחת לתלות בה. עטיפה חד-פעמית נותנת נקודת חיבור אחת במקום
+// לשכפל את הניתוק בכל אתר קריאה — ושכחה באחד מהם היא בדיוק הדליפה שלמעלה.
+if(typeof auth!=='undefined'&&auth&&!auth._pushSignOutWrapped){
+  const _origSignOut=auth.signOut.bind(auth);
+  auth.signOut=async function(){
+    await _unregisterNativePush();
+    return _origSignOut();
+  };
+  auth._pushSignOutWrapped=true;
 }
 
 let adminAllUsers=[],adminAllTeachers=[],adminAllVideos=[],adminAllReports=[],adminAllBookings=[],adminIncompleteTeachers=[],adminAllPosts=[],adminAllReviews=[],adminAllStories=[],adminAllClientErrors=[];
@@ -12807,6 +12882,9 @@ auth&&auth.onAuthStateChanged(async user=>{
 
       // האזנה בזמן אמת להתראות + לאישור מנהל
       if(isAdmin()){_requestBrowserNotifPermission();_startAdminAlertsListener();}
+      // רישום להתראות נייטיב — רק באפליקציה המותקנת, ורק אחרי שיש משתמש מחובר
+      // (הטוקן נשמר תחת ה-uid שלו). בדפדפן הפונקציה יוצאת מיד.
+      _registerNativePush().catch(()=>{});
       // Timestamp of when we attached the listener — used to skip old notifications
       // that fire on initial listener attachment (Firebase fires child_added for all existing children)
       const _notifListenStart=Date.now();
