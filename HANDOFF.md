@@ -145,9 +145,17 @@ Drushe — אפליקציית שיעורים פרטיים שבה בני נוער
 ⬜ סוגי התראה נוספים (`newBooking` וכו') עדיין לא נתמכים. הרשימה סגורה
 בכוונה: הוספת סוג מחייבת לכתוב לו אימות משלו, ולא תיכנס בטעות בלעדיו.
 
-**⚠️ הקוד לא נבדק על מכשיר** — אי אפשר לבנות APK בלי `google-services.json`.
-הבדיקות האוטומטיות עוברות (כולל "boots with no JS errors"), אבל המסלול
-הנייטיב עצמו טרם רץ במציאות.
+**✅ אומת בבנייה אמיתית** (ריצה 31969796355, 16.8.2026) — הלוגים מראים:
+- `Found 1 Capacitor plugin for android: @capacitor/push-notifications@8.1.2`
+- `Wrote mobile/android/app/google-services.json (1069 bytes)` — כלומר הסוד
+  נקרא, ולא מסלול האזהרה של "סוד חסר".
+- `> Task :app:processDebugGoogleServices` — ההוכחה המכרעת: תוסף
+  google-services הוחל בפועל. הוא מוחל רק אם הקובץ קיים.
+- `:capacitor-push-notifications:compileDebugJavaWithJavac` → `BUILD SUCCESSFUL`
+
+**⚠️ מה עדיין לא נבדק: התנהגות על מכשיר אמיתי.** שהבנייה מצליחה לא מוכיח
+שההתראה מגיעה. כדי לבדוק באמת צריך: למזג ל-main (כדי שהפונקציה תתפרסם
+ל-Netlify), להתקין את ה-APK, ולשלוח הודעה בין שני חשבונות.
 
 ## בניית ה-AAB
 **הערה חשובה: לרוב אין צורך לבנות מחדש.** ב-`mobile/capacitor.config.json`
