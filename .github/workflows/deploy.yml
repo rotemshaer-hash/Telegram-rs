@@ -41,8 +41,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
       - name: Validate project constitution
         run: bash scripts/validate.sh
+      # Netlify אורז כל פונקציה עם התלויות שלה, ולשם כך הוא חייב למצוא אותן
+      # ב-node_modules של הריפו. ה-job הזה נפרד מ-job הבדיקות ורץ על מכונה
+      # אחרת, כך שה-npm ci ששם לא עוזר כאן. כל עוד לפונקציות לא הייתה אף
+      # תלות חיצונית זה לא הפריע — הפונקציה הראשונה שכן משתמשת בתלות שברה
+      # את הפריסה עם "Cannot find module".
+      # --omit=dev מדלג על Playwright, שנחוץ רק לבדיקות.
+      - name: Install function dependencies
+        run: npm ci --omit=dev
       - name: Install Netlify CLI
         run: npm install -g netlify-cli
       - name: Unlock production deploys
