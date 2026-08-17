@@ -820,6 +820,7 @@ async function loadRealTeachers(){
     // שנייה רק בשביל הספירה. הערך משמש לתצוגה בלבד; ההחלטה אם מורה מסוים
     // הוא מייסד נקבעת בקריאה טרייה בזמן שמירת הפרופיל.
     _totalTeacherCount=0;
+    _teacherCountLoaded=true;
     if(snap.exists()){
       snap.forEach(child=>{
         _totalTeacherCount++;
@@ -980,7 +981,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.86';
+const APP_VERSION='4.9.87';
 const APP_BUILD='08-08-2026';
 
 // ─── ANALYTICS ────────────────────────────────────────────────────────────────
@@ -2229,8 +2230,30 @@ function TeacherSetup(){
       <div style="background:linear-gradient(135deg,#B45309,#F59E0B);border-radius:20px;padding:20px;margin-bottom:14px;text-align:center;box-shadow:0 6px 20px rgba(180,83,9,0.35)">
         <div style="font-size:34px;margin-bottom:6px">🏆</div>
         <div style="font-weight:900;font-size:22px;color:#fff;margin-bottom:4px">מורה מייסד — חינם לתמיד</div>
-        <div style="font-size:13px;color:rgba(255,255,255,0.92);line-height:1.6">${FOUNDING_TEACHER_LIMIT} המורים הראשונים ב-Drushe פטורים ממנוי לצמיתות — <strong>גם בעתיד לא תשלם</strong>.<br>נותרו <strong>${foundingSlotsLeft()}</strong> מקומות.</div>
-      </div>`:`
+        <div style="font-size:13px;color:rgba(255,255,255,0.92);line-height:1.6">${FOUNDING_TEACHER_LIMIT} המורים הראשונים ב-Drushe פטורים ממנוי לצמיתות — <strong>גם בעתיד לא תשלם</strong>.</div>
+        <!-- מונה חי מהמספר האמיתי. כשאין עדיין אף מורה, "0 הצטרפו" מחליש —
+             אבל "היה הראשון" הוא בדיוק אותו נתון במסגור שמגייס. -->
+        <div style="background:rgba(0,0,0,0.18);border-radius:14px;padding:10px 12px;margin-top:12px;display:flex;align-items:center;justify-content:center;gap:10px">
+          ${_teacherCountLoaded&&_totalTeacherCount===0?`
+            <span style="font-size:15px;font-weight:900;color:#fff">✨ אתה יכול להיות המורה הראשון ב-Drushe</span>
+          `:`
+            <div><div style="font-size:20px;font-weight:900;color:#fff;line-height:1">${_totalTeacherCount}</div><div style="font-size:10px;color:rgba(255,255,255,0.8)">כבר הצטרפו</div></div>
+            <div style="width:1px;height:26px;background:rgba(255,255,255,0.28)"></div>
+            <div><div style="font-size:20px;font-weight:900;color:#fff;line-height:1">${foundingSlotsLeft()}</div><div style="font-size:10px;color:rgba(255,255,255,0.8)">מקומות נותרו</div></div>
+          `}
+        </div>
+      </div>
+
+      ${PLATFORM_HAS_STUDENTS?'':`
+      <!-- גילוי מלא. זה לא רק הוגן — זה מה שהופך את ההטבה להגיונית: בלי
+           ההסבר, "חינם לתמיד" נשמע חשוד. ועדיף מורה שהצטרף בידיעה שאין
+           תלמידים ושמח על הראשון, ממורה שהצטרף בציפייה ועזב מאוכזב. -->
+      <div style="background:rgba(15,23,42,0.04);border:1.5px solid rgba(15,23,42,0.1);border-radius:18px;padding:16px 18px;margin-bottom:14px">
+        <div style="font-weight:900;font-size:14px;color:#0F172A;margin-bottom:8px">📣 בגילוי מלא — איפה אנחנו נמצאים</div>
+        <p style="margin:0 0 10px;font-size:13px;color:#475569;line-height:1.7">Drushe בתחילת הדרך. אנחנו בונים עכשיו את קבוצת המורים הראשונה, <strong>ועדיין אין תלמידים בפלטפורמה.</strong></p>
+        <p style="margin:0 0 10px;font-size:13px;color:#475569;line-height:1.7">אנחנו אומרים לך את זה מראש, כי זו בדיוק הסיבה להטבה: אתה נכנס לפני שיש ביקוש ולוקח איתנו את הסיכון — ובתמורה לא תשלם מנוי. אף פעם. מורים שיצטרפו <strong>אחרי</strong> ${FOUNDING_TEACHER_LIMIT} הראשונים ישלמו ₪79 לחודש.</p>
+        <p style="margin:0;font-size:13px;color:#B45309;line-height:1.7;font-weight:800">מי שמתחיל את זה הוא גם מי שקובע איך זה ייראה — ואתה בפנים.</p>
+      </div>`}`:`
       <div style="background:linear-gradient(135deg,#7C3AED,#A855F7);border-radius:20px;padding:20px;margin-bottom:14px;text-align:center;box-shadow:0 6px 20px rgba(124,58,237,0.35)">
         <div style="font-size:34px;margin-bottom:6px">🎁</div>
         <div style="font-weight:900;font-size:22px;color:#fff;margin-bottom:4px">${TRIAL_DAYS} יום ניסיון חינם</div>
@@ -4672,7 +4695,15 @@ function teacherTrialDaysLeft(){
 // חוקי ה-DB מאפשרים לכתוב אותו רק כשהוא עוד לא קיים (כמו createdAt ו-role),
 // כדי שמורה לא יוכל להעניק אותו לעצמו בדיעבד.
 const FOUNDING_TEACHER_LIMIT=500;
-let _totalTeacherCount=0; // מתעדכן ב-loadRealTeachers, שקורא את הצומת ממילא
+let _totalTeacherCount=0;      // מתעדכן ב-loadRealTeachers, שקורא את הצומת ממילא
+let _teacherCountLoaded=false; // 0 לפני טעינה ו-0 באמת הם שני מצבים שונים
+
+// כל עוד true, מסך ההרשמה אומר למורה בגילוי מלא שאין עדיין תלמידים.
+// **להחליף ל-false ביום שיש תלמידים אמיתיים** — אחרת הטקסט הופך לשקר.
+// מכוון ידני ולא נגזר אוטומטית: אין כאן ספירת תלמידים אמינה מצד הלקוח
+// (חוקי ה-DB לא מאפשרים לקרוא את כל המשתמשים), ועדיף דגל מפורש שמישהו
+// מכבה מאשר ניחוש שמשקר בשקט לאחד משני הכיוונים.
+const PLATFORM_HAS_STUDENTS=false;
 
 function isFoundingTeacher(){
   return currentUserData?.foundingMember===true;
@@ -4683,7 +4714,7 @@ function isFoundingTeacher(){
 // נטענה מחזירים את המכסה המלאה, כדי לא להבהב "0 מקומות" בטעות ולהבריח
 // בדיוק את מי שרצינו לגייס.
 function foundingSlotsLeft(){
-  if(!_totalTeacherCount)return FOUNDING_TEACHER_LIMIT;
+  if(!_teacherCountLoaded)return FOUNDING_TEACHER_LIMIT;
   return Math.max(0,FOUNDING_TEACHER_LIMIT-_totalTeacherCount);
 }
 
