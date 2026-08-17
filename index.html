@@ -981,7 +981,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.88';
+const APP_VERSION='4.9.89';
 const APP_BUILD='08-08-2026';
 
 // ─── ANALYTICS ────────────────────────────────────────────────────────────────
@@ -9851,6 +9851,23 @@ function Profile(){
         <button onclick="showCertificate()" style="background:transparent;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;padding:2px">${miniBadge('award','#EAB308',50)}<span style="font-size:10.5px;font-weight:800;color:#0F1A1F;text-align:center">תעודה</span></button>
         <button onclick="showRanksPanel()" style="background:transparent;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;padding:2px">${miniBadge('star','#EC4899',50)}<span style="font-size:10.5px;font-weight:800;color:#0F1A1F;text-align:center">דרגות</span></button>
       </div>
+      <!-- מונה המייסדים למנהל. הוא קיים גם במסך הרשמת המורה, אבל לשם מגיע רק
+           מורה חדש — למנהל עם חשבון קיים אין דרך סבירה להגיע לשם, וזה נתון
+           תפעולי שלו: כמה מקומות נשארו, וכמה זמן ההצעה עוד רלוונטית לגיוס. -->
+      ${isAdmin()&&_teacherCountLoaded?`
+      <div style="background:linear-gradient(135deg,rgba(180,83,9,0.10),rgba(245,158,11,0.06));border:1.5px solid rgba(245,158,11,0.35);border-radius:16px;padding:12px 16px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:22px">🏆</span>
+          <div>
+            <div style="font-weight:900;font-size:13px;color:#B45309">מורים מייסדים</div>
+            <div style="font-size:11px;color:#64748B;margin-top:1px">${foundingSlotsLeft()>0?'ההצעה עדיין פעילה':'המכסה מלאה — מורים חדשים משלמים מנוי'}</div>
+          </div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:19px;font-weight:900;color:#B45309;line-height:1;font-variant-numeric:tabular-nums">${_totalTeacherCount}<span style="font-size:12px;color:#94A3B8">/${FOUNDING_TEACHER_LIMIT}</span></div>
+          <div style="font-size:10px;color:#64748B;margin-top:2px">נותרו ${foundingSlotsLeft()}</div>
+        </div>
+      </div>`:''}
       ${isAdmin()?`<button onclick="showAdminPanel()" style="width:100%;background:linear-gradient(135deg,#0F1A1F,#0e7a72);border:none;color:#fff;border-radius:16px;padding:13px;font-weight:900;font-size:13px;cursor:pointer;box-shadow:0 4px 14px rgba(14,122,114,0.4);position:relative;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:16px">${icon('shield',15)} פאנל מנהל<span id="_adminPendingBadge" style="display:${_adminPendingCount>0?'inline-flex':'none'};position:absolute;top:-7px;left:14px;background:#EF4444;color:#fff;border-radius:50px;min-width:20px;height:20px;font-size:11px;font-weight:900;align-items:center;justify-content:center;padding:0 4px;border:2px solid #fff;animation:pulse 1.2s infinite">${_adminPendingCount}</span></button>`:''}
       `:''}
       <div style="display:flex;gap:10px;margin-bottom:18px">
