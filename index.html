@@ -974,7 +974,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.83';
+const APP_VERSION='4.9.84';
 const APP_BUILD='08-08-2026';
 
 // ─── ANALYTICS ────────────────────────────────────────────────────────────────
@@ -4618,7 +4618,7 @@ function calcCommission(gross){
   return{gross,commission:0,net:gross};
 }
 // ── מודל מנוי: רק מורים משלמים, תלמידים בחינם לגמרי ─────────────────────────
-const TRIAL_DAYS=14; // ימי ניסיון חינם למורה לפני חובת מנוי
+const TRIAL_DAYS=30; // ימי ניסיון חינם למורה לפני חובת מנוי
 function isTeacherTrialExpired(){
   const ca=currentUserData?.createdAt||0;
   return ca>0&&(Date.now()-ca)>TRIAL_DAYS*86400000;
@@ -12375,7 +12375,7 @@ function render(){
     S.screen='studentPending';
   }
 
-  // Guard: מורה שסיים 14 יום ניסיון בלי מנוי פעיל — חסום עד לתשלום מנוי
+  // Guard: מורה שסיים את ימי הניסיון (TRIAL_DAYS) בלי מנוי פעיל — חסום עד לתשלום מנוי
   const _subOpenScreens=['splash','login','register','safety','parentReg','teacherReg','teacherSetup','teacherPending','emailVerify','subscribe'];
   if(teacherNeedsSubscription()&&!isAdmin()&&!_subOpenScreens.includes(S.screen)){
     S.screen='subscribe';
