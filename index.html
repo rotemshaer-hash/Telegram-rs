@@ -29,7 +29,10 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 // var (not const/let) prevents TDZ issues if Firebase CDN fails to load
 var auth=null,db=null,storage=null,analytics=null;
-try{auth=firebase.auth();db=firebase.database();storage=firebase.storage();try{analytics=firebase.analytics();}catch(_ae){}}catch(e){console.error('Firebase init failed:',e);}
+// analytics לא מאותחל כאן בכוונה — ראה initAnalyticsIfConsented(). קריאה
+// ל-firebase.analytics() היא מה שמזריק את gtag.js ומציב את עוגיית _ga, ולכן
+// עצם הדחייה שלה היא מה שמונע איסוף לפני שיש הסכמת הורה.
+try{auth=firebase.auth();db=firebase.database();storage=firebase.storage();}catch(e){console.error('Firebase init failed:',e);}
 
 // ─── ניטור שגיאות client-side ──────────────────────────────────────────────
 // עד עכשיו הדרך היחידה לדעת שמשהו נשבר אצל משתמש הייתה שהוא יספר לנו.
@@ -971,11 +974,35 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.82';
+const APP_VERSION='4.9.83';
 const APP_BUILD='08-08-2026';
 
 // ─── ANALYTICS ────────────────────────────────────────────────────────────────
-// kLog: שולח אירוע ל-Firebase Analytics (כשיש measurementId) + שומר ב-DB כגיבוי
+// Drushe היא אפליקציה שהוצהרה בפני Google Play כמיועדת לילדים, ולכן חלה עליה
+// מדיניות Families: אסור לאסוף נתונים מקטין לפני שהורה אישר. הדרך היחידה
+// לקיים את זה בפועל היא לא לאתחל את Firebase Analytics בכלל עד שיש אישור —
+// setAnalyticsCollectionEnabled(false) אחרי האתחול כבר מאוחר מדי, כי gtag.js
+// כבר נטען והעוגייה כבר הוצבה.
+//
+// השער: משתמש מחובר שהחשבון שלו verified===true. זה בדיוק הדגל שנקבע אחרי
+// אישור ההורה והצוות, ולכן הוא הייצוג הקיים בקוד ל"יש הסכמה".
+function initAnalyticsIfConsented(){
+  if(analytics)return;                                    // כבר פועל
+  if(!currentUser||currentUserData?.verified!==true)return; // אין אישור — לא מאתחלים
+  try{
+    analytics=firebase.analytics();
+    analytics.setAnalyticsCollectionEnabled(true);
+  }catch(_e){analytics=null;}
+}
+
+// ביציאה מפסיקים לאסוף. אי אפשר "לבטל" את הטעינה של gtag בטאב הזה, אבל כן
+// אפשר לעצור שליחת אירועים — כך שמשתמש שהתנתק לא ממשיך להיספר.
+function stopAnalyticsCollection(){
+  try{if(analytics)analytics.setAnalyticsCollectionEnabled(false);}catch(_e){}
+  analytics=null;
+}
+
+// kLog: שולח אירוע ל-Firebase Analytics (רק אם אותחל בהסכמה) + שומר ב-DB כגיבוי
 function kLog(event,params={}){
   try{if(analytics)analytics.logEvent(event,params);}catch(_){}
   try{
@@ -4723,6 +4750,7 @@ if(typeof auth!=='undefined'&&auth&&!auth._pushSignOutWrapped){
   const _origSignOut=auth.signOut.bind(auth);
   auth.signOut=async function(){
     await _unregisterNativePush();
+    stopAnalyticsCollection();
     return _origSignOut();
   };
   auth._pushSignOutWrapped=true;
@@ -12904,6 +12932,9 @@ auth&&auth.onAuthStateChanged(async user=>{
       // רישום להתראות נייטיב — רק באפליקציה המותקנת, ורק אחרי שיש משתמש מחובר
       // (הטוקן נשמר תחת ה-uid שלו). בדפדפן הפונקציה יוצאת מיד.
       _registerNativePush().catch(()=>{});
+      // כאן, ורק כאן, יש כבר גם משתמש מחובר וגם currentUserData טעון — שני
+      // התנאים שצריך כדי להכריע אם קיים אישור הורה.
+      initAnalyticsIfConsented();
       // Timestamp of when we attached the listener — used to skip old notifications
       // that fire on initial listener attachment (Firebase fires child_added for all existing children)
       const _notifListenStart=Date.now();
