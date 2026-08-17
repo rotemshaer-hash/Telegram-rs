@@ -39,6 +39,9 @@
         "referredBy": {
           ".validate": "auth.token.email == 'rotemshaer@gmail.com' || !data.exists()"
         },
+        "foundingMember": {
+          ".validate": "auth.token.email == 'rotemshaer@gmail.com' || !data.exists()"
+        },
         "subscription": {
           ".validate": "auth.token.email == 'rotemshaer@gmail.com' || newData.child('status').val() != 'active'"
         },
