@@ -15,9 +15,19 @@ const admin = require('firebase-admin');
 
 const DATABASE_URL = 'https://kidemy-83a17-default-rtdb.firebaseio.com';
 
-// הודעה נחשבת "טרייה" רק אם נכתבה ממש עכשיו. חלון צר חוסם ניסיון לשגר שוב
-// ושוב התראה על אותה הודעה ישנה כדי להציק למישהו.
-const FRESH_MESSAGE_WINDOW_MS = 60 * 1000;
+// מניעת שיגור חוזר: זוכרים לאיזו הודעה כבר נשלחה התראה בכל צ'אט.
+//
+// קודם לכן נבדק כאן חלון זמן של דקה מול last.createdAt — אבל אותה חותמת
+// נכתבת ב-Date.now() *של מכשיר השולח*, בעוד ההשוואה רצה בשעון השרת. מכשיר
+// שהשעון שלו מפגר בדקה גרם לדחיית כל התראה שלו, בשקט מוחלט: ההודעה נשלחת,
+// ההתראה לא מגיעה, ואף אחד לא רואה שגיאה. הכשל גם עקבי לאותו משתמש, כך
+// שהוא היה נראה כמו "התראות לא עובדות אצלי" בלי שום דרך לאבחן.
+//
+// דדופ לפי מפתח ההודעה נותן את אותה הגנה בלי לסמוך על שעונים: אפשר לשגר
+// התראה רק על ההודעה האחרונה בצ'אט, ורק פעם אחת. הצומת מתחת לשורש ולכן
+// חסום ללקוחות ממילא (חוקי השורש מגבילים למנהל), והפונקציה ניגשת אליו
+// דרך firebase-admin שעוקף חוקים.
+const DEDUPE_PATH = 'pushDedupe';
 
 // תקרה גסה נגד הצפה. משתמש אמיתי לא שולח 40 הודעות בדקה; מי שכן — לא יקבל
 // התראות נוספות, אבל ההודעות עצמן ימשיכו להישמר כרגיל.
@@ -123,12 +133,19 @@ exports.handler = async (event) => {
     // 2. אימות שההודעה באמת נשלחה — כאן נקבע גם תוכן ההתראה.
     const chatId = chatIdFor(senderUid, toUid);
     const lastSnap = await db.ref('messages/' + chatId).limitToLast(1).get();
-    const last = lastSnap.exists() ? Object.values(lastSnap.val())[0] : null;
+    const lastVal = lastSnap.exists() ? lastSnap.val() : null;
+    const lastKey = lastVal ? Object.keys(lastVal)[0] : null;
+    const last = lastKey ? lastVal[lastKey] : null;
     if (!last || last.from !== senderUid) {
       return { statusCode: 403, headers, body: JSON.stringify({ error: 'No matching message from sender' }) };
     }
-    if (Date.now() - (last.createdAt || 0) > FRESH_MESSAGE_WINDOW_MS) {
-      return { statusCode: 409, headers, body: JSON.stringify({ error: 'Message is not recent' }) };
+
+    // התראה אחת לכל היותר לכל הודעה. transaction ולא set, כדי ששתי קריאות
+    // במקביל על אותה הודעה לא יעברו שתיהן ויגיעו כשתי התראות כפולות.
+    const dedupeRef = db.ref(DEDUPE_PATH + '/' + chatId);
+    const dedupe = await dedupeRef.transaction(cur => (cur === lastKey ? undefined : lastKey));
+    if (!dedupe.committed) {
+      return { statusCode: 409, headers, body: JSON.stringify({ error: 'Already notified for this message' }) };
     }
 
     // 3. שם השולח נקרא מהמסד, לא מהלקוח — אחרת אפשר היה להתחזות לכל אחד.
