@@ -981,7 +981,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.87';
+const APP_VERSION='4.9.88';
 const APP_BUILD='08-08-2026';
 
 // ─── ANALYTICS ────────────────────────────────────────────────────────────────
@@ -1170,14 +1170,34 @@ window.addEventListener('popstate',()=>{
   const topScroll=()=>window.scrollY||document.documentElement.scrollTop||document.body.scrollTop||0;
   // רק דיאלוג *גלוי* חוסם משיכה-לרענון — לא אלמנטים תמידיים מוסתרים כמו
   // אזהרת-דסקטופ (#_desktopWarn, display:none) או טוסט (#_ft, pointer-events:none).
-  const dialogOpen=()=>[...document.querySelectorAll('[style*="z-index:9999"],[style*="z-index:99999"],._qaDlg,._intDlg')]
+  // הבורר חייב לכלול גם צורה עם רווח: הדפדפן מנרמל style שנקבע ב-JS, כך
+  // ש-`cssText='...z-index:9999...'` נשמר בפועל כ-`z-index: 9999`. בלי הצורה
+  // הזו פאנל הניהול (שנבנה בדיוק כך) לא זוהה כדיאלוג בכלל.
+  const DLG_SEL='[style*="z-index:9999"],[style*="z-index: 9999"],[style*="z-index:99999"],[style*="z-index: 99999"],._qaDlg,._intDlg';
+  const dialogOpen=()=>[...document.querySelectorAll(DLG_SEL)]
     .some(el=>el.id!=='_desktopWarn'&&el.id!=='_ft'&&getComputedStyle(el).display!=='none'&&el.getBoundingClientRect().height>0);
+
+  // ההגנה האמיתית, שלא תלויה בזיהוי דיאלוגים לפי סלקטור: אם המגע התחיל בתוך
+  // אזור שגולל בעצמו (פאנל, מודאל, רשימה פנימית), התנועה שייכת לאותו אזור.
+  // topScroll() בודק רק את גלילת החלון, ולכן בתוך שכבה עם overflow משלה הוא
+  // תמיד 0 — והמשיכה נראית לו כאילו היא בראש העמוד. זו הסיבה שהגלילה בפאנל
+  // נבלעה והרענון סגר אותו. הליכה על שרשרת ההורים תופסת כל מקרה כזה, כולל
+  // שכבות עתידיות שאיש לא יזכור להוסיף לרשימת סלקטורים.
+  function startedInScroller(target){
+    for(let el=target;el&&el!==document.body&&el!==document.documentElement;el=el.parentElement){
+      if(el.scrollHeight-el.clientHeight>4){
+        const oy=getComputedStyle(el).overflowY;
+        if(oy==='auto'||oy==='scroll')return true;
+      }
+    }
+    return false;
+  }
   const canPTR=()=>!refreshing && !NO_PTR.has(S.screen) && !dialogOpen();
   function ind(){ if(!_ind){_ind=document.createElement('div');_ind.className='ptr';_ind.textContent='↻';document.body.appendChild(_ind);} return _ind; }
   function place(y,rot,op,anim){ const e=ind(); e.style.transition=anim?'transform .22s,opacity .22s':'none'; e.style.transform='translateY('+y+'px) rotate('+rot+'deg)'; e.style.opacity=op; }
   function hide(){ if(_ind){_ind.classList.remove('spin');place(-64,0,0,true);} }
   document.addEventListener('touchstart',e=>{
-    if(e.touches.length!==1||topScroll()>2||!canPTR()){active=false;return;}
+    if(e.touches.length!==1||topScroll()>2||!canPTR()||startedInScroller(e.target)){active=false;return;}
     startY=e.touches[0].clientY; active=true; pulled=0;
   },{passive:true});
   document.addEventListener('touchmove',e=>{
