@@ -1,6 +1,10 @@
 name: Deploy Firebase Rules
 
 on:
+  # ידני, כדי שאפשר יהיה לאמת שינוי הרשאות בלי לגעת בקובץ חוקים רק כדי
+  # לגרום ל-push. בלי זה, הדרך היחידה לבדוק אם פריסת ה-storage השתחררה
+  # היא לערוך קובץ שלא צריך לערוך.
+  workflow_dispatch:
   push:
     branches: [main]
     paths:
