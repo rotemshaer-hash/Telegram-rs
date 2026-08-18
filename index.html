@@ -981,7 +981,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.90';
+const APP_VERSION='4.9.91';
 const APP_BUILD='08-08-2026';
 
 // ─── ANALYTICS ────────────────────────────────────────────────────────────────
@@ -6979,6 +6979,56 @@ async function adminMigrateIdPhotos(){
   renderAdminPanel();
 }
 
+// ─── פח לשגיאות client-side ─────────────────────────────────────────────────
+// שגיאה שתוקנה נשארת ברשימה לנצח ומחזיקה את המונה האדום דלוק. מונה שתמיד
+// אדום מפסיק להיות אות אזהרה — בדיוק מה שקרה כאן. המחיקה היא מה שמחזיר
+// למונה את המשמעות: מה שמופיע בו זה מה שעדיין פתוח.
+//
+// אין צורך בחוק RTDB חדש. הכלל ב-clientErrors/$errorId מתיר יצירה בלבד
+// (!data.exists()), אבל ה-".write" בשורש למנהל יורד במורשה ולא ניתן לביטול
+// בנתיב עמוק יותר — כך שלמנהל, ורק לו, יש הרשאת מחיקה כאן.
+//
+// הקיבוץ בתצוגה הוא לפי הודעה+מקור+שורה, וכל קבוצה מחזיקה את המזהים
+// הגולמיים שלה. מחיקת קבוצה מוחקת את כל המופעים שלה, אחרת השורה הייתה
+// חוזרת ברענון הבא.
+let _adminErrorGroups=[];
+
+async function adminDeleteErrorGroup(idx){
+  if(!isAdmin())return;
+  const g=_adminErrorGroups[idx];
+  if(!g||!g.ids?.length)return;
+  if(!confirm(`למחוק את השגיאה הזו (${g.ids.length} מופעים)?\n\n${(g.message||'').substring(0,150)}`))return;
+  const updates={};
+  g.ids.forEach(id=>{updates[id]=null;});
+  try{
+    await db.ref('clientErrors').update(updates);
+    const gone=new Set(g.ids);
+    adminAllClientErrors=adminAllClientErrors.filter(e=>!gone.has(e.id));
+    showFireToast(`🗑️ נמחקו ${g.ids.length} מופעים`);
+  }catch(e){
+    console.warn('[errors] delete failed:',e);
+    showFireToast('❌ המחיקה נכשלה');
+  }
+  renderAdminPanel();
+}
+
+async function adminClearAllErrors(){
+  if(!isAdmin())return;
+  if(!adminAllClientErrors.length){showFireToast('אין מה למחוק');return;}
+  if(!confirm(`לרוקן את כל יומן השגיאות (${adminAllClientErrors.length} מופעים)?\n\nזו פעולה שלא ניתן לבטל.`))return;
+  try{
+    // מוחק את הצומת כולו ולא רק את מה שנטען. הרשימה מוגבלת ל-300 האחרונים,
+    // ומחיקה של אלה בלבד הייתה משאירה ישנים יותר בלתי נראים מאחור.
+    await db.ref('clientErrors').remove();
+    adminAllClientErrors=[];
+    showFireToast('🗑️ היומן רוקן');
+  }catch(e){
+    console.warn('[errors] clear failed:',e);
+    showFireToast('❌ הריקון נכשל');
+  }
+  renderAdminPanel();
+}
+
 async function adminSendTestEmail(){
   if(!isAdmin())return;
   if(!EMAILJS_SERVICE_ID||!EMAILJS_TEMPLATE_ID||!EMAILJS_PUBLIC_KEY){
@@ -7897,20 +7947,30 @@ function renderAdminTab(){
     const groups={};
     adminAllClientErrors.forEach(e=>{
       const gkey=(e.message||'')+'|'+(e.source||'')+'|'+(e.lineno||'');
-      if(!groups[gkey])groups[gkey]={...e,count:0,firstSeen:e.createdAt,lastSeen:e.createdAt};
+      if(!groups[gkey])groups[gkey]={...e,count:0,ids:[],firstSeen:e.createdAt,lastSeen:e.createdAt};
       const g=groups[gkey];
       g.count++;
+      g.ids.push(e.id);
       g.firstSeen=Math.min(g.firstSeen,e.createdAt||0);
       g.lastSeen=Math.max(g.lastSeen,e.createdAt||0);
     });
     const list=Object.values(groups).sort((a,b)=>b.lastSeen-a.lastSeen);
+    // הכפתורים מפנים לקבוצה לפי אינדקס ולא מעבירים רשימת מזהים ב-onclick,
+    // שיכולה להיות ארוכה מאוד כשלשגיאה אחת יש מאות מופעים.
+    _adminErrorGroups=list;
     return `<div>
-      <div style="font-size:12px;color:#64748B;margin-bottom:12px">${list.length} שגיאות ייחודיות · ${adminAllClientErrors.length} מופעים (300 אחרונים)</div>
-      ${list.map(e=>`
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px">
+        <div style="font-size:12px;color:#64748B">${list.length} שגיאות ייחודיות · ${adminAllClientErrors.length} מופעים (300 אחרונים)</div>
+        <button onclick="adminClearAllErrors()" style="background:rgba(239,68,68,0.1);color:#EF4444;border:none;border-radius:50px;padding:7px 14px;font-size:11px;font-weight:800;cursor:pointer;flex-shrink:0;display:flex;align-items:center;gap:5px">${icon("trash",13)} רוקן הכל</button>
+      </div>
+      ${list.map((e,i)=>`
         <div style="background:transparent;border-radius:16px;padding:14px;margin-bottom:10px;border-right:4px solid #EF4444;box-shadow:none">
           <div style="display:flex;justify-content:space-between;gap:8px;align-items:start">
             <div style="font-weight:800;font-size:13px;color:#0F1A1F;word-break:break-word">${escapeHtml((e.message||'').substring(0,200))}</div>
-            <span style="background:rgba(239,68,68,0.12);color:#EF4444;border-radius:50px;padding:2px 10px;font-size:11px;font-weight:900;flex-shrink:0">${e.count}×</span>
+            <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+              <span style="background:rgba(239,68,68,0.12);color:#EF4444;border-radius:50px;padding:2px 10px;font-size:11px;font-weight:900">${e.count}×</span>
+              <button onclick="adminDeleteErrorGroup(${i})" title="מחק שגיאה זו" style="background:rgba(239,68,68,0.1);color:#EF4444;border:none;border-radius:50px;padding:5px 8px;cursor:pointer;display:flex;align-items:center">${icon("trash",14)}</button>
+            </div>
           </div>
           <div style="font-size:11px;color:#94A3B8;margin-top:6px">${e.source?e.source.split('/').pop()+':'+(e.lineno||'?')+' · ':''}${e.lastScreen?'מסך: '+e.lastScreen+' · ':''}${e.userAgent?e.userAgent.substring(0,60):''}</div>
           <div style="font-size:10px;color:#CBD5E1;margin-top:4px">ראשון: ${new Date(e.firstSeen).toLocaleString('he-IL')} · אחרון: ${new Date(e.lastSeen).toLocaleString('he-IL')}</div>
