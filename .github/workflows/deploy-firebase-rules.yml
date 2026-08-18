@@ -35,9 +35,12 @@ jobs:
       - name: Deploy database rules
         run: GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa.json firebase deploy --only database --project kidemy-83a17 --non-interactive
 
+      # שתי הסיבות שכבר הפילו את השלב הזה בפועל, לפי הסדר שהתגלו. הודעה
+      # שמפנה להרשאה שכבר הוענקה שולחת את הקורא הבא לתקן דבר תקין, ולכן
+      # ההודעה מונה את שתיהן ומסבירה איך להבדיל.
       - name: Deploy storage rules
         run: |
           if ! GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa.json firebase deploy --only storage --project kidemy-83a17 --non-interactive; then
-            echo "::error::Storage rules were not deployed. The service account in the FIREBASE_SERVICE_ACCOUNT secret needs the 'Service Usage Consumer' role (roles/serviceusage.serviceUsageConsumer) on project kidemy-83a17 — grant it at https://console.cloud.google.com/iam-admin/iam?project=kidemy-83a17. Database rules above already deployed."
+            echo "::error::Storage rules were not deployed — database rules above already were. Check the error just above: (1) 'Permission denied to get service' means the service account in FIREBASE_SERVICE_ACCOUNT lacks roles/serviceusage.serviceUsageConsumer — grant it at https://console.cloud.google.com/iam-admin/iam?project=kidemy-83a17 ; (2) 'Permissions denied enabling firebasestorage.googleapis.com' means the API itself is off — a project owner enables it once at https://console.cloud.google.com/apis/library/firebasestorage.googleapis.com?project=kidemy-83a17"
             exit 1
           fi
