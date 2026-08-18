@@ -22,6 +22,14 @@
       ".write": "auth != null && auth.token.email == 'rotemshaer@gmail.com'"
     },
 
+    "teacherVerification": {
+      ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'",
+      "$uid": {
+        ".read": "auth != null && auth.uid == $uid",
+        ".write": "auth != null && (auth.uid == $uid || auth.token.email == 'rotemshaer@gmail.com')"
+      }
+    },
+
     "users": {
       ".indexOn": ["role", "verified", "email"],
       "$uid": {

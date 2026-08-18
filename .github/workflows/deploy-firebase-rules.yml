@@ -35,9 +35,21 @@ jobs:
       - name: Deploy database rules
         run: GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa.json firebase deploy --only database --project kidemy-83a17 --non-interactive
 
+      # מזהיר ולא מפיל, בכוונה.
+      #
+      # שלושה חסמים נפתרו כאן בזה אחר זה (הרשאת serviceusage, הפעלת ה-API,
+      # ותפקיד Cloud Storage for Firebase Admin), והשלב עדיין נופל על
+      # firebasestorage.defaultBucket.get. ההפרש בין storage ל-database הוא
+      # שחוקי ה-database משתנים בפועל, בעוד storage.rules לא נגע מאז שהריפו
+      # נוצר — ואם ישתנה אפשר לפרסם אותו ידנית בקונסולה בדקה.
+      #
+      # job שנשאר אדום לתמיד גרוע יותר מ-job שמזהיר: הוא מאמן את כולם
+      # להתעלם מהכישלון הבא. בדיוק זה קרה כאן — 19 הרצות אדומות ברצף הסתירו
+      # את העובדה שגם חוקי ה-database לא נפרסו.
+      #
+      # האזהרה מופיעה בסיכום ההרצה, כך שהפער נשאר גלוי ולא נעלם בשקט.
       - name: Deploy storage rules
         run: |
           if ! GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa.json firebase deploy --only storage --project kidemy-83a17 --non-interactive; then
-            echo "::error::Storage rules were not deployed. The service account in the FIREBASE_SERVICE_ACCOUNT secret needs the 'Service Usage Consumer' role (roles/serviceusage.serviceUsageConsumer) on project kidemy-83a17 — grant it at https://console.cloud.google.com/iam-admin/iam?project=kidemy-83a17. Database rules above already deployed."
-            exit 1
+            echo "::warning::Storage rules were NOT deployed — database rules above were. storage.rules is what protects minors' ID photos, so if you changed it, publish it by hand at https://console.firebase.google.com/project/kidemy-83a17/storage/rules . Known cause: the FIREBASE_SERVICE_ACCOUNT service account is denied firebasestorage.defaultBucket.get even with Cloud Storage for Firebase Admin granted; see HANDOFF.md."
           fi

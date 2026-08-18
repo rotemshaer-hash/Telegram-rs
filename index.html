@@ -981,7 +981,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.89';
+const APP_VERSION='4.9.90';
 const APP_BUILD='08-08-2026';
 
 // ─── ANALYTICS ────────────────────────────────────────────────────────────────
@@ -2501,18 +2501,20 @@ async function saveTeacherProfile(){
       group:false,
       verified:false,active:false,
       createdAt:Date.now(),
+      // idPhoto לא נמצא כאן בכוונה — ראה למטה. השדות שנשארים (גיל, סוג מסמך,
+      // סטטוס) אינם המסמך עצמו, ומשמשים להצגת תג "גיל מאומת" ולתור האישורים.
       ageVerification:{
         age:parseInt(document.getElementById('tAge')?.value||0)||null,
         idType:document.getElementById('tIdType')?.value||null,
-        idPhoto:null,
         status:'pending',
         submittedAt:Date.now()
       }
     };
 
+    let _idPhotoValue=null;
     if(_idPhotoBase64){
       showFireToast('⏳ מעלה תמונת תז...');
-      teacherData.ageVerification.idPhoto=await uploadBase64ToStorage(_idPhotoBase64,`id-photos/${currentUser.uid}/teacher-id`);
+      _idPhotoValue=await uploadBase64ToStorage(_idPhotoBase64,`id-photos/${currentUser.uid}/teacher-id`);
     }
 
     if(_gpsSetup){
@@ -2538,6 +2540,22 @@ async function saveTeacherProfile(){
     }
 
     await db.ref('teachers/'+currentUser.uid).set(teacherData);
+
+    // תמונת המסמך נשמרת בצומת נפרד שקריא רק לבעלים ולמנהל.
+    //
+    // היא הייתה עד כה בתוך teachers/<uid>/ageVerification, ול-teachers יש
+    // ".read": "auth != null" — כלומר כל משתמש מחובר, כולל אורח אנונימי, יכול
+    // היה לקרוא את תעודות הזהות של כל המורים; ו-loadRealTeachers מוריד את כל
+    // הצומת בכל כניסה, כך שהן הגיעו למכשיר של כולם בלי שאיש ביקש.
+    //
+    // חוקי RTDB לא מאפשרים לשלול הרשאת קריאה בצומת-בן אחרי שההורה נתן אותה,
+    // ולכן ההגנה מחייבת להזיז את הנתון ולא רק להוסיף חוק.
+    if(_idPhotoValue){
+      await db.ref('teacherVerification/'+currentUser.uid).update({
+        idPhoto:_idPhotoValue,
+        updatedAt:Date.now()
+      });
+    }
 
     // מורה מייסד: נקבע פעם אחת, ברגע שהפרופיל נשמר בפועל — זה הרגע שבו הוא
     // באמת הופך למורה, ולא רגע פתיחת החשבון. הספירה כוללת גם מורים שטרם
@@ -4991,6 +5009,18 @@ async function loadAdminData(){
     // מיושן שנשמר בתוך teacherData עצמה (אם הוא אי-פעם יתבדר משהוא, פעולות מנהל
     // כמו אישור/מחיקה יפעלו על המורה הלא-נכון).
     if(teachersSnap.exists())teachersSnap.forEach(c=>adminAllTeachers.push({...c.val(),uid:c.key}));
+    // תמונות המסמכים יושבות בצומת נפרד ומוגן (ראה saveTeacherProfile). המנהל
+    // קורא אותו דרך חוק השורש, ומיזוג לתוך adminAllTeachers שומר על שאר הפאנל
+    // בלי שינוי — הוא ממשיך לקרוא שדה אחד מאובייקט המורה.
+    try{
+      const verSnap=await db.ref('teacherVerification').get();
+      if(verSnap.exists()){
+        verSnap.forEach(c=>{
+          const t=adminAllTeachers.find(x=>x.uid===c.key);
+          if(t)t._idPhoto=c.val()?.idPhoto||null;
+        });
+      }
+    }catch(e){console.warn('[admin] could not load verification photos:',e);}
     // ודא שרשומת המורה של המנהל תמיד נכללת (גם אם לא נמצאה בסריקה הכללית)
     if(!adminAllTeachers.find(t=>t.uid===currentUser.uid)){
       const mySnap=await db.ref('teachers/'+currentUser.uid).get();
@@ -6922,6 +6952,33 @@ async function resetSystem(){
   }
 }
 
+// מעביר תמונות מסמך שכבר נשמרו תחת teachers/ אל הצומת המוגן, ומוחק את המקור.
+// הכתיבה ליעד מסתיימת לפני המחיקה בכל רשומה בנפרד — אם משהו נכשל באמצע,
+// התמונה קיימת בשני המקומות ולא באפס מהם. הרצה חוזרת בטוחה: רשומה שכבר
+// הועברה אין לה ageVerification/idPhoto והיא לא תיבחר שוב.
+async function adminMigrateIdPhotos(){
+  if(!isAdmin())return;
+  const targets=adminAllTeachers.filter(t=>t.ageVerification?.idPhoto);
+  if(!targets.length){showFireToast('אין מה להעביר');return;}
+  if(!confirm(`להעביר ${targets.length} תמונות מסמך לצומת המוגן ולמחוק מהמקום החשוף?`))return;
+  let moved=0,failed=0;
+  showFireToast('⏳ מעביר...');
+  for(const t of targets){
+    try{
+      await db.ref('teacherVerification/'+t.uid).update({
+        idPhoto:t.ageVerification.idPhoto,
+        migratedAt:Date.now()
+      });
+      await db.ref('teachers/'+t.uid+'/ageVerification/idPhoto').remove();
+      t._idPhoto=t.ageVerification.idPhoto;
+      delete t.ageVerification.idPhoto;
+      moved++;
+    }catch(e){failed++;console.warn('[migrate] failed for',t.uid,e);}
+  }
+  showFireToast(failed?`הועברו ${moved}, נכשלו ${failed}`:`✅ הועברו ${moved} תמונות`);
+  renderAdminPanel();
+}
+
 async function adminSendTestEmail(){
   if(!isAdmin())return;
   if(!EMAILJS_SERVICE_ID||!EMAILJS_TEMPLATE_ID||!EMAILJS_PUBLIC_KEY){
@@ -7358,6 +7415,16 @@ function renderAdminTab(){
     const verified=adminAllTeachers.filter(t=>t.verified);
     if(adminAllTeachers.length===0&&adminIncompleteTeachers.length===0)return '<div style="text-align:center;padding:40px;color:#64748B">אין מורים</div>';
     let html='';
+    // מוצג רק כל עוד נשארו תמונות בצומת החשוף, ונעלם מעצמו כשאין. כך אין כפתור
+    // תחזוקה שנשאר לנצח ואיש לא זוכר למה הוא שם.
+    const _legacyIdPhotos=adminAllTeachers.filter(t=>t.ageVerification?.idPhoto).length;
+    if(_legacyIdPhotos>0){
+      html+=`<div style="background:rgba(239,68,68,0.08);border:1.5px solid rgba(239,68,68,0.35);border-radius:16px;padding:14px 16px;margin-bottom:14px">
+        <div style="font-weight:900;font-size:14px;color:#B91C1C;margin-bottom:6px">🔒 ${_legacyIdPhotos} תמונות מסמך במקום חשוף</div>
+        <div style="font-size:12px;color:#64748B;line-height:1.6;margin-bottom:10px">תמונות תעודות הזהות האלה נשמרו תחת <code>teachers/</code>, שקריא לכל משתמש מחובר. ההעברה מזיזה אותן לצומת שקריא רק לך ולבעלים, ומוחקת את המקור.</div>
+        <button onclick="adminMigrateIdPhotos()" style="width:100%;background:linear-gradient(135deg,#B91C1C,#EF4444);border:none;color:#fff;border-radius:12px;padding:10px;font-weight:900;font-size:13px;cursor:pointer">העבר עכשיו למקום מוגן</button>
+      </div>`;
+    }
     if(adminIncompleteTeachers.length>0){
       html+=`<h4 style="font-weight:800;font-size:14px;color:#F59E0B;margin:0 0 10px">🕐 נרשמו – טרם השלימו הגדרת פרופיל (${adminIncompleteTeachers.length})</h4>`;
       html+=adminIncompleteTeachers.map(u=>`
@@ -7390,7 +7457,7 @@ function renderAdminTab(){
             <div style="font-size:10px;color:#CBD5E1;font-weight:700">${t.createdAt?new Date(t.createdAt).toLocaleDateString('he-IL'):''}</div>
           </div>
           ${t.ageVerification?.age?`<div style="padding:0 16px 4px;font-size:11px;color:#06B6D4;font-weight:700">🪪 גיל ${t.ageVerification.age} • ${t.ageVerification.idType==='id'?'ת.ז.':t.ageVerification.idType==='passport'?'דרכון':'אישור הורה'} • ${t.ageVerification.status==='verified'?'✅ מאומת':'⏳ ממתין לאימות גיל'}</div>`:'<div style="padding:0 16px 4px;font-size:11px;color:#EF4444;font-weight:700">⚠️ לא הוגשו פרטי גיל/זהות</div>'}
-          ${t.ageVerification?.idPhoto?`<div style="padding:0 16px 10px"><img src="${t.ageVerification.idPhoto}" style="width:100%;max-height:120px;object-fit:cover;border-radius:10px;border:1.5px solid rgba(20,184,166,0.3)" alt="מסמך זהות" onclick="this.style.maxHeight=this.style.maxHeight==='none'?'120px':'none'"></div>`:''}
+          ${(t._idPhoto||t.ageVerification?.idPhoto)?`<div style="padding:0 16px 10px"><img src="${t._idPhoto||t.ageVerification.idPhoto}" style="width:100%;max-height:120px;object-fit:cover;border-radius:10px;border:1.5px solid rgba(20,184,166,0.3)" alt="מסמך זהות" onclick="this.style.maxHeight=this.style.maxHeight==='none'?'120px':'none'"></div>`:''}
           ${t.desc?`<div style="padding:0 16px 10px;font-size:12px;color:#64748B;line-height:1.5">"${escapeHtml(t.desc.substring(0,120))}${t.desc.length>120?'...':''}"</div>`:''}
           ${t.ageVerification?.age&&t.ageVerification?.status!=='verified'?`<div style="padding:0 16px 10px"><button onclick="adminVerifyAge('${t.uid}')" style="width:100%;background:linear-gradient(135deg,#06B6D4,#14B8A6);border:none;color:#fff;border-radius:12px;padding:8px;font-weight:800;font-size:12px;cursor:pointer">🪪 אמת גיל וזהות</button></div>`:''}
           <div style="padding:0 16px 10px">
