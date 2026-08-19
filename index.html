@@ -981,7 +981,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.91';
+const APP_VERSION='4.9.92';
 const APP_BUILD='08-08-2026';
 
 // ─── ANALYTICS ────────────────────────────────────────────────────────────────
@@ -3929,20 +3929,53 @@ async function deleteMyAccount(){
       'teacherSummaries/'+uid,
       'teacherBookings/'+uid,
       'forceSignout/'+uid,
+      'teacherVerification/'+uid,
+      'reviews/'+uid,
+      'videos/'+uid,
+      'chats/'+uid,
+      'userCredits/'+uid,
     ];
     if(isTeacher) paths.push('teachers/'+uid);
-    // מחיקת Auth קודם — אם נכשל (token פג) נציג שגיאה לפני שמוחקים DB
-    await currentUser.delete();
-    // Auth נמחק — עכשיו מנקים DB
+
+    // הסדר כאן קריטי, והוא היה הפוך.
+    //
+    // קודם נמחק currentUser.delete() ורק אחריו נוקו הנתונים. אבל אחרי מחיקת
+    // ההזדהות המשתמש כבר לא מחובר, וכל חוק מסוג auth.uid == $uid מחזיר false —
+    // כך שכל המחיקות נכשלו ב-PERMISSION_DENIED, נבלעו ב-catch ריק, והמסך הציג
+    // "נמחק בהצלחה". הנתונים נשארו בשלמותם, ובראשם תמונת תעודת הזהות של הקטין
+    // ב-teacherVerification, שאחרי מחיקת ההזדהות איש מלבד המנהל לא יכול להסיר.
+    //
+    // הכוונה המקורית — לוודא שהטוקן תקף לפני שנוגעים בנתונים — נכונה, ולכן
+    // היא נשמרת: רענון טוקן כפוי נכשל בדיוק באותם מקרים, בלי למחוק כלום.
+    await currentUser.getIdToken(true);
+
+    // מנתקים את המכשיר הזה מהתראות בזמן שההרשאה עדיין תקפה
+    try{await _unregisterNativePush();}catch(_e){}
+
+    // קוראים את רשימת השיחות לפני שמוחקים אותה — היא המקור לזיהוי הצ'אטים
+    let chatFailed=0;
     try{
       const ucSnap=await db.ref('userChats/'+uid).get();
       if(ucSnap.exists()){
         const chatDels=[];
-        ucSnap.forEach(child=>{chatDels.push(db.ref('messages/'+getChatId(uid,child.key)).remove().catch(()=>{}));});
-        await Promise.all(chatDels);
+        ucSnap.forEach(child=>{chatDels.push(db.ref('messages/'+getChatId(uid,child.key)).remove());});
+        chatFailed=(await Promise.allSettled(chatDels)).filter(r=>r.status==='rejected').length;
       }
-    }catch(e2){}
-    await Promise.all(paths.map(p=>db.ref(p).remove().catch(()=>{})));
+    }catch(e2){chatFailed++;}
+
+    const results=await Promise.allSettled(paths.map(p=>db.ref(p).remove()));
+    const failed=results.map((r,i)=>r.status==='rejected'?paths[i]:null).filter(Boolean);
+
+    // אם נתון כלשהו שרד — לא מוחקים את ההזדהות. חשבון שנשאר קיים אפשר להתחבר
+    // אליו ולנסות שוב; נתונים שנשארו בלי הזדהות נעולים לתמיד.
+    if(failed.length||chatFailed){
+      console.warn('[delete] נכשלו:',failed,'שיחות:',chatFailed);
+      showFireToast('❌ חלק מהנתונים לא נמחקו — החשבון לא נמחק. נסה שוב.');
+      return;
+    }
+
+    // רק עכשיו, כשה-DB באמת נקי, מוחקים את ההזדהות
+    await currentUser.delete();
     currentUser=null;currentUserData=null;
     showFireToast('✅ החשבון נמחק בהצלחה');
     setTimeout(()=>go('login'),1500);
