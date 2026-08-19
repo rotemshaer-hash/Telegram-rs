@@ -97,17 +97,17 @@
     },
     "messages": {
       "$chatId": {
-        ".read": "auth != null && (root.child('chatParticipants').child($chatId).child(auth.uid).exists() || auth.token.email == 'rotemshaer@gmail.com')",
-        ".write": "auth != null",
+        ".read": "auth != null && ($chatId.beginsWith(auth.uid + '_') || $chatId.endsWith('_' + auth.uid) || auth.token.email == 'rotemshaer@gmail.com')",
+        ".write": "auth != null && !newData.exists() && ($chatId.beginsWith(auth.uid + '_') || $chatId.endsWith('_' + auth.uid))",
         "$msgId": {
-          ".write": "auth != null && root.child('users').child(auth.uid).child('blocked').val() != true && (!data.exists() && newData.child('from').val() == auth.uid && newData.child('text').isString() && newData.child('createdAt').isNumber())"
+          ".write": "auth != null && ($chatId.beginsWith(auth.uid + '_') || $chatId.endsWith('_' + auth.uid)) && root.child('users').child(auth.uid).child('blocked').val() != true && (!data.exists() && newData.child('from').val() == auth.uid && newData.child('text').isString() && newData.child('createdAt').isNumber())"
         }
       }
     },
     "chatParticipants": {
       "$chatId": {
-        ".read": "auth != null && root.child('chatParticipants').child($chatId).child(auth.uid).exists()",
-        ".write": "auth != null"
+        ".read": "auth != null && ($chatId.beginsWith(auth.uid + '_') || $chatId.endsWith('_' + auth.uid))",
+        ".write": "auth != null && ($chatId.beginsWith(auth.uid + '_') || $chatId.endsWith('_' + auth.uid))"
       }
     },
     "chats": {
