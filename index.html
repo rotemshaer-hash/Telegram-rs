@@ -981,7 +981,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.92';
+const APP_VERSION='4.9.93';
 const APP_BUILD='08-08-2026';
 
 // ─── ANALYTICS ────────────────────────────────────────────────────────────────
@@ -4077,7 +4077,6 @@ function getChatId(uid1,uid2){
 let _chatQuery=null;
 let _currentChatOtherUid=null; // tracks which conversation is active — reliable alternative to chatListener._otherUid
 let _convListeners={}; // otherUid → firebase query, background listeners for all conversations
-let _chatPollInterval=null; // fallback poll interval handle
 
 async function listenToChat(otherUid){
   // Claim the UID immediately — BEFORE any teardown — so that any render()
@@ -4914,6 +4913,15 @@ if(typeof auth!=='undefined'&&auth&&!auth._pushSignOutWrapped){
   auth.signOut=async function(){
     await _unregisterNativePush();
     stopAnalyticsCollection();
+    // מאזין אישור התלמיד מנותק ביציאה, אבל הדגל שזוכר עבור מי הוא הוצמד לא
+    // אופס — ולכן _attachStudentApprovalListener בהתחברות הבאה עם אותו uid
+    // יצא מיד ב-`if(_studentApprovalListenerUID===uid) return` בלי לחבר מחדש.
+    // תלמיד שהתנתק והתחבר נשאר תקוע במסך ההמתנה לנצח, גם אחרי שאושר.
+    //
+    // האיפוס יושב כאן ולא ב-firebaseLogout מאותה סיבה שהעטיפה הזו קיימת
+    // מלכתחילה: רוב היציאות קוראות ל-auth.signOut() ישירות מ-onclick ולא
+    // עוברות דרך firebaseLogout בכלל.
+    _studentApprovalListenerUID=null;
     return _origSignOut();
   };
   auth._pushSignOutWrapped=true;
@@ -8775,7 +8783,11 @@ function Home(){
         return `<div style="overflow-x:auto;display:flex;gap:8px;padding:0 0 12px;margin-bottom:8px;scrollbar-width:none;-ms-overflow-style:none">${catChips}</div>`;
       })()}
       <h3 style="font-size:16px;font-weight:800;margin:6px 0 14px">${icon("star",14)} ${TEACHERS.length>0?(S.filterCat?'מורים בנושא זה':activeFiltersCount()>0?'מורים לפי הפילטרים שלך':'מורים מובילים השבוע'):'מורים אצלך באזור'}</h3>
-      ${TEACHERS.length===0?`
+      ${TEACHERS.length===0&&!teachersLoaded?`
+        <div style="background:rgba(20,184,166,0.06);border-radius:24px;padding:32px 24px;text-align:center;margin-bottom:14px">
+          <div style="font-size:32px;margin-bottom:10px">⏳</div>
+          <p style="color:#64748B;font-size:13px;margin:0">טוען מורים...</p>
+        </div>`:TEACHERS.length===0?`
         <div style="background:linear-gradient(135deg,rgba(20,184,166,0.12),rgba(6,182,212,0.10));backdrop-filter:blur(20px);border:1.5px dashed rgba(20,184,166,0.4);border-radius:24px;padding:32px 24px;text-align:center;margin-bottom:14px">
           <div style="font-size:56px;margin-bottom:14px">🌱</div>
           <h3 style="font-weight:900;font-size:18px;margin:0 0 8px;color:#0F1A1F">היה הראשון להצטרף!</h3>
@@ -8981,7 +8993,7 @@ function Nearby(){
           <div style="background:transparent;backdrop-filter:blur(12px);border-radius:24px;padding:32px 20px;text-align:center">
             <div style="margin-bottom:14px;display:flex;justify-content:center">${miniBadge('pin','#8B5CF6',64)}</div>
             <h3 style="font-weight:900;font-size:17px;margin:0 0 8px;color:#0F1A1F">אין מורים בטווח ${formatDistance(r)}</h3>
-            <p style="color:#64748B;font-size:13px;line-height:1.7;margin:0 0 16px">${sorted.length===0?'אין מורים רשומים עדיין':'נסה להגדיל את הטווח'}</p>
+            <p style="color:#64748B;font-size:13px;line-height:1.7;margin:0 0 16px">${sorted.length===0?(teachersLoaded?'אין מורים רשומים עדיין':'טוען מורים...'):'נסה להגדיל את הטווח'}</p>
             ${sorted.length>0?`<button onclick="S.nearbyR=20;render()" style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:10px 22px;font-weight:800;font-size:13px;cursor:pointer">הצג בכל הארץ</button>`:''}
           </div>
         `:inRange.map(t=>`
@@ -13321,19 +13333,22 @@ auth&&auth.onAuthStateChanged(async user=>{
       // חתימה קלה של רשימת השיחות — כדי לרנדר מחדש רק כשבאמת השתנתה
       // (שיחה חדשה, הודעה חדשה, או שינוי בסטטוס נקרא/לא-נקרא), בלי להבהב סתם.
       const _ucSig=()=>userChats.map(c=>c.otherUid+':'+(c.lastTime||0)+':'+(c.unread?1:0)).join('|');
-      // ── active poll: every 30s + on foreground restore ──────────────────────
-      // חשוב: loadUserChats מגלה שיחות חדשות (למשל הודעה שהגיעה בזמן שהאפליקציה
-      // ברקע והמאזין בזמן-אמת פספס אותה), אבל בלי render() מפורש המסך לא היה
-      // מתעדכן — שיחה חדשה "נתקעה" מוסתרת עד ניווט ידני. עכשיו מרנדרים על כל שינוי.
-      if(_chatPollInterval)clearInterval(_chatPollInterval);
-      _chatPollInterval=setInterval(async()=>{
-        if(!currentUser)return;
-        const _before=_ucSig();
-        await loadUserChats();
-        setupConvListeners();
-        await pollForNewMessages();
-        if(_ucSig()!==_before)render();
-      },30000);
+      // ── רענון בחזרה לחזית בלבד ─────────────────────────────────────────────
+      //
+      // כאן היה גם setInterval כל 30 שניות שהריץ את אותה שרשרת. הוא נמחק.
+      //
+      // ההצדקה שנרשמה לו הייתה ש-loadUserChats מגלה שיחות חדשות שהמאזין בזמן
+      // אמת מפספס. זה לא נכון: המאזין ב-userChats/<uid> (למעלה) מכסה בדיוק את
+      // המקרה הזה — השולח כותב את הרשומה ישירות ל-userChats של הנמען, המאזין
+      // יורה מיד וקורא ל-setupConvListeners שמצמיד מאזין לשיחה החדשה. שלושת
+      // שלבי הסקר שכפלו שלושה מנגנונים שכבר עבדו.
+      //
+      // המחיר היה עצום: לכל משתמש מחובר, לכל שיחה שלו, קריאה נפרדת כל 30
+      // שניות — 1.3TB לחודש ב-500 מורים, מול מכסה חינמית של 10GB. זה היה מפיל
+      // את האפליקציה הרבה לפני שהיא מגיעה לגודל הזה.
+      //
+      // הרענון בחזרה לחזית נשאר: הוא רץ פעם אחת לכל פתיחה ולא כל 30 שניות,
+      // והוא ביטוח אמיתי מול מקרה שבו אנדרואיד סגר את ה-WebSocket ברקע.
       // wake poll — fires when user brings the PWA to foreground
       if(!window._kidemy_visibilityBound){
         window._kidemy_visibilityBound=true;
@@ -13365,7 +13380,6 @@ auth&&auth.onAuthStateChanged(async user=>{
   } else {
     stopChatListener();
     teardownConvListeners();
-    if(_chatPollInterval){clearInterval(_chatPollInterval);_chatPollInterval=null;}
     currentUser=null;currentUserData=null;userChats=[];
     teacherPendingBookings=[];teacherAllBookings=[];studentBookings=[];
     _userCredit=0;_userCreditLoaded=false;
@@ -13943,8 +13957,18 @@ if('serviceWorker' in navigator){
     reg.update();
     setInterval(()=>reg.update(),900000);
   });
+  // האם דף זה כבר היה בשליטת SW ברגע הטעינה. חובה לקרוא את זה *לפני* שה-SW
+  // החדש משתלט, ולכן זה נלכד כאן ולא בתוך המאזין.
+  //
+  // בלי ההבחנה הזו, ההתקנה הראשונה גרמה להורדה כפולה: clients.claim() משתלט
+  // על דף שכבר נטען, מה שמפעיל controllerchange, וה-reload הוריד את אותם
+  // 1.1MB בשנייה. נמדד: 2 ניווטים של ה-main frame, 2,202,412 בייטים, וסוג
+  // הניווט הסופי "reload". בהשתלטות ראשונה אין מה לרענן — הדף שכבר בזיכרון
+  // הוא בדיוק מה שה-SW היה מגיש.
+  const _hadController=!!navigator.serviceWorker.controller;
   let _swReloading=false;
   navigator.serviceWorker.addEventListener('controllerchange',()=>{
+    if(!_hadController)return; // השתלטות ראשונה, לא עדכון
     // לא מבצע reload אם המשתמש באמצע login/הרשמה — יחכה לסיום
     if(!_swReloading&&!S._loggingIn&&!S._registering){_swReloading=true;location.reload();}
   });
