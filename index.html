@@ -981,7 +981,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.95';
+const APP_VERSION='4.9.96';
 const APP_BUILD='08-08-2026';
 
 // ─── ANALYTICS ────────────────────────────────────────────────────────────────
@@ -4798,8 +4798,9 @@ async function _createParentConsent(uid,studentName,parentEmail){
     'נדרש אישורך — '+(studentName||'ילדך')+' נרשם/ה ל-Drushe',
     `שלום,\n\n`+
     `${studentName||'ילדכם'} נרשם/ה ל-Drushe — פלטפורמה שבה בני נוער מלמדים ילדים, בפיקוח הורים.\n\n`+
-    `**החשבון לא פעיל עד שתאשרו אותו.** ללא אישורכם, ${studentName||'ילדכם'} לא יוכל/תוכל ליצור קשר עם אף אחד באפליקציה.\n\n`+
+    `**החשבון לא פעיל, ולא יופעל בלי אישורכם.** ללא אישורכם, ${studentName||'ילדכם'} לא יוכל/תוכל ליצור קשר עם אף אחד באפליקציה.\n\n`+
     `לאישור, היכנסו לקישור:\n${link}\n\n`+
+    `לאחר אישורכם, גם צוות Drushe עובר על כל הרשמה לפני שהחשבון נפתח.\n\n`+
     `הקישור אישי ותקף ל-${PARENT_CONSENT_DAYS} ימים.\n\n`+
     `אם לא אתם ההורה, או שאינכם מאשרים — פשוט התעלמו מהמייל. החשבון יישאר חסום.\n\n`+
     `– צוות Drushe`
@@ -5299,6 +5300,22 @@ async function adminRejectBooking(teacherId,bookingId){
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function adminVerifyStudent(uid){
+  // הסכמת ההורה אינה מפעילה את החשבון — היא תנאי מוקדם לאישור שלך. הבדיקה
+  // כאן היא מה שהופך אותה לשער ולא לקישוט: בלעדיה אפשר לאשר תלמיד שההורה שלו
+  // מעולם לא נגע בקישור, וחזרנו למצב שבו ההורה אינו בלולאה.
+  //
+  // זו אזהרה ולא חסימה, כי יש מקרים לגיטימיים — הורה שמאשר טלפונית, או תלמיד
+  // שנרשם לפני שהמנגנון הזה היה קיים.
+  let _consentAt=null;
+  try{_consentAt=(await db.ref('users/'+uid+'/parentConsentAt').get()).val();}catch(_e){}
+  const _nm=(adminAlertStudents.find(s=>s.uid===uid)||adminAllUsers.find(u=>u.uid===uid)||{}).name||'התלמיד/ה';
+  if(_consentAt){
+    if(!await _confirm('✅ ההורה אישר/ה ב-'+new Date(_consentAt).toLocaleString('he-IL')+'\n\nלאשר את '+_nm+'?',
+      {confirmText:'אשר',cancelText:'ביטול'}))return;
+  }else{
+    if(!await _confirm('⚠️ ההורה של '+_nm+' עדיין לא אישר/ה דרך הקישור שנשלח במייל.\n\nלאשר בכל זאת?',
+      {confirmText:'כן, אשר בלי אישור הורה',cancelText:'ביטול',destructive:true}))return;
+  }
   _adminActionInProgress=true;
   try{
     // שלב 1: קרא נתונים קיימים — משתי מקורות: users/ ו-adminAlerts/students/
@@ -5312,7 +5329,9 @@ async function adminVerifyStudent(uid){
     // מיזוג: alertData מספק שם/אימייל/הורה; existing מנצח על כל שדה שכבר קיים
     const baseData={...alertData,...existing};
     // שלב 2: בנה אובייקט מעודכן
-    const updatedUser={...baseData,uid,verified:true,role:'student',rejected:false,verifiedAt:Date.now()};
+    // approvedWithoutParent נרשם כדי שיהיה אפשר לדעת בדיעבד אילו חשבונות
+    // נפתחו בלי שההורה נגע בקישור — כמו verifiedWithoutDoc אצל מורים.
+    const updatedUser={...baseData,uid,verified:true,role:'student',rejected:false,verifiedAt:Date.now(),...(_consentAt?{}:{approvedWithoutParent:true})};
     // שלב 3: כתוב ל-Firebase (set כדי ליצור רשומה מלאה אם לא קיימת)
     await db.ref('users/'+uid).set(updatedUser);
     await db.ref('adminAlerts/students/'+uid).remove().catch(()=>{});
@@ -5393,30 +5412,6 @@ async function adminRejectStudent(uid){
     await db.ref('adminAlerts/students/'+uid).remove().catch(()=>{});
     showFireToast('🚫 הבקשה נדחתה');
     await loadAdminData();renderAdminPanel();
-  }catch(e){showFireToast('❌ '+e.message);}
-}
-async function approveStudent(uid, name){
-  if(!await _confirm('לאשר את התלמיד/ה '+name+'?',{confirmText:'אשר',cancelText:'ביטול'}))return;
-  try{
-    showFireToast('⏳ מאשר...');
-    await db.ref('users/'+uid+'/verified').set(true);
-    await db.ref('users/'+uid+'/rejected').set(false);
-    await db.ref('adminAlerts/students/'+uid).remove();
-    await db.ref('notifications/'+uid).push({
-      type:'accountApproved', from:'Drushe', read:false, createdAt:Date.now(),
-      message:'חשבונך אושר! ברוך הבא ל-Drushe 🎉'
-    });
-    showFireToast('✅ '+name+' אושר/ה');
-    renderAdminPanel();
-  }catch(e){showFireToast('❌ '+e.message);}
-}
-async function rejectStudent(uid, name){
-  if(!await _confirm('לדחות את התלמיד/ה '+name+'?',{confirmText:'דחה',cancelText:'ביטול',destructive:true}))return;
-  try{
-    await db.ref('users/'+uid+'/rejected').set(true);
-    await db.ref('adminAlerts/students/'+uid).remove();
-    showFireToast('🚫 '+name+' נדחה/תה');
-    render();
   }catch(e){showFireToast('❌ '+e.message);}
 }
 async function showFullRegistrationDetails(uid,role){
@@ -5713,6 +5708,7 @@ function adminFilterStudents(){
       <div style="font-size:12px;color:#64748B;direction:ltr;text-align:right">${escapeHtml(u.email||'')}</div>
       ${u.verified===false?'<div style="font-size:11px;color:#F59E0B;font-weight:700;margin-top:4px">⏳ ממתין לאישור</div>':''}
       <div style="display:flex;gap:8px;margin-top:8px">
+        ${(u.verified===false||u._fromAlert)&&(u.role||'student')==='student'?(u.parentConsentAt?`<div style="padding:0 16px 6px;font-size:11px;color:#059669;font-weight:800">✅ הורה אישר · ${new Date(u.parentConsentAt).toLocaleDateString('he-IL')}</div>`:`<div style="padding:0 16px 6px;font-size:11px;color:#B45309;font-weight:800">⏳ ממתין לאישור הורה</div>`):''}
         ${(u.verified===false||u._fromAlert)&&!u.blocked?`<button onclick="adminVerifyStudent('${u.uid}')" style="flex:2;background:#10B981;border:none;color:#fff;border-radius:50px;padding:8px;font-size:12px;font-weight:800;cursor:pointer">${icon("check-circle",14)} אשר</button><button onclick="adminRejectStudent('${u.uid}')" style="flex:1;background:rgba(239,68,68,0.9);border:none;color:#fff;border-radius:50px;padding:8px;font-size:12px;font-weight:800;cursor:pointer">🚫 דחה</button>`:''}
       </div>
     </div>`;
@@ -7560,7 +7556,8 @@ function renderAdminTab(){
         </div>
         <div style="display:flex;gap:8px">
           ${(u.parentEmail||u.parentPhone)?`<button onclick='showWhatsAppDialog("${jsAttrEscape(u.parentPhone||'')}","שלום ${jsAttrEscape(u.parentName||'')}, פנייה מטעם Drushe בעניין ${jsAttrEscape(u.name||'')}.","פניה להורה")' style="flex:1;background:linear-gradient(135deg,#25D366,#128C7E);border:none;color:#fff;border-radius:50px;padding:8px;font-size:11px;font-weight:800;cursor:pointer">${icon("smartphone",14)} פנה להורה</button>`:''}
-          ${(u.verified===false||u._fromAlert)&&!u.blocked?`<button onclick="adminVerifyStudent('${u.uid}')" style="flex:2;background:#10B981;border:none;color:#fff;border-radius:50px;padding:8px;font-size:11px;font-weight:800;cursor:pointer">${icon("check-circle",14)} אשר</button><button onclick="adminRejectStudent('${u.uid}')" style="flex:1;background:rgba(239,68,68,0.9);border:none;color:#fff;border-radius:50px;padding:8px;font-size:11px;font-weight:800;cursor:pointer">🚫 דחה</button>`:''}
+          ${(u.verified===false||u._fromAlert)&&(u.role||'student')==='student'?(u.parentConsentAt?`<div style="padding:0 16px 6px;font-size:11px;color:#059669;font-weight:800">✅ הורה אישר · ${new Date(u.parentConsentAt).toLocaleDateString('he-IL')}</div>`:`<div style="padding:0 16px 6px;font-size:11px;color:#B45309;font-weight:800">⏳ ממתין לאישור הורה</div>`):''}
+        ${(u.verified===false||u._fromAlert)&&!u.blocked?`<button onclick="adminVerifyStudent('${u.uid}')" style="flex:2;background:#10B981;border:none;color:#fff;border-radius:50px;padding:8px;font-size:11px;font-weight:800;cursor:pointer">${icon("check-circle",14)} אשר</button><button onclick="adminRejectStudent('${u.uid}')" style="flex:1;background:rgba(239,68,68,0.9);border:none;color:#fff;border-radius:50px;padding:8px;font-size:11px;font-weight:800;cursor:pointer">🚫 דחה</button>`:''}
           ${!u._fromAlert?(u.blocked?
             `<button onclick="adminUnblockUser('${u.uid}')" style="flex:1;background:#10B981;border:none;color:#fff;border-radius:50px;padding:8px;font-size:11px;font-weight:800;cursor:pointer">${icon("unlock",14)} שחרר חסימה</button>`:
             `<button onclick="adminBlockUser('${u.uid}')" style="flex:1;background:rgba(231,76,60,0.85);border:none;color:#fff;border-radius:50px;padding:8px;font-size:11px;font-weight:800;cursor:pointer">⛔ חסימה</button>`):''}
@@ -12715,7 +12712,7 @@ async function _loadConsentInfo(token){
     if(data.status==='approved'){
       el.innerHTML=`<div style="font-size:44px;margin-bottom:10px">✅</div>
         <p style="font-weight:900;font-size:18px;color:#0F1A1F;margin:0 0 6px">כבר אישרת</p>
-        <p style="color:#64748B;font-size:14px;margin:0">החשבון של ${escapeHtml(data.studentName||'ילדך')} פעיל.</p>`;
+        <p style="color:#64748B;font-size:14px;margin:0;line-height:1.7">האישור שלך ל${escapeHtml(data.studentName||'ילדך')} נרשם.<br>צוות Drushe עובר על ההרשמה ויפתח את החשבון.</p>`;
       return;
     }
     const nm=escapeHtml(data.studentName||'ילדך');
@@ -12748,8 +12745,8 @@ async function _approveConsent(token){
       return;
     }
     if(el)el.innerHTML=`<div style="font-size:52px;margin-bottom:12px">🎉</div>
-      <p style="font-weight:900;font-size:20px;color:#0F1A1F;margin:0 0 8px">אושר!</p>
-      <p style="color:#64748B;font-size:14px;margin:0;line-height:1.7">החשבון של ${escapeHtml(data.studentName||'ילדך')} פעיל עכשיו.<br>אפשר לסגור את הדף.</p>`;
+      <p style="font-weight:900;font-size:20px;color:#0F1A1F;margin:0 0 8px">תודה, האישור נרשם</p>
+      <p style="color:#64748B;font-size:14px;margin:0;line-height:1.7">צוות Drushe עובר על כל הרשמה לפני פתיחת החשבון.<br>${escapeHtml(data.studentName||'ילדך')} יקבל/תקבל הודעה כשהחשבון ייפתח.<br><br>אפשר לסגור את הדף.</p>`;
   }catch(_e){
     if(btn){btn.disabled=false;btn.textContent='✅ אני מאשר/ת';btn.style.opacity='1';}
     showFireToast('❌ שגיאת רשת — נסו שוב');

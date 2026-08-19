@@ -130,7 +130,14 @@ exports.handler = async (event) => {
       return { statusCode: 500, headers, body: JSON.stringify({ error: 'malformed_record' }) };
     }
 
-    await db.ref('users/' + uid + '/verified').set(true);
+    // ההסכמה **לא** מפעילה את החשבון. זו החלטה מכוונת של בעל האפליקציה: הוא
+    // רוצה לראות כל תלמיד לפני שהוא נכנס, ואישור אוטומטי היה מוציא אותו
+    // מהתמונה. לכן ההורה פותח את השער ובעל האפליקציה עובר בו.
+    //
+    // מה שנפתר כאן הוא בכל זאת הפער האמיתי: קודם ההורה לא היה בלולאה בכלל
+    // ולא היה שום תיעוד. עכשיו ההסכמה היא פעולה אקטיבית של מי שמחזיק בתיבת
+    // המייל, היא מתועדת, והיא תנאי מוקדם לאישור — approveStudent מזהיר כשהיא
+    // חסרה. שתי הדרישות מתקיימות: ההורה בלולאה, והשליטה נשארת אצל המנהל.
 
     // תיעוד ההסכמה. זה מה שאפשר יהיה להציג אם יישאלו איך הוכחנו שההורה הסכים,
     // ולכן הוא נשמר בנפרד מהטוקן ולא נמחק איתו.
@@ -145,15 +152,16 @@ exports.handler = async (event) => {
     await db.ref('parentConsentLog/' + uid).push(evidence);
     await ref.update({ approvedAt: admin.database.ServerValue.TIMESTAMP });
 
-    // התראה לילד ולמנהל, באותם צמתים שכל שאר הזרימות משתמשות בהם
-    await db.ref('notifications/' + uid).push({
-      type: 'accountApproved',
-      read: false,
-      createdAt: Date.now(),
-    });
+    // דגל על רשומת המשתמש — כדי שפאנל הניהול יוכל להראות "הורה אישר" בלי
+    // לקרוא את parentConsentLog, ו-approveStudent יוכל לבדוק אותו לפני אישור.
+    await db.ref('users/' + uid + '/parentConsentAt').set(admin.database.ServerValue.TIMESTAMP);
+
+    // ההתראה היא למנהל — הוא זה שצריך לפעול עכשיו. הילד לא מקבל "אושרת",
+    // כי הוא עוד לא אושר.
     await db.ref('adminNotifs').push({
       type: 'parentApproved',
       from: rec.studentName || uid,
+      uid,
       read: false,
       createdAt: Date.now(),
     });
