@@ -981,7 +981,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.97';
+const APP_VERSION='4.9.99';
 const APP_BUILD='08-08-2026';
 
 // ─── ANALYTICS ────────────────────────────────────────────────────────────────
@@ -5029,6 +5029,30 @@ let adminAlertStudents=[],adminAlertPosts=[],adminAlertSubscriptions=[],adminCon
 let adminTab='users';
 let _adminPendingCount=0;
 
+// ─── ספירת הממתינים — הגדרה אחת ─────────────────────────────────────────────
+// היו כאן ארבע נוסחאות שונות בארבעה מקומות, ולכן המספר על כפתור פאנל הניהול
+// השתנה לפי איזה קוד רץ אחרון:
+//   _rebadge      — תלמידים + פוסטים + הודעות + סטוריז
+//   loadAdminData — תלמידים + פוסטים + תשלומים + הודעות   (בלי סטוריז)
+//   showAdminPanel— תלמידים + פוסטים                       (בלי הודעות וסטוריז)
+//   ועוד אחת      — תלמידים + פוסטים + הודעות              (בלי סטוריז ותשלומים)
+// כך נוצר מספר שאי אפשר להסביר: "כתוב 3 ואין שום דבר חדש". זו בדיוק הפרת
+// ה-SSOT שהחוקה אוסרת, והתסמין שלה הוא מונה שאי אפשר לסמוך עליו.
+//
+// עכשיו יש הגדרה אחת, וכל ארבעת המקומות קוראים לה. הפירוט מוצג בפאנל כדי
+// שהמספר לעולם לא יהיה תעלומה — אם כתוב 3, רואים מה שלושת הדברים.
+function _adminPending(){
+  const b={
+    students:adminAlertStudents.length,
+    posts:adminAlertPosts.length,
+    messages:adminContactMessages.filter(m=>!m.read).length,
+    stories:adminAlertStoriesPending,
+    payments:adminAlertSubscriptions.length
+  };
+  b.total=b.students+b.posts+b.messages+b.stories+b.payments;
+  return b;
+}
+
 function _updateAdminBadge(n){
   _adminPendingCount=n;
   const badge=document.getElementById('_adminPendingBadge');
@@ -5042,8 +5066,7 @@ let _adminDataLoading=false; // מנע listener מלאפס נתונים בזמן
 function _startAdminAlertsListener(){
   if(!isAdmin())return;
   const _rebadge=()=>{
-    const n=adminAlertStudents.length+adminAlertPosts.length+adminContactMessages.filter(m=>!m.read).length+adminAlertStoriesPending;
-    _updateAdminBadge(n);
+    _updateAdminBadge(_adminPending().total);
     if(document.getElementById('_adminPanel')&&!_adminActionInProgress)renderAdminPanel();
   };
   db.ref('adminAlerts').on('value',snap=>{
@@ -5082,16 +5105,18 @@ function _startAdminAlertsListener(){
 async function _checkAdminBadge(){
   if(!isAdmin())return;
   try{
+    // ספירה מהירה לפני שפאנל הניהול נטען במלואו. היא ממלאת את אותם משתנים
+    // ש-_adminPending קורא, ולכן היא לא נוסחה חמישית אלא אותה הגדרה.
     const [alertsSnap,msgsSnap]=await Promise.all([db.ref('adminAlerts').get(),db.ref('contactMessages').get()]);
-    let n=0;
     if(alertsSnap.exists()){
-      const st=alertsSnap.child('students');if(st.exists())st.forEach(()=>n++);
-      const po=alertsSnap.child('posts');if(po.exists())po.forEach(()=>n++);
-      const py=alertsSnap.child('payments');
-      if(py.exists())py.forEach(c=>{if(c.val()?.status==='awaitingPayment')n++;});
+      const st=alertsSnap.child('students');adminAlertStudents=[];if(st.exists())st.forEach(c=>adminAlertStudents.push({uid:c.key,...c.val()}));
+      const po=alertsSnap.child('posts');adminAlertPosts=[];if(po.exists())po.forEach(c=>adminAlertPosts.push({id:c.key,...c.val()}));
+      const py=alertsSnap.child('payments');adminAlertSubscriptions=[];
+      if(py.exists())py.forEach(c=>{if(c.val()?.status==='awaitingPayment')adminAlertSubscriptions.push({id:c.key,...c.val()});});
     }
-    if(msgsSnap.exists())msgsSnap.forEach(c=>{if(!c.val()?.read)n++;});
-    _updateAdminBadge(n);
+    adminContactMessages=[];
+    if(msgsSnap.exists())msgsSnap.forEach(c=>adminContactMessages.push({id:c.key,...c.val()}));
+    _updateAdminBadge(_adminPending().total);
   }catch(e){}
 }
 
@@ -7283,7 +7308,7 @@ function showAdminPanel(forceTab=null){
     const upd={};
     unreadMsgs.forEach(m=>{upd[m.id+'/read']=true;m.read=true;});
     db.ref('contactMessages').update(upd).catch(()=>{});
-    _updateAdminBadge(adminAlertStudents.length+adminAlertPosts.length);
+    _updateAdminBadge(_adminPending().total);
   }
   _verifyAdminPin(()=>{loadAdminData().then(()=>{
     if(forceTab){
@@ -7314,7 +7339,7 @@ async function adminSwitchTab(id){
       const upd={};
       unreadMsgs.forEach(m=>{upd[m.id+'/read']=true;m.read=true;});
       db.ref('contactMessages').update(upd).catch(()=>{});
-      _updateAdminBadge(adminAlertStudents.length+adminAlertPosts.length+adminContactMessages.filter(m=>!m.read).length);
+      _updateAdminBadge(_adminPending().total);
     }
   }
   if(id==='posts'){
@@ -7433,6 +7458,24 @@ function renderAdminPanel(){
           <div style="font-size:9px;color:rgba(255,255,255,.6);font-weight:700;margin-top:2px">הכנסות החודש</div>
         </div>
       </div>
+      ${(()=>{
+        // פירוט התג האדום. בלעדיו המספר על כפתור פאנל הניהול הוא הצהרה בלי
+        // הסבר — "כתוב 3 ואין שום דבר חדש" — ואי אפשר לדעת אם הוא אמיתי או
+        // שריד. כאן רואים בדיוק ממה הוא מורכב, וכל שורה מובילה ללשונית שלה.
+        const b=_adminPending();
+        if(!b.total)return '';
+        const rows=[
+          [b.students,'תלמידים ממתינים','students'],
+          [b.posts,'פוסטים ממתינים','posts'],
+          [b.stories,'סטוריז ממתינים','stories'],
+          [b.payments,'תשלומי מנוי לאימות','subscriptions'],
+          [b.messages,'הודעות שלא נקראו','messages'],
+        ].filter(r=>r[0]>0);
+        return `<div style="margin-top:10px;background:rgba(15,26,31,0.35);border-radius:12px;padding:10px 12px;position:relative;z-index:2">
+          <div style="font-size:11px;color:rgba(255,255,255,.65);font-weight:800;margin-bottom:6px">התג האדום (${b.total}) מורכב מ:</div>
+          ${rows.map(([n,lbl,tab])=>`<div onclick="adminSwitchTab('${tab}')" style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;font-size:12px;font-weight:700;color:#fff;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.08)"><span>${lbl}</span><span style="background:rgba(239,68,68,.85);border-radius:50px;padding:1px 9px;font-size:11px;font-weight:900">${n}</span></div>`).join('')}
+        </div>`;
+      })()}
       ${totalPending>0?`<div onclick="adminTab='teachers';renderAdminPanel()" style="margin-top:10px;background:rgba(239,68,68,0.85);border-radius:12px;padding:10px 14px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:8px;position:relative;z-index:2">${icon("bell",14)} <span>${totalPending} מורים ממתינים לטיפול – לחץ</span></div>`:''}
       ${_adminCommunityOrphans.length>0?`<div onclick="adminTab='students';renderAdminPanel()" style="margin-top:8px;background:rgba(239,68,68,0.75);border-radius:12px;padding:10px 14px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:8px;position:relative;z-index:2">${icon("alert-triangle",14)} <span>${_adminCommunityOrphans.length} משתמשים פרסמו בקהילה ללא אישור — לחץ לטיפול</span></div>`:''}
       ${adminContactMessages.filter(m=>!m.read).length>0?`<div onclick="adminSwitchTab('messages')" style="margin-top:8px;background:rgba(6,182,212,0.9);border-radius:12px;padding:10px 14px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:8px;position:relative;z-index:2">${icon("chat",14)} <span>${adminContactMessages.filter(m=>!m.read).length} הודעות חדשות מהאפליקציה — לחץ לצפייה</span></div>`:''}
@@ -12903,9 +12946,30 @@ function render(){
   const _discoverScroller=document.getElementById('_discoverScroller');
   const _discoverPrevScroll=_discoverScroller?_discoverScroller.scrollTop:0;
 
+  // שמירת גלילת הדף עצמו — לא רק של פיד הרילס.
+  //
+  // render() בונה מחדש את כל ה-innerHTML, והדפדפן מאפס את הגלילה לראש. עד
+  // כה זה שוחזר רק ב-discover, ולכן בכל שאר המסכים הדף "קפץ" חזרה למעלה.
+  //
+  // זה מה שגרם לקפיצה שנייה-שתיים אחרי הכניסה: חלון ההתייצבות
+  // (_initLoadUntil) מבטיח רינדור אחד בדיוק 1.8 שניות אחרי go('home'), וזה
+  // בדיוק הזמן שבו המשתמש כבר התחיל לגלול. איחוד הרינדורים לאחד הפחית את
+  // מספר הקפיצות אבל לא ביטל אותן — כי הבעיה מעולם לא הייתה *כמה* פעמים
+  // מרנדרים, אלא שכל רינדור מאבד את מיקום הגלילה.
+  //
+  // משחזרים רק כשנשארים באותו מסך. ניווט למסך חדש *צריך* להתחיל מלמעלה.
+  const _prevScreen=_lastRenderedScreen;
+  const _prevPageScroll=window.scrollY||document.documentElement.scrollTop||0;
+
   const fn=SCREENS[S.screen]||Home;
   // הרענון נעשה עכשיו במשיכה למטה (pull-to-refresh) במקום כפתור צף.
   document.getElementById("app").innerHTML=fn()+SharePanel()
+
+  if(_prevScreen===S.screen&&_prevPageScroll>0){
+    // אחרי החלפת innerHTML הגובה נקבע רק בפריים הבא; שחזור מיידי היה נקטע.
+    requestAnimationFrame(()=>window.scrollTo(0,_prevPageScroll));
+  }
+  _lastRenderedScreen=S.screen;
 
   if(S.screen==='discover'){
     const _ds=document.getElementById('_discoverScroller');
@@ -12948,6 +13012,9 @@ let _renderSoonT=null;
 // פעם שנייה. עד _initLoadUntil אנחנו דוחים כל renderSoon לאותה נקודה בזמן —
 // כך כל גל הטעינה הראשוני מתאחד לרינדור אחד בלבד.
 let _initLoadUntil=0;
+// המסך שרונדר לאחרונה — משמש לזהות אם הרינדור הנוכחי הוא באותו מסך
+// (ואז משחזרים גלילה) או ניווט למסך חדש (ואז מתחילים מלמעלה).
+let _lastRenderedScreen=null;
 function renderSoon(){
   clearTimeout(_renderSoonT);
   const now=Date.now();
