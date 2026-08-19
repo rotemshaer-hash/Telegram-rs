@@ -981,7 +981,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.98';
+const APP_VERSION='4.9.99';
 const APP_BUILD='08-08-2026';
 
 // ─── ANALYTICS ────────────────────────────────────────────────────────────────
@@ -12946,9 +12946,30 @@ function render(){
   const _discoverScroller=document.getElementById('_discoverScroller');
   const _discoverPrevScroll=_discoverScroller?_discoverScroller.scrollTop:0;
 
+  // שמירת גלילת הדף עצמו — לא רק של פיד הרילס.
+  //
+  // render() בונה מחדש את כל ה-innerHTML, והדפדפן מאפס את הגלילה לראש. עד
+  // כה זה שוחזר רק ב-discover, ולכן בכל שאר המסכים הדף "קפץ" חזרה למעלה.
+  //
+  // זה מה שגרם לקפיצה שנייה-שתיים אחרי הכניסה: חלון ההתייצבות
+  // (_initLoadUntil) מבטיח רינדור אחד בדיוק 1.8 שניות אחרי go('home'), וזה
+  // בדיוק הזמן שבו המשתמש כבר התחיל לגלול. איחוד הרינדורים לאחד הפחית את
+  // מספר הקפיצות אבל לא ביטל אותן — כי הבעיה מעולם לא הייתה *כמה* פעמים
+  // מרנדרים, אלא שכל רינדור מאבד את מיקום הגלילה.
+  //
+  // משחזרים רק כשנשארים באותו מסך. ניווט למסך חדש *צריך* להתחיל מלמעלה.
+  const _prevScreen=_lastRenderedScreen;
+  const _prevPageScroll=window.scrollY||document.documentElement.scrollTop||0;
+
   const fn=SCREENS[S.screen]||Home;
   // הרענון נעשה עכשיו במשיכה למטה (pull-to-refresh) במקום כפתור צף.
   document.getElementById("app").innerHTML=fn()+SharePanel()
+
+  if(_prevScreen===S.screen&&_prevPageScroll>0){
+    // אחרי החלפת innerHTML הגובה נקבע רק בפריים הבא; שחזור מיידי היה נקטע.
+    requestAnimationFrame(()=>window.scrollTo(0,_prevPageScroll));
+  }
+  _lastRenderedScreen=S.screen;
 
   if(S.screen==='discover'){
     const _ds=document.getElementById('_discoverScroller');
@@ -12991,6 +13012,9 @@ let _renderSoonT=null;
 // פעם שנייה. עד _initLoadUntil אנחנו דוחים כל renderSoon לאותה נקודה בזמן —
 // כך כל גל הטעינה הראשוני מתאחד לרינדור אחד בלבד.
 let _initLoadUntil=0;
+// המסך שרונדר לאחרונה — משמש לזהות אם הרינדור הנוכחי הוא באותו מסך
+// (ואז משחזרים גלילה) או ניווט למסך חדש (ואז מתחילים מלמעלה).
+let _lastRenderedScreen=null;
 function renderSoon(){
   clearTimeout(_renderSoonT);
   const now=Date.now();
