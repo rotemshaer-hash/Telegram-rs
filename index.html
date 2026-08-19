@@ -981,7 +981,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.94';
+const APP_VERSION='4.9.95';
 const APP_BUILD='08-08-2026';
 
 // ─── ANALYTICS ────────────────────────────────────────────────────────────────
@@ -1165,7 +1165,7 @@ window.addEventListener('popstate',()=>{
 // כשגוללים בראש העמוד, במסכים שתומכים ברענון (לא צ'אט/דיאלוגים/מסכי הרשמה).
 (function(){
   const TRIGGER=95, DAMP=0.5, MAXPULL=150;
-  const NO_PTR=new Set(['splash','login','register','safety','parentReg','teacherReg','teacherPending','studentPending','regSuccess','parentPortal','weeklySchedule','discover','chat','emailVerify','subscribe']);
+  const NO_PTR=new Set(['splash','login','register','safety','parentReg','teacherReg','teacherPending','studentPending','regSuccess','parentPortal','parentConsent','weeklySchedule','discover','chat','emailVerify','subscribe']);
   let startY=0, active=false, pulled=0, refreshing=false, _ind=null;
   const topScroll=()=>window.scrollY||document.documentElement.scrollTop||document.body.scrollTop||0;
   // רק דיאלוג *גלוי* חוסם משיכה-לרענון — לא אלמנטים תמידיים מוסתרים כמו
@@ -4770,6 +4770,54 @@ async function notifyAdmin(notif){
   try{
     await db.ref('adminNotifs').push({...notif,read:false,createdAt:notif.createdAt||Date.now()});
   }catch(e){console.warn('[notifyAdmin]',e);}
+}
+
+// ─── אישור הורה ─────────────────────────────────────────────────────────────
+// הטוקן הוא אמצעי הזיהוי היחיד של ההורה — אין לו חשבון ואין לו סיסמה — ולכן
+// הוא נגזר מ-crypto.getRandomValues ולא מ-Math.random. 32 בייטים אקראיים.
+// אסור שיהיה ניתן לגזירה מה-uid או מכל דבר אחר שהילד רואה.
+const PARENT_CONSENT_DAYS=14;
+function _genConsentToken(){
+  const a=new Uint8Array(32);
+  crypto.getRandomValues(a);
+  return Array.from(a,b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+async function _createParentConsent(uid,studentName,parentEmail){
+  const token=_genConsentToken();
+  await db.ref('parentConsent/'+token).set({
+    uid,
+    studentName:studentName||'',
+    parentEmail,
+    status:'pending',
+    createdAt:Date.now(),
+    expiresAt:Date.now()+PARENT_CONSENT_DAYS*24*3600*1000
+  });
+  const link=location.origin+'/?consent='+token;
+  await sendEmail(parentEmail,
+    'נדרש אישורך — '+(studentName||'ילדך')+' נרשם/ה ל-Drushe',
+    `שלום,\n\n`+
+    `${studentName||'ילדכם'} נרשם/ה ל-Drushe — פלטפורמה שבה בני נוער מלמדים ילדים, בפיקוח הורים.\n\n`+
+    `**החשבון לא פעיל עד שתאשרו אותו.** ללא אישורכם, ${studentName||'ילדכם'} לא יוכל/תוכל ליצור קשר עם אף אחד באפליקציה.\n\n`+
+    `לאישור, היכנסו לקישור:\n${link}\n\n`+
+    `הקישור אישי ותקף ל-${PARENT_CONSENT_DAYS} ימים.\n\n`+
+    `אם לא אתם ההורה, או שאינכם מאשרים — פשוט התעלמו מהמייל. החשבון יישאר חסום.\n\n`+
+    `– צוות Drushe`
+  );
+  return token;
+}
+
+// קריאה לשרת. רק הוא יכול להציב verified=true — החוק מתיר את זה למנהל בלבד,
+// והפונקציה משתמשת ב-firebase-admin שעוקף חוקים. הלקוח כאן מחזיק רק את הטוקן.
+async function _consentApi(token,action){
+  const res=await fetch('/api/parent-consent',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({token,action})
+  });
+  let data={};
+  try{data=await res.json();}catch(_e){}
+  return {ok:res.ok,status:res.status,data};
 }
 
 async function sendWelcomeEmail(toEmail,userName,role){
@@ -12634,6 +12682,80 @@ function WeeklySchedule(){
   </div>`;
 }
 
+// ─── מסך אישור הורה ─────────────────────────────────────────────────────────
+// ההורה מגיע לכאן מקישור במייל, בלי חשבון ובלי התחברות. המסך מציג את שם הילד
+// כדי שיוכל לוודא שהוא מאשר את הילד הנכון, ומנסח במפורש מה הוא מאשר — כי
+// הסכמה שלא ברור מה היא כוללת אינה הסכמה.
+function ParentConsent(){
+  return `<div class="screen" style="background:linear-gradient(165deg,#ECFEFF 0%,#F0F9FF 55%,#EEF2FF 100%);min-height:100dvh;padding:0 0 40px;direction:rtl">
+    <div style="background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);padding:28px 20px 24px;text-align:center;color:#fff">
+      <div style="font-size:30px;margin-bottom:6px">👨‍👩‍👧</div>
+      <h1 style="font-size:21px;font-weight:900;margin:0">אישור הורה</h1>
+      <p style="font-size:13px;opacity:.85;margin:6px 0 0">Drushe</p>
+    </div>
+    <div style="padding:22px 18px;max-width:460px;margin:0 auto">
+      <div id="_pcContent" style="text-align:center;padding:32px 12px">
+        <p style="color:#64748B;font-size:14px">טוען...</p>
+      </div>
+    </div>
+  </div>`;
+}
+
+async function _loadConsentInfo(token){
+  const el=document.getElementById('_pcContent');
+  if(!el)return;
+  const fail=(t,s)=>{el.innerHTML=`<div style="font-size:34px;margin-bottom:10px">${t}</div><p style="color:#EF4444;font-weight:800;font-size:16px">${s}</p>`;};
+  try{
+    const {ok,status,data}=await _consentApi(token,'info');
+    if(!ok){
+      if(status===404)return fail('🔗','קישור לא תקף');
+      if(status===410)return fail('⏳','הקישור פג תוקף');
+      return fail('⚠️','שגיאה בטעינה');
+    }
+    if(data.status==='approved'){
+      el.innerHTML=`<div style="font-size:44px;margin-bottom:10px">✅</div>
+        <p style="font-weight:900;font-size:18px;color:#0F1A1F;margin:0 0 6px">כבר אישרת</p>
+        <p style="color:#64748B;font-size:14px;margin:0">החשבון של ${escapeHtml(data.studentName||'ילדך')} פעיל.</p>`;
+      return;
+    }
+    const nm=escapeHtml(data.studentName||'ילדך');
+    el.innerHTML=`
+      <div style="background:#fff;border-radius:20px;padding:22px 18px;text-align:right;box-shadow:0 6px 24px rgba(15,26,31,.07)">
+        <p style="font-size:15px;color:#0F1A1F;margin:0 0 14px;line-height:1.7"><b>${nm}</b> נרשם/ה ל-Drushe וממתין/ה לאישורך.</p>
+        <div style="background:rgba(20,184,166,.07);border-radius:14px;padding:14px;margin-bottom:14px">
+          <p style="font-size:13px;color:#334155;margin:0 0 8px;font-weight:800">באישור זה אתם מאשרים ש:</p>
+          <ul style="margin:0;padding-right:18px;font-size:13px;color:#475569;line-height:1.9">
+            <li>אתם ההורה או האפוטרופוס של ${nm}</li>
+            <li>אתם מאשרים לו/לה להשתמש ב-Drushe וליצור קשר עם מורים דרך האפליקציה</li>
+            <li>קראתם את <a href="/privacy.html" target="_blank" style="color:#0e7a72">מדיניות הפרטיות</a> ואת <a href="/terms.html" target="_blank" style="color:#0e7a72">תנאי השימוש</a></li>
+          </ul>
+        </div>
+        <p style="font-size:12px;color:#94A3B8;margin:0 0 16px;line-height:1.6">אם אינכם ההורה, או שאינכם מאשרים — סגרו את הדף. החשבון יישאר חסום.</p>
+        <button id="_pcBtn" onclick="_approveConsent('${token}')" style="width:100%;background:linear-gradient(135deg,#0F766E,#0E7490);border:none;color:#fff;border-radius:16px;padding:16px;font-size:16px;font-weight:900;cursor:pointer">✅ אני מאשר/ת</button>
+      </div>`;
+  }catch(_e){fail('⚠️','שגיאת רשת — נסו שוב');}
+}
+
+async function _approveConsent(token){
+  const btn=document.getElementById('_pcBtn');
+  if(btn){btn.disabled=true;btn.textContent='⏳ מאשר...';btn.style.opacity='.7';}
+  const el=document.getElementById('_pcContent');
+  try{
+    const {ok,status,data}=await _consentApi(token,'approve');
+    if(!ok&&status!==409){
+      if(btn){btn.disabled=false;btn.textContent='✅ אני מאשר/ת';btn.style.opacity='1';}
+      showFireToast(status===410?'❌ הקישור פג תוקף':'❌ האישור נכשל — נסו שוב');
+      return;
+    }
+    if(el)el.innerHTML=`<div style="font-size:52px;margin-bottom:12px">🎉</div>
+      <p style="font-weight:900;font-size:20px;color:#0F1A1F;margin:0 0 8px">אושר!</p>
+      <p style="color:#64748B;font-size:14px;margin:0;line-height:1.7">החשבון של ${escapeHtml(data.studentName||'ילדך')} פעיל עכשיו.<br>אפשר לסגור את הדף.</p>`;
+  }catch(_e){
+    if(btn){btn.disabled=false;btn.textContent='✅ אני מאשר/ת';btn.style.opacity='1';}
+    showFireToast('❌ שגיאת רשת — נסו שוב');
+  }
+}
+
 function ParentPortal(){
   return `
     <div style="min-height:100vh;background:linear-gradient(165deg,#ECFEFF 0%,#F0F9FF 50%,#EEF2FF 100%);direction:rtl;padding:0 0 48px">
@@ -12719,7 +12841,7 @@ function EmailVerify(){
   </div>`;
 }
 
-const SCREENS={splash:Splash,safety:Safety,parentReg:ParentReg,register:Register,login:Login,regSuccess:RegSuccess,emailVerify:EmailVerify,teacherSetup:TeacherSetup,teacherPending:TeacherPending,studentPending:StudentPending,home:Home,nearby:Nearby,teacher:Teacher,booking:Booking,messages:Messages,chat:Chat,profile:Profile,community:Community,leaderboard:Leaderboard,about:About,parentPortal:ParentPortal,weeklySchedule:WeeklySchedule,subscribe:Subscribe,discover:Discover,jobs:Jobs,aiAssistant:AIAssistant,support:Support};
+const SCREENS={splash:Splash,safety:Safety,parentReg:ParentReg,register:Register,login:Login,regSuccess:RegSuccess,emailVerify:EmailVerify,teacherSetup:TeacherSetup,teacherPending:TeacherPending,studentPending:StudentPending,home:Home,nearby:Nearby,teacher:Teacher,booking:Booking,messages:Messages,chat:Chat,profile:Profile,community:Community,leaderboard:Leaderboard,about:About,parentPortal:ParentPortal,parentConsent:ParentConsent,weeklySchedule:WeeklySchedule,subscribe:Subscribe,discover:Discover,jobs:Jobs,aiAssistant:AIAssistant,support:Support};
 
 function _hs(inp){
   S.search=inp.value;
@@ -12756,13 +12878,18 @@ function _hs(inp){
 
 function render(){
   // Guard: תלמיד שלא אושר לא יכול לגשת למסכי האפליקציה
-  const _openScreens=['splash','login','register','safety','parentReg','teacherReg','emailVerify','studentPending'];
+  //
+  // parentConsent ברשימה במכוון: ההורה פותח את קישור האישור בדרך כלל על אותו
+  // מכשיר שבו הילד כבר מחובר — הטלפון המשפחתי. בלי זה השומר היה חוטף אותו
+  // ל-studentPending בדיוק במסך שנועד לשחרר את החסימה, והזרימה הייתה נשברת
+  // במקרה הנפוץ ביותר שלה.
+  const _openScreens=['splash','login','register','safety','parentReg','teacherReg','emailVerify','studentPending','parentConsent'];
   if(currentUser&&currentUserData?.role==='student'&&currentUserData?.verified!==true&&!isAdmin()&&!_openScreens.includes(S.screen)){
     S.screen='studentPending';
   }
 
   // Guard: מורה שסיים את ימי הניסיון (TRIAL_DAYS) בלי מנוי פעיל — חסום עד לתשלום מנוי
-  const _subOpenScreens=['splash','login','register','safety','parentReg','teacherReg','teacherSetup','teacherPending','emailVerify','subscribe'];
+  const _subOpenScreens=['splash','login','register','safety','parentReg','teacherReg','teacherSetup','teacherPending','emailVerify','subscribe','parentConsent'];
   if(teacherNeedsSubscription()&&!isAdmin()&&!_subOpenScreens.includes(S.screen)){
     S.screen='subscribe';
   }
@@ -12836,6 +12963,10 @@ render();
 (function(){
   const pvToken=new URLSearchParams(window.location.search).get('parentView');
   if(pvToken){S.parentViewToken=pvToken;go('parentPortal');setTimeout(()=>_loadParentPortalData(pvToken),200);}
+  // אישור הורה: ?consent=<token>. ההורה אינו מחובר ואין לו חשבון — הטוקן הוא
+  // כל מה שיש לו, ולכן המסך הזה חייב לעבוד לגמרי בלי התחברות.
+  const _cToken=new URLSearchParams(window.location.search).get('consent');
+  if(_cToken){S.consentToken=_cToken;go('parentConsent');setTimeout(()=>_loadConsentInfo(_cToken),200);}
   // deep link לפרופיל מורה: ?t=teacherId
   const _tid=new URLSearchParams(window.location.search).get('t');
   if(_tid){
@@ -13530,6 +13661,20 @@ async function firebaseRegister(email,password,userData){
           }
         }
       }
+      // ── אישור הורה: יצירת טוקן ושליחת קישור ────────────────────────────────
+      // רק לתלמידים. מורים עוברים אימות גיל ומסמך מול המנהל, לא דרך הורה.
+      if((_userRecord.role||'student')==='student'&&_userRecord.parentEmail){
+        try{
+          await _createParentConsent(cred.user.uid,_userRecord.name||'',_userRecord.parentEmail);
+        }catch(pcErr){
+          // כישלון כאן משאיר את החשבון ממתין לאישור המנהל — כלומר נופל אחורה
+          // להתנהגות הקודמת, ולא פותח חשבון בלי הסכמה. אבל הוא לא נבלע:
+          // בלי התראה, המשפחה הייתה תקועה בלי שאיש יידע למה.
+          console.warn('[parentConsent] failed:',pcErr);
+          notifyAdmin({type:'registrationFailed',email,error:'parentConsent: '+(pcErr?.message||'שגיאה')}).catch(()=>{});
+        }
+      }
+
       // ── Referral: generate & store refCode ──────────────────────────────────
       try{
         const refCode=_genRefCode(userData.name,cred.user.uid);

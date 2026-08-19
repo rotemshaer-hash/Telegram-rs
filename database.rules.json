@@ -129,6 +129,15 @@
     "parentTokens": {
       "$token": { ".read": true, ".write": "auth.token.email == 'rotemshaer@gmail.com'" }
     },
+    "parentConsent": {
+      "$token": {
+        ".write": "auth != null && !data.exists() && newData.child('uid').val() == auth.uid && newData.hasChildren(['uid', 'parentEmail', 'studentName', 'createdAt', 'expiresAt']) && newData.child('status').val() == 'pending'",
+        ".validate": "newData.child('createdAt').isNumber() && newData.child('expiresAt').isNumber()"
+      }
+    },
+    "parentConsentLog": {
+      "$uid": { ".read": "auth != null && auth.uid == $uid" }
+    },
     "fcmTokens": {
       ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'",
       ".indexOn": ["uid"],

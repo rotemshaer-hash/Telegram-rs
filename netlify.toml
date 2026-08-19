@@ -16,6 +16,11 @@
   to = "/.netlify/functions/send-push"
   status = 200
 
+[[redirects]]
+  from = "/api/parent-consent"
+  to = "/.netlify/functions/parent-consent"
+  status = 200
+
 # מדיניות ה-cache מוגדרת כאן בלבד. קודם היא הופיעה גם בקובץ _headers, באותה
 # נוסח בדיוק — שני מקורות אמת לאותו כלל, בלי דרך לדעת מהקוד מי גובר. _headers
 # נמחק.
