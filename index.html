@@ -981,7 +981,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.9.93';
+const APP_VERSION='4.9.94';
 const APP_BUILD='08-08-2026';
 
 // ─── ANALYTICS ────────────────────────────────────────────────────────────────
@@ -4304,6 +4304,37 @@ function containsProfanity(text){
   return PROFANITY_PATTERNS.some(rx=>rx.test(text));
 }
 
+// ─── זיהוי העברת השיחה מחוץ לפלטפורמה (SSOT — רשימה אחת) ────────────────────
+// ההודעות כאן עוברות בין נער בן 14–18 לילד צעיר ממנו. הרגע שבו השיחה עוברת
+// לערוץ פרטי מחוץ לאפליקציה הוא הרגע שבו הפיקוח נגמר — אין יותר תיעוד, אין
+// דיווח, ואין מה להראות להורה. זה גם הצעד הראשון המוכר בכל דפוס טיפוח.
+//
+// המדיניות כאן היא **לסמן, לא לחסום**, משתי סיבות: חסימה תדחוף בדיוק לאותו
+// מקום שממנו רוצים להימנע (״תשלח לי בוואטסאפ, פה זה לא עובר״), ויש שימושים
+// לגיטימיים לגמרי — מורה ששולח קישור לתרגיל. הסימון נותן למפעיל את מה שאין
+// לו היום: לדעת שזה קרה.
+const CONTACT_PATTERNS=[
+  // טלפון ישראלי: 05X-XXXXXXX, 0X-XXXXXXX, ‎+972. דורש מבנה סביר כדי לא
+  // לתפוס מחירים, שעות שיעור או תאריכים.
+  {kind:'טלפון', rx:/(?:\+972|\b0)\s?\d{1,2}[-.\s]?\d{3}[-.\s]?\d{4}\b/},
+  // כתובות אינטרנט
+  {kind:'קישור', rx:/(?:https?:\/\/|\bwww\.)|\b[a-z0-9-]+\.(?:com|co\.il|net|org|me|ly|gg|io)\b/i},
+  // שמות משתמש ברשתות
+  {kind:'שם משתמש', rx:/(?:^|\s)@[a-z0-9._]{3,}/i},
+  // אזכור מפורש של פלטפורמה חיצונית, עברית ואנגלית
+  // התחיליות בעברית (ב/ל/ה/ו/מ/כ/ש) נדבקות למילה — "בוואטסאפ", "בטלגרם" —
+  // ולכן lookbehind שחוסם כל אות עברית היה מפספס בדיוק את הניסוח הטבעי.
+  {kind:'רשת חיצונית', rx:/(?<![א-ת])[בלהומכש]?(?:וואטסאפ|ואטסאפ|אינסטגרם|אינסטה|טיקטוק|סנאפ(?:צ'אט)?|טלגרם|דיסקורד)(?![א-ת])/},
+  {kind:'רשת חיצונית', rx:/\b(?:whats\s?app|instagram|insta|tiktok|snap\s?chat|telegram|discord)\b/i},
+];
+function detectContactSharing(text){
+  if(!text)return [];
+  return [...new Set(CONTACT_PATTERNS.filter(p=>p.rx.test(text)).map(p=>p.kind))];
+}
+// סימון פעם אחת לכל שיחה בכל הפעלה — מספיק כדי שהמפעיל יידע, בלי להציף אותו
+// בהתראה על כל הודעה בשרשור אחד.
+const _contactFlagged=new Set();
+
 async function sendChatMessage(otherUid,otherName){
   if(!currentUser){showFireToast('❌ לא מחובר');return;}
   // מונע יצירת רשומת שיחה עם מזהה חסר (userChats/<uid>/undefined) שגרמה בעבר
@@ -4317,6 +4348,7 @@ async function sendChatMessage(otherUid,otherName){
   if(!text || text.trim().length === 0) return;
   if(text.length > 2000){ showFireToast('❌ הודעה ארוכה מדי (מקסימום 2000 תווים)'); return; }
   if(containsProfanity(text)){ showFireToast('❌ ההודעה מכילה שפה לא הולמת. נסה לנסח מחדש בבקשה.'); return; }
+  const _contactKinds=detectContactSharing(text);
   _lastMsgTime=now;sessionStorage.setItem('_lmt',now);
   inp.value='';
   inp.focus();
@@ -4343,6 +4375,22 @@ async function sendChatMessage(otherUid,otherName){
     // מדד תגובה — אם המורה שולח הודעה, תעד תגובה ראשונה
     if(currentUserData?.role==='teacher'){
       recordFirstReply(currentUser.uid, otherUid).catch(()=>{});
+    }
+    // ההודעה נשלחת בכל מקרה — הסימון קורה אחריה ולא במקומה
+    if(_contactKinds.length&&!_contactFlagged.has(chatId)){
+      _contactFlagged.add(chatId);
+      notifyAdmin({
+        type:'contactShared',
+        kinds:_contactKinds.join(', '),
+        chatId,
+        from:currentUserData?.name||currentUser.email,
+        fromUid:currentUser.uid,
+        toUid:otherUid,
+        toName:otherName||'',
+        excerpt:text.substring(0,200)
+      }).catch(()=>{});
+      // אזהרה רכה לשולח. לא "אסור" — הסבר קצר למה זה לא בטוח, בניסוח שילד מבין.
+      setTimeout(()=>showFireToast('⚠️ שיתוף טלפון או קישור אישי אינו בטוח — עדיף להישאר כאן'),600);
     }
     // עדכון last message ב-conversations
     const last={
@@ -5407,11 +5455,27 @@ async function adminApproveTeacher(uid){
 }
 
 async function adminVerifyAge(uid){
+  // אימות גיל הוא השער היחיד שעומד בין מורה לבין ילדים: adminApproveTeacher
+  // מסרב לאשר מורה שהסטטוס שלו אינו 'verified', וזו הפונקציה שמציבה אותו.
+  //
+  // הכפתור בממשק מופיע לפי קיום *גיל* בלבד, לא לפי קיום *מסמך*. כלומר אפשר
+  // היה להגיע לכאן ולאמת מורה שמעולם לא העלה תעודה — בלחיצה אחת, בלי שדבר
+  // ירמז שמשהו חסר. הבדיקה כאן הופכת את זה למעשה מודע במקום לתקלה.
+  const t=adminAllTeachers.find(x=>x.uid===uid);
+  const hasDoc=!!(t?._idPhoto||t?.ageVerification?.idPhoto);
+  if(!hasDoc){
+    if(!await _confirm(
+      'לא הועלה מסמך זהות עבור המורה הזה.\n\nאימות גיל הוא מה שמאפשר לאשר מורה ולחשוף אותו לילדים. לאשר בכל זאת?',
+      {confirmText:'כן, אמת בלי מסמך',cancelText:'ביטול',destructive:true}
+    ))return;
+  }
   try{
     await db.ref('teachers/'+uid+'/ageVerification/status').set('verified');
     await db.ref('teachers/'+uid+'/ageVerification/verifiedAt').set(Date.now());
     await db.ref('teachers/'+uid+'/ageVerification/verifiedBy').set(currentUser?.uid||'admin');
-    showFireToast('✅ גיל וזהות אומתו!');
+    // נרשם כדי שיהיה אפשר לדעת בדיעבד אילו אימותים נעשו בלי מסמך
+    await db.ref('teachers/'+uid+'/ageVerification/verifiedWithoutDoc').set(!hasDoc);
+    showFireToast(hasDoc?'✅ גיל וזהות אומתו!':'⚠️ אומת ללא מסמך');
     await loadAdminData();renderAdminPanel();
   }catch(e){showFireToast('❌ '+e.message);}
 }
@@ -6438,21 +6502,34 @@ async function submitReport(targetType,targetId,targetName){
       status:'open',
       createdAt:Date.now()
     });
-    try{
-      const usersSnap=await db.ref('users').get();
-      if(usersSnap.exists()){
-        usersSnap.forEach(u=>{
-          if(ADMIN_EMAILS.includes(u.val().email?.toLowerCase())){
-            db.ref('notifications/'+u.key).push({
-              type:'newReport',
-              from:currentUserData?.name||currentUser.email,
-              targetName,reasonLabel,
-              read:false,createdAt:Date.now()
-            });
-          }
-        });
-      }
-    }catch(e){}
+    // ההתראה למנהל עברה ל-notifyAdmin.
+    //
+    // קודם היא ניסתה db.ref('users').get() כדי לאתר מי מהמשתמשים הוא מנהל.
+    // הצומת users קריא לבעלים בלבד, ולכן הקריאה נכשלה ב-PERMISSION_DENIED לכל
+    // מדווח שאינו המנהל עצמו — כלומר לכל מדווח אמיתי. הכישלון נבלע ב-catch
+    // ריק, והמסך הציג "✅ הדיווח נשלח". הדיווח אכן נכתב ל-reports, אבל אף
+    // התראה לא נשלחה: הוא נראה רק אם המנהל פותח את פאנל הניהול מיוזמתו.
+    //
+    // באפליקציה שבה ילד מדווח על מבוגר, "יטופל תוך 24 שעות" בממשק מול התראה
+    // שלא נשלחת הוא הפער החמור ביותר שאפשר להיות בו.
+    //
+    // adminNotifs הוא הצומת שכל שאר הזרימות כבר משתמשות בו, יש לו מאזין
+    // child_added בזמן אמת אצל המנהל, וכתיבה אליו מותרת לכל משתמש מחובר —
+    // בדיוק כדי שלא יידרש איתור UID של מנהל.
+    await notifyAdmin({
+      type:'newReport',
+      from:currentUserData?.name||currentUser.email,
+      targetName,targetType,reasonLabel,description:desc
+    });
+    // מייל, כמו בכל זרימה אחרת שדורשת טיפול — דיווח לא אמור לחכות לפתיחת האפליקציה
+    sendAdminEmail(
+      `🚩 דיווח חדש על ${targetName||targetType}`,
+      `סיבה: ${reasonLabel||reasonId}\n`+
+      `מדווח/ת: ${currentUserData?.name||currentUser.email}\n`+
+      `סוג: ${targetType}\n\n`+
+      `${desc||'(ללא תיאור)'}\n\n`+
+      `לטיפול: פאנל ניהול ← דיווחים`
+    ).catch(()=>{});
     showFireToast('✅ הדיווח נשלח!');
     document.querySelector('._repDlg')?.parentElement?.remove();
   }catch(e){showFireToast('❌ '+e.message);}
