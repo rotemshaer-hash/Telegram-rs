@@ -981,7 +981,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.10.3';
+const APP_VERSION='4.10.4';
 const APP_BUILD='08-08-2026';
 
 // ─── כתובת בסיס לקריאות שרת ──────────────────────────────────────────────────
@@ -14019,45 +14019,73 @@ async function resendVerification(){
 
 
 async function forgotPassword(){
-  const raw=await _prompt('הכנס שם משתמש או כתובת מייל:');
-  if(!raw)return;
-  const v=raw.trim().toLowerCase();
+  if(document.querySelector('._pwrDlg'))return;
 
-  // חשבונות שם-משתמש נרשמים כ-<username>@kidemy.app — כתובת מומצאת שאין לה
-  // תיבת דואר. auth.sendPasswordResetEmail עליה *מצליח*, כי החשבון קיים,
-  // ולכן המסך הודיע "נשלח קישור למייל שלך" בזמן שהמייל הלך לשומקום. משתמש
-  // שאיבד סיסמה נשאר בחוץ בלי שום סימן לתקלה — וכך זה קרה למורה בפועל.
-  //
-  // sendEmail כבר יודע לסרב לכתובות האלה (הוא בודק endsWith('@kidemy.app')),
-  // אבל נתיב האיפוס של Firebase לא עבר דרכו ולכן לא ידע.
-  //
-  // עבור חשבונות כאלה התיבה האמיתית היחידה היא של ההורה, ואיתורה דורש קריאה
-  // ל-users — צומת שקריא לבעלים בלבד. לכן זה חייב לרוץ בשרת.
-  const isUsername=!v.includes('@')||v.endsWith('@kidemy.app');
-  if(isUsername){
+  // דיאלוג ייעודי ולא _prompt, כי _prompt נסגר ברגע שלוחצים אישור. באיפוס
+  // סיסמה זו התנהגות גרועה: התוצאה מופיעה כטוסט חולף אחרי שהחלונית כבר
+  // נעלמה, ואם הוקלד שם משתמש שגוי צריך להתחיל את כל המסלול מחדש. כאן
+  // החלונית נשארת פתוחה, התוצאה מוצגת בתוכה, ואפשר לנסות שוב מיד.
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99999;display:flex;align-items:center;justify-content:center;padding:24px';
+  ov.innerHTML=`<div class="_pwrDlg" style="background:#fff;border-radius:22px;padding:26px 20px 20px;max-width:340px;width:100%;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,.35);direction:rtl">
+    <div style="margin:0 auto 12px;display:flex;justify-content:center">${miniBadge('key','#F59E0B',48)}</div>
+    <h3 style="font-weight:900;font-size:18px;margin:0 0 6px;color:#0F1A1F">שחזור סיסמה</h3>
+    <p style="font-size:13px;color:#64748B;margin:0 0 16px;line-height:1.6">הכנס שם משתמש או כתובת מייל</p>
+    <input id="_pwrInp" autocomplete="username" style="width:100%;border:1.5px solid #E2E8F0;border-radius:14px;padding:12px 14px;font-size:14px;direction:rtl;font-family:inherit;box-sizing:border-box;margin-bottom:12px;outline:none">
+    <div id="_pwrMsg" style="font-size:12.5px;line-height:1.7;margin-bottom:12px;display:none"></div>
+    <div style="display:flex;gap:10px">
+      <button id="_pwrClose" style="flex:1;background:#F1F5F9;border:none;border-radius:14px;padding:13px;font-weight:700;font-size:14px;cursor:pointer;color:#64748B">סגור</button>
+      <button id="_pwrSend" style="flex:2;background:linear-gradient(135deg,#0F766E,#0E7490);border:none;border-radius:14px;padding:13px;font-weight:900;font-size:14px;cursor:pointer;color:#fff">שלח קישור</button>
+    </div>
+  </div>`;
+  document.body.appendChild(ov);
+  const inp=ov.querySelector('#_pwrInp');
+  const msg=ov.querySelector('#_pwrMsg');
+  const btn=ov.querySelector('#_pwrSend');
+  setTimeout(()=>inp.focus(),50);
+
+  const close=()=>ov.remove();
+  ov.querySelector('#_pwrClose').onclick=close;
+  ov.onclick=e=>{if(e.target===ov)close();};
+  inp.onkeydown=e=>{if(e.key==='Enter')send();if(e.key==='Escape')close();};
+
+  const say=(text,color)=>{msg.style.display='block';msg.style.color=color;msg.innerHTML=text;};
+
+  async function send(){
+    const v=(inp.value||'').trim().toLowerCase();
+    if(!v){say('❌ הכנס שם משתמש או מייל','#EF4444');inp.focus();return;}
+    btn.disabled=true;btn.style.opacity='.6';btn.textContent='⏳ שולח...';
+    const done=t=>{btn.disabled=false;btn.style.opacity='1';btn.textContent=t||'שלח שוב';};
+
+    // חשבונות שם-משתמש נרשמים כ-<username>@kidemy.app — כתובת מומצאת שאין לה
+    // תיבת דואר, ולכן איפוס דרך Firebase עליהם "מצליח" ולא מגיע לאיש. התיבה
+    // האמיתית היחידה היא של ההורה, ואיתורה דורש קריאה לצומת שסגור ללקוחות.
+    const isUsername=!v.includes('@')||v.endsWith('@kidemy.app');
+    if(isUsername){
+      try{
+        const res=await fetch(API_BASE+'/api/password-reset',{
+          method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({username:v.replace(/@kidemy\.app$/,'')})
+        });
+        const d=await res.json().catch(()=>({}));
+        if(res.status===429)say('❌ יותר מדי בקשות — נסה שוב בעוד כמה דקות','#EF4444');
+        else if(!res.ok)say('❌ '+(d.error==='invalid_username'?'שם משתמש לא תקין':'שגיאה — נסה שוב'),'#EF4444');
+        else say('📧 אם החשבון קיים, נשלח קישור לאיפוס <b>למייל ההורה הרשום</b>.<br>לא הגיע? בדוק בספאם, או שלח שוב.','#059669');
+      }catch(_e){say('❌ שגיאת רשת — נסה שוב','#EF4444');}
+      done();return;
+    }
+
+    // כתובת מייל אמיתית — הנתיב הרגיל של Firebase.
     try{
-      showFireToast('⏳ מחפש...');
-      const res=await fetch(API_BASE+'/api/password-reset',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({username:v.replace(/@kidemy\.app$/,'')})
-      });
-      const d=await res.json().catch(()=>({}));
-      if(res.status===429){showFireToast('❌ יותר מדי בקשות — נסה שוב בעוד כמה דקות');return;}
-      if(!res.ok){showFireToast('❌ '+(d.error==='invalid_username'?'שם משתמש לא תקין':'שגיאה — נסה שוב'));return;}
-      showFireToast('📧 אם החשבון קיים, נשלח קישור לאיפוס למייל ההורה');
-    }catch(_e){showFireToast('❌ שגיאת רשת — נסה שוב');}
-    return;
+      await auth.sendPasswordResetEmail(v);
+      say('📧 קישור לאיפוס נשלח אל <b>'+escapeHtml(v)+'</b>.<br>לא הגיע? בדוק בספאם, או שלח שוב.','#059669');
+    }catch(e){
+      const m={'auth/user-not-found':'❌ המייל לא נמצא במערכת','auth/invalid-email':'❌ מייל לא תקין','auth/too-many-requests':'❌ יותר מדי בקשות — נסה שוב בעוד כמה דקות'};
+      say(m[e.code]||'❌ '+(e.message||'שגיאה'),'#EF4444');
+    }
+    done();
   }
-
-  // כתובת מייל אמיתית (למשל המנהל) — הנתיב הרגיל של Firebase עובד כרגיל.
-  try{
-    await auth.sendPasswordResetEmail(v);
-    showFireToast('📧 קישור לאיפוס סיסמה נשלח למייל שלך');
-  }catch(e){
-    const msgs={'auth/user-not-found':'❌ מייל לא נמצא במערכת','auth/invalid-email':'❌ מייל לא תקין'};
-    showFireToast(msgs[e.code]||'❌ '+e.message);
-  }
+  btn.onclick=send;
 }
 
 async function firebaseLogin(usernameOrEmail,password){
