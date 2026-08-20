@@ -21,6 +21,11 @@
   to = "/.netlify/functions/parent-consent"
   status = 200
 
+[[redirects]]
+  from = "/api/password-reset"
+  to = "/.netlify/functions/password-reset"
+  status = 200
+
 # מדיניות ה-cache מוגדרת כאן בלבד. קודם היא הופיעה גם בקובץ _headers, באותה
 # נוסח בדיוק — שני מקורות אמת לאותו כלל, בלי דרך לדעת מהקוד מי גובר. _headers
 # נמחק.
