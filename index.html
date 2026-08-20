@@ -981,7 +981,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.10.0';
+const APP_VERSION='4.10.1';
 const APP_BUILD='08-08-2026';
 
 // ─── ANALYTICS ────────────────────────────────────────────────────────────────
@@ -9111,16 +9111,26 @@ function Nearby(){
   
   let content="";
   if(!userGPS){
-    content=`<div style="padding:24px 20px">
+    // ‎100px ריפוד תחתון כמו בשאר המסכים — ‎.bnav קבוע בתחתית, ובלי זה הכפתור
+    // התחתון נשאר מתחתיו ואי אפשר להגיע אליו בגלילה.
+    //
+    // ‎flex:1 על הטקסט בכל שורה: miniBadge מכיל margin:0 auto, ובתוך שורת
+    // flex מרג'ין אוטומטי בולע את כל המקום הפנוי ודוחף את האייקון פנימה —
+    // כמה, זה תלוי באורך הטקסט. לכן ארבע השורות התיישרו כל אחת אחרת. טקסט
+    // שתופס את המקום הפנוי לא משאיר למרג'ין מה לבלוע, והאייקונים מתיישרים
+    // לקצה אחד. (השורש הוא ש-margin:0 auto יושב בתוך רכיב שנועד לשימוש חוזר
+    // ושובר כל שימוש בתוך flex; תיקון שם דורש מעבר על כל אתרי הקריאה.)
+    const _n=(k,one,many,none)=>k===0?none:k===1?one:k+' '+many;
+    content=`<div style="padding:24px 20px 100px">
       <div class="card" style="text-align:center;padding:32px 24px">
         <div style="margin:0 auto 16px;display:flex;justify-content:center">${miniBadge('pin','#14B8A6',80)}</div>
         <h3 style="font-weight:900;font-size:20px;margin-bottom:8px;color:#0F1A1F">מצא מורים קרובים אליך</h3>
         <p style="color:#64748B;font-size:14px;line-height:1.7;margin-bottom:20px">נשתמש ב-GPS שלך למצוא מורים אמיתיים בסביבה. <strong>המיקום שלך פרטי לחלוטין</strong> ולא נשמר.</p>
         <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px;text-align:right">
-          <div style="display:flex;gap:12px;align-items:center">${miniBadge('lock','#10B981',34)}<span style="font-size:12.5px;font-weight:700;color:#0F1A1F">המיקום נשאר אצלך בלבד</span></div>
-          <div style="display:flex;gap:12px;align-items:center">${miniBadge('broadcast','#06B6D4',34)}<span style="font-size:12.5px;font-weight:700;color:#0F1A1F">${teachersWithGps.length} מורים עם GPS מדויק</span></div>
-          <div style="display:flex;gap:12px;align-items:center"><span style="width:34px;height:34px;border-radius:42% 58% 63% 37%/45% 40% 60% 55%;background:linear-gradient(135deg,#F59E0BCC,#F59E0B);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;box-shadow:0 3px 10px #F59E0B40">🏙️</span><span style="font-size:12.5px;font-weight:700;color:#0F1A1F">${teachersWithCity.length} מורים לפי עיר</span></div>
-          <div style="display:flex;gap:12px;align-items:center">${miniBadge('zap','#8B5CF6',34)}<span style="font-size:12.5px;font-weight:700;color:#0F1A1F">חישוב מרחק לפי מיקום/עיר</span></div>
+          <div style="display:flex;gap:12px;align-items:center">${miniBadge('lock','#10B981',34)}<span style="flex:1;font-size:12.5px;font-weight:700;color:#0F1A1F">המיקום נשאר אצלך בלבד</span></div>
+          <div style="display:flex;gap:12px;align-items:center">${miniBadge('broadcast','#06B6D4',34)}<span style="flex:1;font-size:12.5px;font-weight:700;color:#0F1A1F">${_n(teachersWithGps.length,'מורה אחד','מורים','אין מורים')} עם GPS מדויק</span></div>
+          <div style="display:flex;gap:12px;align-items:center"><span style="width:34px;height:34px;border-radius:42% 58% 63% 37%/45% 40% 60% 55%;background:linear-gradient(135deg,#F59E0BCC,#F59E0B);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;box-shadow:0 3px 10px #F59E0B40">🏙️</span><span style="flex:1;font-size:12.5px;font-weight:700;color:#0F1A1F">${_n(teachersWithCity.length,'מורה אחד','מורים','אין מורים')} לפי עיר</span></div>
+          <div style="display:flex;gap:12px;align-items:center">${miniBadge('zap','#8B5CF6',34)}<span style="flex:1;font-size:12.5px;font-weight:700;color:#0F1A1F">חישוב מרחק לפי מיקום/עיר</span></div>
         </div>
         ${gpsLoading?`<p style="color:#14B8A6;font-weight:800;font-size:15px">${icon("broadcast",14)} מאתר מיקום... המתן רגע</p>`:`<button class="btn bs" onclick="refreshNearbyTeachers()" style="display:flex;align-items:center;justify-content:center;gap:8px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>אתר אותי עכשיו</button>`}
       </div>
