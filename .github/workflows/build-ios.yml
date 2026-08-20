@@ -25,6 +25,33 @@ jobs:
       - name: Install mobile wrapper dependencies
         working-directory: mobile
         run: npm ci
+
+      # אריזת האתר לתוך האפליקציה, ל-iOS בלבד.
+      #
+      # capacitor.config.json מגדיר server.url, כלומר האפליקציה פותחת את האתר
+      # החי ב-WebView. באנדרואיד זה נשאר בכוונה — זה מה שמאפשר לתיקון להגיע
+      # למכשיר בלי בנייה ופרסום חדשים, וזו שיטת העבודה בפועל.
+      #
+      # אפל דוחה את זה תחת Guideline 4.2: אפליקציה שהיא בעיקר מעטפת לאתר אינה
+      # עומדת בדרישת הפונקציונליות המינימלית, וזו סיבת הדחייה הנפוצה ביותר.
+      #
+      # ההסרה נעשית כאן ולא בקובץ עצמו, כי היא נכונה ל-iOS בלבד. שינוי הקובץ
+      # היה מבטל את העדכונים החיים גם באנדרואיד — מחיר גבוה לפתרון בעיה של
+      # פלטפורמה אחרת.
+      - name: Bundle the site into the app (iOS only)
+        run: bash scripts/build-mobile-www.sh
+
+      - name: Remove server.url so iOS serves the bundled copy
+        working-directory: mobile
+        run: |
+          node -e "
+            const fs=require('fs'), p='capacitor.config.json';
+            const c=JSON.parse(fs.readFileSync(p,'utf8'));
+            delete c.server;
+            fs.writeFileSync(p, JSON.stringify(c,null,2));
+            console.log('server.url הוסר — האפליקציה תגיש את העותק הארוז');
+          "
+
       - name: Sync Capacitor iOS project
         working-directory: mobile
         run: npx cap sync ios
