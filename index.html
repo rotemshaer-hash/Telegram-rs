@@ -981,8 +981,21 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.10.1';
+const APP_VERSION='4.10.2';
 const APP_BUILD='08-08-2026';
+
+// ─── כתובת בסיס לקריאות שרת ──────────────────────────────────────────────────
+// באתר ובעטיפת האנדרואיד הדף נטען מ-https://kidemy-app.netlify.app, ולכן נתיב
+// יחסי כמו '/api/send-push' מגיע לשרת כרגיל.
+//
+// בגרסה הארוזה (מה שנדרש לאפל — ראה capacitor.config.json) הדף נטען מתוך
+// האפליקציה עצמה, מ-capacitor://localhost. שם נתיב יחסי מצביע פנימה, אל תוך
+// חבילת האפליקציה, ולא יוצא לרשת בכלל — שלוש הקריאות (התראות, אישור הורה,
+// עוזר AI) היו נכשלות בשקט מבלי שדבר ירמז על כך.
+//
+// כשהפרוטוקול אינו http/https אנחנו ארוזים, ואז הכתובת חייבת להיות מלאה.
+const SITE_ORIGIN='https://kidemy-app.netlify.app';
+const API_BASE=location.protocol.startsWith('http')?'':SITE_ORIGIN;
 
 // ─── ANALYTICS ────────────────────────────────────────────────────────────────
 // Drushe היא אפליקציה שהוצהרה בפני Google Play כמיועדת לילדים, ולכן חלה עליה
@@ -4436,7 +4449,7 @@ async function _sendPushToUser(toUid){
   if(!currentUser||!toUid)return;
   try{
     const idToken=await currentUser.getIdToken();
-    await fetch('/api/send-push',{
+    await fetch(API_BASE+'/api/send-push',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({idToken,toUid,type:'newMessage'})
@@ -4811,7 +4824,7 @@ async function _createParentConsent(uid,studentName,parentEmail){
 // קריאה לשרת. רק הוא יכול להציב verified=true — החוק מתיר את זה למנהל בלבד,
 // והפונקציה משתמשת ב-firebase-admin שעוקף חוקים. הלקוח כאן מחזיק רק את הטוקן.
 async function _consentApi(token,action){
-  const res=await fetch('/api/parent-consent',{
+  const res=await fetch(API_BASE+'/api/parent-consent',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({token,action})
@@ -11048,7 +11061,7 @@ function Jobs(){
 // חיפוש בשפה טבעית + שאלות ותשובות מבוססות Claude, דרך פונקציית שרת ב-Netlify
 // (netlify/functions/ai-assistant.js) — המפתח של Anthropic נשאר בצד השרת בלבד.
 async function _aiCall(mode,message){
-  const res=await fetch('/api/ai-assistant',{
+  const res=await fetch(API_BASE+'/api/ai-assistant',{
     method:'POST',
     headers:{'content-type':'application/json'},
     body:JSON.stringify({mode,message})

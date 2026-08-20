@@ -12,3 +12,9 @@ blob-report/
 playwright/.cache/
 # Sandbox-specific Playwright browser path override — not portable, never commit
 playwright.local.config.js
+
+# פלט של scripts/build-mobile-www.sh — עותק ארוז של האתר ל-iOS.
+# מגונרר בזמן הבנייה ולכן לא נשמר: אחרת index.html היה יושב פעמיים בריפו,
+# 1.1MB כל אחד, ושני העותקים היו נפרדים ברגע שאחד מהם משתנה.
+mobile/www/*
+!mobile/www/.gitkeep

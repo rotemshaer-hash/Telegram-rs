@@ -54,12 +54,24 @@ async function withinRateLimit(db, ip) {
 }
 
 exports.handler = async (event) => {
+  // רשימת מקורות מותרים. ההורה מגיע מהאתר, אבל הזרימה נקראת גם מתוך
+  // האפליקציה הארוזה — ושם המקור אינו הדומיין שלנו אלא capacitor://localhost
+  // (iOS) או http://localhost (אנדרואיד). בלי שהם ברשימה, הדפדפן היה חוסם את
+  // הקריאה עוד לפני שהיא יוצאת, וזה היה נראה כאילו האישור פשוט לא עובד.
+  //
+  // הרשימה סגורה בכוונה ולא '*': הפונקציה הזו משחררת חשבונות של קטינים.
+  const ALLOWED_ORIGINS = [
+    'https://kidemy-app.netlify.app',
+    'capacitor://localhost',
+    'http://localhost',
+  ];
+  const origin = event.headers.origin || event.headers.Origin || '';
   const headers = {
     'Content-Type': 'application/json',
-    // ההורה מגיע מהאתר שלנו בלבד; אין סיבה לאפשר קריאה מדומיין אחר.
-    'Access-Control-Allow-Origin': 'https://kidemy-app.netlify.app',
+    'Access-Control-Allow-Origin': ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0],
     'Access-Control-Allow-Headers': 'Content-Type',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    Vary: 'Origin',
   };
 
   if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers, body: '' };
