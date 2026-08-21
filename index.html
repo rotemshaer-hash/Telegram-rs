@@ -405,6 +405,10 @@ const CATS=[
   {id:"swimming",lbl:"שחייה",           em:"🏊",col:"#29B6F6",grp:"ספורט",svg:'<path d="M2 12q2.5-3 5 0t5 0 5 0 5 0"/><path d="M2 17q2.5-3 5 0t5 0 5 0 5 0"/><circle cx="18" cy="5" r="2"/>'},
   {id:"robotics",lbl:"רובוטיקה",        em:"🤖",col:"#7E57C2",grp:"טכנולוגיה",svg:'<rect x="6" y="8" width="12" height="10" rx="2"/><circle cx="9.5" cy="12.5" r="1"/><circle cx="14.5" cy="12.5" r="1"/><line x1="9" y1="16" x2="15" y2="16"/><line x1="12" y1="8" x2="12" y2="4"/><circle cx="12" cy="3" r="1"/>'},
   {id:"babysit", lbl:"בייביסיטר",       em:"🍼",col:"#FFB74D",grp:"חופשיים",svg:'<ellipse cx="12" cy="4" rx="1.8" ry="1.2"/><rect x="10.5" y="5" width="3" height="3"/><rect x="7.5" y="8" width="9" height="13" rx="3"/><line x1="7.5" y1="13.5" x2="16.5" y2="13.5"/>'},
+  // חונכות וליווי — נפרד מבייביסיטר במכוון. בייביסיטר הוא השגחה על פעוט;
+  // כאן מדובר בליווי ילד בגיל בית ספר: אחרי הלימודים, בחופשות, שיעורי בית
+  // ופעילות. קהל אחר, שעות אחרות, ומיומנות אחרת.
+  {id:"mentoring", lbl:"חונכות וליווי",  em:"🎒",col:"#8E24AA",grp:"חופשיים",svg:'<circle cx="8" cy="6" r="2.6"/><path d="M3.5 20v-4a4.5 4.5 0 0 1 9 0v4"/><circle cx="17" cy="10" r="2"/><path d="M13.6 20v-3a3.4 3.4 0 0 1 6.8 0v3"/>'},
   {id:"arabic", lbl:"ערבית", em:"🗣",col:"#009688",grp:"לימודים",svg:'<path d="M6 2h12v20l-6-4-6 4z"/>'},
   {id:"literature", lbl:"ספרות", em:"📚",col:"#6D4C41",grp:"לימודים",svg:'<rect x="3" y="15" width="18" height="4" rx="1"/><rect x="4" y="10" width="16" height="4" rx="1"/><rect x="5" y="5" width="14" height="4" rx="1"/>'},
   {id:"piano", lbl:"פסנתר", em:"🎹",col:"#37474F",grp:"אמנות",svg:'<rect x="2" y="8" width="20" height="10" rx="2"/><line x1="7.2" y1="8" x2="7.2" y2="14"/><line x1="12" y1="8" x2="12" y2="14"/><line x1="16.8" y1="8" x2="16.8" y2="14"/>'},
@@ -471,6 +475,7 @@ const CAT_GLYPHS={
   swimming:c=>`<path d="M2 12q2.5-3 5 0t5 0 5 0 5 0" stroke="#fff" stroke-width="2.2" stroke-linecap="round" fill="none"/><path d="M2 17q2.5-3 5 0t5 0 5 0 5 0" stroke="#fff" stroke-width="2.2" stroke-linecap="round" fill="none"/><circle cx="18" cy="5" r="2.3" fill="#fff"/>`,
   robotics:c=>`<rect x="6" y="8" width="12" height="10" rx="2" fill="#fff"/><circle cx="9.5" cy="12.5" r="1.4" fill="${c}"/><circle cx="14.5" cy="12.5" r="1.4" fill="${c}"/><rect x="9" y="15.4" width="6" height="1.6" rx="0.8" fill="${c}"/><line x1="12" y1="8" x2="12" y2="4" stroke="#fff" stroke-width="1.6"/><circle cx="12" cy="3" r="1.3" fill="#fff"/>`,
   babysit:c=>`<ellipse cx="12" cy="4" rx="1.8" ry="1.2" fill="#fff"/><rect x="10.5" y="5" width="3" height="3" fill="#fff"/><rect x="7.5" y="8" width="9" height="13" rx="3" fill="#fff"/><rect x="7.5" y="12.5" width="9" height="2" fill="${c}"/>`,
+  mentoring:c=>`<circle cx="8" cy="6" r="2.8" fill="#fff"/><path d="M3.2 20.5v-4.2a4.8 4.8 0 0 1 9.6 0v4.2z" fill="#fff"/><circle cx="17" cy="10" r="2.2" fill="#fff"/><path d="M13.4 20.5v-3.2a3.6 3.6 0 0 1 7.2 0v3.2z" fill="#fff"/>`,
   arabic:c=>`<path d="M6 2h12v20l-6-4-6 4z" fill="#fff"/>`,
   literature:c=>`<rect x="3" y="15" width="18" height="4" rx="1" fill="#fff"/><rect x="4" y="10" width="16" height="4" rx="1" fill="#fff"/><rect x="5" y="5" width="14" height="4" rx="1" fill="#fff"/>`,
   piano:c=>`<rect x="2" y="8" width="20" height="10" rx="2" fill="#fff"/><rect x="6" y="8" width="2.4" height="6" fill="${c}"/><rect x="10.8" y="8" width="2.4" height="6" fill="${c}"/><rect x="15.6" y="8" width="2.4" height="6" fill="${c}"/>`,
@@ -981,7 +986,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.10.4';
+const APP_VERSION='4.11.0';
 const APP_BUILD='08-08-2026';
 
 // ─── כתובת בסיס לקריאות שרת ──────────────────────────────────────────────────
