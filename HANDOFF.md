@@ -72,8 +72,27 @@ worker (`controllerchange` → `location.reload()`) או לעטיפת Capacitor 
 לקורא, התשובה זהה בין אם החשבון קיים ובין אם לא (אחרת אפשר למנות שמות של
 קטינים), ומוגבל ל-5 בקשות ל-10 דקות לכל IP.
 
-⬜ **דורש `EMAILJS_PRIVATE_KEY` ב-Netlify** — EmailJS חוסם קריאות שאינן
-מדפדפן. אם חסר, השליחה נכשלת ו**נרשמת התראה בפאנל** במקום להיעלם בשקט.
+✅ **הוגדר ואומת מקצה לקצה (22.8.2026).** מייל איפוס אמיתי הגיע לתיבת ההורה.
+
+מה שהתברר כשנכנסנו סוף-סוף ל-Netlify: **אף אחד** מארבעת משתני EmailJS לא
+היה מוגדר שם — לא רק המפתח הפרטי. הפונקציה שלחה בקשה עם
+`service_id: undefined` ונכשלה עוד לפני שהמפתח בכלל היה רלוונטי. ההנחה
+שהחסר היחיד הוא `EMAILJS_PRIVATE_KEY` הייתה שגויה, כי היא נבעה מקריאת הקוד
+ולא מבדיקה של מה שבאמת מוגדר בשרת.
+
+ארבעת המשתנים בסקופ `builds + functions + runtime`:
+`EMAILJS_SERVICE_ID`, `EMAILJS_TEMPLATE_ID`, `EMAILJS_PUBLIC_KEY` (שלושתם
+גלויים ממילא ב-`index.html`), ו-`EMAILJS_PRIVATE_KEY` **כסודי**
+(`Contains secret values`) ב-Production, Deploy Previews ו-Branch deploys.
+
+שני דברים שעלו בדרך ושווה לזכור:
+- Netlify **מונע** `All scopes` ממשתנה סודי — הוא נופל אוטומטית ל-Specific
+  בלי `Post processing`. זה תקין ולא צריך לתקן.
+- ב-EmailJS חייב להיות ✅ על **Account → Security → "Allow EmailJS API for
+  non-browser applications"**. בלי זה הקריאה נחסמת גם עם מפתח תקין, ושום
+  דיפלוי לא יעזור.
+
+לא נדרש דיפלוי — הפונקציה קוראת את משתני הסביבה בזמן ריצה.
 
 ### ההחלטה: איפוס עובר דרך ההורה, ולא מוסיפים מייל אישי למורים
 
