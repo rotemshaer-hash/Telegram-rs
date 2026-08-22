@@ -987,7 +987,10 @@ const STUDENT_ACHIEVEMENTS=[
 ];
 
 const APP_VERSION='4.11.0';
-const APP_BUILD='08-08-2026';
+// מוטבע מחדש בכל פריסה על ידי .github/workflows/deploy.yml. הערך כאן הוא
+// גיבוי לבנייה מקומית בלבד — תאריך שנשמר ביד הלך והזדקן בשקט והוצג
+// למשתמשים כתאריך הבנייה, שבועיים אחרי שהיה נכון.
+const APP_BUILD='22-08-2026';
 
 // ─── כתובת בסיס לקריאות שרת ──────────────────────────────────────────────────
 // באתר ובעטיפת האנדרואיד הדף נטען מ-https://kidemy-app.netlify.app, ולכן נתיב
@@ -1264,10 +1267,14 @@ function safeUrl(u){if(!u)return '';return /^https?:\/\//i.test(String(u).trim()
 
 // ─── AVATAR ───────────────────────────────────────────────────────────────────
 function avatarHtml(photo,name,size=52,radius='16px'){
+  // photo ו-name נכתבים על ידי המשתמש עצמו ל-teachers/<uid>, ונקראים משם אל
+  // כל מכשיר שטוען את רשימת המורים. בלי בריחה, ערך photo של
+  // x" onerror="..." סוגר את התכונה ומריץ קוד אצל כל מי שרואה את האווטאר —
+  // כלומר בכל מסך באפליקציה, לא רק אצל הבעלים.
   if(photo){
-    return `<img src="${photo}" style="width:${size}px;height:${size}px;border-radius:${radius};object-fit:cover;flex-shrink:0;display:block" alt="" loading="lazy">`;
+    return `<img src="${escapeHtml(photo)}" style="width:${size}px;height:${size}px;border-radius:${radius};object-fit:cover;flex-shrink:0;display:block" alt="" loading="lazy">`;
   }
-  const initials=((name||'?').trim().split(/\s+/).map(w=>w[0]||'').slice(0,2).join('')||'?').toUpperCase();
+  const initials=escapeHtml(((name||'?').trim().split(/\s+/).map(w=>w[0]||'').slice(0,2).join('')||'?').toUpperCase());
   const pal=['#14B8A6','#06B6D4','#A855F7','#F59E0B','#EF4444','#10B981','#EC4899','#6366F1'];
   const col=pal[((name||'').charCodeAt(0)||0)%pal.length];
   return `<div style="width:${size}px;height:${size}px;border-radius:${radius};background:${col};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:${Math.round(size*.35)}px;flex-shrink:0">${initials}</div>`;
@@ -2084,7 +2091,7 @@ function TeacherSetup(){
       <div class="card" style="margin-bottom:18px;text-align:center">
         <h3 style="font-weight:900;font-size:16px;margin:0 0 10px;color:#14B8A6;display:flex;align-items:center;justify-content:center;gap:6px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg> תמונת פרופיל</h3>
         <div id="tSetupPhotoCircle" onclick="document.getElementById('tSetupPhoto').click()" style="width:88px;height:88px;border-radius:50%;margin:0 auto 10px;background:rgba(20,184,166,0.1);border:2.5px dashed rgba(20,184,166,0.4);display:flex;align-items:center;justify-content:center;font-size:38px;cursor:pointer;position:relative;overflow:hidden">
-          ${currentUserData?.photo?`<img src="${currentUserData.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%" alt="">`:'<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>'}
+          ${currentUserData?.photo?`<img src="${escapeHtml(currentUserData.photo)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%" alt="">`:'<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>'}
           <div style="position:absolute;bottom:0;right:0;background:#14B8A6;border:2px solid #fff;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>
         </div>
         <input type="file" id="tSetupPhoto" accept="image/*" style="display:none" onchange="uploadSetupPhoto(this)">
@@ -4080,7 +4087,7 @@ async function uploadProfilePhoto(){
 
 function avatarHTML(user,size=44){
   if(user&&user.photo){
-    return `<img src="${user.photo}" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,0.3)" alt="">`;
+    return `<img src="${escapeHtml(user.photo)}" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,0.3)" alt="">`;
   }
   return `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${user?.col||'#14B8A6'}30;display:flex;align-items:center;justify-content:center;font-size:${Math.round(size*0.5)}px">${user?.av||'👤'}</div>`;
 }
@@ -4721,8 +4728,14 @@ async function loadUserChats(){
 }
 
 // ─── ADMIN SYSTEM 👨‍💼 ────────────────────────────────────────────────────
-const ADMIN_EMAILS=['rotemshaer@gmail.com'];
-const TEACHER_AUTO_VERIFY=['rotemshaer@gmail.com'];
+// ההגדרה היחידה של כתובת המנהל. היא הייתה מוגדרת פעם אחת כ-ADMIN_EMAIL אבל
+// כתובה שוב כמחרוזת בשישה מקומות נוספים — כולל KEEP, שמגן על החשבון הזה
+// ממחיקה המונית, ו-TEACHER_AUTO_VERIFY, שמדלג עליו באימות. שינוי הכתובת
+// באחד מהם ולא באחרים היה מוחק את חשבון המנהל או נועל אותו בחוץ, בלי שדבר
+// בקוד היה מתריע. הוולידטור בודק שהמחרוזת מופיעה בדיוק פעם אחת.
+const ADMIN_EMAIL='rotemshaer@gmail.com';
+const ADMIN_EMAILS=[ADMIN_EMAIL];
+const TEACHER_AUTO_VERIFY=[ADMIN_EMAIL];
 
 // ─── EMAIL NOTIFICATIONS (EmailJS) ───────────────────────────────────────────
 // הגדרה חד-פעמית:
@@ -4733,7 +4746,6 @@ const TEACHER_AUTO_VERIFY=['rotemshaer@gmail.com'];
 //    → Save → קבל TEMPLATE ID
 // 4. Account → API Keys → קבל PUBLIC KEY
 // 5. החלף את שלושת הערכים למטה ושמור
-const ADMIN_EMAIL='rotemshaer@gmail.com';
 const EMAILJS_SERVICE_ID='service_h1v7whg';
 const EMAILJS_TEMPLATE_ID='template_i016jci';
 const EMAILJS_PUBLIC_KEY='kjqdW8av2HU2kOA8W';
@@ -4851,7 +4863,7 @@ async function sendWelcomeEmail(toEmail,userName,role){
 // עדכן את הפרטים האלה לפרטים האמיתיים שלך!
 const ADMIN_PAYMENT={
   bit:'0542020812',       // מספר Bit של המנהל
-  paypal:'rotemshaer@gmail.com', // PayPal של המנהל
+  paypal:ADMIN_EMAIL,   // PayPal של המנהל
   paybox:'0542020812',    // PayBox של המנהל
   name:'Drushe',          // שם לתשלום
   note:'Drushe – תשלום שיעור' // הערה לתשלום
@@ -7025,7 +7037,7 @@ function confirmResetSystem(){
         ${icon("x-circle",14)} כל הסרטונים<br>
         ${icon("x-circle",14)} כל הלוחות זמנים</p>
       </div>
-      <p style="font-size:13px;color:#10B981;font-weight:700;margin:0 0 16px">${icon("check-circle",14)} חשבון rotemshaer@gmail.com ישמר</p>
+      <p style="font-size:13px;color:#10B981;font-weight:700;margin:0 0 16px">${icon("check-circle",14)} חשבון ${ADMIN_EMAIL} ישמר</p>
       <p style="font-size:12px;color:#EF4444;font-weight:800;margin:0 0 20px">${icon("alert-triangle",14)} לא ניתן לבטל פעולה זו!</p>
       <div style="display:flex;gap:10px">
         <button onclick="this.closest('div[style*=fixed]').remove()" style="flex:1;background:rgba(100,116,139,0.1);border:none;border-radius:50px;padding:13px;font-weight:800;color:#64748B;cursor:pointer;font-size:13px">ביטול</button>
@@ -7044,7 +7056,7 @@ function confirmDeleteOldUsers(){
       <h3 style="font-weight:900;font-size:20px;margin:0 0 12px;color:#F59E0B">מחיקת משתמשים ישנים</h3>
       <div style="background:rgba(245,158,11,0.06);border-radius:14px;padding:14px;margin-bottom:16px;text-align:right">
         <p style="margin:0;font-size:13px;line-height:1.7;color:#0F1A1F">הפעולה תמחק <strong>את כל</strong> המשתמשים והמורים מהמסד, כולל ממתינים לאישור, מלבד:<br>
-        ${icon("check-circle",14)} rotemshaer@gmail.com<br><br>
+        ${icon("check-circle",14)} ${ADMIN_EMAIL}<br><br>
         נמחקים: פרופיל, לוח זמנים, סרטונים, הזמנות, התראות.<br>
         המשתמשים שיימחקו יצטרכו להירשם מחדש.</p>
       </div>
@@ -7059,7 +7071,7 @@ function confirmDeleteOldUsers(){
 
 async function adminDeleteOldUsers(){
   if(!isAdmin()){showFireToast('🚫 אין הרשאה');return;}
-  const KEEP=['rotemshaer@gmail.com'];
+  const KEEP=[ADMIN_EMAIL];
   try{
     showFireToast('⏳ סורק ומוחק...');
     let deleted=0;
@@ -8674,7 +8686,7 @@ function Home(){
   return `<div class="screen">
     <div style="background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);padding:14px 20px 16px;border-radius:0 0 22px 22px;position:relative;overflow:hidden">
       <div style="display:flex;justify-content:space-between;align-items:center;position:relative;z-index:1">
-        <button onclick="currentUser?go('profile'):go('login')" style="width:40px;height:40px;border-radius:42% 58% 63% 37%/45% 40% 60% 55%;background:rgba(255,255,255,.25);border:2px solid rgba(255,255,255,.4);font-size:19px;cursor:pointer;backdrop-filter:blur(10px);overflow:hidden">${currentUserData?.photo?`<img src="${currentUserData.photo}" style="width:100%;height:100%;border-radius:42% 58% 63% 37%/45% 40% 60% 55%;object-fit:cover" alt="">`:'👤'}</button>
+        <button onclick="currentUser?go('profile'):go('login')" style="width:40px;height:40px;border-radius:42% 58% 63% 37%/45% 40% 60% 55%;background:rgba(255,255,255,.25);border:2px solid rgba(255,255,255,.4);font-size:19px;cursor:pointer;backdrop-filter:blur(10px);overflow:hidden">${currentUserData?.photo?`<img src="${escapeHtml(currentUserData.photo)}" style="width:100%;height:100%;border-radius:42% 58% 63% 37%/45% 40% 60% 55%;object-fit:cover" alt="">`:'👤'}</button>
         <span style="font-size:22px;font-weight:900;letter-spacing:-.5px"><span style="color:#fff">Dru</span><span style="color:#A78BFA">s</span><span style="color:#5EEAD4">he</span></span>
         <div style="display:flex;gap:6px">
           <button onclick="shareApp()" style="background:rgba(255,255,255,.2);border:none;color:#fff;cursor:pointer;border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center" title="שתף את Drushe"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
@@ -10167,7 +10179,7 @@ function Profile(){
         <div style="position:absolute;bottom:-50px;right:-40px;width:160px;height:160px;border-radius:50%;background:rgba(20,184,166,0.2);filter:blur(10px)"></div>
         <button onclick="confirmLogout()" style="position:absolute;top:18px;left:16px;background:rgba(231,76,60,0.88);border:none;color:#fff;font-size:12px;font-weight:800;cursor:pointer;border-radius:50px;padding:8px 14px;z-index:2;display:flex;align-items:center;gap:5px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg> יציאה</button>
         <button onclick="shareApp()" style="position:absolute;top:18px;right:16px;background:rgba(255,255,255,0.18);border:none;color:#fff;font-size:17px;cursor:pointer;border-radius:50%;width:38px;height:38px;display:flex;align-items:center;justify-content:center;z-index:2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg></button>
-        <label for="profilePhotoInput" style="width:88px;height:88px;border-radius:50%;margin:0 auto 12px;background:rgba(255,255,255,0.18);display:flex;align-items:center;justify-content:center;font-size:42px;position:relative;z-index:1;cursor:pointer;overflow:hidden;border:3px solid rgba(255,255,255,0.4);box-shadow:0 8px 28px rgba(0,0,0,0.3)">${currentUserData?.photo?`<img src="${currentUserData.photo}" style="width:100%;height:100%;object-fit:cover" alt="">`:'🎒'}<div style="position:absolute;bottom:0;right:0;background:#14B8A6;border:2px solid #fff;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:12px">📷</div></label>
+        <label for="profilePhotoInput" style="width:88px;height:88px;border-radius:50%;margin:0 auto 12px;background:rgba(255,255,255,0.18);display:flex;align-items:center;justify-content:center;font-size:42px;position:relative;z-index:1;cursor:pointer;overflow:hidden;border:3px solid rgba(255,255,255,0.4);box-shadow:0 8px 28px rgba(0,0,0,0.3)">${currentUserData?.photo?`<img src="${escapeHtml(currentUserData.photo)}" style="width:100%;height:100%;object-fit:cover" alt="">`:'🎒'}<div style="position:absolute;bottom:0;right:0;background:#14B8A6;border:2px solid #fff;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:12px">📷</div></label>
         <input type="file" id="profilePhotoInput" accept="image/*" style="display:none" onchange="uploadProfilePhoto()">
         <h2 style="font-size:23px;font-weight:900;margin:0 0 4px;position:relative;z-index:1">${currentUserData?.name||'תלמיד'}</h2>
         <p style="font-size:13px;opacity:0.75;margin:0 0 12px;position:relative;z-index:1">תלמיד ב-Drushe ✨</p>
@@ -10207,7 +10219,7 @@ function Profile(){
       <button onclick="${isTeacher&&myT?'shareTeacher(TEACHERS.find(x=>x.id===currentUser.uid))':'shareApp()'}" style="position:absolute;top:20px;left:20px;background:rgba(255,255,255,.2);border:none;color:#fff;font-size:18px;cursor:pointer;border-radius:50%;width:40px;height:40px;display:flex;align-items:center;justify-content:center;z-index:2" title="${isTeacher?'שתף פרופיל שלי':'שתף אפליקציה'}"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg></button>
       <button onclick="refreshApp()" style="position:absolute;top:68px;left:20px;background:rgba(255,255,255,.18);border:none;color:#fff;font-size:16px;cursor:pointer;border-radius:50%;width:40px;height:40px;display:flex;align-items:center;justify-content:center;z-index:2" title="רענן"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button>
       ${currentUser?`<button onclick="confirmLogout()" style="position:absolute;top:20px;right:20px;background:rgba(231,76,60,0.92);border:none;color:#fff;font-size:13px;font-weight:800;cursor:pointer;border-radius:50px;padding:9px 16px;display:flex;align-items:center;gap:6px;z-index:2;box-shadow:0 4px 14px rgba(231,76,60,0.45)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg> יציאה</button>`:`<button onclick="go('login')" style="position:absolute;top:20px;right:20px;background:rgba(255,255,255,0.25);border:none;color:#fff;font-size:13px;font-weight:800;cursor:pointer;border-radius:50px;padding:9px 16px;z-index:2;backdrop-filter:blur(10px)">${icon("key",14)} התחבר</button>`}
-      <label for="profilePhotoInput" style="width:84px;height:84px;border-radius:42% 58% 63% 37%/45% 40% 60% 55%;margin:0 auto;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:42px;position:relative;z-index:1;cursor:pointer;overflow:hidden">${currentUserData?.photo?`<img src="${currentUserData.photo}" style="width:100%;height:100%;object-fit:cover" alt="">`:'🎸'}<div style="position:absolute;bottom:-2px;right:-2px;background:#14B8A6;border:2px solid #fff;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff">📷</div></label>
+      <label for="profilePhotoInput" style="width:84px;height:84px;border-radius:42% 58% 63% 37%/45% 40% 60% 55%;margin:0 auto;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:42px;position:relative;z-index:1;cursor:pointer;overflow:hidden">${currentUserData?.photo?`<img src="${escapeHtml(currentUserData.photo)}" style="width:100%;height:100%;object-fit:cover" alt="">`:'🎸'}<div style="position:absolute;bottom:-2px;right:-2px;background:#14B8A6;border:2px solid #fff;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff">📷</div></label>
       <input type="file" id="profilePhotoInput" accept="image/*" style="display:none" onchange="uploadProfilePhoto()">
       <h2 style="font-size:22px;font-weight:900;margin:14px 0 4px;position:relative;z-index:1">${currentUser?(currentUserData?.name||currentUser.email.split('@')[0]):'אורח'}</h2>
       <p style="font-size:14px;opacity:.85;margin:0;position:relative;z-index:1">${currentUser?(displayEmail(currentUser.email)||''):'לא מחובר'}</p>
@@ -10408,7 +10420,7 @@ function Community(){
     <div class="post" style="border-top:3px solid ${p.col||'#14B8A6'};${p.status==='pending'?'border:2px solid rgba(245,158,11,0.5);border-top:3px solid rgba(245,158,11,0.5);opacity:0.9':''}">
       ${p.status==='pending'?`<div style="background:linear-gradient(135deg,rgba(245,158,11,0.15),rgba(234,179,8,0.1));padding:8px 15px;font-size:12px;font-weight:800;color:#92400E;border-bottom:1px solid rgba(245,158,11,0.2);border-radius:0;text-align:center">⏳ הפוסט שלך ממתין לאישור מנהל — גלוי לך בלבד</div>`:''}
       <div style="padding:15px 15px 11px;display:flex;gap:11px;align-items:center">
-        <div style="width:46px;height:46px;border-radius:42% 58% 63% 37%/45% 40% 60% 55%;flex-shrink:0;background:linear-gradient(135deg,${p.col||'#14B8A6'},${p.col||'#14B8A6'}99);display:flex;align-items:center;justify-content:center;font-size:22px;overflow:hidden;box-shadow:0 3px 10px ${p.col||'#14B8A6'}55">${p.photo?`<img src="${p.photo}" style="width:100%;height:100%;object-fit:cover" alt="">`:p.av||'😊'}</div>
+        <div style="width:46px;height:46px;border-radius:42% 58% 63% 37%/45% 40% 60% 55%;flex-shrink:0;background:linear-gradient(135deg,${p.col||'#14B8A6'},${p.col||'#14B8A6'}99);display:flex;align-items:center;justify-content:center;font-size:22px;overflow:hidden;box-shadow:0 3px 10px ${p.col||'#14B8A6'}55">${p.photo?`<img src="${escapeHtml(p.photo)}" style="width:100%;height:100%;object-fit:cover" alt="">`:p.av||'😊'}</div>
         <div style="flex:1">
           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="font-weight:800;font-size:15px">${escapeHtml(p.author||'משתמש')}</span>${isMine?'<span style="background:rgba(20,184,166,0.15);color:#14B8A6;font-size:9px;font-weight:800;padding:2px 6px;border-radius:50px">אני</span>':''}${p.status==='pending'?'<span style="background:rgba(245,158,11,0.15);color:#F59E0B;font-size:9px;font-weight:800;padding:2px 6px;border-radius:50px">⏳ בבדיקה</span>':''}</div>
           <div style="font-size:11px;color:${p.col||'#14B8A6'};font-weight:700">${escapeHtml(p.role||'')}${p.area?' • 📍 '+escapeHtml(p.area):''}</div>
@@ -10979,12 +10991,12 @@ function Leaderboard(){
         </div>
       `:`
       <div style="display:flex;align-items:flex-end;justify-content:center;gap:10px;margin-bottom:26px">
-        ${LEADERBOARD.length>=3?[1,0,2].map(i=>{const p=LEADERBOARD[i];const h=[155,190,135][i===0?1:i===1?0:2];return `<div style="flex:1;text-align:center"><div style="font-size:26px;margin-bottom:5px">${med[p.rank-1]}</div><div style="font-size:28px;margin-bottom:5px">${p.av}</div><div style="font-size:12px;font-weight:800;margin-bottom:4px">${p.name.split(" ")[0]}</div><div style="height:${h}px;background:linear-gradient(to top,${p.col},${p.col}88);border-radius:14px 14px 0 0;display:flex;align-items:flex-start;justify-content:center;padding-top:10px"><div style="color:#fff;font-weight:900;font-size:16px">${p.rating}${icon("star",14)}</div></div></div>`;}).join(""):''}
+        ${LEADERBOARD.length>=3?[1,0,2].map(i=>{const p=LEADERBOARD[i];const h=[155,190,135][i===0?1:i===1?0:2];return `<div style="flex:1;text-align:center"><div style="font-size:26px;margin-bottom:5px">${med[p.rank-1]}</div><div style="font-size:28px;margin-bottom:5px">${p.av}</div><div style="font-size:12px;font-weight:800;margin-bottom:4px">${escapeHtml(p.name).split(" ")[0]}</div><div style="height:${h}px;background:linear-gradient(to top,${p.col},${p.col}88);border-radius:14px 14px 0 0;display:flex;align-items:flex-start;justify-content:center;padding-top:10px"><div style="color:#fff;font-weight:900;font-size:16px">${p.rating}${icon("star",14)}</div></div></div>`;}).join(""):''}
       </div>
       ${LEADERBOARD.map(p=>`<div class="lb-row">
         <div style="font-size:18px;font-weight:900;width:30px;text-align:center;flex-shrink:0">${p.rank<=3?med[p.rank-1]:p.rank}</div>
         <div style="width:44px;height:44px;border-radius:14px;background:${p.col}20;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">${p.av}</div>
-        <div style="flex:1"><div style="font-weight:800;font-size:14px">${p.name}</div><div style="font-size:12px;color:${C.muted}">${p.cat} • ${p.lessons} שיעורים</div></div>
+        <div style="flex:1"><div style="font-weight:800;font-size:14px">${escapeHtml(p.name)}</div><div style="font-size:12px;color:${C.muted}">${escapeHtml(p.cat)} • ${p.lessons} שיעורים</div></div>
         <div style="text-align:left"><div style="font-weight:900;font-size:14px;color:var(--p)">${p.rating>0?p.rating.toFixed(1)+'⭐':'חדש'}</div><div style="color:#FFD23F;font-weight:700;font-size:11px">${stars(p.rating)}</div></div>
       </div>`).join("")}
       `}

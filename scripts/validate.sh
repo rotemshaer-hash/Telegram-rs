@@ -39,6 +39,11 @@ ssot_check "COMMISSION_RATE"  "const COMMISSION_RATE="
 ssot_check "ADMIN_EMAIL"      "const ADMIN_EMAIL="
 ssot_check "APP_VERSION"      "const APP_VERSION="
 
+# ההצהרה אינה הערך. הבדיקות למעלה סופרות "const X=" ולכן עברו בזמן שכתובת
+# המנהל הייתה כתובה כמחרוזת בשבעה מקומות — כולל KEEP, שמגן על החשבון הזה
+# ממחיקה המונית. SSOT הוא על הערך, ולכן הוא נבדק כאן על הערך עצמו.
+ssot_check "ADMIN_EMAIL value" "rotemshaer@gmail.com"
+
 echo ""
 
 # ── Required strings (must exist) ────────────────────────────────────────────
