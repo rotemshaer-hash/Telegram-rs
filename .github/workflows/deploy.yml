@@ -55,6 +55,17 @@ jobs:
       # --omit=dev מדלג על Playwright, שנחוץ רק לבדיקות.
       - name: Install function dependencies
         run: npm ci --omit=dev
+      # APP_BUILD מוצג למשתמש בתחתית מסך הפתיחה ובפרופיל, ליד מספר הגרסה.
+      # הוא היה קבוע שנכתב ביד, ולכן הזדקן בשקט — הוא הצהיר על תאריך בנייה
+      # שהיה שבועיים ישן. הטבעה כאן הופכת אותו לנכון תמיד, וזה בדיוק מה
+      # שהופך אותו לשימושי: כשמשתמש מדווח שהוא רואה מסך ישן, התאריך שעל
+      # המסך שלו אומר מיד אם הוא מריץ עותק מהמטמון.
+      - name: Stamp the build date
+        run: |
+          TODAY=$(date -u +%d-%m-%Y)
+          sed -i "s/^const APP_BUILD='[^']*';/const APP_BUILD='$TODAY';/" index.html
+          grep -n "const APP_BUILD=" index.html
+
       - name: Install Netlify CLI
         run: npm install -g netlify-cli
       - name: Unlock production deploys

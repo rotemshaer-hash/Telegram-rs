@@ -13,6 +13,16 @@ if (hasSigningConfig) {
 // ולא תלויה בזכירה ידנית; 1 הוא ברירת המחדל לבנייה מקומית בלבד.
 def playVersionCode = (System.getenv("ANDROID_VERSION_CODE") ?: "1") as int
 
+// versionName נגזר מ-APP_VERSION שב-index.html ולא נכתב כאן ביד. שני מספרי
+// גרסה שנשמרים בנפרד נפרדים: החנות הציגה 1.0 בזמן שהאפליקציה עצמה הציגה
+// 4.11.0 בתחתית המסך, ולמשתמש שמדווח על באג אין דרך לדעת איזה מהם רלוונטי.
+def playVersionName = {
+    def f = rootProject.file("../../index.html")
+    if (!f.exists()) return "1.0"
+    def m = f.text =~ /const APP_VERSION='([^']+)'/
+    return m ? m[0][1] : "1.0"
+}()
+
 android {
     namespace = "app.drushe.mobile"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -21,7 +31,7 @@ android {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode playVersionCode
-        versionName "1.0"
+        versionName playVersionName
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

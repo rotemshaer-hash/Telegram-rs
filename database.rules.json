@@ -117,7 +117,13 @@
       }
     },
     "userChats": {
-      "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth != null" }
+      "$uid": {
+        ".read": "auth != null && auth.uid == $uid",
+        ".write": "auth != null && auth.uid == $uid",
+        "$otherUid": {
+          ".write": "auth != null && (auth.uid == $uid || auth.uid == $otherUid)"
+        }
+      }
     },
     "adminAlerts":  { ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'", ".write": "auth != null" },
     "adminNotifs":  { ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'", ".write": "auth != null" },
