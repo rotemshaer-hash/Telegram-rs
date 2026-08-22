@@ -20,6 +20,20 @@
 const admin = require('firebase-admin');
 
 const DATABASE_URL = 'https://kidemy-83a17-default-rtdb.firebaseio.com';
+
+// שלושת המזהים האלה אינם סודות. הם מוטבעים ב-index.html, שהוא קובץ ציבורי
+// בריפו ציבורי, וכל דפדפן שטוען את האפליקציה מקבל אותם. החזקתם כמשתני סביבה
+// לא הוסיפה שום הגנה — אבל כן צרכה מהתקציב היחיד שיש כאן: AWS Lambda מגבילה
+// את *כל* משתני הסביבה של הפונקציה ל-4KB, ו-FIREBASE_SERVICE_ACCOUNT_JSON
+// לבדו תופס יותר ממחצית ממנו. הוספת שלושת אלה חצתה את הגבול, והפריסה נכשלה
+// עם "Failed to create function" — כלומר האתר החי נתקע על גרסה ישנה.
+//
+// רק EMAILJS_PRIVATE_KEY נשאר בסביבה, כי הוא באמת סוד.
+//
+// אם המזהים ישתנו ב-EmailJS, יש לעדכן גם כאן וגם ב-index.html.
+const EMAILJS_SERVICE_ID = 'service_h1v7whg';
+const EMAILJS_TEMPLATE_ID = 'template_i016jci';
+const EMAILJS_PUBLIC_KEY = 'kjqdW8av2HU2kOA8W';
 const FAKE_DOMAIN = '@kidemy.app';
 const USERNAME_RE = /^[a-z0-9_]{3,20}$/;
 
@@ -56,9 +70,9 @@ async function withinRateLimit(db, ip) {
 // ערוץ מייל שני עם תבנית משלו שאיש לא מתחזק.
 async function sendViaEmailJS(toEmail, subject, message) {
   const body = {
-    service_id: process.env.EMAILJS_SERVICE_ID,
-    template_id: process.env.EMAILJS_TEMPLATE_ID,
-    user_id: process.env.EMAILJS_PUBLIC_KEY,
+    service_id: EMAILJS_SERVICE_ID,
+    template_id: EMAILJS_TEMPLATE_ID,
+    user_id: EMAILJS_PUBLIC_KEY,
     template_params: { to_email: toEmail, subject, message },
   };
   // EmailJS חוסם קריאות שאינן מהדפדפן אלא אם נשלח מפתח פרטי. אם הוא מוגדר,
