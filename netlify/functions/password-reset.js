@@ -17,9 +17,8 @@
 // לתיבת ההורה. אחרת כל אחד היה מבקש איפוס לשם משתמש כלשהו ומקבל לידיו
 // מפתח לחשבון.
 
-const admin = require('firebase-admin');
+const { admin, initAdmin } = require('../lib/firebase-admin-init');
 
-const DATABASE_URL = 'https://kidemy-83a17-default-rtdb.firebaseio.com';
 
 // שלושת המזהים האלה אינם סודות. הם מוטבעים ב-index.html, שהוא קובץ ציבורי
 // בריפו ציבורי, וכל דפדפן שטוען את האפליקציה מקבל אותם. החזקתם כמשתני סביבה
@@ -40,19 +39,6 @@ const USERNAME_RE = /^[a-z0-9_]{3,20}$/;
 const RATE_LIMIT_MAX = 5;
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 
-let _initialized = false;
-function initAdmin() {
-  if (_initialized) return;
-  const raw = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
-  if (!raw) throw new Error('FIREBASE_SERVICE_ACCOUNT_JSON is not set');
-  if (!admin.apps.length) {
-    admin.initializeApp({
-      credential: admin.credential.cert(JSON.parse(raw)),
-      databaseURL: DATABASE_URL,
-    });
-  }
-  _initialized = true;
-}
 
 async function withinRateLimit(db, ip) {
   const key = String(ip || 'unknown').replace(/[.#$/[\]]/g, '_');

@@ -11,9 +11,8 @@
 // משתמש מחובר היה יכול לשגר לכל אחד אחר התראה עם תוכן שרירותי, וזו
 // אפליקציה שילדים משתמשים בה.
 
-const admin = require('firebase-admin');
+const { admin, initAdmin } = require('../lib/firebase-admin-init');
 
-const DATABASE_URL = 'https://kidemy-83a17-default-rtdb.firebaseio.com';
 
 // מניעת שיגור חוזר: זוכרים לאיזו הודעה כבר נשלחה התראה בכל צ'אט.
 //
@@ -34,19 +33,6 @@ const DEDUPE_PATH = 'pushDedupe';
 const RATE_LIMIT_MAX = 40;
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 
-let _initialized = false;
-function initAdmin() {
-  if (_initialized) return;
-  const raw = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
-  if (!raw) throw new Error('FIREBASE_SERVICE_ACCOUNT_JSON is not set');
-  if (!admin.apps.length) {
-    admin.initializeApp({
-      credential: admin.credential.cert(JSON.parse(raw)),
-      databaseURL: DATABASE_URL,
-    });
-  }
-  _initialized = true;
-}
 
 // אותו חישוב כמו getChatId() באפליקציה — מזהה הצ'אט נגזר משני ה-uid
 // הממוינים, ולכן אי אפשר "לכוון" אותו לצ'אט של אנשים אחרים.

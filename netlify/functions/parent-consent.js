@@ -17,9 +17,8 @@
 // הטוקן הוא אמצעי הזיהוי היחיד כאן, ולכן הוא 32 בייטים אקראיים מ-crypto —
 // לא ניתן לניחוש, לא נגזר מה-uid, ולא ניתן לשחזור מתוך שום דבר שהילד רואה.
 
-const admin = require('firebase-admin');
+const { admin, initAdmin } = require('../lib/firebase-admin-init');
 
-const DATABASE_URL = 'https://kidemy-83a17-default-rtdb.firebaseio.com';
 const TOKEN_RE = /^[a-f0-9]{64}$/;
 
 // תקרה גסה נגד סריקה. ניחוש טוקן של 256 ביט אינו מעשי ממילא, אבל תקרה זולה
@@ -27,19 +26,6 @@ const TOKEN_RE = /^[a-f0-9]{64}$/;
 const RATE_LIMIT_MAX = 20;
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 
-let _initialized = false;
-function initAdmin() {
-  if (_initialized) return;
-  const raw = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
-  if (!raw) throw new Error('FIREBASE_SERVICE_ACCOUNT_JSON is not set');
-  if (!admin.apps.length) {
-    admin.initializeApp({
-      credential: admin.credential.cert(JSON.parse(raw)),
-      databaseURL: DATABASE_URL,
-    });
-  }
-  _initialized = true;
-}
 
 async function withinRateLimit(db, ip) {
   const key = String(ip || 'unknown').replace(/[.#$/[\]]/g, '_');
