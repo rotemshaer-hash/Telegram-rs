@@ -39,6 +39,12 @@ ssot_check "COMMISSION_RATE"  "const COMMISSION_RATE="
 ssot_check "ADMIN_EMAIL"      "const ADMIN_EMAIL="
 ssot_check "APP_VERSION"      "const APP_VERSION="
 
+# הדף השחור-שנראה-כמו-לפני-הרשמה (HANDOFF.md, 20.8.2026) התברר כמסך הטעינה
+# של דרילס, שאפשר להגיע אליו רק דרך openDiscover(). אם מישהו יוסיף בעתיד עוד
+# מקום שקורא go('discover') ישירות — עוקף את בדיקת currentUser שבתוך
+# openDiscover() — התקלה חוזרת בלי שהתכוונו. שומר את זה על מקור אמת יחיד.
+ssot_check "go('discover') call site (only inside openDiscover())" "go('discover')"
+
 # ההצהרה אינה הערך. הבדיקות למעלה סופרות "const X=" ולכן עברו בזמן שכתובת
 # המנהל הייתה כתובה כמחרוזת בשבעה מקומות — כולל KEEP, שמגן על החשבון הזה
 # ממחיקה המונית. SSOT הוא על הערך, ולכן הוא נבדק כאן על הערך עצמו.
