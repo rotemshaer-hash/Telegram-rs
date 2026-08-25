@@ -986,7 +986,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.2';
+const APP_VERSION='4.11.3';
 // מוטבע מחדש בכל פריסה על ידי .github/workflows/deploy.yml. הערך כאן הוא
 // גיבוי לבנייה מקומית בלבד — תאריך שנשמר ביד הלך והזדקן בשקט והוצג
 // למשתמשים כתאריך הבנייה, שבועיים אחרי שהיה נכון.
@@ -5591,19 +5591,6 @@ async function adminRejectTeacher(uid){
   }catch(e){showFireToast('❌ '+e.message);}
 }
 
-async function adminDeleteTeacherFull(uid){
-  if(!await _confirm('למחוק לחלוטין מהמערכת?',{confirmText:'מחק',cancelText:'ביטול',destructive:true}))return;
-  try{
-    await db.ref('teachers/'+uid).remove();
-    await db.ref('users/'+uid).remove();
-    await db.ref('schedules/'+uid).remove();
-    await db.ref('videos/'+uid).remove();
-    await db.ref('notifications/'+uid).remove();
-    showFireToast('🗑 נמחק לחלוטין');
-    await loadAdminData();renderAdminPanel();
-  }catch(e){showFireToast('❌ '+e.message);}
-}
-
 async function adminBlockUser(uid){
   if(!await _confirm('לחסום משתמש זה?',{confirmText:'חסום',cancelText:'ביטול',destructive:true}))return;
   try{
@@ -7760,7 +7747,7 @@ function renderAdminTab(){
           <div style="display:flex;border-top:1px solid #f1f5f9">
             <button onclick="adminApproveTeacher('${t.uid}')" style="flex:1;padding:11px;border:none;background:transparent;color:#10B981;font-weight:800;font-size:12px;cursor:pointer;border-left:1px solid #f1f5f9;display:flex;align-items:center;justify-content:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg> אישור</button>
             <button onclick="adminRejectTeacher('${t.uid}')" style="flex:1;padding:11px;border:none;background:transparent;color:#EF4444;font-weight:800;font-size:12px;cursor:pointer;border-left:1px solid #f1f5f9;display:flex;align-items:center;justify-content:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> דחייה</button>
-            <button onclick="adminDeleteTeacherFull('${t.uid}')" style="flex:1;padding:11px;border:none;background:transparent;color:#94A3B8;font-weight:800;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg> מחק</button>
+            <button onclick="adminDeleteUser('${t.uid}','${jsAttrEscape(t.name||t.email||'')}','teacher')" style="flex:1;padding:11px;border:none;background:transparent;color:#94A3B8;font-weight:800;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg> מחק</button>
           </div>
         </div>`).join('');
     }
@@ -7770,7 +7757,7 @@ function renderAdminTab(){
         <div style="background:rgba(16,185,129,0.05);border-radius:14px;padding:11px;margin-bottom:8px">
           <div style="display:flex;justify-content:space-between;align-items:center">
             <div style="flex:1"><div style="font-weight:800;font-size:13px;color:#0F1A1F">${escapeHtml(t.name||'ללא שם')}</div><div style="font-size:11px;color:#64748B">${escapeHtml(CATS.find(c=>c.id===t.cat)?.lbl||t.cat||'')} • ${t.lessons||0} שיעורים • ${t.rating||0}${icon("star",14)}</div></div>
-            <button onclick="adminRejectTeacher('${t.uid}')" style="background:rgba(239,68,68,0.1);color:#EF4444;border-radius:50px;padding:6px 12px;font-size:11px;font-weight:800;cursor:pointer">${icon("trash",14)}</button>
+            <button onclick="adminDeleteUser('${t.uid}','${jsAttrEscape(t.name||t.email||'')}','teacher')" title="מחק לצמיתות" style="background:rgba(239,68,68,0.1);color:#EF4444;border-radius:50px;padding:6px 12px;font-size:11px;font-weight:800;cursor:pointer">${icon("trash",14)}</button>
           </div>
           <div style="margin-top:8px">
             <button onclick="showFullRegistrationDetails('${t.uid}','teacher')" style="width:100%;background:rgba(20,184,166,0.08);color:#14B8A6;border-radius:10px;padding:8px;font-weight:800;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg> צפה בכל פרטי ההרשמה</button>
