@@ -1003,7 +1003,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.6';
+const APP_VERSION='4.11.7';
 // מוטבע מחדש בכל פריסה על ידי .github/workflows/deploy.yml. הערך כאן הוא
 // גיבוי לבנייה מקומית בלבד — תאריך שנשמר ביד הלך והזדקן בשקט והוצג
 // למשתמשים כתאריך הבנייה, שבועיים אחרי שהיה נכון.
@@ -1454,6 +1454,19 @@ function timeAgoTxt(ts){
   return m<1?'עכשיו':m<60?m+' דק\'':m<1440?Math.floor(m/60)+' שע\'':Math.floor(m/1440)+' ימים';
 }
 const mTag=m=>`<span class="tag ${m==="online"?"t-online":"t-frontal"}">${m==="online"?icon("smartphone",12)+" אונליין":icon("users",12)+" פרונטלי"}</span>`;
+// תווית מספר המורים בקטגוריה / בקבוצת קטגוריות.
+//
+// היה כתוב "בקרוב" בשני מקומות נפרדים, וזה היה גם מייאש וגם פשוט לא נכון:
+// הקטגוריה זמינה לגמרי, מורה יכול להירשם אליה עכשיו — פשוט עוד אין בה
+// אף אחד. "בקרוב" אומר לקורא "הפיצ'ר הזה עוד לא נבנה", וכשרוב הקטגוריות
+// ריקות (כמו עכשיו, לפני שיש מורים אמיתיים) כל דף הבית נקרא כאפליקציה
+// שלא מוכנה. זה בדיוק מה שבודק של גוגל יראה, וגוגל מודדת מעורבות אמיתית.
+//
+// "מחפשים מורים" נכון עובדתית, מסמן שהפלטפורמה חיה ולא חצי-בנויה, ומזמין
+// את מי שכן יכול ללמד. מוגדר פעם אחת ומשמש בשני המקומות.
+const CAT_EMPTY_LABEL='מחפשים מורים';
+const catCountLabel=cnt=>cnt>0?cnt+' מורים':CAT_EMPTY_LABEL;
+
 const gTag=b=>b?`<span class="tag t-gold">${b}</span>`:"";
 const lTag=o=>o?`<span class="tag t-live">מחובר</span>`:"";
 function hvs(a1,g1,a2,g2){const R=6371,da=(a2-a1)*Math.PI/180,dg=(g2-g1)*Math.PI/180;const x=Math.sin(da/2)**2+Math.cos(a1*Math.PI/180)*Math.cos(a2*Math.PI/180)*Math.sin(dg/2)**2;return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));}
@@ -8683,7 +8696,7 @@ function Home(){
           return `<button onclick="S.catFilter='${c.id}';S.search='';render();window.scrollTo({top:0,behavior:'smooth'})" style="border:none;background:transparent;padding:6px 4px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;text-align:center;transition:all 0.2s;-webkit-tap-highlight-color:transparent">
             ${catBadge(c,52)}
             <div style="font-size:12px;font-weight:800;color:#0F1A1F;line-height:1.3">${c.lbl}</div>
-            ${cnt>0?`<div style="font-size:10px;font-weight:700;color:${c.col};background:${c.col}15;border-radius:50px;padding:2px 9px;margin-top:1px">${cnt} מורים</div>`:`<div style="font-size:10px;color:#CBD5E1;font-weight:600">בקרוב</div>`}
+            ${cnt>0?`<div style="font-size:10px;font-weight:700;color:${c.col};background:${c.col}15;border-radius:50px;padding:2px 9px;margin-top:1px">${cnt} מורים</div>`:`<div style="font-size:10px;color:#64748B;font-weight:600">${CAT_EMPTY_LABEL}</div>`}
           </button>`;
         }).join("")}
       </div>`;
@@ -8696,7 +8709,7 @@ function Home(){
         return `<button onclick="S.groupFilter='${g}';render();window.scrollTo({top:0,behavior:'smooth'})" style="border:none;background:transparent;padding:4px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center">
           ${catBadge(cats[0],66)}
           <div style="font-size:13px;font-weight:800;color:#0F1A1F">${g}</div>
-          <div style="font-size:10px;color:${cnt>0?'#14B8A6':'#CBD5E1'};font-weight:700">${cnt>0?cnt+' מורים':'בקרוב'}</div>
+          <div style="font-size:10px;color:${cnt>0?'#14B8A6':'#64748B'};font-weight:700">${catCountLabel(cnt)}</div>
         </button>`;
       }).join("")}
     </div>`;
