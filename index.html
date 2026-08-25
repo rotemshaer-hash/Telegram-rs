@@ -986,7 +986,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.1';
+const APP_VERSION='4.11.2';
 // מוטבע מחדש בכל פריסה על ידי .github/workflows/deploy.yml. הערך כאן הוא
 // גיבוי לבנייה מקומית בלבד — תאריך שנשמר ביד הלך והזדקן בשקט והוצג
 // למשתמשים כתאריך הבנייה, שבועיים אחרי שהיה נכון.
@@ -9110,7 +9110,7 @@ function Discover(){
   if(!discoverFeedLoaded||discoverFeedLoading){
     return `<div class="screen" style="position:fixed;inset:0;background:#000;display:flex;align-items:center;justify-content:center;color:#fff">
       ${backBtn}
-      <div style="text-align:center"><span class="blink-logo" style="font-size:30px;font-weight:900;letter-spacing:-.5px"><span style="color:#fff">Dru</span><span style="color:#A78BFA">s</span><span style="color:#5EEAD4">he</span></span></div>
+      <div style="text-align:center"><span class="blink-logo" style="font-size:30px;font-weight:900;letter-spacing:-.5px"><span style="color:#fff">Dru</span><span style="color:#A78BFA">s</span><span style="color:#5EEAD4">he</span></span><p style="margin:14px 0 0;font-size:13px;color:rgba(255,255,255,.6);font-weight:600">טוען דרילס...</p></div>
     </div>`;
   }
   if(!DISCOVER_FEED.length){
