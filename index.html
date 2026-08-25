@@ -87,20 +87,37 @@ try{auth=firebase.auth();db=firebase.database();storage=firebase.storage();}catc
 <title>Drushe – שיעורים פרטיים לילדים ובני נוער</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&family=Rubik:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<!-- הגופנים נטענים בלי לחסום את הרינדור.
+     קודם זה היה <link rel="stylesheet"> רגיל, שהוא render-blocking: הדפדפן
+     לא מצייר כלום עד שה-CSS הזה חוזר מ-Google. ברשת תקינה זה מהיר, אבל אם
+     fonts.googleapis.com איטי או חסום (סינון בבית ספר, רשת ארגונית, מדינה
+     שחוסמת) — המשתמש רואה מסך לבן עד שהבקשה נכשלת. נמדד בסביבה מבודדת:
+     12.7 שניות של כלום, ואז המסך. עבור בודק של גוגל זה נראה כמו אפליקציה
+     שבורה.
+     media="print" גורם לדפדפן להוריד את הקובץ בלי להתייחס אליו כקריטי
+     לציור; onload מחזיר אותו ל-all ברגע שהגיע, והטקסט מתחלף לגופן האמיתי.
+     ה-URL כבר כולל display=swap, כך שגם קובצי הגופן עצמם לא מסתירים טקסט. -->
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&family=Rubik:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&family=Rubik:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"></noscript>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
-html,body{height:100%;background:#ECFEFF;font-family:'Rubik','Heebo',-apple-system,sans-serif;overflow-x:hidden;overscroll-behavior:none;-webkit-overflow-scrolling:touch;letter-spacing:-0.02em}
+html,body{height:100%;background:#ECFEFF;font-family:var(--font);overflow-x:hidden;overscroll-behavior:none;-webkit-overflow-scrolling:touch;letter-spacing:-0.02em}
 ::-webkit-scrollbar{display:none}
 
-h1,h2,h3,h4{letter-spacing:-0.025em;font-family:'Rubik','Heebo',sans-serif}
-.btn{letter-spacing:-0.01em;font-family:'Rubik','Heebo',sans-serif}
+h1,h2,h3,h4{letter-spacing:-0.025em;font-family:var(--font)}
+.btn{letter-spacing:-0.01em;font-family:var(--font)}
 
 button{cursor:pointer;font-family:inherit;border:none;background:none}
 input,textarea,select{font-family:inherit;-webkit-appearance:none;appearance:none}
 #app{min-height:100dvh;position:relative}
 
 :root{
+  /* מקור אמת יחיד למשפחת הגופנים. היה כתוב בשלושה מקומות בנפרד ובשתי
+     גרסאות שונות (אחת עם ‎-apple-system ושתיים בלי), כך שכותרות וכפתורים
+     נפלו לגופן אחר מהטקסט הרגיל. עכשיו שהגופן נטען בלי לחסום רינדור,
+     הציור הראשון תמיד משתמש בגיבוי — ולכן הוא חייב להיות תקין בעברית
+     ואחיד, אחרת הטקסט קופץ כשהגופן האמיתי מגיע. */
+  --font:'Rubik','Heebo',-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans Hebrew','Arial Hebrew',Arial,sans-serif;
   --p:#14B8A6;--s:#06B6D4;--g:#10B981;--y:#FBBF24;
   --teal:#14B8A6;--teal2:#14B8A6;--cyan:#06B6D4;
   --purple:#A855F7;--violet:#8B5CF6;--magenta:#D946EF;
@@ -986,7 +1003,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.5';
+const APP_VERSION='4.11.6';
 // מוטבע מחדש בכל פריסה על ידי .github/workflows/deploy.yml. הערך כאן הוא
 // גיבוי לבנייה מקומית בלבד — תאריך שנשמר ביד הלך והזדקן בשקט והוצג
 // למשתמשים כתאריך הבנייה, שבועיים אחרי שהיה נכון.
