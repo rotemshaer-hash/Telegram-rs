@@ -986,7 +986,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.3';
+const APP_VERSION='4.11.4';
 // מוטבע מחדש בכל פריסה על ידי .github/workflows/deploy.yml. הערך כאן הוא
 // גיבוי לבנייה מקומית בלבד — תאריך שנשמר ביד הלך והזדקן בשקט והוצג
 // למשתמשים כתאריך הבנייה, שבועיים אחרי שהיה נכון.
@@ -3931,6 +3931,63 @@ async function sha256hex(text){
 }
 
 // ─── ACCOUNT DELETION (GDPR) ──────────────────────────────────────────────────
+// מקור אמת יחיד ל"מה זה למחוק משתמש עד הסוף" — בשימוש הן במחיקה עצמית והן
+// במחיקה על ידי מנהל. שני המקומות האלה כתבו בעבר כל אחד רשימת נתיבים משלו
+// בנפרד, והתפצלו: מחיקה עצמית ניקתה teacherVerification/userGroups/parentLinks/
+// lessonSummaries/studentProgress/teacherSummaries/userCredits/chats ואת
+// הודעות הצ'אט עצמן, אבל לא פוסטים בקהילה ולא ביקורות שהמשתמש כתב. מחיקת
+// מנהל ניקתה את השניים האלה, אבל לא את הרשימה הארוכה יותר. כל צד "עבד"
+// ונראה שלם, ולכן איש לא שם לב שהם לא זהים.
+async function deleteAllUserData(uid,role){
+  const isTeacher=role==='teacher';
+
+  // הודעות פרטיות: תלוי בקריאת userChats לפני שהוא נמחק, אז חייב לרוץ ראשון
+  let chatDeleteFailed=0;
+  try{
+    const ucSnap=await db.ref('userChats/'+uid).get();
+    if(ucSnap.exists()){
+      const chatDels=[];
+      ucSnap.forEach(child=>{chatDels.push(db.ref('messages/'+getChatId(uid,child.key)).remove());});
+      chatDeleteFailed=(await Promise.allSettled(chatDels)).filter(r=>r.status==='rejected').length;
+    }
+  }catch(_e){chatDeleteFailed++;}
+
+  // פוסטים בקהילה שהמשתמש כתב
+  try{
+    const postsSnap=await db.ref('communityPosts').get();
+    if(postsSnap.exists()){
+      const delPosts=[];
+      postsSnap.forEach(p=>{if(p.val().uid===uid)delPosts.push(p.key);});
+      await Promise.all(delPosts.map(k=>db.ref('communityPosts/'+k).remove()));
+    }
+  }catch(_e){}
+
+  // ביקורות שהמשתמש כתב (כתלמיד, על מורים שונים — reviews/<teacherId>/<reviewId>)
+  try{
+    const revSnap=await db.ref('reviews').get();
+    if(revSnap.exists()){
+      const delRevs=[];
+      revSnap.forEach(teacherEntry=>{
+        teacherEntry.forEach(r=>{if(r.val().uid===uid)delRevs.push('reviews/'+teacherEntry.key+'/'+r.key);});
+      });
+      await Promise.all(delRevs.map(p=>db.ref(p).remove()));
+    }
+  }catch(_e){}
+
+  const paths=[
+    'users/'+uid,'userChats/'+uid,'notifications/'+uid,'userBookings/'+uid,
+    'favorites/'+uid,'userGroups/'+uid,'parentLinks/'+uid,'schedules/'+uid,
+    'lessonSummaries/'+uid,'studentProgress/'+uid,'teacherSummaries/'+uid,
+    'teacherBookings/'+uid,'teacherVerification/'+uid,'reviews/'+uid,
+    'videos/'+uid,'chats/'+uid,'userCredits/'+uid,
+  ];
+  if(isTeacher)paths.push('teachers/'+uid);
+
+  const results=await Promise.allSettled(paths.map(p=>db.ref(p).remove()));
+  const failedPaths=results.map((r,i)=>r.status==='rejected'?paths[i]:null).filter(Boolean);
+  return {failedPaths,chatDeleteFailed};
+}
+
 async function deleteMyAccount(){
   if(!currentUser){showFireToast('❌ לא מחובר');return;}
   if(!await _confirm('האם אתה בטוח שברצונך למחוק את חשבונך לצמיתות?\n\nכל הנתונים שלך יימחקו ולא ניתן יהיה לשחזרם.',{confirmText:'מחק חשבון',cancelText:'ביטול',destructive:true}))return;
@@ -3939,28 +3996,6 @@ async function deleteMyAccount(){
     showFireToast('⏳ מוחק חשבון...');
     const uid=currentUser.uid;
     const isTeacher=currentUserData?.role==='teacher';
-    // מחיקת כל הנתונים מ-RTDB
-    const paths=[
-      'users/'+uid,
-      'userChats/'+uid,
-      'notifications/'+uid,
-      'userBookings/'+uid,
-      'favorites/'+uid,
-      'userGroups/'+uid,
-      'parentLinks/'+uid,
-      'schedules/'+uid,
-      'lessonSummaries/'+uid,
-      'studentProgress/'+uid,
-      'teacherSummaries/'+uid,
-      'teacherBookings/'+uid,
-      'forceSignout/'+uid,
-      'teacherVerification/'+uid,
-      'reviews/'+uid,
-      'videos/'+uid,
-      'chats/'+uid,
-      'userCredits/'+uid,
-    ];
-    if(isTeacher) paths.push('teachers/'+uid);
 
     // הסדר כאן קריטי, והוא היה הפוך.
     //
@@ -3977,24 +4012,12 @@ async function deleteMyAccount(){
     // מנתקים את המכשיר הזה מהתראות בזמן שההרשאה עדיין תקפה
     try{await _unregisterNativePush();}catch(_e){}
 
-    // קוראים את רשימת השיחות לפני שמוחקים אותה — היא המקור לזיהוי הצ'אטים
-    let chatFailed=0;
-    try{
-      const ucSnap=await db.ref('userChats/'+uid).get();
-      if(ucSnap.exists()){
-        const chatDels=[];
-        ucSnap.forEach(child=>{chatDels.push(db.ref('messages/'+getChatId(uid,child.key)).remove());});
-        chatFailed=(await Promise.allSettled(chatDels)).filter(r=>r.status==='rejected').length;
-      }
-    }catch(e2){chatFailed++;}
-
-    const results=await Promise.allSettled(paths.map(p=>db.ref(p).remove()));
-    const failed=results.map((r,i)=>r.status==='rejected'?paths[i]:null).filter(Boolean);
+    const {failedPaths,chatDeleteFailed}=await deleteAllUserData(uid,isTeacher?'teacher':'student');
 
     // אם נתון כלשהו שרד — לא מוחקים את ההזדהות. חשבון שנשאר קיים אפשר להתחבר
     // אליו ולנסות שוב; נתונים שנשארו בלי הזדהות נעולים לתמיד.
-    if(failed.length||chatFailed){
-      console.warn('[delete] נכשלו:',failed,'שיחות:',chatFailed);
+    if(failedPaths.length||chatDeleteFailed){
+      console.warn('[delete] נכשלו:',failedPaths,'שיחות:',chatDeleteFailed);
       showFireToast('❌ חלק מהנתונים לא נמחקו — החשבון לא נמחק. נסה שוב.');
       return;
     }
@@ -5692,37 +5715,17 @@ async function adminDeleteUser(uid,name,role){
   if(!await _confirm(`למחוק את ${name||'המשתמש'} לצמיתות?\n\nפרופיל, הזמנות, ביקורות, הודעות — הכל יימחק.\n⚠️ לא ניתן לבטל!`,{confirmText:'מחק לצמיתות',cancelText:'ביטול',destructive:true}))return;
   try{
     showFireToast('⏳ מוחק...');
-    await db.ref('users/'+uid).remove();
-    if(role==='teacher'){
-      await db.ref('teachers/'+uid).remove();
-      await db.ref('schedules/'+uid).remove();
-      await db.ref('videos/'+uid).remove();
-      await db.ref('teacherBookings/'+uid).remove();
-    }
-    await db.ref('notifications/'+uid).remove();
-    await db.ref('userChats/'+uid).remove();
-    await db.ref('userBookings/'+uid).remove();
-    await db.ref('favorites/'+uid).remove();
-    // מחק פוסטים בקהילה של המשתמש
-    const postsSnap=await db.ref('communityPosts').get();
-    if(postsSnap.exists()){
-      const delPosts=[];
-      postsSnap.forEach(p=>{if(p.val().uid===uid)delPosts.push(p.key);});
-      await Promise.all(delPosts.map(k=>db.ref('communityPosts/'+k).remove()));
-    }
-    // מחק ביקורות שכתב המשתמש
-    const revSnap=await db.ref('reviews').get();
-    if(revSnap.exists()){
-      const delRevs=[];
-      revSnap.forEach(teacherEntry=>{
-        teacherEntry.forEach(r=>{if(r.val().uid===uid)delRevs.push('reviews/'+teacherEntry.key+'/'+r.key);});
-      });
-      await Promise.all(delRevs.map(p=>db.ref(p).remove()));
-    }
-    // חסום ואלץ ניתוק מהמכשיר
+    const {failedPaths,chatDeleteFailed}=await deleteAllUserData(uid,role);
+    // חוסמים ומאלצים ניתוק בכל מקרה — גם אם חלק מהנתונים לא נמחקו, לא
+    // רוצים שהחשבון יישאר שמיש. אבל מדווחים על החלקיות ולא טוענים הצלחה מלאה.
     await db.ref('bannedUsers/'+uid).set({deletedAt:Date.now(),deletedBy:currentUser?.uid||'admin'});
     await db.ref('forceSignout/'+uid).set({ts:Date.now()});
-    showFireToast('✅ המשתמש נמחק');
+    if(failedPaths.length||chatDeleteFailed){
+      console.warn('[adminDeleteUser] נכשלו:',failedPaths,'שיחות:',chatDeleteFailed);
+      showFireToast('⚠️ נחסם, אך חלק מהנתונים לא נמחקו — בדוק ידנית');
+    }else{
+      showFireToast('✅ המשתמש נמחק');
+    }
     await loadAdminData();renderAdminPanel();
   }catch(e){showFireToast('❌ '+e.message);}
 }
@@ -5871,12 +5874,8 @@ async function adminDeleteAllStudents(){
     const toDelete=[];
     if(usersSnap.exists())usersSnap.forEach(c=>{const u=c.val();if(u.role==='student')toDelete.push(c.key);});
     await Promise.all(toDelete.map(async uid=>{
-      await db.ref('users/'+uid).remove().catch(()=>{});
+      await deleteAllUserData(uid,'student').catch(()=>{});
       await db.ref('adminAlerts/students/'+uid).remove().catch(()=>{});
-      await db.ref('notifications/'+uid).remove().catch(()=>{});
-      await db.ref('userChats/'+uid).remove().catch(()=>{});
-      await db.ref('userBookings/'+uid).remove().catch(()=>{});
-      await db.ref('favorites/'+uid).remove().catch(()=>{});
       await db.ref('bannedUsers/'+uid).set({deletedAt:Date.now(),by:'admin-cleanup'}).catch(()=>{});
     }));
     await db.ref('adminAlerts/students').remove().catch(()=>{});
