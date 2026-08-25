@@ -986,7 +986,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.4';
+const APP_VERSION='4.11.5';
 // מוטבע מחדש בכל פריסה על ידי .github/workflows/deploy.yml. הערך כאן הוא
 // גיבוי לבנייה מקומית בלבד — תאריך שנשמר ביד הלך והזדקן בשקט והוצג
 // למשתמשים כתאריך הבנייה, שבועיים אחרי שהיה נכון.
@@ -3952,25 +3952,41 @@ async function deleteAllUserData(uid,role){
     }
   }catch(_e){chatDeleteFailed++;}
 
-  // פוסטים בקהילה שהמשתמש כתב
+  // פוסטים בקהילה שהמשתמש כתב.
+  // שם השדה הוא authUid ולא uid — קוד המחיקה חיפש uid, שלא קיים באף פוסט,
+  // ולכן אף פוסט לא נמחק אי פעם. הכתיבה (openCompose) ו-
+  // adminRemoveCommunityOrphanPosts שניהם משתמשים ב-authUid.
   try{
     const postsSnap=await db.ref('communityPosts').get();
     if(postsSnap.exists()){
       const delPosts=[];
-      postsSnap.forEach(p=>{if(p.val().uid===uid)delPosts.push(p.key);});
+      postsSnap.forEach(p=>{if(p.val().authUid===uid)delPosts.push(p.key);});
       await Promise.all(delPosts.map(k=>db.ref('communityPosts/'+k).remove()));
     }
   }catch(_e){}
 
-  // ביקורות שהמשתמש כתב (כתלמיד, על מורים שונים — reviews/<teacherId>/<reviewId>)
+  // ביקורות שהמשתמש כתב (כתלמיד, על מורים שונים — reviews/<teacherId>/<reviewId>).
+  // אותו באג בדיוק: הכותב נשמר בשדה from, לא uid.
   try{
     const revSnap=await db.ref('reviews').get();
     if(revSnap.exists()){
       const delRevs=[];
       revSnap.forEach(teacherEntry=>{
-        teacherEntry.forEach(r=>{if(r.val().uid===uid)delRevs.push('reviews/'+teacherEntry.key+'/'+r.key);});
+        teacherEntry.forEach(r=>{if(r.val().from===uid)delRevs.push('reviews/'+teacherEntry.key+'/'+r.key);});
       });
       await Promise.all(delRevs.map(p=>db.ref(p).remove()));
+    }
+  }catch(_e){}
+
+  // pendingReviews — עותק שטוח של כל ביקורת עבור תור המנהל, כולל שם הכותב
+  // וטקסט הביקורת. הוא מנוקה רק כשמנהל מאשר/דוחה ביקורת בודדת, ולכן ביקורת
+  // של משתמש שנמחק שרדה שם עם שמו המלא.
+  try{
+    const pendSnap=await db.ref('pendingReviews').get();
+    if(pendSnap.exists()){
+      const delPend=[];
+      pendSnap.forEach(r=>{if(r.val().from===uid)delPend.push(r.key);});
+      await Promise.all(delPend.map(k=>db.ref('pendingReviews/'+k).remove()));
     }
   }catch(_e){}
 
