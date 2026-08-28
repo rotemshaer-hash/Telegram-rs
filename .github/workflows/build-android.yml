@@ -48,6 +48,9 @@ jobs:
   build-release-aab:
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
+    # נדרש כדי לפרסם Release בשלב האחרון (ראה ההסבר שם)
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -88,3 +91,27 @@ jobs:
         with:
           name: drushe-release-aab
           path: mobile/android/app/build/outputs/bundle/release/app-release.aab
+
+      # פרסום נוסף כ-Release, כדי שאפשר יהיה להוריד את ה-AAB עצמו.
+      #
+      # artifacts של Actions יורדים **תמיד** כ-ZIP — זו התנהגות של הפלטפורמה
+      # ואי אפשר לכבות אותה. בנייד זה חוסם בפועל: צריך לחלץ, הקובץ נוחת
+      # בתת-תיקייה, ואז בורר הקבצים של אנדרואיד מסתיר סיומת ‎.aab‎ כי אין לה
+      # סוג קובץ מוכר — כך שאי אפשר לבחור אותו בהעלאה ל-Play Console.
+      # נכס של Release, לעומת זאת, יורד כקובץ עצמו ישירות לתיקיית ההורדות.
+      #
+      # ⚠️ הריפו ציבורי, ולכן הנכס הזה ציבורי. ה-AAB אינו מכיל את מפתח
+      # החתימה (רק חתימה שנוצרה בעזרתו) ואין בו סודות — אבל הוא כן חושף את
+      # הגרסה להורדה לפני שהיא בחנות. אושר במפורש על ידי בעל האפליקציה.
+      - name: Publish AAB as a downloadable release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: build-${{ github.run_number }}
+        run: |
+          gh release create "$TAG" \
+            mobile/android/app/build/outputs/bundle/release/app-release.aab \
+            --repo "${{ github.repository }}" \
+            --title "AAB · build ${{ github.run_number }}" \
+            --notes "AAB חתום לבנייה ${{ github.run_number }} (commit ${{ github.sha }}).
+          להורדה ישירה: הקובץ app-release.aab למטה — בלי ZIP ובלי חילוץ.
+          versionCode: ${{ github.run_number }}"
