@@ -50,6 +50,12 @@ ssot_check "go('discover') call site (only inside openDiscover())" "go('discover
 # ממחיקה המונית. SSOT הוא על הערך, ולכן הוא נבדק כאן על הערך עצמו.
 ssot_check "ADMIN_EMAIL value" "rotemshaer@gmail.com"
 
+# מחיקת משתמש נכשלה שלוש פעמים מאותה סיבה: כל מסלול מחיקה החזיק רשימת
+# נתיבים משלו. הרשימות סטו, ו-teacherVerification — תמונת תעודת הזהות של
+# הקטין — נשארה במסד אחרי "אפס מערכת" ואחרי מחיקה המונית. הרשימה חיה עכשיו
+# רק בתוך deleteAllUserData; אם מישהו יוסיף שנייה, זה ייעצר כאן.
+ssot_check "deletion path list (only inside deleteAllUserData)" "const paths=\["
+
 echo ""
 
 # ── Required strings (must exist) ────────────────────────────────────────────
@@ -88,6 +94,9 @@ forbid() {
 forbid "Wrong app name (Lamdeni)"   "Lamdeni"
 forbid "Wrong app name (Kidemy)"    "Kidemy"
 forbid "Direct eval()"              "eval("
+# שמות שתי הרשימות שהוסרו. חזרה שלהן פירושה שמסלול מחיקה שני נולד מחדש.
+forbid "Second deletion path list" "pathsToDelete"
+forbid "Third deletion path list"  "allPaths"
 
 echo ""
 

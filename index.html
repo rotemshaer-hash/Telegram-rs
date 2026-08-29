@@ -1003,7 +1003,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.7';
+const APP_VERSION='4.11.8';
 // מוטבע מחדש בכל פריסה על ידי .github/workflows/deploy.yml. הערך כאן הוא
 // גיבוי לבנייה מקומית בלבד — תאריך שנשמר ביד הלך והזדקן בשקט והוצג
 // למשתמשים כתאריך הבנייה, שבועיים אחרי שהיה נכון.
@@ -4017,6 +4017,27 @@ async function deleteAllUserData(uid,role){
       const delPend=[];
       pendSnap.forEach(r=>{if(r.val().from===uid)delPend.push(r.key);});
       await Promise.all(delPend.map(k=>db.ref('pendingReviews/'+k).remove()));
+    }
+  }catch(_e){}
+
+  // הזמנות. הרשומה נכתבת **משוכפלת** לשלושה נתיבים (ראה openBooking), וכל
+  // עותק נושא studentName, studentEmail, parentName ו-parentEmail — כלומר שם
+  // של קטין ומייל של ההורה שלו. מחיקת המשתמש הסירה עד כה רק את שני נתיבי
+  // האינדקס שלו עצמו, ולכן העותק הגלובלי ב-bookings/ והעותק של הצד השני
+  // (המורה או התלמיד) שרדו עם ה-PII במלואו. זה אותו דפוס בדיוק של הביקורות
+  // והפוסטים: המידע יושב במקום שהמוחק לא הסתכל בו.
+  try{
+    const bkSnap=await db.ref('bookings').get();
+    if(bkSnap.exists()){
+      const delBk=[];
+      bkSnap.forEach(b=>{
+        const v=b.val()||{};
+        if(v.studentId!==uid&&v.teacherId!==uid)return;
+        delBk.push('bookings/'+b.key);
+        if(v.studentId)delBk.push('userBookings/'+v.studentId+'/'+b.key);
+        if(v.teacherId)delBk.push('teacherBookings/'+v.teacherId+'/'+b.key);
+      });
+      await Promise.all(delBk.map(pth=>db.ref(pth).remove()));
     }
   }catch(_e){}
 
@@ -7143,12 +7164,16 @@ async function adminDeleteOldUsers(){
     }
     keepUids.add(currentUser.uid); // תמיד שמור את המנהל הנוכחי
 
-    // מחק את כל הנתונים של כל UID שמצאנו
-    const allPaths=['teachers','users','schedules','videos','notifications','userChats','teacherBookings','bookings','reviews'];
+    // מחק את כל הנתונים של כל UID שמצאנו — דרך deleteAllUserData.
+    //
+    // גם כאן ישבה רשימת נתיבים שלישית ומקוצרת (9 נתיבים), שלא כללה את
+    // teacherVerification ולכן השאירה את תמונות תעודת הזהות של הקטינים.
+    // מקור אמת אחד למחיקה, בכל שלושת מסלולי המחיקה.
+    const teacherUids=new Set();
+    if(teachersSnap.exists())teachersSnap.forEach(t=>teacherUids.add(t.key));
     for(const uid of uidsToDelete){
       if(keepUids.has(uid)) continue;
-      const promises=allPaths.map(path=>db.ref(path+'/'+uid).remove().catch(()=>{}));
-      await Promise.all(promises);
+      await deleteAllUserData(uid,teacherUids.has(uid)?'teacher':'student').catch(()=>{});
       await db.ref('bannedUsers/'+uid).set({deletedAt:Date.now(),deletedBy:currentUser?.uid||'admin'}).catch(()=>{});
       await db.ref('forceSignout/'+uid).set({ts:Date.now()}).catch(()=>{});
       deleted++;
@@ -7168,28 +7193,33 @@ async function resetSystem(){
     showFireToast('⏳ מאפס מערכת... אנא המתן');
     const adminUid=currentUser.uid;
 
-    // מחק את כל הנתונים מלבד המשתמש הנוכחי
-    const pathsToDelete=['teachers','schedules','videos','teacherBookings','bookings',
-      'communityPosts','notifications','reports','userChats','messages',
-      'pendingCategories','reviews'];
-
-    for(const path of pathsToDelete){
-      try{await db.ref(path).remove();}catch(e){console.warn('Skip:',path);}
-    }
-
-    // מחק משתמשים מלבד המנהל
+    // מחיקה לפי משתמש, דרך deleteAllUserData — ולא רשימת נתיבים מקומית.
+    //
+    // כאן ישבה רשימה שנייה משלה, והיא פיגרה: היא לא כללה את
+    // teacherVerification, ולכן "אפס מערכת" השאיר את תמונות תעודת הזהות של
+    // הקטינים במסד. חסרו בה גם pendingReviews, favorites, parentLinks,
+    // studentProgress, lessonSummaries, userCredits ו-chats. זה השורש —
+    // שתי רשימות נתיבים נפרדות סוטות זו מזו, ורק אחת מהן מתוחזקת.
+    //
+    // בונוס: הרשימה הישנה מחקה את teachers/ **כולו**, כולל רשומת המורה של
+    // המנהל עצמו — בסתירה לכוונה המוצהרת "מלבד המשתמש הנוכחי". מעבר למחיקה
+    // לפי משתמש פותר גם את זה.
     try{
       const usersSnap=await db.ref('users').get();
       if(usersSnap.exists()){
-        const promises=[];
-        usersSnap.forEach(u=>{
-          if(u.key!==adminUid){
-            promises.push(db.ref('users/'+u.key).remove());
-          }
-        });
-        await Promise.all(promises);
+        const victims=[];
+        usersSnap.forEach(u=>{if(u.key!==adminUid)victims.push([u.key,u.val()?.role]);});
+        for(const [uid,role] of victims){
+          await deleteAllUserData(uid,role).catch(()=>{});
+        }
       }
     }catch(e){console.warn('Users delete error:',e);}
+
+    // צמתים גלובליים שאינם ממופתחים לפי משתמש, ולכן deleteAllUserData לא
+    // יכולה להגיע אליהם. באיפוס מלא הם נמחקים בשלמותם.
+    for(const path of ['reports','pendingCategories']){
+      try{await db.ref(path).remove();}catch(e){console.warn('Skip:',path);}
+    }
 
     // נקה state מקומי
     TEACHERS.length=0;

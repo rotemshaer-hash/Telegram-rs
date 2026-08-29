@@ -8,6 +8,11 @@ const { test, expect } = require('@playwright/test');
 // The field names asserted here are the ones the app actually writes:
 //   reviews / pendingReviews -> author is `from`     (NOT `uid`)
 //   communityPosts           -> author is `authUid`  (NOT `uid`)
+//   bookings                 -> studentId / teacherId, and the whole record is
+//                               duplicated into userBookings/<student>/<id> and
+//                               teacherBookings/<teacher>/<id>. Every copy
+//                               carries studentName, studentEmail, parentName
+//                               and parentEmail — a minor and their parent.
 // If someone renames one side without the other, these fail instead of the
 // mismatch being discovered from a user's Firebase console screenshot.
 //
@@ -16,9 +21,10 @@ const { test, expect } = require('@playwright/test');
 
 const VICTIM = 'victim-uid';
 const KEEP = 'other-uid';
+const TEACHER = 'teacher-uid';
 
 async function runDeletion(page, role) {
-  return page.evaluate(async ({ VICTIM, KEEP, role }) => {
+  return page.evaluate(async ({ VICTIM, KEEP, TEACHER, role }) => {
     const store = {
       reviews: {
         'teacher-A': {
@@ -34,6 +40,21 @@ async function runDeletion(page, role) {
       communityPosts: {
         c1: { authUid: VICTIM, author: 'Victim', text: 'hello' },
         c2: { authUid: KEEP, author: 'Other', text: 'hi' },
+      },
+      // Three mirrors of the same booking, exactly as openBooking() writes them.
+      bookings: {
+        b1: { studentId: VICTIM, teacherId: TEACHER, studentName: 'Victim', parentEmail: 'parent@example.com' },
+        b2: { studentId: KEEP, teacherId: TEACHER, studentName: 'Other', parentEmail: 'other@example.com' },
+      },
+      userBookings: {
+        [VICTIM]: { b1: { studentId: VICTIM, teacherId: TEACHER } },
+        [KEEP]: { b2: { studentId: KEEP, teacherId: TEACHER } },
+      },
+      teacherBookings: {
+        [TEACHER]: {
+          b1: { studentId: VICTIM, teacherId: TEACHER, studentName: 'Victim', parentEmail: 'parent@example.com' },
+          b2: { studentId: KEEP, teacherId: TEACHER, studentName: 'Other', parentEmail: 'other@example.com' },
+        },
       },
       users: { [VICTIM]: { name: 'Victim' }, [KEEP]: { name: 'Other' } },
       userChats: {},
@@ -61,7 +82,7 @@ async function runDeletion(page, role) {
     db = { ref: (p) => ({ get: async () => snap(read(p), p.split('/').pop()), remove: async () => drop(p) }) };
     await deleteAllUserData(VICTIM, role);
     return store;
-  }, { VICTIM, KEEP, role });
+  }, { VICTIM, KEEP, TEACHER, role });
 }
 
 test.describe('deleteAllUserData removes everything the user authored', () => {
@@ -77,6 +98,17 @@ test.describe('deleteAllUserData removes everything the user authored', () => {
     expect(store.users[VICTIM], 'users record').toBeUndefined();
   });
 
+  test('deletes every mirror of a booking, not only the victim’s own index', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    const store = await runDeletion(page, 'student');
+
+    // Removing userBookings/<victim> alone left the minor's name and the
+    // parent's email sitting in the other two copies.
+    expect(store.bookings.b1, 'global booking copy').toBeUndefined();
+    expect(store.userBookings[VICTIM], 'victim booking index').toBeUndefined();
+    expect(store.teacherBookings[TEACHER].b1, 'teacher-side booking copy').toBeUndefined();
+  });
+
   test('leaves other users’ content untouched', async ({ page }) => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     const store = await runDeletion(page, 'student');
@@ -85,5 +117,8 @@ test.describe('deleteAllUserData removes everything the user authored', () => {
     expect(store.pendingReviews.p2, 'other user pendingReview').toBeDefined();
     expect(store.communityPosts.c2, 'other user post').toBeDefined();
     expect(store.users[KEEP], 'other users record').toBeDefined();
+    expect(store.bookings.b2, 'other user booking').toBeDefined();
+    expect(store.userBookings[KEEP].b2, 'other user booking index').toBeDefined();
+    expect(store.teacherBookings[TEACHER].b2, 'other user booking, teacher side').toBeDefined();
   });
 });
