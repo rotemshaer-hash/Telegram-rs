@@ -54,7 +54,7 @@ ssot_check "ADMIN_EMAIL value" "rotemshaer@gmail.com"
 # נתיבים משלו. הרשימות סטו, ו-teacherVerification — תמונת תעודת הזהות של
 # הקטין — נשארה במסד אחרי "אפס מערכת" ואחרי מחיקה המונית. הרשימה חיה עכשיו
 # רק בתוך deleteAllUserData; אם מישהו יוסיף שנייה, זה ייעצר כאן.
-ssot_check "deletion path list (only inside deleteAllUserData)" "const paths=\["
+ssot_check "deletion path list (USER_DATA_PATHS)" "const USER_DATA_PATHS="
 
 echo ""
 
