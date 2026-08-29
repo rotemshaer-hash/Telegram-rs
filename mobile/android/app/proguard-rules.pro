@@ -1,21 +1,25 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
+# כללי R8 לבנייה release (minifyEnabled true ב-build.gradle).
 #
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# מה שלא נמצא כאן בכוונה: כללי השמירה של פלאגיני Capacitor. הם מוגדרים
+# פעם אחת ב-node_modules/@capacitor/android/capacitor/proguard-rules.pro
+# ומיוצאים דרך consumerProguardFiles, ולכן מגיעים אלינו אוטומטית. שכפול
+# שלהם כאן היה יוצר מקור אמת שני שיישאר מאחור כשקפסיטור יתעדכן.
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# ---------------------------------------------------------------------------
+# גשר ה-JavaScript של Capacitor
+# ---------------------------------------------------------------------------
+# ה-WebView קורא למתודות שמסומנות ב-@JavascriptInterface לפי שם, בזמן ריצה.
+# R8 לא רואה שום קורא בקוד ה-Java, ולכן בלי הכלל הזה הוא ישנה להן שם או
+# יסיר אותן — והאפליקציה תעלה עם מסך לבן במקום להיכשל בבנייה.
+-keepclassmembers class * {
+    @android.webkit.JavascriptInterface <methods>;
+}
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
-
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# ---------------------------------------------------------------------------
+# דוחות קריסה קריאים
+# ---------------------------------------------------------------------------
+# בלי שמירת שם הקובץ ומספר השורה, כל stack trace ב-Play Console מגיע
+# כשמות מעורפלים בני אות אחת. mapping.txt נארז אוטומטית ב-AAB, ולכן
+# שמירת המאפיינים האלה מספיקה כדי שגוגל תפענח את הדוחות.
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile

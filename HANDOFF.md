@@ -750,6 +750,39 @@ exist", וייתכן שהדלי לא רשום כ-defaultBucket ב-API הזה ל�
 ו-`mobile/android/app/build.gradle`), כי Play דוחה AAB עם versionCode שכבר
 שימש. אין צורך לערוך אותו ידנית לפני כל העלאה.
 
+## R8 הופעל בבנייית release (29.8.2026)
+
+**השורש:** גוגל דורשת מפברואר 2027 כיסוי אופטימיזציית DEX של 25% לפחות
+(R8 או כלי מקביל). ב-`mobile/android/app/build.gradle` היה `minifyEnabled false`,
+כלומר כיסוי 0 — ואי-עמידה גוררת צמצום נראות ויכולת פרסום בחנות. שונה ל-`true`.
+
+**מה לא נגעו בו:** `shrinkResources` נשאר כבוי בכוונה — נכסי הווב יושבים
+ב-`assets` ולא ב-`res`, אין רווח ממשי ויש סיכון להסרת משאב שנטען דינמית.
+דרישת גוגל היא על DEX בלבד.
+
+**כללי שמירה — מקור אמת אחד:** כללי Capacitor **לא** משוכפלים אצלנו. הם
+מגיעים אוטומטית מ-`consumerProguardFiles` של `capacitor-android`
+(`node_modules/@capacitor/android/capacitor/proguard-rules.pro`), שמכיל
+`-keep public class * extends com.getcapacitor.Plugin`. ב-`proguard-rules.pro`
+המקומי נוספו רק שני דברים שאף אחד אחר לא מספק:
+1. שמירת מתודות `@android.webkit.JavascriptInterface` — ה-WebView קורא להן
+   לפי שם בזמן ריצה, R8 לא רואה קורא, ובלי הכלל האפליקציה עולה **מסך לבן**
+   בלי שהבנייה תיכשל.
+2. `-keepattributes SourceFile,LineNumberTable` — בלעדיו כל stack trace
+   ב-Play Console מגיע כשמות בני אות אחת.
+
+**בונוס:** כש-R8 פעיל AGP מצרף את `mapping.txt` ל-AAB, ולכן אזהרת
+ה-deobfuscation הצהובה ב-Play Console נסגרת מאליה. אין צורך להעלות קובץ ידנית.
+
+**נעילה ב-CI (`build-android.yml`, job `build`):** `assembleDebug` **לא** מריץ
+R8, ולכן שגיאת כללים הייתה מתגלה רק ברגע שבו צריך AAB לחנות. נוספו שני צעדים:
+`./gradlew bundleRelease` (לא חתום — רק כדי ש-R8 ירוץ), ואחריו בדיקה בתוך
+`mapping.txt` ששני שמות שנקראים בזמן ריצה לפי מחרוזת שרדו (`-> postMessage`
+ו-`CapacitorHttp`). זה תופס גם שבירה **שקטה**, לא רק בנייה שנכשלת.
+
+**לא הועלה APP_VERSION** — זהו שינוי תצורת בנייה, לא תיקון שנראה למשתמש.
+ה-`versionCode` ממשיך להגיע מ-`github.run_number` כרגיל.
+
 ## קמפיין גיוס מורים (אורגני, בלי תקציב)
 נמסר בצ'אט (לא artifact — המשתמש ביקש בלי artifact). עיקר: טיקטוק (נפח + hooks) +
 השתלה בקבוצות ווטסאפ + שגרירים/מיקרו-משפיענים. יש 15 רעיונות לסרטונים ו-2 הודעות פנייה.
