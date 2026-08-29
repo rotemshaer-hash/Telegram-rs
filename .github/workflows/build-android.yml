@@ -45,6 +45,32 @@ jobs:
           name: kidemy-debug-apk
           path: mobile/android/app/build/outputs/apk/debug/app-debug.apk
 
+      # בנייה זו רצה **רק** כדי לאמת את R8, ולא מתפרסמת לשום מקום.
+      #
+      # למה בכלל: assembleDebug לא מריץ R8, ולכן בלי הצעד הזה שגיאה בכללי
+      # השמירה הייתה מתגלה רק ב-workflow_dispatch — כלומר בדיוק ברגע שבו
+      # צריך AAB להעלאה לחנות, וכשאין SDK של אנדרואיד במחשב שלנו לבדוק ידנית.
+      # אין כאן keystore.properties, ולכן ה-AAB יוצא לא חתום — זה מספיק:
+      # R8 רץ לפני החתימה.
+      - name: Verify R8 release build
+        working-directory: mobile/android
+        run: ./gradlew bundleRelease
+
+      # R8 נכשל בקול רם רק על תצורה שגויה. הרס של הגשר ל-JavaScript, לעומת
+      # זאת, שקט לגמרי: הבנייה מצליחה והאפליקציה עולה עם מסך לבן במכשיר.
+      # לכן בודקים בתוך mapping.txt שהשמות שנקראים בזמן ריצה לפי מחרוזת אכן
+      # שרדו — זה מה שהופך את כללי השמירה לנעולים ולא ל"עבד לי פעם אחת".
+      - name: Assert R8 kept the Capacitor bridge
+        working-directory: mobile/android
+        run: |
+          MAP=app/build/outputs/mapping/release/mapping.txt
+          test -f "$MAP" || { echo "::error::R8 לא ייצר mapping.txt — minifyEnabled כבוי?"; exit 1; }
+          grep -q -- '-> postMessage' "$MAP" \
+            || { echo "::error::מתודת @JavascriptInterface אבדה או שונתה — הגשר ל-WebView שבור"; exit 1; }
+          grep -q 'com.getcapacitor.plugin.CapacitorHttp -> com.getcapacitor.plugin.CapacitorHttp' "$MAP" \
+            || { echo "::error::מחלקת פלאגין של Capacitor עורפלה — consumerProguardFiles לא הוחלו"; exit 1; }
+          echo "R8 רץ, והגשר והפלאגינים נשמרו."
+
   build-release-aab:
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest

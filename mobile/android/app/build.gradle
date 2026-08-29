@@ -51,7 +51,21 @@ android {
     }
     buildTypes {
         release {
-            minifyEnabled false
+            // R8 חייב לרוץ: החל מפברואר 2027 גוגל דורשת כיסוי אופטימיזציית DEX
+            // של 25% לפחות, ועם minifyEnabled false הכיסוי הוא 0 — מה שגורר
+            // צמצום נראות ויכולת פרסום בחנות. זה שורש הדרישה, לא קישוט.
+            //
+            // תופעת לוואי רצויה: כש-R8 פעיל, AGP מצרף את mapping.txt לתוך
+            // ה-AAB (BUNDLE-METADATA), ולכן דוחות הקריסה ב-Play Console
+            // נקראים מאליהם — זה מה שמכבה את אזהרת ה-deobfuscation.
+            //
+            // כללי השמירה של Capacitor אינם נכתבים כאן: capacitor-android
+            // מייצא אותם דרך consumerProguardFiles, ולכן הם מגיעים אוטומטית
+            // (מקור אמת אחד). מה שנוסף מקומית נמצא ב-proguard-rules.pro.
+            minifyEnabled true
+            // shrinkResources נשאר כבוי במכוון: נכסי הווב יושבים ב-assets
+            // ולא ב-res, כך שאין כאן רווח ממשי — רק סיכון להסרת משאב שנטען
+            // דינמית. דרישת גוגל היא על DEX בלבד.
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
             if (hasSigningConfig) {
                 signingConfig signingConfigs.release
