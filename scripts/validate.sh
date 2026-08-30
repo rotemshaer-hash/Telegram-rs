@@ -125,6 +125,27 @@ done
 
 echo ""
 
+# ── כותרות אבטחה ב-netlify.toml ──────────────────────────────────────────────
+# כותרת אבטחה שנעלמת לא שוברת כלום ולא מייצרת שגיאה — היא פשוט מפסיקה להגן.
+# באפליקציה שמחזיקה מידע על קטינים זו לא תקלה שאפשר לגלות מאוחר.
+echo "-- Security headers --"
+
+hdr_check() {
+  if grep -q "$1" netlify.toml 2>/dev/null; then
+    pass "Header present: $1"
+  else
+    fail "Security header missing from netlify.toml: $1"
+  fi
+}
+
+hdr_check "X-Content-Type-Options"
+hdr_check "Referrer-Policy"
+hdr_check "X-Frame-Options"
+hdr_check "Permissions-Policy"
+hdr_check "Strict-Transport-Security"
+
+echo ""
+
 # ── Result ────────────────────────────────────────────────────────────────────
 if [ "$ERRORS" -gt 0 ]; then
   echo "🚫  Validation FAILED — $ERRORS violation(s). Deploy blocked."
