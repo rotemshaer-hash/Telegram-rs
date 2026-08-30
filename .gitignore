@@ -18,3 +18,8 @@ playwright.local.config.js
 # 1.1MB כל אחד, ושני העותקים היו נפרדים ברגע שאחד מהם משתנה.
 mobile/www/*
 !mobile/www/.gitkeep
+
+# פלט דיבאג של אמולטור Firebase — נוצר בכל הרצת npm run test:rules
+database-debug.log
+firebase-debug.log
+ui-debug.log
