@@ -750,6 +750,22 @@ exist", וייתכן שהדלי לא רשום כ-defaultBucket ב-API הזה ל�
 ו-`mobile/android/app/build.gradle`), כי Play דוחה AAB עם versionCode שכבר
 שימש. אין צורך לערוך אותו ידנית לפני כל העלאה.
 
+## ⚙️ `/release` + hook שאוכף את החוקה (30.8.2026)
+
+**`/release`** (`.claude/skills/release/SKILL.md`) — פקודה אחת שמריצה את כל
+המסלול: החלטה על העלאת `APP_VERSION`, `validate.sh`, `npm test`,
+`npm run test:rules`, ענף `claude/*`, קומיט, דחיפה ופתיחת PR. **עוצרת ב-PR**
+— מיזוג עדיין דורש "כן" מפורש. היא מתעדת גם את המלכודות שנתקלנו בהן:
+לאמת שטסט של באג **נכשל על הקוד הישן**, ש-stub של JS לא מכיר חוקי Firebase,
+ושה-AAB נלקח מ-Release ולא מ-artifact.
+
+**hook** (`.githooks/pre-commit`) — `validate.sh` רץ לפני כל קומיט. הפעלה
+חד-פעמית לכל clone: `git config core.hooksPath .githooks` (מתועד ב-CLAUDE.md).
+אומת: קומיט שמכניס את המילה האסורה "Kidemy" נחסם בפועל, ו-HEAD לא זז.
+
+**למה זה שווה:** הבדיקות האלה כבר תפסו הפרות אמיתיות. כשהן רצות רק ב-CI,
+ההפרה כבר בהיסטוריה ומישהו צריך לזכור לחזור אליה.
+
 ## R8 הופעל בבנייית release (29.8.2026)
 
 **השורש:** גוגל דורשת מפברואר 2027 כיסוי אופטימיזציית DEX של 25% לפחות
