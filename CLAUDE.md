@@ -40,3 +40,19 @@ No duplicates. No inline magic numbers. Refer to the one definition everywhere.
 
 Run `bash scripts/validate.sh` locally or let CI run it on every push.
 A failing check blocks the deploy — fix the violation, don't suppress the check.
+
+**Enable the pre-commit hook once per clone:**
+
+```bash
+git config core.hooksPath .githooks
+```
+
+The validator then runs before every commit, so a violation never enters the
+history in the first place. CI catching it later means someone has to remember
+to come back to it — this way there is nothing to remember.
+
+## Shipping a change
+
+`/release` walks the full gate: version-bump decision, `validate.sh`, the e2e
+suite, the Firebase rules suite, branch, commit, push, PR. It stops at the PR
+— merging still needs an explicit "כן".
