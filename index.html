@@ -4053,19 +4053,27 @@ async function deleteAllUserData(uid,role){
   // "מצליחה" בלי למחוק כלום. במקום זה קוראים את שני נתיבי האינדקס שהמשתמש
   // כן מורשה לקרוא, ומהם מגיעים לשלושת העותקים. חייב לרוץ לפני שהאינדקסים
   // עצמם נמחקים למטה.
+  //
+  // הסדר כאן אינו שרירותי, והוא נתפס בבדיקת החוקים באמולטור: ההרשאה למחוק
+  // את עותק הצד השני נגזרת מ-bookings/<id> עצמו —
+  // teacherBookings/$uid/$id מותר למי ש-root.child('bookings/'+id+'/studentId')
+  // מצביע עליו, ולהפך. ברגע שהרשומה הגלובלית נמחקת, התנאי הזה מחזיר null
+  // והמחיקה של המראה נדחית ב-PERMISSION_DENIED — כלומר העותק עם שם הקטין
+  // ומייל ההורה היה שורד. לכן: קודם שתי המראות, ורק אחר כך הרשומה הגלובלית.
   try{
-    const delBk=new Set();
+    const mirrors=new Set(),globals=new Set();
     for(const idxPath of ['userBookings/'+uid,'teacherBookings/'+uid]){
       const idxSnap=await db.ref(idxPath).get();
       if(!idxSnap.exists())continue;
       idxSnap.forEach(b=>{
         const v=b.val()||{};
-        delBk.add('bookings/'+b.key);
-        if(v.studentId)delBk.add('userBookings/'+v.studentId+'/'+b.key);
-        if(v.teacherId)delBk.add('teacherBookings/'+v.teacherId+'/'+b.key);
+        globals.add('bookings/'+b.key);
+        if(v.studentId)mirrors.add('userBookings/'+v.studentId+'/'+b.key);
+        if(v.teacherId)mirrors.add('teacherBookings/'+v.teacherId+'/'+b.key);
       });
     }
-    await Promise.all([...delBk].map(pth=>db.ref(pth).remove()));
+    await Promise.all([...mirrors].map(pth=>db.ref(pth).remove()));
+    await Promise.all([...globals].map(pth=>db.ref(pth).remove()));
   }catch(_e){}
 
   const paths=USER_DATA_PATHS.map(p=>p+'/'+uid);
