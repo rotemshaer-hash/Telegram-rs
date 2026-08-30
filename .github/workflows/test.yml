@@ -38,3 +38,26 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 7
+
+  # חוקי האבטחה נבדקים מול האמולטור עם הקובץ האמיתי.
+  #
+  # למה זה job נפרד ולא עוד טסט: באג המחיקה חזר ארבע פעמים כי הקוד קרא צמתים
+  # שהחוקים לא מרשים לקרוא — הבקשה נדחתה, ה-catch בלע, והמחיקה "הצליחה".
+  # טסט מעל ה-JS לא יכול לראות את זה: ה-stub שלו לא מכיר חוקים. רק הרצה מול
+  # מנוע החוקים האמיתי כן.
+  rules:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      # אמולטור ה-Database הוא תהליך Java
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+      - run: npm ci
+      - name: Run security rules tests
+        run: npm run test:rules

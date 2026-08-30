@@ -1003,7 +1003,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.7';
+const APP_VERSION='4.11.8';
 // מוטבע מחדש בכל פריסה על ידי .github/workflows/deploy.yml. הערך כאן הוא
 // גיבוי לבנייה מקומית בלבד — תאריך שנשמר ביד הלך והזדקן בשקט והוצג
 // למשתמשים כתאריך הבנייה, שבועיים אחרי שהיה נכון.
@@ -3414,8 +3414,11 @@ async function submitDirectReview(teacherId){
     // write to reviews/{teacherId} — main path
     const newRef=db.ref('reviews/'+teacherId).push();
     await newRef.set(reviewData);
-    // ALSO write to pendingReviews/ — flat admin queue, guaranteed readable
-    await db.ref('pendingReviews').push({...reviewData, reviewId:newRef.key});
+    // ALSO write to pendingReviews/ — flat admin queue, guaranteed readable.
+    // המפתח הוא reviewId ולא push() אקראי: pendingReviews קריא למנהל בלבד
+    // (database.rules.json), ולכן משתמש שמוחק את עצמו לא יכול לסרוק אותו
+    // כדי למצוא את הרשומה שלו. כשהמפתח ידוע מראש הוא פשוט מוחק אותה.
+    await db.ref('pendingReviews/'+newRef.key).set({...reviewData, reviewId:newRef.key});
     // שלח אימייל למנהל על ביקורת חדשה
     sendAdminEmail('⭐ ביקורת חדשה ממתינה לאישור',`מאת: ${reviewData.fromName}\nלמורה: ${reviewData.to}\nדירוג: ${'⭐'.repeat(reviewData.stars)} (${reviewData.stars}/5)\n\nביקורת:\n"${(reviewData.review||'').substring(0,200)}"\n\nאשר/דחה בפאנל המנהל:\nhttps://kidemy-app.netlify.app`).catch(()=>{});
     // verify main write succeeded
@@ -3459,7 +3462,7 @@ async function submitReview(bookingId,booking,ratedId,stars,review,isStudent){
     if(bookingId)await db.ref('bookings/'+bookingId+'/'+(isStudent?'studentRating':'teacherRating')).set(stars);
     // כתוב תור ממתין למנהל + שלח מייל
     if(isStudent){
-      db.ref('pendingReviews').push({...reviewData,reviewId:_rRef.key}).catch(()=>{});
+      db.ref('pendingReviews/'+_rRef.key).set({...reviewData,reviewId:_rRef.key}).catch(()=>{});
       sendAdminEmail('⭐ ביקורת חדשה ממתינה לאישור',`מאת: ${reviewData.fromName}\nלמורה: ${reviewData.to}\nדירוג: ${'⭐'.repeat(stars)} (${stars}/5)\n\nביקורת:\n"${(review||'').substring(0,200)}"\n\nאשר/דחה בפאנל המנהל:\nhttps://kidemy-app.netlify.app`).catch(()=>{});
     }
     // עדכון ממוצע מורה אם תלמיד דירג — רק ביקורות מאושרות
@@ -3968,6 +3971,16 @@ async function sha256hex(text){
 // הודעות הצ'אט עצמן, אבל לא פוסטים בקהילה ולא ביקורות שהמשתמש כתב. מחיקת
 // מנהל ניקתה את השניים האלה, אבל לא את הרשימה הארוכה יותר. כל צד "עבד"
 // ונראה שלם, ולכן איש לא שם לב שהם לא זהים.
+// שמות הצמתים שממופתחים לפי uid. מקור אמת אחד לשני צרכנים:
+// deleteAllUserData מוחקת מהם את המשתמש, ו-resetSystem סורקת אותם כדי לאתר
+// יתומים — רשומות שנשארו תחת uid שכבר לא קיים ב-users.
+// teachers/ לא ברשימה בכוונה: הוא נמחק רק למורים, אחרת מחיקת תלמיד הייתה
+// מנסה למחוק נתיב שאין לו הרשאה עליו ומדווחת על כישלון מדומה.
+const USER_DATA_PATHS=['users','userChats','notifications','userBookings','favorites',
+  'userGroups','parentLinks','schedules','lessonSummaries','studentProgress',
+  'teacherSummaries','teacherBookings','teacherVerification','reviews','videos',
+  'chats','userCredits'];
+
 async function deleteAllUserData(uid,role){
   const isTeacher=role==='teacher';
 
@@ -3997,12 +4010,13 @@ async function deleteAllUserData(uid,role){
 
   // ביקורות שהמשתמש כתב (כתלמיד, על מורים שונים — reviews/<teacherId>/<reviewId>).
   // אותו באג בדיוק: הכותב נשמר בשדה from, לא uid.
+  const authoredReviewIds=[];
   try{
     const revSnap=await db.ref('reviews').get();
     if(revSnap.exists()){
       const delRevs=[];
       revSnap.forEach(teacherEntry=>{
-        teacherEntry.forEach(r=>{if(r.val().from===uid)delRevs.push('reviews/'+teacherEntry.key+'/'+r.key);});
+        teacherEntry.forEach(r=>{if(r.val().from===uid){delRevs.push('reviews/'+teacherEntry.key+'/'+r.key);authoredReviewIds.push(r.key);}});
       });
       await Promise.all(delRevs.map(p=>db.ref(p).remove()));
     }
@@ -4011,6 +4025,13 @@ async function deleteAllUserData(uid,role){
   // pendingReviews — עותק שטוח של כל ביקורת עבור תור המנהל, כולל שם הכותב
   // וטקסט הביקורת. הוא מנוקה רק כשמנהל מאשר/דוחה ביקורת בודדת, ולכן ביקורת
   // של משתמש שנמחק שרדה שם עם שמו המלא.
+  // מחיקה לפי מפתח: הצומת קריא למנהל בלבד, ולכן משתמש שמוחק את עצמו לא
+  // יכול לסרוק אותו. מאז שהמפתח הוא reviewId (ראה submitReview) אין צורך —
+  // המזהים הגיעו מסריקת reviews/, שכן קריאה לכל משתמש מחובר.
+  await Promise.all(authoredReviewIds.map(id=>db.ref('pendingReviews/'+id).remove().catch(()=>{})));
+  // סריקה משלימה לרשומות ישנות שנכתבו עם מפתח push() אקראי. עוברת רק
+  // כשהמוחק הוא המנהל; אצל משתמש רגיל היא נדחית, וזה בסדר — המחיקה לפי
+  // מפתח למעלה כבר טיפלה בכל מה שנכתב מאז.
   try{
     const pendSnap=await db.ref('pendingReviews').get();
     if(pendSnap.exists()){
@@ -4020,13 +4041,42 @@ async function deleteAllUserData(uid,role){
     }
   }catch(_e){}
 
-  const paths=[
-    'users/'+uid,'userChats/'+uid,'notifications/'+uid,'userBookings/'+uid,
-    'favorites/'+uid,'userGroups/'+uid,'parentLinks/'+uid,'schedules/'+uid,
-    'lessonSummaries/'+uid,'studentProgress/'+uid,'teacherSummaries/'+uid,
-    'teacherBookings/'+uid,'teacherVerification/'+uid,'reviews/'+uid,
-    'videos/'+uid,'chats/'+uid,'userCredits/'+uid,
-  ];
+  // הזמנות. openBooking כותב כל רשומה **משוכפלת לשלושה נתיבים**, וכל עותק
+  // נושא studentName, studentEmail, parentName ו-parentEmail — שם של קטין
+  // ומייל של ההורה שלו. המחיקה הסירה עד כה רק את שני נתיבי האינדקס של
+  // המשתמש עצמו, ולכן העותק הגלובלי והעותק של הצד השני שרדו עם ה-PII.
+  //
+  // לא סורקים את bookings/ הגלובלי: לפי database.rules.json הרשאת הקריאה
+  // מוגדרת רק על bookings/<id> (ועל השורש — למנהל בלבד), ולכן
+  // db.ref('bookings').get() נכשל ב-PERMISSION_DENIED בדיוק במסלול שהכי
+  // חשוב — משתמש שמוחק את חשבונו. השגיאה הייתה נבלעת ב-catch והמחיקה
+  // "מצליחה" בלי למחוק כלום. במקום זה קוראים את שני נתיבי האינדקס שהמשתמש
+  // כן מורשה לקרוא, ומהם מגיעים לשלושת העותקים. חייב לרוץ לפני שהאינדקסים
+  // עצמם נמחקים למטה.
+  //
+  // הסדר כאן אינו שרירותי, והוא נתפס בבדיקת החוקים באמולטור: ההרשאה למחוק
+  // את עותק הצד השני נגזרת מ-bookings/<id> עצמו —
+  // teacherBookings/$uid/$id מותר למי ש-root.child('bookings/'+id+'/studentId')
+  // מצביע עליו, ולהפך. ברגע שהרשומה הגלובלית נמחקת, התנאי הזה מחזיר null
+  // והמחיקה של המראה נדחית ב-PERMISSION_DENIED — כלומר העותק עם שם הקטין
+  // ומייל ההורה היה שורד. לכן: קודם שתי המראות, ורק אחר כך הרשומה הגלובלית.
+  try{
+    const mirrors=new Set(),globals=new Set();
+    for(const idxPath of ['userBookings/'+uid,'teacherBookings/'+uid]){
+      const idxSnap=await db.ref(idxPath).get();
+      if(!idxSnap.exists())continue;
+      idxSnap.forEach(b=>{
+        const v=b.val()||{};
+        globals.add('bookings/'+b.key);
+        if(v.studentId)mirrors.add('userBookings/'+v.studentId+'/'+b.key);
+        if(v.teacherId)mirrors.add('teacherBookings/'+v.teacherId+'/'+b.key);
+      });
+    }
+    await Promise.all([...mirrors].map(pth=>db.ref(pth).remove()));
+    await Promise.all([...globals].map(pth=>db.ref(pth).remove()));
+  }catch(_e){}
+
+  const paths=USER_DATA_PATHS.map(p=>p+'/'+uid);
   if(isTeacher)paths.push('teachers/'+uid);
 
   const results=await Promise.allSettled(paths.map(p=>db.ref(p).remove()));
@@ -7143,12 +7193,16 @@ async function adminDeleteOldUsers(){
     }
     keepUids.add(currentUser.uid); // תמיד שמור את המנהל הנוכחי
 
-    // מחק את כל הנתונים של כל UID שמצאנו
-    const allPaths=['teachers','users','schedules','videos','notifications','userChats','teacherBookings','bookings','reviews'];
+    // מחק את כל הנתונים של כל UID שמצאנו — דרך deleteAllUserData.
+    //
+    // גם כאן ישבה רשימת נתיבים שלישית ומקוצרת (9 נתיבים), שלא כללה את
+    // teacherVerification ולכן השאירה את תמונות תעודת הזהות של הקטינים.
+    // מקור אמת אחד למחיקה, בכל שלושת מסלולי המחיקה.
+    const teacherUids=new Set();
+    if(teachersSnap.exists())teachersSnap.forEach(t=>teacherUids.add(t.key));
     for(const uid of uidsToDelete){
       if(keepUids.has(uid)) continue;
-      const promises=allPaths.map(path=>db.ref(path+'/'+uid).remove().catch(()=>{}));
-      await Promise.all(promises);
+      await deleteAllUserData(uid,teacherUids.has(uid)?'teacher':'student').catch(()=>{});
       await db.ref('bannedUsers/'+uid).set({deletedAt:Date.now(),deletedBy:currentUser?.uid||'admin'}).catch(()=>{});
       await db.ref('forceSignout/'+uid).set({ts:Date.now()}).catch(()=>{});
       deleted++;
@@ -7168,28 +7222,46 @@ async function resetSystem(){
     showFireToast('⏳ מאפס מערכת... אנא המתן');
     const adminUid=currentUser.uid;
 
-    // מחק את כל הנתונים מלבד המשתמש הנוכחי
-    const pathsToDelete=['teachers','schedules','videos','teacherBookings','bookings',
-      'communityPosts','notifications','reports','userChats','messages',
-      'pendingCategories','reviews'];
-
-    for(const path of pathsToDelete){
-      try{await db.ref(path).remove();}catch(e){console.warn('Skip:',path);}
-    }
-
-    // מחק משתמשים מלבד המנהל
+    // מחיקה לפי משתמש, דרך deleteAllUserData — ולא רשימת נתיבים מקומית.
+    //
+    // כאן ישבה רשימה שנייה משלה, והיא פיגרה: היא לא כללה את
+    // teacherVerification, ולכן "אפס מערכת" השאיר את תמונות תעודת הזהות של
+    // הקטינים במסד. חסרו בה גם pendingReviews, favorites, parentLinks,
+    // studentProgress, lessonSummaries, userCredits ו-chats. זה השורש —
+    // שתי רשימות נתיבים נפרדות סוטות זו מזו, ורק אחת מהן מתוחזקת.
+    //
+    // בונוס: הרשימה הישנה מחקה את teachers/ **כולו**, כולל רשומת המורה של
+    // המנהל עצמו — בסתירה לכוונה המוצהרת "מלבד המשתמש הנוכחי". מעבר למחיקה
+    // לפי משתמש פותר גם את זה.
     try{
       const usersSnap=await db.ref('users').get();
       if(usersSnap.exists()){
-        const promises=[];
-        usersSnap.forEach(u=>{
-          if(u.key!==adminUid){
-            promises.push(db.ref('users/'+u.key).remove());
-          }
-        });
-        await Promise.all(promises);
+        const victims=[];
+        usersSnap.forEach(u=>{if(u.key!==adminUid)victims.push([u.key,u.val()?.role]);});
+        for(const [uid,role] of victims){
+          await deleteAllUserData(uid,role).catch(()=>{});
+        }
       }
     }catch(e){console.warn('Users delete error:',e);}
+
+    // יתומים: רשומות שנשארו תחת uid שכבר לא קיים ב-users, ולכן הלולאה למעלה
+    // לא הגיעה אליהן. הרשימה הישנה תפסה אותן במחיקה גורפת של הצומת; מחיקה
+    // לפי משתמש לא, ולכן סורקים במפורש — מאותה רשימת נתיבים אחת.
+    for(const path of USER_DATA_PATHS.concat(['teachers'])){
+      try{
+        const snap=await db.ref(path).get();
+        if(!snap.exists())continue;
+        const dels=[];
+        snap.forEach(c=>{if(c.key!==adminUid)dels.push(db.ref(path+'/'+c.key).remove());});
+        await Promise.all(dels);
+      }catch(e){console.warn('Skip:',path);}
+    }
+
+    // צמתים שאינם ממופתחים לפי uid כלל (מזהה הזמנה, מזהה פוסט, מזהה שיחה),
+    // ולכן אי אפשר לסנן בהם לפי בעלים. באיפוס מלא הם נמחקים בשלמותם.
+    for(const path of ['bookings','communityPosts','pendingReviews','messages','reports','pendingCategories']){
+      try{await db.ref(path).remove();}catch(e){console.warn('Skip:',path);}
+    }
 
     // נקה state מקומי
     TEACHERS.length=0;
