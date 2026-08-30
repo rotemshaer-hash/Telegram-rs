@@ -9,6 +9,10 @@ on:
 jobs:
   send-reports:
     runs-on: ubuntu-latest
+    # נדרש כדי לפתוח Issue כשהריצה נכשלת (ראה הצעד האחרון)
+    permissions:
+      contents: read
+      issues: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -20,6 +24,47 @@ jobs:
       - name: Send weekly parent reports
         working-directory: scripts
         env:
-          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          # שם הסוד שקיים בפועל — אותו אחד ש-deploy-firebase-rules.yml
+          # משתמש בו בהצלחה. כאן היה כתוב FIREBASE_SERVICE_ACCOUNT_JSON,
+          # שלא קיים, ולכן הועבר מחרוזת ריקה וכל ריצה מתוזמנת נכשלה.
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           EMAILJS_PRIVATE_KEY: ${{ secrets.EMAILJS_PRIVATE_KEY }}
         run: node send-weekly-parent-reports.js
+
+      # כישלון של workflow מתוזמן הוא שקט לחלוטין: אין PR שנצבע באדום, אין
+      # מי שמסתכל. הדוח השבועי להורים נכשל חמישה שבועות ברצף בלי שאיש ידע —
+      # וזו תכונת בטיחות, לא נוחות. מעכשיו כישלון פותח Issue.
+      - name: Open an issue if the report failed
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = '🚨 הדוח השבועי להורים נכשל';
+            const url = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const body = [
+              'הריצה המתוזמנת של **Send Weekly Parent Reports** נכשלה, כלומר',
+              '**אף הורה לא קיבל דוח השבוע**.',
+              '',
+              `לוג הריצה: ${url}`,
+              '',
+              'הסיבה הנפוצה: סוד חסר ב-Settings → Secrets and variables → Actions',
+              '(`FIREBASE_SERVICE_ACCOUNT`, `EMAILJS_PRIVATE_KEY`). הלוג אומר',
+              'בדיוק אילו.',
+              '',
+              '_נפתח אוטומטית. סגור אותו אחרי שהריצה הבאה מצליחה._',
+            ].join('\n');
+            const existing = await github.rest.issues.listForRepo({
+              owner: context.repo.owner, repo: context.repo.repo,
+              state: 'open', labels: 'weekly-parent-report',
+            });
+            if (existing.data.length) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: existing.data[0].number, body,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner, repo: context.repo.repo,
+                title, body, labels: ['weekly-parent-report'],
+              });
+            }

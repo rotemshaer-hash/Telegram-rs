@@ -174,7 +174,7 @@
         }
       }
     },
-    "pendingReviews": { ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'", ".write": "auth != null" },
+    "pendingReviews": { ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'", "$reviewId": { ".write": "auth != null && ((!data.exists() && newData.exists()) || data.child('from').val() == auth.uid || auth.token.email == 'rotemshaer@gmail.com')" } },
     "videos": {
       ".read": "auth != null",
       "$teacherId": {
@@ -257,7 +257,7 @@
         }
       }
     },
-    "reports": { ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'", ".write": "auth != null", ".indexOn": ["status"] },
+    "reports": { ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'", ".indexOn": ["status"], "$reportId": { ".write": "auth != null && ((!data.exists() && newData.exists()) || auth.token.email == 'rotemshaer@gmail.com')" } },
     "favorites": {
       "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth != null && auth.uid == $uid" }
     },
@@ -280,7 +280,7 @@
     },
     "contactMessages": { ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'", ".write": "auth != null" },
     "employerInquiries": { ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'", ".write": "auth != null" },
-    "pendingCategories": { ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'", ".write": "auth != null" },
+    "pendingCategories": { ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'", "$suggestionId": { ".write": "auth != null && ((!data.exists() && newData.exists()) || auth.token.email == 'rotemshaer@gmail.com')" } },
     "stories": {
       ".read": "auth != null",
       ".indexOn": ["status"],
