@@ -90,12 +90,24 @@ async function main() {
     );
   }
 
-  admin.initializeApp({
+  const app = admin.initializeApp({
     credential: admin.credential.cert(JSON.parse(FIREBASE_SERVICE_ACCOUNT)),
     databaseURL: DB_URL,
   });
   const db = admin.database();
+  try {
+    await sendAll(db);
+  } finally {
+    // firebase-admin keeps an open realtime-database socket, and that socket
+    // holds Node's event loop open. Without closing it the script finishes its
+    // work, prints Done, and then never exits — the job runs until the runner's
+    // timeout instead of ending. This stayed invisible while every run died at
+    // the secret check above and never reached this far.
+    await app.delete();
+  }
+}
 
+async function sendAll(db) {
   const usersSnap = await db.ref('users').once('value');
   const usersVal = usersSnap.val() || {};
   const students = Object.entries(usersVal)
