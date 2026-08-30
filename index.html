@@ -1003,7 +1003,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.8';
+const APP_VERSION='4.11.9';
 // מוטבע מחדש בכל פריסה על ידי .github/workflows/deploy.yml. הערך כאן הוא
 // גיבוי לבנייה מקומית בלבד — תאריך שנשמר ביד הלך והזדקן בשקט והוצג
 // למשתמשים כתאריך הבנייה, שבועיים אחרי שהיה נכון.
@@ -2299,7 +2299,7 @@ function TeacherSetup(){
 
       <!-- מייסדים / טריאל חינם — הדגשה מרכזית.
            כל עוד נותרו מקומות מייסדים, זו ההבטחה הנכונה להציג: מורה שמגיע
-           בעקבות "500 הראשונים חינם לתמיד" ורואה כאן "₪79 אחרי 30 יום"
+           בעקבות "500 הראשונים חינם לתמיד" ורואה כאן מחיר מנוי אחרי חודש
            פוגש סתירה בשנייה הראשונה, וזה בדיוק מה שמבריח אותו. -->
       ${foundingSlotsLeft()>0?`
       <div style="background:linear-gradient(135deg,#B45309,#F59E0B);border-radius:20px;padding:20px;margin-bottom:14px;text-align:center;box-shadow:0 6px 20px rgba(180,83,9,0.35)">
@@ -2326,13 +2326,13 @@ function TeacherSetup(){
       <div style="background:rgba(15,23,42,0.04);border:1.5px solid rgba(15,23,42,0.1);border-radius:18px;padding:16px 18px;margin-bottom:14px">
         <div style="font-weight:900;font-size:14px;color:#0F172A;margin-bottom:8px">📣 בגילוי מלא — איפה אנחנו נמצאים</div>
         <p style="margin:0 0 10px;font-size:13px;color:#475569;line-height:1.7">Drushe בתחילת הדרך. אנחנו בונים עכשיו את קבוצת המורים הראשונה, <strong>ועדיין אין תלמידים בפלטפורמה.</strong></p>
-        <p style="margin:0 0 10px;font-size:13px;color:#475569;line-height:1.7">אנחנו אומרים לך את זה מראש, כי זו בדיוק הסיבה להטבה: אתה נכנס לפני שיש ביקוש ולוקח איתנו את הסיכון — ובתמורה לא תשלם מנוי. אף פעם. מורים שיצטרפו <strong>אחרי</strong> ${FOUNDING_TEACHER_LIMIT} הראשונים ישלמו ₪79 לחודש.</p>
+        <p style="margin:0 0 10px;font-size:13px;color:#475569;line-height:1.7">אנחנו אומרים לך את זה מראש, כי זו בדיוק הסיבה להטבה: אתה נכנס לפני שיש ביקוש ולוקח איתנו את הסיכון — ובתמורה לא תשלם מנוי. אף פעם. מורים שיצטרפו <strong>אחרי</strong> ${FOUNDING_TEACHER_LIMIT} הראשונים ישלמו ₪${TEACHER_PLAN_PRICE} לחודש.</p>
         <p style="margin:0;font-size:13px;color:#B45309;line-height:1.7;font-weight:800">מי שמתחיל את זה הוא גם מי שקובע איך זה ייראה — ואתה בפנים.</p>
       </div>`}`:`
       <div style="background:linear-gradient(135deg,#7C3AED,#A855F7);border-radius:20px;padding:20px;margin-bottom:14px;text-align:center;box-shadow:0 6px 20px rgba(124,58,237,0.35)">
         <div style="font-size:34px;margin-bottom:6px">🎁</div>
         <div style="font-weight:900;font-size:22px;color:#fff;margin-bottom:4px">${TRIAL_DAYS} יום ניסיון חינם</div>
-        <div style="font-size:13px;color:rgba(255,255,255,0.9);line-height:1.6">בלי צורך באמצעי תשלום עכשיו — תוכל להירשם ולהתחיל לקבל תלמידים מיד.<br>לאחר מכן, מנוי מורה ב-<strong>₪79/חודש</strong> כדי להמשיך להופיע ולקבל תלמידים דרך Drushe.</div>
+        <div style="font-size:13px;color:rgba(255,255,255,0.9);line-height:1.6">בלי צורך באמצעי תשלום עכשיו — תוכל להירשם ולהתחיל לקבל תלמידים מיד.<br>לאחר מכן, מנוי מורה ב-<strong>₪${TEACHER_PLAN_PRICE}/חודש</strong> כדי להמשיך להופיע ולקבל תלמידים דרך Drushe.</div>
       </div>`}
 
       <!-- הסבר מודל תשלום -->
@@ -2772,7 +2772,7 @@ async function processSubscriptionPayment(payMethod){
       id:subId,uid:currentUser.uid,
       name:currentUserData?.name||currentUser.email.split('@')[0],
       email:currentUser.email,
-      plan:'premium',amount:79,payMethod,payRef,
+      plan:'premium',amount:TEACHER_PLAN_PRICE,payMethod,payRef,
       status:'awaitingPayment',createdAt:Date.now()
     };
     await subRef.set(subData);
@@ -2780,9 +2780,9 @@ async function processSubscriptionPayment(payMethod){
     await db.ref('users/'+currentUser.uid+'/subscription').set(subRecord);
     if(currentUserData)currentUserData.subscription=subRecord;
     sendEmail(ADMIN_EMAIL,'💳 מנוי פרימיום ממתין לאימות — Drushe',
-      `בקשת מנוי חדשה!\n\n👤 ${subData.name}\n📧 ${subData.email}\n💰 ₪79 (${payMethod})\n📌 קוד: ${payRef}\n\nאשר בפאנל מנהל → מנויים.`).catch(()=>{});
+      `בקשת מנוי חדשה!\n\n👤 ${subData.name}\n📧 ${subData.email}\n💰 ₪${TEACHER_PLAN_PRICE} (${payMethod})\n📌 קוד: ${payRef}\n\nאשר בפאנל מנהל → מנויים.`).catch(()=>{});
     S.subStep=2;S.subPayRef=payRef;render();
-    kLog('subscription_requested',{plan:'premium',method:payMethod,amount:79});
+    kLog('subscription_requested',{plan:'premium',method:payMethod,amount:TEACHER_PLAN_PRICE});
   }catch(e){showFireToast('❌ '+(e.message||'שגיאה'));}
 }
 
@@ -2821,7 +2821,6 @@ async function adminRejectSubscription(subId,uid){
 // ─── Subscribe Screen ──────────────────────────────────────────────────────────
 function Subscribe(){
   const step=S.subStep||1;
-  const PLAN_PRICE=79;
   const payRef=S.subPayRef||'';
   const hasPending=currentUserData?.subscription?.status==='pending';
 
@@ -2858,7 +2857,7 @@ function Subscribe(){
       <div style="background:transparent;border-radius:20px;padding:20px;box-shadow:none;margin-bottom:14px">
         <div style="font-weight:800;font-size:15px;color:#0F1A1F;margin-bottom:8px">מה קורה עכשיו?</div>
         <div style="display:flex;flex-direction:column;gap:10px">
-          <div style="display:flex;gap:10px;align-items:flex-start"><div style="width:26px;height:26px;border-radius:50%;background:#14B8A6;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;flex-shrink:0">1</div><span style="font-size:13px;line-height:1.6">שלחת ₪${PLAN_PRICE} ל-Drushe דרך אמצעי התשלום שבחרת</span></div>
+          <div style="display:flex;gap:10px;align-items:flex-start"><div style="width:26px;height:26px;border-radius:50%;background:#14B8A6;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;flex-shrink:0">1</div><span style="font-size:13px;line-height:1.6">שלחת ₪${TEACHER_PLAN_PRICE} ל-Drushe דרך אמצעי התשלום שבחרת</span></div>
           <div style="display:flex;gap:10px;align-items:flex-start"><div style="width:26px;height:26px;border-radius:50%;background:#06B6D4;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;flex-shrink:0">2</div><span style="font-size:13px;line-height:1.6">הצוות מאמת את התשלום בד"כ תוך <strong>2–4 שעות</strong></span></div>
           <div style="display:flex;gap:10px;align-items:flex-start"><div style="width:26px;height:26px;border-radius:50%;background:#10B981;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;flex-shrink:0">3</div><span style="font-size:13px;line-height:1.6">תקבל/י גישה פרימיום מלאה ל-<strong>30 ימים</strong></span></div>
         </div>
@@ -2889,7 +2888,7 @@ function Subscribe(){
       <div style="background:transparent;border-radius:22px;padding:20px;box-shadow:none;margin-bottom:16px;border:2px solid rgba(139,47,201,0.15)">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
           <div><div style="font-weight:900;font-size:18px;color:#0F1A1F">מנוי חודשי</div><div style="font-size:12px;color:#64748B;margin-top:2px">מתחדש כל 30 יום</div></div>
-          <div style="text-align:left"><span style="font-size:34px;font-weight:900;color:#8B5CF6">₪${PLAN_PRICE}</span><span style="font-size:12px;color:#94A3B8">/חודש</span></div>
+          <div style="text-align:left"><span style="font-size:34px;font-weight:900;color:#8B5CF6">₪${TEACHER_PLAN_PRICE}</span><span style="font-size:12px;color:#94A3B8">/חודש</span></div>
         </div>
         <div style="height:1px;background:#F1F5F9;margin-bottom:14px"></div>
         ${[['הפרופיל שלך נשאר פעיל','ממשיכים להופיע בחיפוש ולקבל תלמידים חדשים'],['100% מהתשלום נשאר אצלך','Drushe לא לוקחת עמלה משיעורים – אף פעם'],['עדיפות בתוצאות חיפוש','תלמידים רואים אותך קודם'],['תמיכה מהירה','עדיפות בשירות לקוחות']].map(([t,d])=>`
@@ -2922,8 +2921,8 @@ function Subscribe(){
 
       ${S.subPay?`<div style="background:linear-gradient(135deg,rgba(139,47,201,0.08),rgba(6,182,212,0.06));border-radius:14px;padding:14px;margin-bottom:14px">
         <div style="font-weight:800;font-size:13px;color:#8B5CF6;margin-bottom:8px">כיצד לשלם:</div>
-        <div style="font-size:13px;color:#374151;line-height:1.8">1. שלח <strong>₪${PLAN_PRICE}</strong> ל: <strong>${S.subPay==='paypal'?ADMIN_PAYMENT.paypal:S.subPay==='bit'?ADMIN_PAYMENT.bit:ADMIN_PAYMENT.paybox}</strong><br>2. בהערה כתוב: <strong>"Drushe Premium"</strong><br>3. לחץ "אישור – שילמתי!" למטה</div>
-        ${S.subPay==='bit'?`<button onclick="navigator.clipboard?.writeText('${ADMIN_PAYMENT.bit}').then(()=>showFireToast('✅ הועתק!'))" style="display:block;width:100%;margin-top:10px;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:12px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">💜 העתק מספר Bit</button>`:S.subPay==='paypal'?`<a href="https://paypal.me/rotemshaer/${PLAN_PRICE}USD" target="_blank" style="display:block;width:100%;margin-top:10px;background:linear-gradient(135deg,#003087,#009CDE);color:#fff;border-radius:12px;padding:10px;font-weight:800;font-size:13px;text-align:center;text-decoration:none">🅿️ פתח PayPal.me</a>`:`<button onclick="navigator.clipboard?.writeText('${ADMIN_PAYMENT.paybox}').then(()=>showFireToast('✅ הועתק!'))" style="display:block;width:100%;margin-top:10px;background:linear-gradient(135deg,#0066CC,#0052A3);border:none;color:#fff;border-radius:12px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">🔵 העתק מספר PayBox</button>`}
+        <div style="font-size:13px;color:#374151;line-height:1.8">1. שלח <strong>₪${TEACHER_PLAN_PRICE}</strong> ל: <strong>${S.subPay==='paypal'?ADMIN_PAYMENT.paypal:S.subPay==='bit'?ADMIN_PAYMENT.bit:ADMIN_PAYMENT.paybox}</strong><br>2. בהערה כתוב: <strong>"Drushe Premium"</strong><br>3. לחץ "אישור – שילמתי!" למטה</div>
+        ${S.subPay==='bit'?`<button onclick="navigator.clipboard?.writeText('${ADMIN_PAYMENT.bit}').then(()=>showFireToast('✅ הועתק!'))" style="display:block;width:100%;margin-top:10px;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:12px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">💜 העתק מספר Bit</button>`:S.subPay==='paypal'?`<a href="https://paypal.me/rotemshaer/${TEACHER_PLAN_PRICE}USD" target="_blank" style="display:block;width:100%;margin-top:10px;background:linear-gradient(135deg,#003087,#009CDE);color:#fff;border-radius:12px;padding:10px;font-weight:800;font-size:13px;text-align:center;text-decoration:none">🅿️ פתח PayPal.me</a>`:`<button onclick="navigator.clipboard?.writeText('${ADMIN_PAYMENT.paybox}').then(()=>showFireToast('✅ הועתק!'))" style="display:block;width:100%;margin-top:10px;background:linear-gradient(135deg,#0066CC,#0052A3);border:none;color:#fff;border-radius:12px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">🔵 העתק מספר PayBox</button>`}
       </div>`:''}
 
       <button class="btn" ${!S.subPay?'disabled':`onclick="processSubscriptionPayment('${S.subPay}')"`} style="${S.subPay?'background:linear-gradient(135deg,#8B5CF6,#06B6D4);border:none;color:#fff;':''}border-radius:16px;padding:14px;font-weight:900;font-size:15px;width:100%;cursor:${S.subPay?'pointer':'not-allowed'};opacity:${S.subPay?1:0.5}">
@@ -3669,7 +3668,7 @@ function showNotificationsPanel(){
       else if(n.type==='briefAccepted')sub=(n.from||'הורה')+(n.price?' • ₪'+n.price:'')+(n.childName?' עבור '+n.childName:'');
       else if(n.type==='newQuestion')sub=(n.from||'')+(n.preview?' • '+n.preview:'');
       else if(n.type==='questionAnswered')sub=(n.from||'המורה')+(n.preview?' • '+n.preview:'');
-      else if(n.type==='trialReminder')sub='נשאר/ו '+(n.daysLeft||0)+(n.daysLeft===1?' יום':' ימים')+' — לאחר מכן ₪79/חודש';
+      else if(n.type==='trialReminder')sub='נשאר/ו '+(n.daysLeft||0)+(n.daysLeft===1?' יום':' ימים')+' — לאחר מכן ₪'+TEACHER_PLAN_PRICE+'/חודש';
       else if(n.type==='emailFailed')sub='אל: '+(n.to||'')+(n.subject?' • '+n.subject:'')+(n.error?' • '+n.error:'');
       else if(n.type==='chatDeliveryFailed')sub='שלב: '+(n.step||'')+(n.otherUid?' • יעד: '+n.otherUid:'')+(n.error?' • '+n.error:'');
       else if(n.type==='registrationFailed')sub=(n.email||'')+(n.error?' • '+n.error:'');
@@ -4993,6 +4992,10 @@ function calcCommission(gross){
 }
 // ── מודל מנוי: רק מורים משלמים, תלמידים בחינם לגמרי ─────────────────────────
 const TRIAL_DAYS=30; // ימי ניסיון חינם למורה לפני חובת מנוי
+// מחיר המנוי החודשי למורה, בשקלים. היה כתוב כמספר קשיח ב-12 מקומות — מסכי
+// הרשמה, מסך המנוי, מייל התזכורת, ההתראה, הפרופיל וגוף בקשת המנוי — כך
+// ששינוי מחיר חייב לפגוע בכולם בדיוק. הגדרה אחת, ו-validate.sh שומר עליה.
+const TEACHER_PLAN_PRICE=49;
 function isTeacherTrialExpired(){
   const ca=currentUserData?.createdAt||0;
   return ca>0&&(Date.now()-ca)>TRIAL_DAYS*86400000;
@@ -5053,7 +5056,7 @@ async function checkTeacherTrialReminder(){
     currentUserData[flag]=true;
     const name=currentUserData?.name||'מורה יקר/ה';
     const subject=daysLeft===1?'⏰ נשאר יום אחד לניסיון החינם שלך ב-Drushe':'🎁 נשארו 3 ימים לניסיון החינם שלך ב-Drushe';
-    const body=`שלום ${name},\n\nנשאר/ו לך ${daysLeft===1?'יום אחד':'3 ימים'} לניסיון החינם שלך כמורה ב-Drushe.\n\nלאחר מכן, כדי להמשיך להופיע בחיפוש ולקבל תלמידים חדשים, יידרש מנוי חודשי של ₪79 — ניתן להפעיל בכל שלב דרך עמוד הפרופיל באפליקציה.\n\nהתשלום מול התלמידים על השיעורים עצמם לא משתנה ונשאר ישירות אצלכם.\n\n– צוות Drushe`;
+    const body=`שלום ${name},\n\nנשאר/ו לך ${daysLeft===1?'יום אחד':'3 ימים'} לניסיון החינם שלך כמורה ב-Drushe.\n\nלאחר מכן, כדי להמשיך להופיע בחיפוש ולקבל תלמידים חדשים, יידרש מנוי חודשי של ₪${TEACHER_PLAN_PRICE} — ניתן להפעיל בכל שלב דרך עמוד הפרופיל באפליקציה.\n\nהתשלום מול התלמידים על השיעורים עצמם לא משתנה ונשאר ישירות אצלכם.\n\n– צוות Drushe`;
     await sendEmail(currentUser.email,subject,body);
     await db.ref('notifications/'+currentUser.uid).push({type:'trialReminder',read:false,createdAt:Date.now(),daysLeft}).catch(()=>{});
   }catch(e){console.warn('[trialReminder] failed:',e);}
@@ -8155,7 +8158,11 @@ function renderAdminTab(){
     const _confirmedBks=adminAllBookings.filter(b=>b.status==='approved'||b.status==='completed');
     // Financial
     const _gmvTotal=_confirmedBks.reduce((s,b)=>s+(b.grossAmount||b.price||0),0);
-    const _revTotal=(adminAlertSubscriptions||[]).filter(s=>s.status==='approved').reduce((s,b)=>s+(b.amount||79),0);
+    // כל רשומת מנוי נושאת את הסכום שנגבה בפועל (amount), ולכן זה המקור לסכימה.
+    // הפוֹלבּק היה 79 — המחיר שהיה בזמנו — ומשמעותו שכל שינוי מחיר עתידי היה
+    // משכתב למפרע את ההכנסה המדווחת על רשומות ישנות. רשומה בלי amount היא באג
+    // נתונים, לא מכירה בגובה המחיר הנוכחי, ולכן היא לא נספרת.
+    const _revTotal=(adminAlertSubscriptions||[]).filter(s=>s.status==='approved').reduce((s,b)=>s+(b.amount||0),0);
     const _gmvThisMon=_confirmedBks.filter(b=>b.createdAt>=_thisMonStart.getTime()).reduce((s,b)=>s+(b.grossAmount||b.price||0),0);
     const _gmvLastMon=_confirmedBks.filter(b=>b.createdAt>=_lastMonStart.getTime()&&b.createdAt<_thisMonStart.getTime()).reduce((s,b)=>s+(b.grossAmount||b.price||0),0);
     const _avgPrice=_confirmedBks.length>0?Math.round(_gmvTotal/_confirmedBks.length):0;
@@ -10227,7 +10234,7 @@ function Profile(){
     </div>`;}
 
   if(tab==="about") content=`
-    ${!isTeacher?'':isFoundingTeacher()?`<div style="background:linear-gradient(135deg,rgba(251,191,36,0.16),rgba(139,47,201,0.08));border:1.5px solid rgba(251,191,36,0.4);border-radius:16px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:10px"><div style="font-size:22px">🏆</div><div><div style="font-weight:800;font-size:14px;color:#B45309">מורה מייסד — חינם לתמיד</div><div style="font-size:11px;color:#64748B;margin-top:1px">אתה מ-${FOUNDING_TEACHER_LIMIT} המורים הראשונים ב-Drushe. אין ואף פעם לא יהיה מנוי.</div></div></div>`:isActiveSubscription()?`<div style="background:linear-gradient(135deg,rgba(139,47,201,0.12),rgba(6,182,212,0.08));border-radius:16px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:10px"><div style="font-size:22px">💎</div><div><div style="font-weight:800;font-size:14px;color:#8B5CF6">מנוי פרימיום פעיל</div><div style="font-size:11px;color:#64748B;margin-top:1px">תוקף עד: ${new Date(currentUserData.subscription.expiresAt).toLocaleDateString('he-IL')}</div></div></div>`:currentUserData?.subscription?.status==='pending'?`<div style="background:rgba(245,158,11,0.08);border-radius:16px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:10px;cursor:pointer" onclick="go('subscribe')"><div style="font-size:22px">⏳</div><div><div style="font-weight:800;font-size:14px;color:#D97706">מנוי ממתין לאישור</div><div style="font-size:11px;color:#64748B;margin-top:1px">הצוות מאמת את התשלום — לחץ לפרטים</div></div></div>`:!isTeacherTrialExpired()?`<div style="background:linear-gradient(135deg,rgba(139,47,201,${teacherTrialDaysLeft()<=3?'0.12':'0.06'}),rgba(6,182,212,0.04));border:1.5px dashed rgba(139,47,201,${teacherTrialDaysLeft()<=3?'0.4':'0.25'});border-radius:16px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="go('subscribe')"><div style="display:flex;align-items:center;gap:10px"><div style="font-size:22px">${teacherTrialDaysLeft()<=3?'⏰':'🎁'}</div><div><div style="font-weight:800;font-size:13px;color:#8B5CF6">נותרו ${teacherTrialDaysLeft()} ימים לניסיון החינם</div><div style="font-size:11px;color:#64748B;margin-top:1px">לאחר מכן ₪79/חודש כדי להמשיך להופיע ולקבל תלמידים</div></div></div><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></div>`:`<div style="background:linear-gradient(135deg,rgba(139,47,201,0.06),rgba(6,182,212,0.04));border:1.5px dashed rgba(139,47,201,0.25);border-radius:16px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="go('subscribe')"><div style="display:flex;align-items:center;gap:10px"><div style="font-size:22px">💎</div><div><div style="font-weight:800;font-size:13px;color:#8B5CF6">הניסיון החינם הסתיים — ₪79/חודש</div><div style="font-size:11px;color:#64748B;margin-top:1px">כדי להמשיך להופיע ולקבל תלמידים</div></div></div><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></div>`}
+    ${!isTeacher?'':isFoundingTeacher()?`<div style="background:linear-gradient(135deg,rgba(251,191,36,0.16),rgba(139,47,201,0.08));border:1.5px solid rgba(251,191,36,0.4);border-radius:16px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:10px"><div style="font-size:22px">🏆</div><div><div style="font-weight:800;font-size:14px;color:#B45309">מורה מייסד — חינם לתמיד</div><div style="font-size:11px;color:#64748B;margin-top:1px">אתה מ-${FOUNDING_TEACHER_LIMIT} המורים הראשונים ב-Drushe. אין ואף פעם לא יהיה מנוי.</div></div></div>`:isActiveSubscription()?`<div style="background:linear-gradient(135deg,rgba(139,47,201,0.12),rgba(6,182,212,0.08));border-radius:16px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:10px"><div style="font-size:22px">💎</div><div><div style="font-weight:800;font-size:14px;color:#8B5CF6">מנוי פרימיום פעיל</div><div style="font-size:11px;color:#64748B;margin-top:1px">תוקף עד: ${new Date(currentUserData.subscription.expiresAt).toLocaleDateString('he-IL')}</div></div></div>`:currentUserData?.subscription?.status==='pending'?`<div style="background:rgba(245,158,11,0.08);border-radius:16px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:10px;cursor:pointer" onclick="go('subscribe')"><div style="font-size:22px">⏳</div><div><div style="font-weight:800;font-size:14px;color:#D97706">מנוי ממתין לאישור</div><div style="font-size:11px;color:#64748B;margin-top:1px">הצוות מאמת את התשלום — לחץ לפרטים</div></div></div>`:!isTeacherTrialExpired()?`<div style="background:linear-gradient(135deg,rgba(139,47,201,${teacherTrialDaysLeft()<=3?'0.12':'0.06'}),rgba(6,182,212,0.04));border:1.5px dashed rgba(139,47,201,${teacherTrialDaysLeft()<=3?'0.4':'0.25'});border-radius:16px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="go('subscribe')"><div style="display:flex;align-items:center;gap:10px"><div style="font-size:22px">${teacherTrialDaysLeft()<=3?'⏰':'🎁'}</div><div><div style="font-weight:800;font-size:13px;color:#8B5CF6">נותרו ${teacherTrialDaysLeft()} ימים לניסיון החינם</div><div style="font-size:11px;color:#64748B;margin-top:1px">לאחר מכן ₪${TEACHER_PLAN_PRICE}/חודש כדי להמשיך להופיע ולקבל תלמידים</div></div></div><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></div>`:`<div style="background:linear-gradient(135deg,rgba(139,47,201,0.06),rgba(6,182,212,0.04));border:1.5px dashed rgba(139,47,201,0.25);border-radius:16px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="go('subscribe')"><div style="display:flex;align-items:center;gap:10px"><div style="font-size:22px">💎</div><div><div style="font-weight:800;font-size:13px;color:#8B5CF6">הניסיון החינם הסתיים — ₪${TEACHER_PLAN_PRICE}/חודש</div><div style="font-size:11px;color:#64748B;margin-top:1px">כדי להמשיך להופיע ולקבל תלמידים</div></div></div><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></div>`}
     <div class="card"><h4 style="margin:0 0 10px;font-weight:800">👋 קצת עליי</h4><p style="margin:0;font-size:14px;line-height:1.7">${currentUserData?.bio?escapeHtml(currentUserData.bio):'עדיין לא כתבת קצת על עצמך.'}</p></div>
     <div class="ref-card">
       <h4 style="margin:0 0 6px;font-weight:900;font-size:16px">${icon("gift",14)} הפנה חבר – קבל ₪15!</h4>

@@ -56,6 +56,10 @@ ssot_check "ADMIN_EMAIL value" "rotemshaer@gmail.com"
 # רק בתוך deleteAllUserData; אם מישהו יוסיף שנייה, זה ייעצר כאן.
 ssot_check "deletion path list (USER_DATA_PATHS)" "const USER_DATA_PATHS="
 
+# מחיר המנוי היה כתוב כמספר קשיח ב-12 מקומות. שינוי מחיר שמפספס אפילו מקום
+# אחד מציג למורה שני מחירים שונים באותו מסך הרשמה.
+ssot_check "TEACHER_PLAN_PRICE" "const TEACHER_PLAN_PRICE="
+
 echo ""
 
 # ── Required strings (must exist) ────────────────────────────────────────────
@@ -97,6 +101,27 @@ forbid "Direct eval()"              "eval("
 # שמות שתי הרשימות שהוסרו. חזרה שלהן פירושה שמסלול מחיקה שני נולד מחדש.
 forbid "Second deletion path list" "pathsToDelete"
 forbid "Third deletion path list"  "allPaths"
+
+echo ""
+
+# ── מחיר המנוי — חוצה קבצים ──────────────────────────────────────────────────
+# המחיר לא חי רק ב-index.html. הוא מופיע גם בהודעות הגיוס שנשלחות למורים,
+# בתשובות שהוגשו לדירוג הגיל בחנויות ובתיאור העסקי. שינוי מחיר שמעדכן רק את
+# הקוד משאיר מורה שמקבל הודעה עם מחיר אחד ורואה באפליקציה מחיר אחר — וזו
+# בדיוק הסיבה שהבדיקה הזו סורקת יותר מקובץ אחד, בניגוד לשאר הבדיקות כאן.
+echo "-- Price consistency (multi-file) --"
+
+OLD_PRICE="₪79"
+PRICE_FILES="index.html mobile/recruiting-messages.txt mobile/age-rating-answers.txt drushe-business-description.txt"
+price_violations=0
+for f in $PRICE_FILES; do
+  [ -f "$f" ] || continue
+  if grep -q "$OLD_PRICE" "$f"; then
+    fail "Old price $OLD_PRICE still written in $f"
+    price_violations=$((price_violations + 1))
+  fi
+done
+[ "$price_violations" -eq 0 ] && pass "Old price $OLD_PRICE absent from all price-bearing files"
 
 echo ""
 
