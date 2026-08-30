@@ -64,12 +64,34 @@ async function sendEmail(to, subject, message) {
   if (!res.ok) throw new Error(`EmailJS ${res.status}: ${await res.text()}`);
 }
 
+// One name for the service-account secret across the whole repo.
+//
+// This script asked for FIREBASE_SERVICE_ACCOUNT_JSON while the secret that
+// actually exists — the one deploy-firebase-rules.yml uses successfully — is
+// FIREBASE_SERVICE_ACCOUNT. The workflow therefore passed an empty string and
+// every scheduled run since the feature shipped failed on the first line of
+// main(). The old name is still accepted so nothing breaks if it is ever set,
+// but FIREBASE_SERVICE_ACCOUNT is the name.
+const FIREBASE_SERVICE_ACCOUNT =
+  process.env.FIREBASE_SERVICE_ACCOUNT || process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+
 async function main() {
-  if (!process.env.FIREBASE_SERVICE_ACCOUNT_JSON) throw new Error('Missing FIREBASE_SERVICE_ACCOUNT_JSON');
-  if (!EMAILJS_PRIVATE_KEY) throw new Error('Missing EMAILJS_PRIVATE_KEY');
+  // Report every missing secret at once. Checking them one at a time means
+  // fixing one, waiting a week for the next scheduled run, and discovering the
+  // next one — which is roughly how this went unnoticed for five weeks.
+  const missing = [];
+  if (!FIREBASE_SERVICE_ACCOUNT) missing.push('FIREBASE_SERVICE_ACCOUNT');
+  if (!EMAILJS_PRIVATE_KEY) missing.push('EMAILJS_PRIVATE_KEY');
+  if (missing.length) {
+    throw new Error(
+      'Missing repository secret(s): ' + missing.join(', ') +
+      '. Set them at Settings → Secrets and variables → Actions. ' +
+      'Until then no parent receives a weekly report.'
+    );
+  }
 
   admin.initializeApp({
-    credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON)),
+    credential: admin.credential.cert(JSON.parse(FIREBASE_SERVICE_ACCOUNT)),
     databaseURL: DB_URL,
   });
   const db = admin.database();
