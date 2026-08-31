@@ -61,6 +61,15 @@ No duplicates. No inline magic numbers. Refer to the one definition everywhere.
 ## Workflow Rules
 
 - **Never push or merge without explicit user approval ("כן").**
+- **Batch merges — a production deploy costs 15 of 3,000 monthly Netlify
+  credits.** The July–August invoice: 194 deploys took 2,910 credits, 97% of
+  the budget, while bandwidth, functions and requests together took under
+  three. The ceiling is 200 deploys a month, and four separate PRs merged one
+  by one cost four times what the same work costs merged together. So hold
+  finished work on the branch and merge it in one go. Merge alone and
+  immediately for a security fix or anything broken — 15 credits never
+  outweigh that. Pushes touching only `.md` no longer deploy at all
+  (`paths-ignore` in `deploy.yml`), so documentation is free.
 - Read the relevant code section before any edit — never edit blind.
 - After every fix, explain the root cause that was addressed, not just what changed.
 - Development happens on the `claude/*` branch the session is given; merges go
