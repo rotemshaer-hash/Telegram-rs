@@ -13,6 +13,20 @@
         },
         "active": {
           ".validate": "auth.token.email == 'rotemshaer@gmail.com' || newData.val() == false"
+        },
+        "ageVerification": {
+          "status": {
+            ".validate": "auth.token.email == 'rotemshaer@gmail.com' || newData.val() != 'verified'"
+          },
+          "verifiedAt": {
+            ".validate": "auth.token.email == 'rotemshaer@gmail.com'"
+          },
+          "verifiedBy": {
+            ".validate": "auth.token.email == 'rotemshaer@gmail.com'"
+          },
+          "verifiedWithoutDoc": {
+            ".validate": "auth.token.email == 'rotemshaer@gmail.com'"
+          }
         }
       }
     },
