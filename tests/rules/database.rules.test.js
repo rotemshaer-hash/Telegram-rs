@@ -214,3 +214,56 @@ describe('contract: what account deletion depends on', () => {
     await assertSucceeds(get(ref(asAdmin(), 'reports')));
   });
 });
+
+// ── GATEKEEPING ────────────────────────────────────────────────────────────
+//
+// adminApproveTeacher refuses to release a teacher to children unless
+// teachers/<uid>/ageVerification/status reads 'verified'. That guard lives in
+// the client and only reads the field, so it is worth exactly as much as the
+// rule that decides who may write it. Without these tests a teacher can set
+// the flag on themselves and the guard waves them through — the same shape as
+// the chat-membership hole, where the check consulted a node its own subject
+// controlled.
+describe('gatekeeping: a teacher cannot vouch for their own document', () => {
+  it('a teacher cannot mark their own age verification as verified', async () => {
+    await assertFails(
+      set(ref(asTeacher(), 'teachers/teacher-uid/ageVerification/status'), 'verified'));
+  });
+
+  it('registration still works: pending is allowed', async () => {
+    await assertSucceeds(
+      set(ref(asTeacher(), 'teachers/teacher-uid/ageVerification'),
+        { age: 17, idType: 'id', status: 'pending', submittedAt: 1 }));
+  });
+
+  it('a teacher cannot smuggle verified in through a whole-object write', async () => {
+    await assertFails(
+      set(ref(asTeacher(), 'teachers/teacher-uid/ageVerification'),
+        { age: 17, idType: 'id', status: 'verified', submittedAt: 1 }));
+  });
+
+  it('a teacher cannot forge the audit trail of who verified them', async () => {
+    await assertFails(
+      set(ref(asTeacher(), 'teachers/teacher-uid/ageVerification/verifiedBy'), 'admin'));
+    await assertFails(
+      set(ref(asTeacher(), 'teachers/teacher-uid/ageVerification/verifiedAt'), 1));
+    await assertFails(
+      set(ref(asTeacher(), 'teachers/teacher-uid/ageVerification/verifiedWithoutDoc'), false));
+  });
+
+  it('a stranger cannot verify someone else either', async () => {
+    await assertFails(
+      set(ref(asStranger(), 'teachers/teacher-uid/ageVerification/status'), 'verified'));
+  });
+
+  it('the admin can verify, which is what adminVerifyAge does', async () => {
+    await assertSucceeds(
+      set(ref(asAdmin(), 'teachers/teacher-uid/ageVerification/status'), 'verified'));
+    await assertSucceeds(
+      set(ref(asAdmin(), 'teachers/teacher-uid/ageVerification/verifiedBy'), 'admin-uid'));
+  });
+
+  it('account deletion still clears the node, which .validate must not block', async () => {
+    await assertSucceeds(remove(ref(asTeacher(), 'teachers/teacher-uid/ageVerification')));
+  });
+});
