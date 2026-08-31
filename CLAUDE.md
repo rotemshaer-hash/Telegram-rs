@@ -29,12 +29,35 @@ No duplicates. No inline magic numbers. Refer to the one definition everywhere.
 - `render()` **must** contain the unverified-student guard that redirects to `studentPending`.
 - Every `db.ref(...).on(...)` listener that matters for UX must be attached **before** the `return` that exits the auth flow.
 
+## Working with the owner (asked for explicitly — do not drift from this)
+
+- **Hebrew always. Address him in masculine.** It slips easily mid-message —
+  check before sending.
+- **He works only from an Android phone.** Every instruction must be doable
+  there. No terminal, no desktop.
+- **Give the fastest working path first — not a menu of options.** One route,
+  the shortest one that works. Offer an alternative only after the first fails.
+- **Everything in the chat.** Never an artifact, never a file card. Step by
+  step, with links written out so he can copy them.
+- **Do it yourself instead of asking him to.** Close the PR, run the workflow,
+  read the logs. He is the one who does what only he can: consoles, secrets,
+  device checks, and decisions. Note that this session cannot dispatch or
+  cancel GitHub workflows (403) — that one genuinely needs him.
+- **Never a picker** (`AskUserQuestion`). Ask in plain text.
+- **Bump `APP_VERSION` on every fix that reaches the device** — he verifies by
+  the number. Skip it for build config, CI, or rules-only changes, which never
+  show up there and would only send him looking for a number that never comes.
+
 ## Workflow Rules
 
 - **Never push or merge without explicit user approval ("כן").**
 - Read the relevant code section before any edit — never edit blind.
 - After every fix, explain the root cause that was addressed, not just what changed.
-- Commits go to `claude/telegram-rs-code-1krmf2`; merges go to `main` only after approval.
+- Development happens on the `claude/*` branch the session is given; merges go
+  to `main` only after approval.
+- **Check `HANDOFF.md` against the code before building from it.** Large parts
+  of it have described work as open that had already shipped, and a session was
+  spent re-investigating those. Verify, then build.
 
 ## Validation
 
