@@ -39,6 +39,16 @@ No duplicates. No inline magic numbers. Refer to the one definition everywhere.
   the shortest one that works. Offer an alternative only after the first fails.
 - **Everything in the chat.** Never an artifact, never a file card. Step by
   step, with links written out so he can copy them.
+- **Always a deep link, never a trail of menu clicks.** Land him on the exact
+  screen: `.../app-content`, `.../configuration/env`, the workflow's own page.
+  Derive the URL from something real — a CI check's link, a URL he pasted — and
+  say so; a guessed id sends him to an error page, which is slower than the
+  menu would have been. Known bases, kept here so they are not re-derived:
+  Netlify `https://app.netlify.com/projects/kidemy-app/`, Firebase Console
+  `https://console.firebase.google.com/project/kidemy-83a17/`, GitHub
+  `https://github.com/rotemshaer-hash/Telegram-rs/`. Play Console needs his
+  developer and app ids, which are not written down here because the repo is
+  public — ask him to paste any console URL and build the rest from it.
 - **Do it yourself instead of asking him to.** Close the PR, run the workflow,
   read the logs. He is the one who does what only he can: consoles, secrets,
   device checks, and decisions. Note that this session cannot dispatch or
