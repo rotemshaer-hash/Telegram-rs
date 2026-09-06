@@ -11,9 +11,37 @@
 //   "ask"    — answers a safety/policy question using ONLY the platform's
 //              own safety-page copy as context, so answers can't drift from
 //              what Drushe actually promises parents.
+//
+// למה יש כאן אימות בכלל: עד עכשיו הפונקציה קיבלה כל בקשת POST, מכל מקור
+// באינטרנט — Access-Control-Allow-Origin:'*' ובלי לבדוק מי שולח. מפתח
+// ה-Anthropic מוגן מהדפדפן, אבל לא מבוט שמריץ POST ישירות ל-URL של
+// הפונקציה, שחשוף מהרגע שהאתר עולה ולא רק אחרי שיש משתמשים אמיתיים. אותו
+// שיקול בדיוק כמו ב-send-push.js: השרת לא סומך על מי שהלקוח *טוען* שהוא,
+// אלא מאמת טוקן Firebase אמיתי ומגביל קצב לפי ה-uid שהטוקן הזה מוכיח.
+// כניסת אורח (signInAnonymously) עדיין נותנת טוקן תקין ועדיין נספרת בהגבלה
+// — מותר לאורח להשתמש, אסור לבוט בלי שום חשבון.
+const { admin, initAdmin } = require('../lib/firebase-admin-init');
 
 const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-5';
 const ANTHROPIC_VERSION = '2023-06-01';
+
+// תקרה נדיבה למשתמש אמיתי (חיפוש + שאלות בטיחות יחד), נמוכה מדי בשביל
+// להשפיע משמעותית על עלות אם מישהו מנסה להציף. אותו דפוס בדיוק כמו
+// pushRateLimit ב-send-push.js.
+const RATE_LIMIT_MAX = 20;
+const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
+
+async function withinRateLimit(db, uid) {
+  const ref = db.ref('aiRateLimit/' + uid);
+  const now = Date.now();
+  const result = await ref.transaction((cur) => {
+    if (!cur || now - (cur.windowStart || 0) > RATE_LIMIT_WINDOW_MS) {
+      return { windowStart: now, count: 1 };
+    }
+    return { windowStart: cur.windowStart, count: (cur.count || 0) + 1 };
+  });
+  return (result.snapshot.val()?.count || 0) <= RATE_LIMIT_MAX;
+}
 
 const CATEGORY_IDS = [
   'math','english','hebrew','guitar','art','dance','football','chess','coding',
@@ -65,6 +93,20 @@ exports.handler = async (event) => {
   if (!message) return { statusCode: 400, headers, body: JSON.stringify({ error: 'missing message' }) };
   if (mode !== 'search' && mode !== 'ask') {
     return { statusCode: 400, headers, body: JSON.stringify({ error: 'mode must be "search" or "ask"' }) };
+  }
+
+  if (!payload.idToken) {
+    return { statusCode: 401, headers, body: JSON.stringify({ error: 'idToken is required' }) };
+  }
+  let uid;
+  try {
+    initAdmin();
+    uid = (await admin.auth().verifyIdToken(payload.idToken)).uid;
+  } catch {
+    return { statusCode: 401, headers, body: JSON.stringify({ error: 'invalid or expired session' }) };
+  }
+  if (!(await withinRateLimit(admin.database(), uid))) {
+    return { statusCode: 429, headers, body: JSON.stringify({ error: 'too many requests — try again later' }) };
   }
 
   let system, maxTokens;

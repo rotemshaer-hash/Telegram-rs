@@ -354,6 +354,42 @@ body.dark .tabs{background:rgba(255,255,255,.05) !important}
 body.dark .bw{background:#1E2535 !important;color:#5EEAD4 !important;box-shadow:0 4px 16px rgba(0,0,0,.3) !important}
 body.dark .p-acts{border-top-color:rgba(255,255,255,.06) !important}
 body.dark .p-acts button{color:#94A3B8 !important}
+
+/* ── מצב לילה: צבעי טקסט שנכתבו inline ──────────────────────────────────
+   כפתור "מצב לילה" קיים בממשק והבחירה נשמרת ב-localStorage, אבל 29 כללי
+   body.dark טיפלו ברקעים ולא בטקסט שנכתב ישירות ב-style=. מדידה על הקובץ:
+   769 מתוך 1,166 צבעי הטקסט ה-inline נכשלו במצב כהה, ומתוכם 207 היו
+   *בלתי נראים* — ‎#0F1A1F על כרטיס ‎#161B22 נותן ניגודיות 1.02, כלומר
+   שחור על שחור. מי שלחץ על הכפתור קיבל מסכים שהטקסט בהם נעלם.
+
+   הבורר משתמש בהתאמת תת-מחרוזת על התכונה style, ולכן כלל אחד מכסה 196
+   מופעים בלי לגעת ב-196 שורות. ‎!important בגיליון סגנונות גובר על הצהרה
+   inline רגילה, וזה מה שמאפשר את זה בכלל.
+
+   שלושת צבעי היעד אינם חדשים — הם בדיוק ‎_CD.text, ‎_CD.muted ו-‎_CD.p,
+   הפלטה הכהה שכבר מוגדרת בקוד. מצב יום אינו מושפע: הכל תחוּם ל-body.dark. */
+
+/* טקסט ראשי כהה → בהיר (ניגודיות 14.03) */
+body.dark [style*="color:#0F1A1F"],
+body.dark [style*="color:#1A1A2E"],
+body.dark [style*="color:#0F172A"],
+body.dark [style*="color:#1E1B4B"],
+body.dark [style*="color:#1E293B"],
+body.dark [style*="color:#003087"]{color:#E2E8F0 !important}
+
+/* טקסט משני אפור → אפור בהיר (ניגודיות 6.75) */
+body.dark [style*="color:#64748B"],
+body.dark [style*="color:#6C7686"],
+body.dark [style*="color:#6F7786"],
+body.dark [style*="color:#475569"],
+body.dark [style*="color:#334155"],
+body.dark [style*="color:#374151"],
+body.dark [style*="color:#6B7280"]{color:#94A3B8 !important}
+
+/* טורקיז כהה → טורקיז בהיר (ניגודיות 9.67) */
+body.dark [style*="color:#04778A"],
+body.dark [style*="color:#0E7A72"],
+body.dark [style*="color:#0F766E"]{color:#4ED6C4 !important}
 body.dark .otp input{background:rgba(255,255,255,.05) !important;color:#E2E8F0 !important;border-color:rgba(255,255,255,.1) !important}
 body.dark .kcb-row{border-color:rgba(255,255,255,.1) !important;background:rgba(255,255,255,.03) !important}
 body.dark .kcb-row.light{border-color:rgba(20,184,166,.25) !important;background:rgba(20,184,166,.06) !important}
@@ -1037,7 +1073,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.12';
+const APP_VERSION='4.11.16';
 // מוטבע מחדש בכל פריסה על ידי .github/workflows/deploy.yml. הערך כאן הוא
 // גיבוי לבנייה מקומית בלבד — תאריך שנשמר ביד הלך והזדקן בשקט והוצג
 // למשתמשים כתאריך הבנייה, שבועיים אחרי שהיה נכון.
@@ -3400,18 +3436,22 @@ function googleCalendarLink(b,isTeacher){
   const location=encodeURIComponent(b.jitsiUrl||'');
   return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${fmt(start)}/${fmt(end)}&details=${details}&location=${location}`;
 }
+// הצגה פעם אחת בהפעלה — לא לפני כל שיעור. הודעה שחוזרת על עצמה בכל הצטרפות
+// הופכת ל"רעש" שמתעלמים ממנו; פעם אחת בהפעלה עדיין מזכירה, בלי לעייף.
+let _joinLessonTipShown=false;
 function joinJitsi(jitsiUrl,room,bookingData){
   if(!jitsiUrl){showFireToast('⚠️ המורה עדיין לא הגדיר קישור לשיעור');return;}
   const url=safeUrl(jitsiUrl);
   if(!url){showFireToast('❌ קישור השיעור אינו תקין — בקש מהמורה לתקן אותו');return;}
-  showFireToast('🎥 פותח שיעור...');
+  showFireToast(_joinLessonTipShown?'🎥 פותח שיעור...':'🎥 פותח שיעור... 💡 מומלץ שהורה יהיה נוכח/ת ולהקליט את השיעור');
+  _joinLessonTipShown=true;
   const w=window.open(url,'_blank');
   if(!w)location.href=url; // popup blocked (common in standalone PWA) — navigate instead
   if(currentUserData?.parentEmail&&bookingData){
     const b=typeof bookingData==='string'?JSON.parse(bookingData):bookingData;
     sendEmail(currentUserData.parentEmail,
       `📹 ${currentUserData.name||''} התחיל/ה שיעור עכשיו`,
-      `שלום ${currentUserData.parentName||'הורה יקר'},\n\nילדך ${currentUserData.name||''} החל/ה שיעור כרגע:\n👨‍🏫 מורה: ${b.teacherName||''}\n📅 ${b.day||''} בשעה ${b.time||''}\n\nקישור לשיעור:\n${url}\n\n– צוות Drushe`
+      `שלום ${currentUserData.parentName||'הורה יקר'},\n\nילדך ${currentUserData.name||''} החל/ה שיעור כרגע:\n👨‍🏫 מורה: ${b.teacherName||''}\n📅 ${b.day||''} בשעה ${b.time||''}\n\nקישור לשיעור (אפשר להצטרף גם אתם):\n${url}\n\n💡 מומלץ שתהיו נוכחים בשיעור הראשון עם מורה/תלמיד/ה חדש/ה, ולשקול להקליט אותו.\n\n– צוות Drushe`
     ).catch(()=>{});
   }
 }
@@ -4556,19 +4596,16 @@ async function sendChatMessage(otherUid,otherName){
     // ההודעה נשלחת בכל מקרה — הסימון קורה אחריה ולא במקומה
     if(_contactKinds.length&&!_contactFlagged.has(chatId)){
       _contactFlagged.add(chatId);
-      notifyAdmin({
-        type:'contactShared',
-        kinds:_contactKinds.join(', '),
-        chatId,
-        from:currentUserData?.name||currentUser.email,
-        fromUid:currentUser.uid,
-        toUid:otherUid,
-        toName:otherName||'',
-        excerpt:text.substring(0,200)
-      }).catch(()=>{});
+      flagForSafetyReview({
+        targetType:'user',targetId:currentUser.uid,
+        targetName:currentUserData?.name||currentUser.email,
+        reasonLabel:'⚠️ זוהה שיתוף פרטי קשר ('+_contactKinds.join(', ')+')',
+        description:'שיחה עם '+(otherName||otherUid)+' · "'+text.substring(0,200)+'"',
+      });
       // אזהרה רכה לשולח. לא "אסור" — הסבר קצר למה זה לא בטוח, בניסוח שילד מבין.
       setTimeout(()=>showFireToast('⚠️ שיתוף טלפון או קישור אישי אינו בטוח — עדיף להישאר כאן'),600);
     }
+    notifyParentsOfNewConversation(chatId,otherUid).catch(()=>{});
     // עדכון last message ב-conversations
     const last={
       lastMessage:text,
@@ -4952,6 +4989,70 @@ async function notifyAdmin(notif){
   try{
     await db.ref('adminNotifs').push({...notif,read:false,createdAt:notif.createdAt||Date.now()});
   }catch(e){console.warn('[notifyAdmin]',e);}
+}
+
+// דגלי בטיחות אוטומטיים (למשל זיהוי שיתוף פרטי קשר) נכתבו רק ל-adminNotifs —
+// אותה התראה שמשמשת גם ל"מורה חדש נרשם" ו"ביקורת חדשה". הצומת הזה מוצג
+// כפעמון עם limitToLast(40) על *כל* סוגי ההתראות יחד: דגל בטיחות שקרה
+// בבוקר יכול להיעלם עד הערב מאחורי 40 הזמנות ובקשות רגילות, בלי שאיש
+// יראה אותו בכלל. reports, לעומת זאת, הוא תור פתוח/סגור קבוע שכבר נבדק
+// יזום — זו בדיוק ההגנה שדיווח ידני מקבל, ואין סיבה שדגל אוטומטי יקבל
+// פחות ממנה. נכתב דרך אותו נתיב בדיוק שסביבו קיימים חוקי האבטחה, לא נתיב
+// חדש.
+async function flagForSafetyReview({targetType,targetId,targetName,reasonLabel,description}){
+  try{
+    await db.ref('reports').push({
+      targetType,targetId,targetName,
+      reason:'auto',reasonLabel,description,
+      reporterId:currentUser?.uid||'system',
+      reporterName:'🤖 זוהה אוטומטית',
+      reporterEmail:'',
+      status:'open',
+      createdAt:Date.now()
+    });
+  }catch(e){console.warn('[flagForSafetyReview]',e);}
+}
+
+// מייל חד-פעמי לשני ההורים כשנפתחת שיחה חדשה — לא מייל על כל הודעה.
+//
+// למה לא על כל הודעה: EmailJS כאן מוגבל ל-5 מיילים לשעה *לכל שולח* (רואים
+// _emailRateLimitOk למעלה) — שיחה רגילה של כמה הודעות רצופות הייתה שורפת
+// את המכסה של הילד תוך דקות ומונעת ממנו לקבל את מייל אישור ההזמנה הבא שלו.
+// וגם: הורה שמקבל מייל על כל "היי" ו"מתי נוח לך" מתחיל להתעלם מהתיבה —
+// בדיוק ההפך ממה שרוצים. הרגע שבאמת חשוב שהורה ידע עליו הוא לא כל הודעה,
+// אלא מתי מישהו *חדש* נכנס לתמונה.
+//
+// newConversationNotified/$chatId הוא דגל חד-פעמי: ".validate":"!data.exists()"
+// מבטיח שרק הכתיבה הראשונה מצליחה, כך שגם אם שני הצדדים כותבים כמעט
+// בו-זמנית, המייל יוצא פעם אחת בדיוק. שני ההורים מקבלים הודעה — לא רק של
+// התלמיד — כי גם המורים כאן קטינים.
+async function notifyParentsOfNewConversation(chatId,otherUid){
+  const flagRef=db.ref('newConversationNotified/'+chatId);
+  try{
+    await flagRef.set(Date.now());
+  }catch(e){
+    return; // כבר נשלח בעבר (או שהכתיבה נדחתה) — לא שולחים שוב
+  }
+  try{
+    const [meSnap,otherSnap]=await Promise.all([
+      db.ref('users/'+currentUser.uid).get(),
+      db.ref('users/'+otherUid).get()
+    ]);
+    const me=meSnap.val()||{},other=otherSnap.val()||{};
+    const meName=me.name||currentUserData?.name||'',otherName=other.name||'המשתמש/ת השני/ה';
+    if(me.parentEmail){
+      sendEmail(me.parentEmail,
+        `💬 שיחה חדשה של ${meName} ב-Drushe`,
+        `שלום ${me.parentName||'הורה יקר'} 👋\n\n${meName} התחיל/ה עכשיו שיחה חדשה עם ${otherName} ב-Drushe.\n\nניתן לצפות בכל השיחות של ${meName} בכל עת דרך פורטל ההורים באפליקציה.\n\nמזכירים: מומלץ להיות נוכח/ת בשיעור הראשון עם מורה/תלמיד/ה חדש/ה, ולשקול להקליט אותו.\n\n– צוות Drushe 💙`
+      ).catch(()=>{});
+    }
+    if(other.parentEmail){
+      sendEmail(other.parentEmail,
+        `💬 שיחה חדשה של ${otherName} ב-Drushe`,
+        `שלום ${other.parentName||'הורה יקר'} 👋\n\n${otherName} מקבל/ת עכשיו שיחה חדשה מ-${meName} ב-Drushe.\n\nניתן לצפות בכל השיחות של ${otherName} בכל עת דרך פורטל ההורים באפליקציה.\n\nמזכירים: מומלץ להיות נוכח/ת בשיעור הראשון עם מורה/תלמיד/ה חדש/ה, ולשקול להקליט אותו.\n\n– צוות Drushe 💙`
+      ).catch(()=>{});
+    }
+  }catch(e){console.warn('[notifyParentsOfNewConversation]',e);}
 }
 
 // ─── אישור הורה ─────────────────────────────────────────────────────────────
@@ -11237,13 +11338,15 @@ function Jobs(){
 // חיפוש בשפה טבעית + שאלות ותשובות מבוססות Claude, דרך פונקציית שרת ב-Netlify
 // (netlify/functions/ai-assistant.js) — המפתח של Anthropic נשאר בצד השרת בלבד.
 async function _aiCall(mode,message){
+  if(!currentUser)throw new Error('יש להתחבר כדי להשתמש בזה');
+  const idToken=await currentUser.getIdToken();
   const res=await fetch(API_BASE+'/api/ai-assistant',{
     method:'POST',
     headers:{'content-type':'application/json'},
-    body:JSON.stringify({mode,message})
+    body:JSON.stringify({mode,message,idToken})
   });
   const data=await res.json().catch(()=>({}));
-  if(!res.ok)throw new Error(data?.error||'שגיאת שרת');
+  if(!res.ok)throw new Error(res.status===429?'⏳ יותר מדי בקשות, נסה שוב בעוד כמה דקות':(data?.error||'שגיאת שרת'));
   return data;
 }
 
