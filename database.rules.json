@@ -77,7 +77,11 @@
     "bookings": {
       "$id": {
         ".read": "auth != null && (auth.uid == data.child('studentId').val() || auth.uid == data.child('teacherId').val() || auth.token.email == 'rotemshaer@gmail.com')",
-        ".write": "auth != null && (auth.uid == data.child('studentId').val() || auth.uid == newData.child('studentId').val() || auth.uid == data.child('teacherId').val() || auth.uid == newData.child('teacherId').val() || auth.token.email == 'rotemshaer@gmail.com')"
+        ".write": "auth != null && (auth.uid == data.child('studentId').val() || auth.uid == newData.child('studentId').val() || auth.uid == data.child('teacherId').val() || auth.uid == newData.child('teacherId').val() || auth.token.email == 'rotemshaer@gmail.com')",
+        "studentId": { ".validate": "auth.token.email == 'rotemshaer@gmail.com' || !data.exists() || newData.val() == data.val()" },
+        "teacherId": { ".validate": "auth.token.email == 'rotemshaer@gmail.com' || !data.exists() || newData.val() == data.val()" },
+        "price": { ".validate": "auth.token.email == 'rotemshaer@gmail.com' || !data.exists() || newData.val() == data.val()" },
+        "createdAt": { ".validate": "auth.token.email == 'rotemshaer@gmail.com' || !data.exists() || newData.val() == data.val()" }
       }
     },
     "teacherBookings": {
@@ -88,7 +92,10 @@
           ".write": "auth != null && (auth.uid == $uid || root.child('bookings').child($bookingId).child('studentId').val() == auth.uid || auth.token.email == 'rotemshaer@gmail.com')",
           "status": {
             ".validate": "auth.uid == $uid || auth.token.email == 'rotemshaer@gmail.com' || newData.val() == 'cancelled'"
-          }
+          },
+          "studentId": { ".validate": "auth.token.email == 'rotemshaer@gmail.com' || !data.exists() || newData.val() == data.val()" },
+          "teacherId": { ".validate": "auth.token.email == 'rotemshaer@gmail.com' || !data.exists() || newData.val() == data.val()" },
+          "price": { ".validate": "auth.token.email == 'rotemshaer@gmail.com' || !data.exists() || newData.val() == data.val()" }
         }
       }
     },
@@ -99,7 +106,10 @@
           ".write": "auth != null && (auth.uid == $uid || root.child('bookings').child($bookingId).child('teacherId').val() == auth.uid || auth.token.email == 'rotemshaer@gmail.com')",
           "status": {
             ".validate": "auth.uid != $uid || newData.val() == 'pending' || newData.val() == 'awaitingPayment' || newData.val() == 'cancelled'"
-          }
+          },
+          "studentId": { ".validate": "auth.token.email == 'rotemshaer@gmail.com' || !data.exists() || newData.val() == data.val()" },
+          "teacherId": { ".validate": "auth.token.email == 'rotemshaer@gmail.com' || !data.exists() || newData.val() == data.val()" },
+          "price": { ".validate": "auth.token.email == 'rotemshaer@gmail.com' || !data.exists() || newData.val() == data.val()" }
         }
       }
     },
@@ -159,8 +169,7 @@
     },
     "parentConsent": {
       "$token": {
-        ".write": "auth != null && !data.exists() && newData.child('uid').val() == auth.uid && newData.hasChildren(['uid', 'parentEmail', 'studentName', 'createdAt', 'expiresAt']) && newData.child('status').val() == 'pending'",
-        ".validate": "newData.child('createdAt').isNumber() && newData.child('expiresAt').isNumber()"
+        ".write": "auth.token.email == 'rotemshaer@gmail.com'"
       }
     },
     "parentConsentLog": {
@@ -186,10 +195,10 @@
     },
     "reviews": {
       ".read": "auth != null",
-      "$teacherId": {
+      "$targetId": {
         ".indexOn": ["from"],
-        "$reviewId": {
-          ".write": "auth != null && (!data.exists() && newData.child('from').val() == auth.uid || data.child('from').val() == auth.uid || auth.token.email == 'rotemshaer@gmail.com')",
+        "$bookingId": {
+          ".write": "auth.token.email == 'rotemshaer@gmail.com' || (auth != null && ((data.exists() && data.child('from').val() == auth.uid && !newData.exists()) || (!data.exists() && newData.child('from').val() == auth.uid && newData.child('to').val() == $targetId && auth.uid != $targetId && (root.child('bookings').child($bookingId).child('status').val() == 'approved' || root.child('bookings').child($bookingId).child('status').val() == 'completed') && ((root.child('bookings').child($bookingId).child('studentId').val() == auth.uid && root.child('bookings').child($bookingId).child('teacherId').val() == $targetId) || (root.child('bookings').child($bookingId).child('teacherId').val() == auth.uid && root.child('bookings').child($bookingId).child('studentId').val() == $targetId)))))",
           "approved": {
             ".validate": "auth.token.email == 'rotemshaer@gmail.com' || newData.val() != true"
           }

@@ -1073,7 +1073,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.16';
+const APP_VERSION='4.11.17';
 // מוטבע מחדש בכל פריסה על ידי .github/workflows/deploy.yml. הערך כאן הוא
 // גיבוי לבנייה מקומית בלבד — תאריך שנשמר ביד הלך והזדקן בשקט והוצג
 // למשתמשים כתאריך הבנייה, שבועיים אחרי שהיה נכון.
@@ -3462,30 +3462,34 @@ async function submitDirectReview(teacherId){
   if(!S.ratingStars){showFireToast('אנא בחר דירוג כוכבים');return;}
   if(!teacherId){showFireToast('שגיאה: מזהה מורה חסר');return;}
   if(teacherId===currentUser?.uid){showFireToast('❌ לא ניתן לדרג את עצמך');return;}
-  // בדיקה שיש שיעור מאושר עם המורה הזה
-  const hasLesson = studentBookings.some(b=>
+  // בדיקה שיש שיעור מאושר עם המורה הזה — גם החוק בשרת דורש הזמנה אמיתית, לא
+  // רק הבדיקה כאן: reviews/$teacherId/$bookingId מאמת מול bookings/$bookingId
+  // עצמו שהזוג הזה באמת שייך לשיעור הזה ושהוא מאושר/הושלם.
+  const qualifyingBooking = studentBookings.find(b=>
     b.teacherId === (S.ratingT?.uid || S.ratingT?.id || teacherId) &&
     (b.status === 'completed' || b.status === 'approved')
   );
-  if(!hasLesson){showFireToast('❌ ניתן לדרג רק לאחר שיעור מאושר');return;}
+  if(!qualifyingBooking){showFireToast('❌ ניתן לדרג רק לאחר שיעור מאושר');return;}
   const reviewText=document.getElementById('_reviewTextarea')?.value.trim()||'';
   showFireToast('⏳ שומר ביקורת...');
   try{
     const existingReviews=await db.ref('reviews/'+teacherId).orderByChild('from').equalTo(currentUser.uid).get();
     if(existingReviews.exists()){showFireToast('❌ כבר דירגת מורה זה');return;}
-    // build review — no null fields (Firebase rules may reject null bookingId)
     const reviewData={
       stars:S.ratingStars,
       review:reviewText,
       from:currentUser.uid,
       fromName:currentUserData?.name||currentUser.email.split('@')[0],
       to:teacherId,
+      bookingId:qualifyingBooking.id,
       type:'studentToTeacher',
       approved:false,
       createdAt:Date.now()
     };
-    // write to reviews/{teacherId} — main path
-    const newRef=db.ref('reviews/'+teacherId).push();
+    // reviews/{teacherId}/{bookingId} — מפתח דטרמיניסטי, לא push() אקראי:
+    // זה מה שמאפשר לחוק השרת לוודא את ההזמנה הספציפית ולמנוע ביקורת כפולה
+    // על אותו שיעור בלי לסרוק.
+    const newRef=db.ref('reviews/'+teacherId+'/'+qualifyingBooking.id);
     await newRef.set(reviewData);
     // ALSO write to pendingReviews/ — flat admin queue, guaranteed readable.
     // המפתח הוא reviewId ולא push() אקראי: pendingReviews קריא למנהל בלבד
@@ -3530,7 +3534,8 @@ async function submitReview(bookingId,booking,ratedId,stars,review,isStudent){
       approved:false,
       createdAt:Date.now()
     };
-    const _rRef=db.ref('reviews/'+ratedId).push();
+    // reviews/{ratedId}/{bookingId} — מפתח דטרמיניסטי, ראה submitDirectReview.
+    const _rRef=db.ref('reviews/'+ratedId+'/'+bookingId);
     await _rRef.set(reviewData);
     if(bookingId)await db.ref('bookings/'+bookingId+'/'+(isStudent?'studentRating':'teacherRating')).set(stars);
     // כתוב תור ממתין למנהל + שלח מייל
@@ -5056,39 +5061,23 @@ async function notifyParentsOfNewConversation(chatId,otherUid){
 }
 
 // ─── אישור הורה ─────────────────────────────────────────────────────────────
-// הטוקן הוא אמצעי הזיהוי היחיד של ההורה — אין לו חשבון ואין לו סיסמה — ולכן
-// הוא נגזר מ-crypto.getRandomValues ולא מ-Math.random. 32 בייטים אקראיים.
-// אסור שיהיה ניתן לגזירה מה-uid או מכל דבר אחר שהילד רואה.
+// הטוקן נוצר ונשלח **בשרת**, לא כאן. אם הלקוח (מכשיר הילד) היה יוצר אותו,
+// הוא היה יודע אותו — וזה הופך "אישור הורה" להוכחת החזקה של הילד בטוקן, לא
+// לפעולה אמיתית של ההורה. ה-idToken מוכיח מי הנרשם; השרת מייצר טוקן אקראי,
+// כותב אותו ל-DB עם ה-admin SDK, ושולח אותו ישירות לתיבת ההורה. הלקוח כאן
+// לא מקבל ולא רואה את הטוקן בשום שלב.
 const PARENT_CONSENT_DAYS=14;
-function _genConsentToken(){
-  const a=new Uint8Array(32);
-  crypto.getRandomValues(a);
-  return Array.from(a,b=>b.toString(16).padStart(2,'0')).join('');
-}
 
-async function _createParentConsent(uid,studentName,parentEmail){
-  const token=_genConsentToken();
-  await db.ref('parentConsent/'+token).set({
-    uid,
-    studentName:studentName||'',
-    parentEmail,
-    status:'pending',
-    createdAt:Date.now(),
-    expiresAt:Date.now()+PARENT_CONSENT_DAYS*24*3600*1000
+async function _createParentConsent(user,studentName,parentEmail){
+  const idToken=await user.getIdToken();
+  const res=await fetch(API_BASE+'/api/parent-consent',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({action:'create',idToken,studentName,parentEmail})
   });
-  const link=location.origin+'/?consent='+token;
-  await sendEmail(parentEmail,
-    'נדרש אישורך — '+(studentName||'ילדך')+' נרשם/ה ל-Drushe',
-    `שלום,\n\n`+
-    `${studentName||'ילדכם'} נרשם/ה ל-Drushe — פלטפורמה שבה בני נוער מלמדים ילדים, בפיקוח הורים.\n\n`+
-    `**החשבון לא פעיל, ולא יופעל בלי אישורכם.** ללא אישורכם, ${studentName||'ילדכם'} לא יוכל/תוכל ליצור קשר עם אף אחד באפליקציה.\n\n`+
-    `לאישור, היכנסו לקישור:\n${link}\n\n`+
-    `לאחר אישורכם, גם צוות Drushe עובר על כל הרשמה לפני שהחשבון נפתח.\n\n`+
-    `הקישור אישי ותקף ל-${PARENT_CONSENT_DAYS} ימים.\n\n`+
-    `אם לא אתם ההורה, או שאינכם מאשרים — פשוט התעלמו מהמייל. החשבון יישאר חסום.\n\n`+
-    `– צוות Drushe`
-  );
-  return token;
+  let data={};
+  try{data=await res.json();}catch(_e){}
+  if(!res.ok)throw new Error(data?.error||'parent-consent create failed ('+res.status+')');
 }
 
 // קריאה לשרת. רק הוא יכול להציב verified=true — החוק מתיר את זה למנהל בלבד,
@@ -14048,7 +14037,7 @@ async function firebaseRegister(email,password,userData){
       // רק לתלמידים. מורים עוברים אימות גיל ומסמך מול המנהל, לא דרך הורה.
       if((_userRecord.role||'student')==='student'&&_userRecord.parentEmail){
         try{
-          await _createParentConsent(cred.user.uid,_userRecord.name||'',_userRecord.parentEmail);
+          await _createParentConsent(cred.user,_userRecord.name||'',_userRecord.parentEmail);
         }catch(pcErr){
           // כישלון כאן משאיר את החשבון ממתין לאישור המנהל — כלומר נופל אחורה
           // להתנהגות הקודמת, ולא פותח חשבון בלי הסכמה. אבל הוא לא נבלע:

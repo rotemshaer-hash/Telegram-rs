@@ -57,7 +57,11 @@ beforeEach(async () => {
       studentId: STUDENT, teacherId: TEACHER,
       studentName: 'Minor', studentEmail: 'minor@example.com',
       parentName: 'Parent', parentEmail: 'parent@example.com',
+      price: 80, createdAt: 1,
     };
+    // A completed booking between the same pair, for the review tests: a
+    // review must point at a real, qualifying booking.
+    const completedBooking = { ...booking, status: 'completed', price: 80 };
     await update(ref(db), {
       'users/student-uid': { name: 'Minor', role: 'student', verified: true },
       'users/teacher-uid': { name: 'Teach', role: 'teacher', verified: true },
@@ -66,6 +70,7 @@ beforeEach(async () => {
       'bookings/b1': booking,
       'userBookings/student-uid/b1': booking,
       'teacherBookings/teacher-uid/b1': booking,
+      'bookings/b2': completedBooking,
       'reviews/teacher-uid/rev1': { from: STUDENT, fromName: 'Minor', stars: 5, approved: false },
       'pendingReviews/rev1': { from: STUDENT, fromName: 'Minor', reviewId: 'rev1' },
       'reports/rep1': { from: STUDENT, about: TEACHER, text: 'unsafe behaviour', status: 'open' },
@@ -349,5 +354,125 @@ describe('newConversationNotified: one parent-notification email per conversatio
 
   it('a stranger to the conversation cannot flag it', async () => {
     await assertFails(set(ref(asStranger(), `newConversationNotified/${chatId}`), Date.now()));
+  });
+});
+
+// ── PARENT CONSENT: server-only ──────────────────────────────────────────
+//
+// An outside review found that the client (the registering minor's own
+// browser) generated the consent token, wrote the parentConsent record
+// itself, and built the approval link — meaning the token passed through
+// code the minor could inspect, and approving their own record required
+// nothing a parent did. netlify/functions/parent-consent.js now creates the
+// record with the admin SDK, which bypasses these rules entirely; what
+// closes the hole is that the client path is gone.
+describe('parentConsent: only the server (admin SDK) may write it', () => {
+  it('a student cannot create their own consent record', async () => {
+    await assertFails(set(ref(asStudent(), 'parentConsent/sometoken'), {
+      uid: STUDENT, studentName: 'Minor', parentEmail: 'parent@example.com',
+      status: 'pending', createdAt: Date.now(), expiresAt: Date.now() + 1000,
+    }));
+  });
+
+  it('a student cannot self-approve an existing record either', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await set(ref(ctx.database(), 'parentConsent/sometoken'), {
+        uid: STUDENT, studentName: 'Minor', parentEmail: 'parent@example.com',
+        status: 'pending', createdAt: Date.now(), expiresAt: Date.now() + 1000,
+      });
+    });
+    await assertFails(set(ref(asStudent(), 'parentConsent/sometoken/status'), 'approved'));
+  });
+
+  it('the admin can still write it, which the server function relies on', async () => {
+    await assertSucceeds(set(ref(asAdmin(), 'parentConsent/sometoken'), {
+      uid: STUDENT, studentName: 'Minor', parentEmail: 'parent@example.com',
+      status: 'pending', createdAt: Date.now(), expiresAt: Date.now() + 1000,
+    }));
+  });
+});
+
+// ── BOOKING: immutable fields ────────────────────────────────────────────
+//
+// The review found that either party to a booking could rewrite it after
+// creation — including the price and who the two parties even are — because
+// only status-shaped writes were exercised by the app, and nothing in the
+// rules said those fields, once set, must stay set.
+describe('bookings: price and the two parties cannot change after creation', () => {
+  it('the student cannot change the price', async () => {
+    await assertFails(set(ref(asStudent(), 'bookings/b1/price'), 999));
+  });
+
+  it('the teacher cannot change the price either', async () => {
+    await assertFails(set(ref(asTeacher(), 'bookings/b1/price'), 1));
+  });
+
+  it('neither party can reassign the booking to someone else', async () => {
+    await assertFails(set(ref(asStudent(), 'bookings/b1/teacherId'), STRANGER));
+    await assertFails(set(ref(asTeacher(), 'bookings/b1/studentId'), STRANGER));
+  });
+
+  it('createdAt cannot be backdated or bumped', async () => {
+    await assertFails(set(ref(asStudent(), 'bookings/b1/createdAt'), 999));
+  });
+
+  it('the same lock holds on the userBookings and teacherBookings mirrors', async () => {
+    await assertFails(set(ref(asStudent(), 'userBookings/student-uid/b1/price'), 999));
+    await assertFails(set(ref(asTeacher(), 'teacherBookings/teacher-uid/b1/price'), 999));
+  });
+
+  it('status updates — what the app actually does — still work', async () => {
+    await assertSucceeds(set(ref(asTeacher(), 'bookings/b1/status'), 'approved'));
+  });
+
+  it('the admin can still correct any field', async () => {
+    await assertSucceeds(set(ref(asAdmin(), 'bookings/b1/price'), 50));
+  });
+});
+
+// ── REVIEWS: must point at a real, qualifying booking ────────────────────
+//
+// The review found reviews/$teacherId/$reviewId writable by anyone claiming
+// to be the author, with no check that a booking between the two ever
+// existed, completed or not — and no protection against writing the same
+// review twice. Reviews are now keyed by bookingId instead of a random push
+// id, which turns "one review per lesson" into a plain create-only rule and
+// lets a rule look the specific booking up by id to verify it.
+describe('reviews: keyed by bookingId, and the booking must qualify', () => {
+  const review = (from, to) => ({
+    from, to, stars: 5, review: 'Great!', type: 'studentToTeacher',
+    approved: false, createdAt: Date.now(), bookingId: 'b2',
+  });
+
+  it('a student can review after a completed booking', async () => {
+    await assertSucceeds(set(ref(asStudent(), 'reviews/teacher-uid/b2'), review(STUDENT, TEACHER)));
+  });
+
+  it('cannot review a second time against the same booking', async () => {
+    await assertSucceeds(set(ref(asStudent(), 'reviews/teacher-uid/b2'), review(STUDENT, TEACHER)));
+    await assertFails(set(ref(asStudent(), 'reviews/teacher-uid/b2'), review(STUDENT, TEACHER)));
+  });
+
+  it('cannot review against a booking that is only pending', async () => {
+    // b1 has no status field at all, i.e. not approved or completed.
+    await assertFails(set(ref(asStudent(), 'reviews/teacher-uid/b1'), review(STUDENT, TEACHER)));
+  });
+
+  it('cannot review a teacher with a booking id that belongs to someone else', async () => {
+    await assertFails(set(ref(asStranger(), 'reviews/teacher-uid/b2'), review(STRANGER, TEACHER)));
+  });
+
+  it('cannot review with a made-up booking id', async () => {
+    await assertFails(set(ref(asStudent(), 'reviews/teacher-uid/nope'),
+      { ...review(STUDENT, TEACHER), bookingId: 'nope' }));
+  });
+
+  it('cannot forge the "from" field to impersonate another reviewer', async () => {
+    await assertFails(set(ref(asStudent(), 'reviews/teacher-uid/b2'), review(TEACHER, TEACHER)));
+  });
+
+  it('the author can still delete their own review, which account deletion needs', async () => {
+    await assertSucceeds(set(ref(asStudent(), 'reviews/teacher-uid/b2'), review(STUDENT, TEACHER)));
+    await assertSucceeds(remove(ref(asStudent(), 'reviews/teacher-uid/b2')));
   });
 });
