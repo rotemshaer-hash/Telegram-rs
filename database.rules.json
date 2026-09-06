@@ -119,9 +119,9 @@
     "notifications": {
       "$uid": {
         ".read": "auth != null && auth.uid == $uid",
+        ".write": "auth != null && (auth.uid == $uid || auth.token.email == 'rotemshaer@gmail.com')",
         "$notifId": {
-          ".write": "auth != null",
-          ".validate": "!newData.exists() || (data.exists() && newData.child('read').isBoolean()) || (!data.exists() && newData.hasChildren(['type', 'createdAt', 'read']) && newData.child('createdAt').isNumber() && newData.child('read').isBoolean() && (newData.child('type').val() == 'newBooking' || newData.child('type').val() == 'bookingApproved' || newData.child('type').val() == 'bookingRejected' || newData.child('type').val() == 'bookingCancelled' || newData.child('type').val() == 'newMessage' || newData.child('type').val() == 'lessonCompleted' || newData.child('type').val() == 'newReview' || newData.child('type').val() == 'newPost' || newData.child('type').val() == 'adminMessage' || newData.child('type').val() == 'accountApproved' || newData.child('type').val() == 'teacherApproved' || newData.child('type').val() == 'studentApproved' || newData.child('type').val() == 'groupJoin' || newData.child('type').val() == 'groupApproved' || newData.child('type').val() == 'groupRejected' || newData.child('type').val() == 'rateLesson' || newData.child('type').val() == 'lessonSummary' || newData.child('type').val() == 'newTeacher' || newData.child('type').val() == 'newUser' || newData.child('type').val() == 'newVideo' || newData.child('type').val() == 'newReport' || newData.child('type').val() == 'briefProposal' || newData.child('type').val() == 'briefAccepted' || newData.child('type').val() == 'newQuestion' || newData.child('type').val() == 'questionAnswered' || newData.child('type').val() == 'trialReminder'))"
+          ".validate": "!newData.exists() || (data.exists() && newData.child('read').isBoolean()) || (!data.exists() && newData.hasChildren(['type', 'createdAt', 'read']) && newData.child('createdAt').isNumber() && newData.child('read').isBoolean() && (newData.child('type').val() == 'newBooking' || newData.child('type').val() == 'bookingApproved' || newData.child('type').val() == 'bookingRejected' || newData.child('type').val() == 'bookingCancelled' || newData.child('type').val() == 'newMessage' || newData.child('type').val() == 'lessonCompleted' || newData.child('type').val() == 'newReview' || newData.child('type').val() == 'newPost' || newData.child('type').val() == 'adminMessage' || newData.child('type').val() == 'accountApproved' || newData.child('type').val() == 'teacherApproved' || newData.child('type').val() == 'studentApproved' || newData.child('type').val() == 'groupJoin' || newData.child('type').val() == 'groupApproved' || newData.child('type').val() == 'groupRejected' || newData.child('type').val() == 'rateLesson' || newData.child('type').val() == 'lessonSummary' || newData.child('type').val() == 'newTeacher' || newData.child('type').val() == 'newUser' || newData.child('type').val() == 'newVideo' || newData.child('type').val() == 'newReport' || newData.child('type').val() == 'briefProposal' || newData.child('type').val() == 'briefAccepted' || newData.child('type').val() == 'newQuestion' || newData.child('type').val() == 'questionAnswered' || newData.child('type').val() == 'trialReminder' || newData.child('type').val() == 'referralJoined'))"
         }
       }
     },
@@ -160,8 +160,27 @@
         }
       }
     },
-    "adminAlerts":  { ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'", ".write": "auth != null" },
-    "adminNotifs":  { ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'", ".write": "auth != null" },
+    "adminAlerts": {
+      ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'",
+      ".write": "auth != null && auth.token.email == 'rotemshaer@gmail.com'",
+      "students": {
+        "$uid": { ".write": "auth != null && auth.uid == $uid" }
+      },
+      "posts": {
+        "$postId": { ".write": "auth != null && !data.exists()" }
+      },
+      "subscriptions": {
+        "$subId": {
+          ".write": "auth != null && !data.exists()",
+          "status": { ".validate": "auth.token.email == 'rotemshaer@gmail.com' || newData.val() != 'approved'" }
+        }
+      }
+    },
+    "adminNotifs": {
+      ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'",
+      ".write": "auth != null && auth.token.email == 'rotemshaer@gmail.com'",
+      "$notifId": { ".write": "auth != null && !data.exists()" }
+    },
     "clientErrors": {
       ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'",
       ".write": "auth != null",

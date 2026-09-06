@@ -755,16 +755,7 @@ async function submitTeacherQuestion(teacherUid,overlayEl){
       answeredAt:null,
       isPublic:true
     });
-    await db.ref('notifications/'+teacherUid).push({
-      type:'newQuestion',
-      from:currentUserData?.name||currentUser.email.split('@')[0],
-      fromUid:currentUser.uid,
-      teacherUid,
-      qaId:qaRef.key,
-      preview:questionText.substring(0,60),
-      read:false,
-      createdAt:Date.now()
-    }).catch(()=>{});
+    notifyUser(teacherUid,'newQuestion',{teacherUid,qaId:qaRef.key,preview:questionText.substring(0,60)});
     overlayEl?.remove();
     showFireToast('השאלה נשלחה! המורה יענה בקרוב');
     await loadTeacherQA(teacherUid);
@@ -780,15 +771,7 @@ async function answerQA(teacherUid,qaId,askerUid){
     showFireToast('⏳ מפרסם תשובה...');
     await db.ref('teacherQA/'+teacherUid+'/'+qaId).update({answer:answerText,answeredAt:Date.now()});
     if(askerUid&&askerUid!==currentUser.uid){
-      await db.ref('notifications/'+askerUid).push({
-        type:'questionAnswered',
-        from:currentUserData?.name||currentUser.email.split('@')[0],
-        teacherUid,
-        qaId,
-        preview:answerText.substring(0,60),
-        read:false,
-        createdAt:Date.now()
-      }).catch(()=>{});
+      notifyUser(askerUid,'questionAnswered',{teacherUid,qaId,preview:answerText.substring(0,60)});
     }
     _qaAnsweringId=null;
     showFireToast('התשובה פורסמה!');
@@ -1073,7 +1056,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.18';
+const APP_VERSION='4.11.19';
 // מוטבע מחדש בכל פריסה על ידי .github/workflows/deploy.yml. הערך כאן הוא
 // גיבוי לבנייה מקומית בלבד — תאריך שנשמר ביד הלך והזדקן בשקט והוצג
 // למשתמשים כתאריך הבנייה, שבועיים אחרי שהיה נכון.
@@ -2783,13 +2766,7 @@ async function processPayment(payMethod,totalAmount){
       ['teacherBookings/'+t.id+'/'+bookingId]: bookingData,
     });
     // התראה למורה — התשלום הולך ישירות אליו, הוא זה שמאשר את ההזמנה
-    await db.ref('notifications/'+t.id).push({
-      type:'newBooking',from:bookingData.studentName||'תלמיד',
-      bookingId,day:bookingData.day||'',time:bookingData.time||'',
-      amount:totalAmount,
-      preview:'הזמנה חדשה ממתינה לאישורך',
-      read:false,createdAt:Date.now()
-    }).catch(()=>{});
+    notifyUser(t.id,'newBooking',{bookingId,day:bookingData.day||'',time:bookingData.time||'',amount:totalAmount,preview:'הזמנה חדשה ממתינה לאישורך'});
     try{
       // מייל למורה — הזמנה חדשה, ממתינה לאישורו לאחר קבלת התשלום
       const teacherSnap=await db.ref('teachers/'+t.id).get();
@@ -2870,7 +2847,7 @@ async function adminApproveSubscription(subId,uid){
         if(referrer&&referrer.role==='teacher'){
           const curExpiry=(referrer.subscription?.status==='active'&&referrer.subscription.expiresAt>Date.now())?referrer.subscription.expiresAt:Date.now();
           await db.ref('users/'+referrerUid+'/subscription').update({plan:'premium',status:'active',expiresAt:curExpiry+30*24*3600*1000});
-          await db.ref('notifications/'+referrerUid).push({type:'adminMessage',createdAt:Date.now(),read:false,msg:'🎉 מורה שהפנית הצטרף כמנוי משלם! קיבלת חודש נוסף בחינם ב-Drushe.'}).catch(()=>{});
+          await db.ref('notifications/'+referrerUid).push({type:'adminMessage',createdAt:Date.now(),read:false,message:'🎉 מורה שהפנית הצטרף כמנוי משלם! קיבלת חודש נוסף בחינם ב-Drushe.'}).catch(()=>{});
         }
       }
     }catch(refBonusErr){console.warn('Referral bonus error:',refBonusErr);}
@@ -3275,16 +3252,7 @@ async function approveBooking(bookingId){
       ['teacherBookings/'+b.teacherId+'/'+bookingId+'/status']:'approved',
     });
     // התראה לתלמיד
-    await db.ref('notifications/'+b.studentId).push({
-      type:'bookingApproved',
-      bookingId:bookingId,
-      from:b.teacherName,
-      day:b.day,
-      time:b.time,
-      jitsiUrl:b.jitsiUrl,
-      read:false,
-      createdAt:Date.now()
-    });
+    await notifyUser(b.studentId,'bookingApproved',{bookingId,day:b.day,time:b.time});
     // מייל להורה
     db.ref('users/'+b.studentId).get().then(stuSnap=>{
       const stu=stuSnap.val()||{};
@@ -3332,15 +3300,7 @@ async function cancelBookingAsTeacher(bookingId){
       ['teacherBookings/'+b.teacherId+'/'+bookingId+'/status']:'cancelled',
       ['teacherBookings/'+b.teacherId+'/'+bookingId+'/cancelledAt']:cancelledAt,
     });
-    await db.ref('notifications/'+b.studentId).push({
-      type:'bookingCancelled',
-      bookingId,
-      from:b.teacherName,
-      day:b.day,
-      time:b.time,
-      read:false,
-      createdAt:Date.now()
-    });
+    await notifyUser(b.studentId,'bookingCancelled',{bookingId,day:b.day,time:b.time});
     showFireToast('🚫 השיעור בוטל');
     await loadTeacherBookings();
     render();
@@ -3361,15 +3321,7 @@ async function rejectBooking(bookingId){
       ['userBookings/'+b.studentId+'/'+bookingId+'/status']:'rejected',
       ['teacherBookings/'+b.teacherId+'/'+bookingId+'/status']:'rejected',
     });
-    await db.ref('notifications/'+b.studentId).push({
-      type:'bookingRejected',
-      bookingId:bookingId,
-      from:b.teacherName,
-      day:b.day,
-      time:b.time,
-      read:false,
-      createdAt:Date.now()
-    });
+    await notifyUser(b.studentId,'bookingRejected',{bookingId,day:b.day,time:b.time});
     // מייל להורה
     db.ref('users/'+b.studentId).get().then(stuSnap=>{
       const stu=stuSnap.val()||{};
@@ -3718,9 +3670,9 @@ function showNotificationsPanel(){
   const items=notifications.length===0?
     `<div style="text-align:center;padding:40px 20px"><div style="margin-bottom:12px;display:flex;justify-content:center">${miniBadge('bell','#F59E0B',54)}</div><h3 style="font-weight:900;font-size:17px;margin:0 0 6px;color:#0F1A1F">אין התראות חדשות</h3><p style="color:#64748B;font-size:13px;margin:0">כשתקבל הזמנות או הודעות הן יופיעו כאן</p></div>`:
     notifications.map(n=>{
-      const icons={newBooking:'📚',bookingApproved:'✅',bookingRejected:'❌',bookingCancelled:'🚫',newMessage:'💬',newReview:'⭐',newVideo:'📹',newTeacher:'🎓',newReport:'🚨',newUser:'👋',groupJoin:'🙋',groupApproved:'🎉',groupRejected:'😔',rateLesson:'⭐',lessonSummary:'📖',accountApproved:'🎉',teacherApproved:'🎓',adminMessage:'📣',newPost:'📢',lessonCompleted:'✅',newStory:'📸',briefProposal:'💼',briefAccepted:'🤝',newQuestion:'❓',questionAnswered:'💡',trialReminder:'⏰',emailFailed:'📧',chatDeliveryFailed:'⚠️',registrationFailed:'🚫',employerInquiry:'💼'};
-      const titles={newBooking:'הזמנת שיעור חדשה',bookingApproved:'ההזמנה אושרה!',bookingRejected:'ההזמנה נדחתה',bookingCancelled:'השיעור בוטל',newMessage:'הודעה חדשה',newReview:'דירוג חדש',newVideo:'סרטון חדש לאישור',newTeacher:'מורה חדש נרשם',newReport:'דיווח חדש!',newUser:'משתמש חדש',groupJoin:'בקשת הצטרפות לקבוצה',groupApproved:'התקבלת לקבוצה!',groupRejected:'הבקשה לא אושרה',rateLesson:'דרג את השיעור',lessonSummary:'סיכום שיעור חדש',accountApproved:'החשבון שלך אושר!',teacherApproved:'פרופיל המורה שלך אושר!',adminMessage:'הודעה מהמנהל',newPost:'פוסט חדש בקהילה',lessonCompleted:'השיעור הסתיים',newStory:'סטורי חדש לאישור',briefProposal:'הצעת מורה לדרוש שלך',briefAccepted:'ההצעה שלך התקבלה!',newQuestion:'שאלה חדשה על הפרופיל',questionAnswered:'המורה ענה על שאלתך',trialReminder:'תזכורת ניסיון חינם',emailFailed:'שליחת מייל נכשלה',chatDeliveryFailed:'הודעת צאט לא הועברה',registrationFailed:'הרשמה נכשלה',employerInquiry:'פנייה חדשה מחברה — דרושים'};
-      const cols={newBooking:'#14B8A6',bookingApproved:'#10B981',bookingRejected:'#EF4444',bookingCancelled:'#F59E0B',newMessage:'#06B6D4',newReview:'#FBBF24',newVideo:'#06B6D4',newTeacher:'#14B8A6',newReport:'#E74C3C',newUser:'#0EA5E9',groupJoin:'#14B8A6',groupApproved:'#10B981',groupRejected:'#EF4444',rateLesson:'#FBBF24',lessonSummary:'#06B6D4',accountApproved:'#10B981',teacherApproved:'#14B8A6',adminMessage:'#06B6D4',newPost:'#F59E0B',lessonCompleted:'#10B981',newStory:'#8B5CF6',briefProposal:'#14B8A6',briefAccepted:'#10B981',newQuestion:'#14B8A6',questionAnswered:'#10B981',trialReminder:'#8B5CF6',emailFailed:'#EF4444',chatDeliveryFailed:'#EF4444',registrationFailed:'#EF4444',employerInquiry:'#8B5CF6'};
+      const icons={newBooking:'📚',bookingApproved:'✅',bookingRejected:'❌',bookingCancelled:'🚫',newMessage:'💬',newReview:'⭐',newVideo:'📹',newTeacher:'🎓',newReport:'🚨',newUser:'👋',groupJoin:'🙋',groupApproved:'🎉',groupRejected:'😔',rateLesson:'⭐',lessonSummary:'📖',accountApproved:'🎉',teacherApproved:'🎓',adminMessage:'📣',newPost:'📢',lessonCompleted:'✅',newStory:'📸',briefProposal:'💼',briefAccepted:'🤝',newQuestion:'❓',questionAnswered:'💡',trialReminder:'⏰',referralJoined:'🎁',emailFailed:'📧',chatDeliveryFailed:'⚠️',registrationFailed:'🚫',employerInquiry:'💼'};
+      const titles={newBooking:'הזמנת שיעור חדשה',bookingApproved:'ההזמנה אושרה!',bookingRejected:'ההזמנה נדחתה',bookingCancelled:'השיעור בוטל',newMessage:'הודעה חדשה',newReview:'דירוג חדש',newVideo:'סרטון חדש לאישור',newTeacher:'מורה חדש נרשם',newReport:'דיווח חדש!',newUser:'משתמש חדש',groupJoin:'בקשת הצטרפות לקבוצה',groupApproved:'התקבלת לקבוצה!',groupRejected:'הבקשה לא אושרה',rateLesson:'דרג את השיעור',lessonSummary:'סיכום שיעור חדש',accountApproved:'החשבון שלך אושר!',teacherApproved:'פרופיל המורה שלך אושר!',adminMessage:'הודעה מהמנהל',newPost:'פוסט חדש בקהילה',lessonCompleted:'השיעור הסתיים',newStory:'סטורי חדש לאישור',briefProposal:'הצעת מורה לדרוש שלך',briefAccepted:'ההצעה שלך התקבלה!',newQuestion:'שאלה חדשה על הפרופיל',questionAnswered:'המורה ענה על שאלתך',trialReminder:'תזכורת ניסיון חינם',referralJoined:'הפנייה נקלטה!',emailFailed:'שליחת מייל נכשלה',chatDeliveryFailed:'הודעת צאט לא הועברה',registrationFailed:'הרשמה נכשלה',employerInquiry:'פנייה חדשה מחברה — דרושים'};
+      const cols={newBooking:'#14B8A6',bookingApproved:'#10B981',bookingRejected:'#EF4444',bookingCancelled:'#F59E0B',newMessage:'#06B6D4',newReview:'#FBBF24',newVideo:'#06B6D4',newTeacher:'#14B8A6',newReport:'#E74C3C',newUser:'#0EA5E9',groupJoin:'#14B8A6',groupApproved:'#10B981',groupRejected:'#EF4444',rateLesson:'#FBBF24',lessonSummary:'#06B6D4',accountApproved:'#10B981',teacherApproved:'#14B8A6',adminMessage:'#06B6D4',newPost:'#F59E0B',lessonCompleted:'#10B981',newStory:'#8B5CF6',briefProposal:'#14B8A6',briefAccepted:'#10B981',newQuestion:'#14B8A6',questionAnswered:'#10B981',trialReminder:'#8B5CF6',referralJoined:'#10B981',emailFailed:'#EF4444',chatDeliveryFailed:'#EF4444',registrationFailed:'#EF4444',employerInquiry:'#8B5CF6'};
       const ico=icons[n.type]||'🔔';
       const ttl=titles[n.type]||'התראה';
       const col=cols[n.type]||'#14B8A6';
@@ -3748,6 +3700,7 @@ function showNotificationsPanel(){
       else if(n.type==='newQuestion')sub=(n.from||'')+(n.preview?' • '+n.preview:'');
       else if(n.type==='questionAnswered')sub=(n.from||'המורה')+(n.preview?' • '+n.preview:'');
       else if(n.type==='trialReminder')sub='נשאר/ו '+(n.daysLeft||0)+(n.daysLeft===1?' יום':' ימים')+' — לאחר מכן ₪'+TEACHER_PLAN_PRICE+'/חודש';
+      else if(n.type==='referralJoined')sub=n.message||n.preview||'';
       else if(n.type==='emailFailed')sub='אל: '+(n.to||'')+(n.subject?' • '+n.subject:'')+(n.error?' • '+n.error:'');
       else if(n.type==='chatDeliveryFailed')sub='שלב: '+(n.step||'')+(n.otherUid?' • יעד: '+n.otherUid:'')+(n.error?' • '+n.error:'');
       else if(n.type==='registrationFailed')sub=(n.email||'')+(n.error?' • '+n.error:'');
@@ -4498,7 +4451,7 @@ async function _sendVoiceMessage(blob,otherUid,otherName){
         db.ref('userChats/'+otherUid+'/'+currentUser.uid).set({...last,otherUid:currentUser.uid,otherName:currentUserData?.name||'',unread:true}).catch(e=>{
           notifyAdmin({type:'chatDeliveryFailed',chatId,otherUid,step:'userChats-voice',error:e?.message||'שגיאה לא ידועה'}).catch(()=>{});
         });
-        db.ref('notifications/'+otherUid).push({type:'newMessage',from:currentUserData?.name||'',fromUid:currentUser.uid,preview:'🎤 הודעה קולית',read:false,createdAt:Date.now()}).catch(()=>{});
+        notifyUser(otherUid,'newMessage',{preview:'🎤 הודעה קולית'});
         _sendPushToUser(otherUid).catch(()=>{});
         showFireToast('✅ ההקלטה נשלחה!');
       }catch(e){showFireToast('❌ '+e.message);}
@@ -4633,14 +4586,7 @@ async function sendChatMessage(otherUid,otherName){
     }
     // התראה לצד השני
     try{
-      await db.ref('notifications/'+otherUid).push({
-        type:'newMessage',
-        from:currentUserData?.name||currentUser.email.split('@')[0],
-        fromUid:currentUser.uid,
-        preview:text.substring(0,40),
-        read:false,
-        createdAt:Date.now()
-      });
+      await notifyUser(otherUid,'newMessage',{preview:text.substring(0,40)});
     }catch(notifErr){console.warn('Could not send notification:',notifErr);}
     // התראת Push למכשיר של הנמען — מגיעה גם כשהאפליקציה שלו סגורה, בניגוד
     // לרשומה שנכתבה למעלה שנראית רק כשהוא פותח את האפליקציה.
@@ -4886,8 +4832,8 @@ async function _saveLessonSummary(bookingId,enc){
     const tSnap=await db.ref('teachers/'+tid+'/lessons').get();
     await db.ref('teachers/'+tid+'/lessons').set((tSnap.val()||0)+1).catch(()=>{});
     // התראה לתלמיד — סיכום + בקשת דירוג
-    await db.ref('notifications/'+b.studentId).push({type:'lessonSummary',from:summary.teacherName,preview:'סיכום שיעור: '+topic,read:false,createdAt:Date.now()}).catch(()=>{});
-    await db.ref('notifications/'+b.studentId).push({type:'rateLesson',bookingId,teacherId:tid,teacherName:summary.teacherName,from:summary.teacherName,preview:'איך היה השיעור עם '+summary.teacherName+'?',read:false,createdAt:Date.now()+1}).catch(()=>{});
+    notifyUser(b.studentId,'lessonSummary',{bookingId,preview:'סיכום שיעור: '+topic});
+    notifyUser(b.studentId,'rateLesson',{bookingId,teacherId:tid,teacherName:summary.teacherName,preview:'איך היה השיעור עם '+summary.teacherName+'?'});
     // מייל להורה על סיום שיעור — פרטי ההורה כבר על ההזמנה עצמה (b), אין צורך בקריאה נוספת
     try{
       if(b.parentEmail){
@@ -4988,6 +4934,30 @@ async function sendEmail(to,subject,body){
 
 function sendAdminEmail(subject,body){
   return sendEmail(ADMIN_EMAIL,subject,body);
+}
+
+// התראה למשתמש אחר — עוברת דרך השרת, תמיד.
+//
+// הכתיבה הישירה ל-notifications/<uid אחר> נסגרה בחוקים: כל מחובר, כולל
+// אורח אנונימי, יכול היה לדחוף לפיד של כל אחד התראה מכל סוג — כולל
+// 'adminMessage', שמוצגת כ־📣 "הודעה מהמנהל". השרת מאמת מי השולח (idToken),
+// מאמת שהיחסים שההתראה טוענת להם קיימים באמת (הזמנה, שיחה, קבוצה, דרוש),
+// וגוזר את שם השולח מ-users/<uid>/name במקום לקבל אותו מהמטען.
+//
+// לא זורקת לעולם: התראה היא תוצר לוואי של הפעולה, ואסור שכישלון שלה יפיל
+// את הפעולה עצמה (אישור הזמנה, שליחת הודעה). זו הייתה ההתנהגות גם קודם —
+// רוב הקריאות היו עטופות ב-catch ריק.
+async function notifyUser(toUid,type,ctx={}){
+  try{
+    if(!currentUser||!toUid)return;
+    const idToken=await currentUser.getIdToken();
+    const res=await fetch(API_BASE+'/api/notify',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({idToken,toUid,type,ctx})
+    });
+    if(!res.ok)console.warn('[notifyUser]',type,res.status);
+  }catch(e){console.warn('[notifyUser]',type,e);}
 }
 
 async function notifyAdmin(notif){
@@ -5889,10 +5859,7 @@ async function cancelApprovedBooking(bookingId){
     await db.ref('bookings/'+bookingId).update({status:'cancelled',cancelledAt});
     await db.ref('userBookings/'+b.studentId+'/'+bookingId).update({status:'cancelled',cancelledAt});
     await db.ref('teacherBookings/'+b.teacherId+'/'+bookingId).update({status:'cancelled',cancelledAt});
-    await db.ref('notifications/'+b.teacherId).push({
-      type:'bookingCancelled',from:currentUserData?.name||'תלמיד',
-      day:b.day,time:b.time,ts:cancelledAt,read:false
-    }).catch(()=>{});
+    notifyUser(b.teacherId,'bookingCancelled',{bookingId,day:b.day,time:b.time,ts:cancelledAt});
     await loadStudentBookings();
     render();
     showFireToast('✅ הביטול בוצע');
@@ -11132,12 +11099,7 @@ async function _submitBriefProposal(briefId){
       price,message,createdAt:Date.now()
     };
     await db.ref('briefProposals/'+briefId+'/'+currentUser.uid).set(proposal);
-    await db.ref('notifications/'+brief.parentUid).push({
-      type:'briefProposal',briefId,
-      from:proposal.teacherName,fromUid:currentUser.uid,
-      price,preview:message.substring(0,80),
-      read:false,createdAt:Date.now()
-    });
+    await notifyUser(brief.parentUid,'briefProposal',{briefId,price,preview:message.substring(0,80)});
     document.getElementById('_bpOv')?.remove();
     showFireToast('✅ ההצעה נשלחה! ההורה יקבל התראה');
   }catch(e){showFireToast('❌ '+e.message);}
@@ -11226,12 +11188,7 @@ async function _acceptBriefProposal(briefId,teacherUid){
       ['parentBriefs/'+briefId+'/acceptedTeacher']:teacherUid,
       ['parentBriefs/'+briefId+'/bookingId']:bookingId
     });
-    await db.ref('notifications/'+teacherUid).push({
-      type:'briefAccepted',briefId,bookingId,
-      from:currentUserData?.name||'הורה',fromUid:currentUser.uid,
-      childName:brief.childName,price,
-      read:false,createdAt:Date.now()
-    });
+    await notifyUser(teacherUid,'briefAccepted',{briefId,bookingId,childName:brief.childName,price});
     const bIdx=(S.parentBriefs||[]).findIndex(b=>b.id===briefId);
     if(bIdx>=0)S.parentBriefs.splice(bIdx,1);
     document.getElementById('_mpOv')?.remove();
@@ -12843,7 +12800,7 @@ async function joinGroup(groupId){
     await db.ref('groupMembers/'+groupId+'/'+currentUser.uid).set({name:currentUserData?.name||currentUser.email,joinedAt:Date.now(),status:'pending'});
     await db.ref('userGroups/'+currentUser.uid+'/'+groupId).set({status:'pending',joinedAt:Date.now()});
     myGroupStatuses[groupId]={status:'pending',joinedAt:Date.now()};
-    if(g?.teacherId)await db.ref('notifications/'+g.teacherId).push({type:'groupJoin',groupId,groupTitle:g.title,studentName:currentUserData?.name||currentUser.email,createdAt:Date.now(),read:false}).catch(()=>{});
+    if(g?.teacherId)notifyUser(g.teacherId,'groupJoin',{groupId,groupTitle:g.title,studentName:currentUserData?.name||''});
     if(g?.isMixed){
       const ub=currentUserData?.badges||[];
       if(!ub.includes('mixedGroup')){await db.ref('users/'+currentUser.uid+'/badges').set([...ub,'mixedGroup']).catch(()=>{});if(currentUserData)currentUserData.badges=[...ub,'mixedGroup'];}
@@ -12950,7 +12907,7 @@ async function _approveGroupMember(groupId,uid,wrap){
     const idx=communityGroups.findIndex(x=>x.id===groupId);
     if(idx>=0){communityGroups[idx].membersCount=newCnt;if(newCnt>=(g?.maxStudents||5))communityGroups[idx].status='full';}
     await db.ref('userGroups/'+uid+'/'+groupId+'/status').set('approved').catch(()=>{});
-    await db.ref('notifications/'+uid).push({type:'groupApproved',groupTitle:g?.title||'',from:currentUserData?.name||'המורה',read:false,createdAt:Date.now()}).catch(()=>{});
+    notifyUser(uid,'groupApproved',{groupId,groupTitle:g?.title||''});
     if(wrap)wrap.innerHTML=`<span style="font-size:11px;font-weight:800;padding:4px 10px;border-radius:50px;background:rgba(16,185,129,0.12);color:#10B981">✓ מאושר</span>`;
     showFireToast('✅ אושר!');
   }catch(e){showFireToast('❌ '+e.message);}
@@ -12960,7 +12917,7 @@ async function _rejectGroupMember(groupId,uid,wrap){
     await db.ref('groupMembers/'+groupId+'/'+uid+'/status').set('rejected');
     const gTitleSnap=await db.ref('groups/'+groupId+'/title').get().catch(()=>null);
     await db.ref('userGroups/'+uid+'/'+groupId+'/status').set('rejected').catch(()=>{});
-    await db.ref('notifications/'+uid).push({type:'groupRejected',groupTitle:gTitleSnap?.val()||'',from:currentUserData?.name||'המורה',read:false,createdAt:Date.now()}).catch(()=>{});
+    notifyUser(uid,'groupRejected',{groupId,groupTitle:gTitleSnap?.val()||''});
     if(wrap)wrap.innerHTML=`<span style="font-size:11px;font-weight:800;padding:4px 10px;border-radius:50px;background:rgba(239,68,68,0.1);color:#EF4444">✗ נדחה</span>`;
     showFireToast('נדחה');
   }catch(e){showFireToast('❌ '+e.message);}
@@ -14086,7 +14043,7 @@ async function firebaseRegister(email,password,userData){
               await db.ref('userCredits/'+cred.user.uid).transaction(v=>(v||0)+5);
               await db.ref('referrals/'+referrerUid+'/'+cred.user.uid).set({at:Date.now(),code:storedRef});
               await db.ref('users/'+cred.user.uid+'/referredBy').set(referrerUid);
-              await db.ref('notifications/'+referrerUid).push({type:'adminMessage',createdAt:Date.now(),read:false,msg:'חבר שהפנית נרשם ל-Drushe! קיבלת ₪15 קרדיט.'});
+              await notifyUser(referrerUid,'referralJoined',{message:'חבר שהפנית נרשם ל-Drushe! קיבלת ₪15 קרדיט.'});
               sessionStorage.removeItem('_kidRefCode');
             }
           }

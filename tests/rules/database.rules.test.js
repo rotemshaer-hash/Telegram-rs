@@ -429,6 +429,98 @@ describe('bookings: price and the two parties cannot change after creation', () 
   });
 });
 
+// ── NOTIFICATIONS: no writing into someone else's feed ───────────────────
+//
+// notifications/$uid/$notifId was ".write": "auth != null" — any signed-in
+// user, guests included, could push a notification into any other user's
+// feed. The .validate constrained the shape and the type enum, but the enum
+// contains 'adminMessage', which renders as 📣 "הודעה מהמנהל", and the body
+// was unconstrained. Impersonating the platform to a named minor was a
+// single database write. Cross-user notifications now go through
+// netlify/functions/notify.js, which verifies the relationship being
+// claimed and derives the sender's name server-side.
+describe('notifications: only your own feed, or the server', () => {
+  const notif = { type: 'newMessage', createdAt: Date.now(), read: false };
+
+  it('a stranger cannot write into another user’s feed', async () => {
+    await assertFails(set(ref(asStranger(), 'notifications/student-uid/n1'), notif));
+  });
+
+  it('not even a real counterparty may write it directly', async () => {
+    await assertFails(set(ref(asTeacher(), 'notifications/student-uid/n1'), notif));
+  });
+
+  it('the admin-message impersonation path is closed', async () => {
+    await assertFails(set(ref(asStranger(), 'notifications/student-uid/n2'),
+      { type: 'adminMessage', message: 'שלח לי את מספר הטלפון שלך', createdAt: Date.now(), read: false }));
+  });
+
+  it('a user can still write, read and clear their own feed', async () => {
+    await assertSucceeds(set(ref(asStudent(), 'notifications/student-uid/n3'),
+      { type: 'trialReminder', createdAt: Date.now(), read: false }));
+    await assertSucceeds(get(ref(asStudent(), 'notifications/student-uid')));
+    await assertSucceeds(remove(ref(asStudent(), 'notifications/student-uid/n3')));
+  });
+
+  it('the admin can still notify anyone, which the admin panel relies on', async () => {
+    await assertSucceeds(set(ref(asAdmin(), 'notifications/student-uid/n4'),
+      { type: 'studentApproved', createdAt: Date.now(), read: false }));
+  });
+});
+
+// ── ADMIN QUEUES: submittable, not wipeable ──────────────────────────────
+//
+// adminAlerts and adminNotifs were ".write": "auth != null" on the whole
+// node, so any signed-in user could delete every pending alert and every
+// safety flag in one call. They have to stay writable — that is how a
+// registration, a post and a subscription request reach the admin — so the
+// grant moved down to the individual entry.
+describe('admin queues: a user may add, never wipe', () => {
+  it('a user cannot delete the whole alert queue', async () => {
+    await assertFails(remove(ref(asStudent(), 'adminAlerts')));
+    await assertFails(remove(ref(asStudent(), 'adminAlerts/students')));
+  });
+
+  it('a user cannot wipe the admin notification feed, safety flags included', async () => {
+    await assertFails(remove(ref(asStudent(), 'adminNotifs')));
+  });
+
+  it('a user cannot forge an alert about someone else', async () => {
+    await assertFails(set(ref(asStranger(), 'adminAlerts/students/student-uid'),
+      { name: 'Minor', createdAt: Date.now() }));
+  });
+
+  it('registration still files the user’s own pending alert', async () => {
+    await assertSucceeds(set(ref(asStudent(), 'adminAlerts/students/student-uid'),
+      { name: 'Minor', email: 'minor@example.com', createdAt: Date.now() }));
+  });
+
+  it('a post and a subscription request still reach the admin', async () => {
+    await assertSucceeds(set(ref(asStudent(), 'adminAlerts/posts/p1'),
+      { author: 'Minor', text: 'hello', createdAt: Date.now() }));
+    await assertSucceeds(set(ref(asTeacher(), 'adminAlerts/subscriptions/s1'),
+      { uid: TEACHER, status: 'awaitingPayment', createdAt: Date.now() }));
+  });
+
+  it('a teacher cannot approve their own subscription payment', async () => {
+    await assertFails(set(ref(asTeacher(), 'adminAlerts/subscriptions/s2'),
+      { uid: TEACHER, status: 'approved', createdAt: Date.now() }));
+  });
+
+  it('notifyAdmin still works — a safety flag can always be raised', async () => {
+    await assertSucceeds(set(ref(asStudent(), 'adminNotifs/a1'),
+      { type: 'chatDeliveryFailed', read: false, createdAt: Date.now() }));
+  });
+
+  it('but an existing admin notification cannot be edited away', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await set(ref(ctx.database(), 'adminNotifs/a2'), { type: 'newReport', read: false, createdAt: 1 });
+    });
+    await assertFails(remove(ref(asStudent(), 'adminNotifs/a2')));
+    await assertFails(set(ref(asStudent(), 'adminNotifs/a2/read'), true));
+  });
+});
+
 // ── BOOKING STATE MACHINE ────────────────────────────────────────────────
 //
 // Locking the fields left the one field the app does write wide open: any
