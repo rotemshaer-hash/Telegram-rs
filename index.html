@@ -1073,7 +1073,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.14';
+const APP_VERSION='4.11.15';
 // מוטבע מחדש בכל פריסה על ידי .github/workflows/deploy.yml. הערך כאן הוא
 // גיבוי לבנייה מקומית בלבד — תאריך שנשמר ביד הלך והזדקן בשקט והוצג
 // למשתמשים כתאריך הבנייה, שבועיים אחרי שהיה נכון.
@@ -4592,16 +4592,12 @@ async function sendChatMessage(otherUid,otherName){
     // ההודעה נשלחת בכל מקרה — הסימון קורה אחריה ולא במקומה
     if(_contactKinds.length&&!_contactFlagged.has(chatId)){
       _contactFlagged.add(chatId);
-      notifyAdmin({
-        type:'contactShared',
-        kinds:_contactKinds.join(', '),
-        chatId,
-        from:currentUserData?.name||currentUser.email,
-        fromUid:currentUser.uid,
-        toUid:otherUid,
-        toName:otherName||'',
-        excerpt:text.substring(0,200)
-      }).catch(()=>{});
+      flagForSafetyReview({
+        targetType:'user',targetId:currentUser.uid,
+        targetName:currentUserData?.name||currentUser.email,
+        reasonLabel:'⚠️ זוהה שיתוף פרטי קשר ('+_contactKinds.join(', ')+')',
+        description:'שיחה עם '+(otherName||otherUid)+' · "'+text.substring(0,200)+'"',
+      });
       // אזהרה רכה לשולח. לא "אסור" — הסבר קצר למה זה לא בטוח, בניסוח שילד מבין.
       setTimeout(()=>showFireToast('⚠️ שיתוף טלפון או קישור אישי אינו בטוח — עדיף להישאר כאן'),600);
     }
@@ -4988,6 +4984,28 @@ async function notifyAdmin(notif){
   try{
     await db.ref('adminNotifs').push({...notif,read:false,createdAt:notif.createdAt||Date.now()});
   }catch(e){console.warn('[notifyAdmin]',e);}
+}
+
+// דגלי בטיחות אוטומטיים (למשל זיהוי שיתוף פרטי קשר) נכתבו רק ל-adminNotifs —
+// אותה התראה שמשמשת גם ל"מורה חדש נרשם" ו"ביקורת חדשה". הצומת הזה מוצג
+// כפעמון עם limitToLast(40) על *כל* סוגי ההתראות יחד: דגל בטיחות שקרה
+// בבוקר יכול להיעלם עד הערב מאחורי 40 הזמנות ובקשות רגילות, בלי שאיש
+// יראה אותו בכלל. reports, לעומת זאת, הוא תור פתוח/סגור קבוע שכבר נבדק
+// יזום — זו בדיוק ההגנה שדיווח ידני מקבל, ואין סיבה שדגל אוטומטי יקבל
+// פחות ממנה. נכתב דרך אותו נתיב בדיוק שסביבו קיימים חוקי האבטחה, לא נתיב
+// חדש.
+async function flagForSafetyReview({targetType,targetId,targetName,reasonLabel,description}){
+  try{
+    await db.ref('reports').push({
+      targetType,targetId,targetName,
+      reason:'auto',reasonLabel,description,
+      reporterId:currentUser?.uid||'system',
+      reporterName:'🤖 זוהה אוטומטית',
+      reporterEmail:'',
+      status:'open',
+      createdAt:Date.now()
+    });
+  }catch(e){console.warn('[flagForSafetyReview]',e);}
 }
 
 // ─── אישור הורה ─────────────────────────────────────────────────────────────
