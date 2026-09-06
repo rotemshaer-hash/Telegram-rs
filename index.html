@@ -1073,7 +1073,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.13';
+const APP_VERSION='4.11.14';
 // מוטבע מחדש בכל פריסה על ידי .github/workflows/deploy.yml. הערך כאן הוא
 // גיבוי לבנייה מקומית בלבד — תאריך שנשמר ביד הלך והזדקן בשקט והוצג
 // למשתמשים כתאריך הבנייה, שבועיים אחרי שהיה נכון.
@@ -11273,13 +11273,15 @@ function Jobs(){
 // חיפוש בשפה טבעית + שאלות ותשובות מבוססות Claude, דרך פונקציית שרת ב-Netlify
 // (netlify/functions/ai-assistant.js) — המפתח של Anthropic נשאר בצד השרת בלבד.
 async function _aiCall(mode,message){
+  if(!currentUser)throw new Error('יש להתחבר כדי להשתמש בזה');
+  const idToken=await currentUser.getIdToken();
   const res=await fetch(API_BASE+'/api/ai-assistant',{
     method:'POST',
     headers:{'content-type':'application/json'},
-    body:JSON.stringify({mode,message})
+    body:JSON.stringify({mode,message,idToken})
   });
   const data=await res.json().catch(()=>({}));
-  if(!res.ok)throw new Error(data?.error||'שגיאת שרת');
+  if(!res.ok)throw new Error(res.status===429?'⏳ יותר מדי בקשות, נסה שוב בעוד כמה דקות':(data?.error||'שגיאת שרת'));
   return data;
 }
 
