@@ -354,6 +354,42 @@ body.dark .tabs{background:rgba(255,255,255,.05) !important}
 body.dark .bw{background:#1E2535 !important;color:#5EEAD4 !important;box-shadow:0 4px 16px rgba(0,0,0,.3) !important}
 body.dark .p-acts{border-top-color:rgba(255,255,255,.06) !important}
 body.dark .p-acts button{color:#94A3B8 !important}
+
+/* ── מצב לילה: צבעי טקסט שנכתבו inline ──────────────────────────────────
+   כפתור "מצב לילה" קיים בממשק והבחירה נשמרת ב-localStorage, אבל 29 כללי
+   body.dark טיפלו ברקעים ולא בטקסט שנכתב ישירות ב-style=. מדידה על הקובץ:
+   769 מתוך 1,166 צבעי הטקסט ה-inline נכשלו במצב כהה, ומתוכם 207 היו
+   *בלתי נראים* — ‎#0F1A1F על כרטיס ‎#161B22 נותן ניגודיות 1.02, כלומר
+   שחור על שחור. מי שלחץ על הכפתור קיבל מסכים שהטקסט בהם נעלם.
+
+   הבורר משתמש בהתאמת תת-מחרוזת על התכונה style, ולכן כלל אחד מכסה 196
+   מופעים בלי לגעת ב-196 שורות. ‎!important בגיליון סגנונות גובר על הצהרה
+   inline רגילה, וזה מה שמאפשר את זה בכלל.
+
+   שלושת צבעי היעד אינם חדשים — הם בדיוק ‎_CD.text, ‎_CD.muted ו-‎_CD.p,
+   הפלטה הכהה שכבר מוגדרת בקוד. מצב יום אינו מושפע: הכל תחוּם ל-body.dark. */
+
+/* טקסט ראשי כהה → בהיר (ניגודיות 14.03) */
+body.dark [style*="color:#0F1A1F"],
+body.dark [style*="color:#1A1A2E"],
+body.dark [style*="color:#0F172A"],
+body.dark [style*="color:#1E1B4B"],
+body.dark [style*="color:#1E293B"],
+body.dark [style*="color:#003087"]{color:#E2E8F0 !important}
+
+/* טקסט משני אפור → אפור בהיר (ניגודיות 6.75) */
+body.dark [style*="color:#64748B"],
+body.dark [style*="color:#6C7686"],
+body.dark [style*="color:#6F7786"],
+body.dark [style*="color:#475569"],
+body.dark [style*="color:#334155"],
+body.dark [style*="color:#374151"],
+body.dark [style*="color:#6B7280"]{color:#94A3B8 !important}
+
+/* טורקיז כהה → טורקיז בהיר (ניגודיות 9.67) */
+body.dark [style*="color:#04778A"],
+body.dark [style*="color:#0E7A72"],
+body.dark [style*="color:#0F766E"]{color:#4ED6C4 !important}
 body.dark .otp input{background:rgba(255,255,255,.05) !important;color:#E2E8F0 !important;border-color:rgba(255,255,255,.1) !important}
 body.dark .kcb-row{border-color:rgba(255,255,255,.1) !important;background:rgba(255,255,255,.03) !important}
 body.dark .kcb-row.light{border-color:rgba(20,184,166,.25) !important;background:rgba(20,184,166,.06) !important}
@@ -1037,7 +1073,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.12';
+const APP_VERSION='4.11.13';
 // מוטבע מחדש בכל פריסה על ידי .github/workflows/deploy.yml. הערך כאן הוא
 // גיבוי לבנייה מקומית בלבד — תאריך שנשמר ביד הלך והזדקן בשקט והוצג
 // למשתמשים כתאריך הבנייה, שבועיים אחרי שהיה נכון.
