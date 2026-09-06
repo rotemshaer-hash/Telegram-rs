@@ -1073,7 +1073,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.17';
+const APP_VERSION='4.11.18';
 // מוטבע מחדש בכל פריסה על ידי .github/workflows/deploy.yml. הערך כאן הוא
 // גיבוי לבנייה מקומית בלבד — תאריך שנשמר ביד הלך והזדקן בשקט והוצג
 // למשתמשים כתאריך הבנייה, שבועיים אחרי שהיה נכון.
@@ -5303,6 +5303,9 @@ if(typeof auth!=='undefined'&&auth&&!auth._pushSignOutWrapped){
 let adminAllUsers=[],adminAllTeachers=[],adminAllVideos=[],adminAllReports=[],adminAllBookings=[],adminIncompleteTeachers=[],adminAllPosts=[],adminAllReviews=[],adminAllStories=[],adminAllClientErrors=[];
 let adminAlertStudents=[],adminAlertPosts=[],adminAlertSubscriptions=[],adminContactMessages=[],adminAlertStoriesPending=0; // מקור ראשי לממתינים
 let adminTab='users';
+// מתג הכיבוי של עוזר ה-AI. ברירת המחדל "פועל" תואמת את השרת: רק false
+// מפורש מכבה, כדי שצומת חסר לא ישבית את הפיצ'ר בשקט.
+let _adminAiEnabled=true;
 let _adminPendingCount=0;
 
 // ─── ספירת הממתינים — הגדרה אחת ─────────────────────────────────────────────
@@ -7571,7 +7574,8 @@ function showAdminPanel(forceTab=null){
     db.ref('contactMessages').update(upd).catch(()=>{});
     _updateAdminBadge(_adminPending().total);
   }
-  _verifyAdminPin(()=>{loadAdminData().then(()=>{
+  _verifyAdminPin(()=>{loadAdminData().then(async()=>{
+    try{_adminAiEnabled=(await db.ref('adminConfig/aiEnabled').get()).val()!==false;}catch(_e){}
     if(forceTab){
       adminTab=forceTab;
     } else {
@@ -7589,6 +7593,20 @@ function showAdminPanel(forceTab=null){
     }
     renderAdminPanel();
   });});
+}
+
+// מתג כיבוי לעוזר ה-AI. קיים כדי שאפשר יהיה לעצור חיוב חריג *מיד* מהטלפון,
+// בלי להיכנס לקונסולה של Firebase — ברגע שצריך אותו, כל דקה עולה כסף.
+// השרת קורא את אותו דגל בכל בקשה (netlify/functions/ai-assistant.js).
+async function adminToggleAi(){
+  const turningOff=_adminAiEnabled;
+  if(turningOff&&!await _confirm('לכבות את עוזר ה-AI?\n\nהחיפוש החכם ושאלות הבטיחות יפסיקו לעבוד לכל המשתמשים, מיד.',{confirmText:'כבה',cancelText:'ביטול',destructive:true}))return;
+  try{
+    await db.ref('adminConfig/aiEnabled').set(!turningOff);
+    _adminAiEnabled=!turningOff;
+    showFireToast(_adminAiEnabled?'✅ עוזר ה-AI הופעל':'🛑 עוזר ה-AI כובה');
+    renderAdminPanel();
+  }catch(e){showFireToast('❌ '+e.message);}
 }
 
 async function adminSwitchTab(id){
@@ -7741,6 +7759,10 @@ function renderAdminPanel(){
       ${_adminCommunityOrphans.length>0?`<div onclick="adminTab='students';renderAdminPanel()" style="margin-top:8px;background:rgba(239,68,68,0.75);border-radius:12px;padding:10px 14px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:8px;position:relative;z-index:2">${icon("alert-triangle",14)} <span>${_adminCommunityOrphans.length} משתמשים פרסמו בקהילה ללא אישור — לחץ לטיפול</span></div>`:''}
       ${adminContactMessages.filter(m=>!m.read).length>0?`<div onclick="adminSwitchTab('messages')" style="margin-top:8px;background:rgba(6,182,212,0.9);border-radius:12px;padding:10px 14px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:8px;position:relative;z-index:2">${icon("chat",14)} <span>${adminContactMessages.filter(m=>!m.read).length} הודעות חדשות מהאפליקציה — לחץ לצפייה</span></div>`:''}
       ${adminAlertSubscriptions.length>0?`<div onclick="adminSwitchTab('subscriptions')" style="margin-top:8px;background:rgba(139,47,201,0.85);border-radius:12px;padding:10px 14px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:8px;position:relative;z-index:2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg> <span>${adminAlertSubscriptions.length} מנויים ממתינים לאימות תשלום — לחץ לאישור</span></div>`:''}
+      <div style="margin-top:8px;background:${_adminAiEnabled?'rgba(15,26,31,0.35)':'rgba(239,68,68,0.85)'};border-radius:12px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;position:relative;z-index:2">
+        <span style="font-size:12px;font-weight:800;color:#fff">🤖 עוזר AI — ${_adminAiEnabled?'פעיל':'מושבת'}</span>
+        <button onclick="adminToggleAi()" style="background:${_adminAiEnabled?'rgba(239,68,68,0.9)':'rgba(16,185,129,0.95)'};border:none;color:#fff;border-radius:50px;padding:6px 14px;font-size:12px;font-weight:900;cursor:pointer">${_adminAiEnabled?'כבה עכשיו':'הפעל'}</button>
+      </div>
     </div>
     ${!adminAllTeachers.find(t=>t.uid===currentUser?.uid)?`
     <div style="margin:12px 16px 0;background:linear-gradient(135deg,rgba(245,158,11,0.12),rgba(239,68,68,0.1));border:2px solid rgba(245,158,11,0.5);border-radius:16px;padding:14px">
@@ -11301,7 +11323,7 @@ function Jobs(){
       ${[
         {n:'1',t:'אתם פונים אלינו',d:'ממלאים את הטופס למטה עם פרטי החברה וסוג הכישרון שאתם מחפשים.',c:'#F59E0B'},
         {n:'2',t:'הצוות שלנו בודק ומתאם',d:'אנחנו בוחנים את הפנייה ומאתרים מורים מתאימים מהמאגר שלנו.',c:'#EC4899'},
-        {n:'3',t:'חיבור בטוח ומפוקח',d:'יצירת קשר עם קטין מתבצעת רק דרכנו ובליווי ואישור הורה מפורש — לעולם לא ישירות.',c:'#8B5CF6'}
+        {n:'3',t:'חיבור דרך הפלטפורמה',d:'ההרשמה מחייבת אישור הורה, וההתכתבות מתועדת ונגישה להורה בכל עת. שיתוף פרטי קשר בצ\'אט מסומן לבדיקה.',c:'#8B5CF6'}
       ].map(s=>`<div style="display:flex;gap:14px;margin-bottom:14px"><div style="width:34px;height:34px;border-radius:50%;background:${s.c};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:15px;flex-shrink:0">${s.n}</div><div><div style="font-weight:800;font-size:14px;color:#0F1A1F;margin-bottom:2px">${s.t}</div><div style="font-size:12.5px;color:#64748B;line-height:1.6">${s.d}</div></div></div>`).join("")}
 
       <div class="warn" style="margin:6px 0 20px"><span>${icon("shield",14)}</span><span>אנחנו לא חושפים פרטי קטינים ישירות לחברות. כל פנייה מתחילה איתנו, ומתקדמת רק בליווי ואישור הורה מפורש.</span></div>
@@ -11558,7 +11580,7 @@ function About(){
       {n:'1',t:'הרשמה עם פרטי הורה חובה',d:'כל ילד – מורה או תלמיד – חייב לספק שם, מייל וטלפון של הורה. ללא הורה – אין הרשמה.',c:'#14B8A6'},
       {n:'2',t:'אישור הורה',d:'ההורה מקבל הודעה אוטומטית על הרשמת הילד ויכול לאשר או לדחות.',c:'#06B6D4'},
       {n:'3',t:'בדיקת מנהל על מורים',d:'כל מורה שנרשם עובר בדיקה ידנית על ידי צוות Drushe לפני שמופיע לתלמידים.',c:'#06B6D4'},
-      {n:'4',t:'שיעור ניסיון מפוקח',d:'השיעור הראשון הוא "ניסיון" קצר. שני הצדדים יכולים לסיים בכל שלב.',c:'#10B981'},
+      {n:'4',t:'שיעור ניסיון קצר',d:'השיעור הראשון הוא "ניסיון" קצר, ומומלץ שהורה יהיה נוכח בו. שני הצדדים יכולים לסיים בכל שלב.',c:'#10B981'},
     ].map(s=>`
       <div class="card" style="display:flex;gap:12px;align-items:flex-start;margin-bottom:10px">
         <div style="width:32px;height:32px;border-radius:50%;background:${s.c};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;flex-shrink:0">${s.n}</div>
@@ -14229,7 +14251,7 @@ function RegSuccess(){
       <div style="display:flex;flex-direction:column;gap:11px">
         <div style="display:flex;gap:11px;align-items:flex-start"><div style="width:32px;height:32px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></div><div style="flex:1;font-size:13px;line-height:1.6;color:#0F1A1F"><strong>${CATS.length} קטגוריות לימוד</strong> – מתמטיקה, מוזיקה, ספורט, אמנות, קוד ועוד</div></div>
         <div style="display:flex;gap:11px;align-items:flex-start"><div style="width:32px;height:32px;border-radius:10px;background:rgba(20,184,166,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12v10H4V12"/><path d="M2 7h20v5H2z"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg></div><div style="flex:1;font-size:13px;line-height:1.6;color:#0F1A1F"><strong>שיעורי ניסיון בחינם</strong> אצל מורים נבחרים – לראות אם זה מתאים לך</div></div>
-        <div style="display:flex;gap:11px;align-items:flex-start"><div style="width:32px;height:32px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#04778A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div><div style="flex:1;font-size:13px;line-height:1.6;color:#0F1A1F"><strong>סביבה בטוחה ומפוקחת</strong> – ההורים יכולים לראות הכל בכל זמן</div></div>
+        <div style="display:flex;gap:11px;align-items:flex-start"><div style="width:32px;height:32px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#04778A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div><div style="flex:1;font-size:13px;line-height:1.6;color:#0F1A1F"><strong>שקיפות מלאה להורים</strong> – ההורים רואים את כל הצ'אטים וההזמנות בכל עת</div></div>
         <div style="display:flex;gap:11px;align-items:flex-start"><div style="width:32px;height:32px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#04778A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg></div><div style="flex:1;font-size:13px;line-height:1.6;color:#0F1A1F"><strong>שיעורי וידאו אונליין</strong> או פרונטליים, איך שנוח לך</div></div>
         <div style="display:flex;gap:11px;align-items:flex-start"><div style="width:32px;height:32px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.5 13.5 17 22l-5-3-5 3 1.5-8.5"/></svg></div><div style="flex:1;font-size:13px;line-height:1.6;color:#0F1A1F"><strong>תעודות ודרגות</strong> – מ"מתחיל" עד "אגדה"!</div></div>
       </div>

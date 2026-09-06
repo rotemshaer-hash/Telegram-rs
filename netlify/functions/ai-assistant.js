@@ -25,22 +25,76 @@ const { admin, initAdmin } = require('../lib/firebase-admin-init');
 const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-5';
 const ANTHROPIC_VERSION = '2023-06-01';
 
-// תקרה נדיבה למשתמש אמיתי (חיפוש + שאלות בטיחות יחד), נמוכה מדי בשביל
-// להשפיע משמעותית על עלות אם מישהו מנסה להציף. אותו דפוס בדיוק כמו
-// pushRateLimit ב-send-push.js.
+// ── תקרות ──────────────────────────────────────────────────────────────────
+//
+// למה הגבלה לפי uid לבדה לא מספיקה, וזה מה שביקורת חיצונית העירה בצדק:
+// האפליקציה מפעילה signInAnonymously כדי לאפשר גלישת אורח, ולכן uid הוא
+// משאב חינמי ואינסופי. מי שרוצה להציף פשוט מייצר עוד חשבון אנונימי ומקבל
+// דלי נקי. הגבלה לפי uid בעולם כזה היא מהמורה, לא תקרה — והתקרה האפקטיבית
+// על חשבון ה-API הייתה, בפועל, אין.
+//
+// שלוש שכבות, מהזולה לרחבה:
+//   uid    — מרסן משתמש בודד שנתקע בלולאה.
+//   IP     — מרסן ייצור חשבונות אנונימיים בסדרה, שזה מה שעוקף את הראשונה.
+//   גלובלי — התקרה האמיתית על העלות היומית. זו זו שאי אפשר לעקוף בכלל.
+// ומעליהן kill switch ידני, כי כשמשהו משתבש צריך לעצור *עכשיו* ולא לחכות
+// לחצות.
 const RATE_LIMIT_MAX = 20;
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
 
-async function withinRateLimit(db, uid) {
-  const ref = db.ref('aiRateLimit/' + uid);
+const IP_RATE_LIMIT_MAX = 60;
+const IP_RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
+
+// תקרה יומית לכל האפליקציה. ברירת מחדל שמרנית — נדיבה מאוד לשימוש אמיתי
+// בהיקף הנוכחי (13 בודקים), ונמוכה מספיק שהצפה תיעצר לפני שהיא עולה כסף
+// אמיתי. ניתן לכוונון ב-adminConfig/aiDailyMax בלי פריסה.
+const GLOBAL_DAILY_MAX = 1500;
+// מתי להתריע למנהל שהיום הולך ונגמר — פעם אחת ביום, לא בכל בקשה.
+const GLOBAL_ALERT_AT = 0.8;
+
+function todayKey() {
+  return new Date().toISOString().slice(0, 10); // YYYY-MM-DD, UTC
+}
+
+// חלון מתגלגל לפי מפתח (uid או IP). מחזיר true אם הבקשה בתוך התקרה.
+async function withinWindowLimit(db, path, key, max, windowMs) {
+  const safeKey = String(key || 'unknown').replace(/[.#$/[\]]/g, '_');
+  const ref = db.ref(path + '/' + safeKey);
   const now = Date.now();
   const result = await ref.transaction((cur) => {
-    if (!cur || now - (cur.windowStart || 0) > RATE_LIMIT_WINDOW_MS) {
+    if (!cur || now - (cur.windowStart || 0) > windowMs) {
       return { windowStart: now, count: 1 };
     }
     return { windowStart: cur.windowStart, count: (cur.count || 0) + 1 };
   });
-  return (result.snapshot.val()?.count || 0) <= RATE_LIMIT_MAX;
+  return (result.snapshot.val()?.count || 0) <= max;
+}
+
+// מונה יומי גלובלי. מחזיר {ok, count, max} — ok=false כשהיום נגמר.
+async function withinGlobalDailyLimit(db, max) {
+  const ref = db.ref('aiUsage/' + todayKey());
+  const result = await ref.transaction((cur) => ({
+    count: ((cur && cur.count) || 0) + 1,
+    updatedAt: Date.now(),
+  }));
+  const count = result.snapshot.val()?.count || 0;
+  return { ok: count <= max, count, max };
+}
+
+// התראה חד-פעמית ביום כשעוברים את הסף. הדגל נכתב באותה טרנזקציה שקובעת
+// מי הראשון שעבר, כדי ששתי בקשות במקביל לא ייצרו שתי התראות.
+async function alertAdminOnce(db, count, max) {
+  const flagRef = db.ref('aiUsage/' + todayKey() + '/alerted');
+  const claim = await flagRef.transaction((cur) => (cur ? undefined : true));
+  if (!claim.committed) return;
+  await db.ref('adminNotifs').push({
+    type: 'aiBudgetAlert',
+    from: 'מערכת',
+    count,
+    max,
+    read: false,
+    createdAt: Date.now(),
+  });
 }
 
 const CATEGORY_IDS = [
@@ -53,10 +107,14 @@ const SAFETY_CONTEXT = `
 תהליך ההרשמה: כל ילד (מורה או תלמיד) חייב לספק שם, מייל וטלפון של הורה — בלי הורה אין הרשמה.
 ההורה מקבל הודעה אוטומטית על ההרשמה ויכול לאשר או לדחות אותה.
 כל מורה עובר בדיקה ידנית של צוות Drushe (כולל אימות גיל וזהות) לפני שהוא מופיע לתלמידים.
-השיעור הראשון הוא תמיד "שיעור ניסיון" קצר ומפוקח, ושני הצדדים יכולים לעצור בכל שלב.
+השיעור הראשון הוא תמיד "שיעור ניסיון" קצר, ושני הצדדים יכולים לעצור בכל שלב.
 הורים מקבלים דוח שבועי אוטומטי במייל, יכולים לצפות בכל הצ'אטים של הילד/ה (דרך פרטי ההתחברות של הילד/ה),
 ומקבלים עדכון על כל תשלום.
 שיעורים מתקיימים אונליין (Zoom / Google Meet / Teams) דרך קישור אישי שהמורה קובע.
+חשוב ולא להתחמק ממנו אם שואלים: Drushe **אינה** צופה בשיעור עצמו ואינה מקליטה אותו — הוא מתקיים
+בפלטפורמה חיצונית. מה ש-Drushe כן רואה ושומרת: הצ'אטים, ההזמנות והדיווחים. לכן ההורה מקבל מייל עם
+קישור ההצטרפות ויכול להיכנס לשיעור בעצמו, ומומלץ שיהיה נוכח בשיעור ראשון עם מורה או תלמיד/ה חדש/ה
+וישקול להקליט אותו.
 אחרי כל שיעור שני הצדדים מדרגים אחד את השני.
 אפשר לדווח על כל תוכן או משתמש בלחיצת כפתור, וצוות Drushe מטפל תוך 24 שעות.
 Drushe לא גובה עמלה — המורים משלמים מנוי, התלמידים לומדים בחינם מצד האפליקציה (משלמים למורה ישירות).
@@ -105,8 +163,38 @@ exports.handler = async (event) => {
   } catch {
     return { statusCode: 401, headers, body: JSON.stringify({ error: 'invalid or expired session' }) };
   }
-  if (!(await withinRateLimit(admin.database(), uid))) {
+  const db = admin.database();
+
+  // 1. kill switch — נקרא ראשון, כי כשהוא כבוי אסור אפילו לצרוך מהמונים.
+  //    ברירת המחדל היא "פועל": רק false מפורש מכבה, כדי שצומת חסר לא ישבית
+  //    את הפיצ'ר בשקט.
+  let cfg = {};
+  try {
+    cfg = (await db.ref('adminConfig').get()).val() || {};
+  } catch (_e) { /* קריאה שנכשלה לא תשבית — הכיבוי חייב להיות מכוון */ }
+  if (cfg.aiEnabled === false) {
+    return { statusCode: 503, headers, body: JSON.stringify({ error: 'העוזר החכם מושבת זמנית. נסו שוב מאוחר יותר.' }) };
+  }
+
+  // 2. משתמש בודד.
+  if (!(await withinWindowLimit(db, 'aiRateLimit', uid, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS))) {
     return { statusCode: 429, headers, body: JSON.stringify({ error: 'too many requests — try again later' }) };
+  }
+
+  // 3. IP — זה מה שחוסם ייצור חשבונות אנונימיים בסדרה כדי לעקוף את (2).
+  const ip = event.headers['x-nf-client-connection-ip'] || event.headers['client-ip'];
+  if (!(await withinWindowLimit(db, 'aiIpRateLimit', ip, IP_RATE_LIMIT_MAX, IP_RATE_LIMIT_WINDOW_MS))) {
+    return { statusCode: 429, headers, body: JSON.stringify({ error: 'too many requests — try again later' }) };
+  }
+
+  // 4. התקרה שאי אפשר לעקוף: סך הבקשות ביום, לכל האפליקציה.
+  const dailyMax = Number.isFinite(cfg.aiDailyMax) && cfg.aiDailyMax > 0 ? cfg.aiDailyMax : GLOBAL_DAILY_MAX;
+  const daily = await withinGlobalDailyLimit(db, dailyMax);
+  if (daily.count >= Math.floor(dailyMax * GLOBAL_ALERT_AT)) {
+    alertAdminOnce(db, daily.count, dailyMax).catch(() => {});
+  }
+  if (!daily.ok) {
+    return { statusCode: 429, headers, body: JSON.stringify({ error: 'העוזר החכם הגיע למכסה היומית. נסו שוב מחר.' }) };
   }
 
   let system, maxTokens;
