@@ -267,3 +267,70 @@ describe('gatekeeping: a teacher cannot vouch for their own document', () => {
     await assertSucceeds(remove(ref(asTeacher(), 'teachers/teacher-uid/ageVerification')));
   });
 });
+
+// ── EXTERNAL REVIEW ────────────────────────────────────────────────────────
+//
+// An outside engineer reviewed the rules and found a third instance of the
+// pattern this file already exists to catch: a decision made from a field the
+// subject of that decision controls.
+//
+// adminVerifyStudent reads users/<uid>/parentConsentAt. When it is set the
+// admin is shown "the parent approved on <date>, approve?"; when it is not,
+// a red "the parent has NOT approved — approve anyway?". Nothing stopped the
+// child writing that timestamp on themselves and turning the warning green.
+// The consent function runs with the admin SDK and bypasses rules, so locking
+// the field to the admin does not affect the real flow.
+//
+// The rest are containment: a schedule says when a minor is home and free, and
+// two nodes accepted writes from any signed-in user for any other user.
+describe('external review: fields their own subject must not write', () => {
+  it('a student cannot claim their own parent consented', async () => {
+    await assertFails(
+      set(ref(asStudent(), 'users/student-uid/parentConsentAt'), Date.now()));
+  });
+
+  it('the student can still write the rest of their profile', async () => {
+    await assertSucceeds(set(ref(asStudent(), 'users/student-uid/name'), 'Minor'));
+  });
+
+  it('a stranger cannot read a student’s schedule', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await set(ref(ctx.database(), 'schedules/student-uid'), { mon_16: true });
+    });
+    await assertFails(get(ref(asStranger(), 'schedules/student-uid')));
+  });
+
+  it('a teacher’s schedule stays readable, which booking depends on', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await set(ref(ctx.database(), 'schedules/teacher-uid'), { mon_16: true });
+    });
+    await assertSucceeds(get(ref(asStudent(), 'schedules/teacher-uid')));
+  });
+
+  it('a user can still read and write their own schedule', async () => {
+    await assertSucceeds(set(ref(asStudent(), 'schedules/student-uid'), { tue_10: true }));
+    await assertSucceeds(get(ref(asStudent(), 'schedules/student-uid')));
+  });
+
+  it('a stranger cannot forge message stats for someone else', async () => {
+    await assertFails(
+      set(ref(asStranger(), 'messageStats/teacher-uid/conversations/student-uid'), { firstMessageAt: 1 }));
+  });
+
+  it('a sender can write their own conversation stats', async () => {
+    await assertSucceeds(
+      set(ref(asStudent(), 'messageStats/teacher-uid/conversations/student-uid'), { firstMessageAt: 1 }));
+  });
+
+  it('a user cannot register someone else as a referral', async () => {
+    await assertFails(
+      set(ref(asStranger(), 'referrals/teacher-uid/student-uid'), { at: 1, code: 'X' }));
+  });
+
+  it('a new user can register themselves once, and not overwrite it', async () => {
+    await assertSucceeds(
+      set(ref(asStudent(), 'referrals/teacher-uid/student-uid'), { at: 1, code: 'X' }));
+    await assertFails(
+      set(ref(asStudent(), 'referrals/teacher-uid/student-uid'), { at: 2, code: 'Y' }));
+  });
+});
