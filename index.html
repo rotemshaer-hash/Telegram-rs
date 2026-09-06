@@ -1073,7 +1073,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.15';
+const APP_VERSION='4.11.16';
 // מוטבע מחדש בכל פריסה על ידי .github/workflows/deploy.yml. הערך כאן הוא
 // גיבוי לבנייה מקומית בלבד — תאריך שנשמר ביד הלך והזדקן בשקט והוצג
 // למשתמשים כתאריך הבנייה, שבועיים אחרי שהיה נכון.
@@ -3436,18 +3436,22 @@ function googleCalendarLink(b,isTeacher){
   const location=encodeURIComponent(b.jitsiUrl||'');
   return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${fmt(start)}/${fmt(end)}&details=${details}&location=${location}`;
 }
+// הצגה פעם אחת בהפעלה — לא לפני כל שיעור. הודעה שחוזרת על עצמה בכל הצטרפות
+// הופכת ל"רעש" שמתעלמים ממנו; פעם אחת בהפעלה עדיין מזכירה, בלי לעייף.
+let _joinLessonTipShown=false;
 function joinJitsi(jitsiUrl,room,bookingData){
   if(!jitsiUrl){showFireToast('⚠️ המורה עדיין לא הגדיר קישור לשיעור');return;}
   const url=safeUrl(jitsiUrl);
   if(!url){showFireToast('❌ קישור השיעור אינו תקין — בקש מהמורה לתקן אותו');return;}
-  showFireToast('🎥 פותח שיעור...');
+  showFireToast(_joinLessonTipShown?'🎥 פותח שיעור...':'🎥 פותח שיעור... 💡 מומלץ שהורה יהיה נוכח/ת ולהקליט את השיעור');
+  _joinLessonTipShown=true;
   const w=window.open(url,'_blank');
   if(!w)location.href=url; // popup blocked (common in standalone PWA) — navigate instead
   if(currentUserData?.parentEmail&&bookingData){
     const b=typeof bookingData==='string'?JSON.parse(bookingData):bookingData;
     sendEmail(currentUserData.parentEmail,
       `📹 ${currentUserData.name||''} התחיל/ה שיעור עכשיו`,
-      `שלום ${currentUserData.parentName||'הורה יקר'},\n\nילדך ${currentUserData.name||''} החל/ה שיעור כרגע:\n👨‍🏫 מורה: ${b.teacherName||''}\n📅 ${b.day||''} בשעה ${b.time||''}\n\nקישור לשיעור:\n${url}\n\n– צוות Drushe`
+      `שלום ${currentUserData.parentName||'הורה יקר'},\n\nילדך ${currentUserData.name||''} החל/ה שיעור כרגע:\n👨‍🏫 מורה: ${b.teacherName||''}\n📅 ${b.day||''} בשעה ${b.time||''}\n\nקישור לשיעור (אפשר להצטרף גם אתם):\n${url}\n\n💡 מומלץ שתהיו נוכחים בשיעור הראשון עם מורה/תלמיד/ה חדש/ה, ולשקול להקליט אותו.\n\n– צוות Drushe`
     ).catch(()=>{});
   }
 }
@@ -4601,6 +4605,7 @@ async function sendChatMessage(otherUid,otherName){
       // אזהרה רכה לשולח. לא "אסור" — הסבר קצר למה זה לא בטוח, בניסוח שילד מבין.
       setTimeout(()=>showFireToast('⚠️ שיתוף טלפון או קישור אישי אינו בטוח — עדיף להישאר כאן'),600);
     }
+    notifyParentsOfNewConversation(chatId,otherUid).catch(()=>{});
     // עדכון last message ב-conversations
     const last={
       lastMessage:text,
@@ -5006,6 +5011,48 @@ async function flagForSafetyReview({targetType,targetId,targetName,reasonLabel,d
       createdAt:Date.now()
     });
   }catch(e){console.warn('[flagForSafetyReview]',e);}
+}
+
+// מייל חד-פעמי לשני ההורים כשנפתחת שיחה חדשה — לא מייל על כל הודעה.
+//
+// למה לא על כל הודעה: EmailJS כאן מוגבל ל-5 מיילים לשעה *לכל שולח* (רואים
+// _emailRateLimitOk למעלה) — שיחה רגילה של כמה הודעות רצופות הייתה שורפת
+// את המכסה של הילד תוך דקות ומונעת ממנו לקבל את מייל אישור ההזמנה הבא שלו.
+// וגם: הורה שמקבל מייל על כל "היי" ו"מתי נוח לך" מתחיל להתעלם מהתיבה —
+// בדיוק ההפך ממה שרוצים. הרגע שבאמת חשוב שהורה ידע עליו הוא לא כל הודעה,
+// אלא מתי מישהו *חדש* נכנס לתמונה.
+//
+// newConversationNotified/$chatId הוא דגל חד-פעמי: ".validate":"!data.exists()"
+// מבטיח שרק הכתיבה הראשונה מצליחה, כך שגם אם שני הצדדים כותבים כמעט
+// בו-זמנית, המייל יוצא פעם אחת בדיוק. שני ההורים מקבלים הודעה — לא רק של
+// התלמיד — כי גם המורים כאן קטינים.
+async function notifyParentsOfNewConversation(chatId,otherUid){
+  const flagRef=db.ref('newConversationNotified/'+chatId);
+  try{
+    await flagRef.set(Date.now());
+  }catch(e){
+    return; // כבר נשלח בעבר (או שהכתיבה נדחתה) — לא שולחים שוב
+  }
+  try{
+    const [meSnap,otherSnap]=await Promise.all([
+      db.ref('users/'+currentUser.uid).get(),
+      db.ref('users/'+otherUid).get()
+    ]);
+    const me=meSnap.val()||{},other=otherSnap.val()||{};
+    const meName=me.name||currentUserData?.name||'',otherName=other.name||'המשתמש/ת השני/ה';
+    if(me.parentEmail){
+      sendEmail(me.parentEmail,
+        `💬 שיחה חדשה של ${meName} ב-Drushe`,
+        `שלום ${me.parentName||'הורה יקר'} 👋\n\n${meName} התחיל/ה עכשיו שיחה חדשה עם ${otherName} ב-Drushe.\n\nניתן לצפות בכל השיחות של ${meName} בכל עת דרך פורטל ההורים באפליקציה.\n\nמזכירים: מומלץ להיות נוכח/ת בשיעור הראשון עם מורה/תלמיד/ה חדש/ה, ולשקול להקליט אותו.\n\n– צוות Drushe 💙`
+      ).catch(()=>{});
+    }
+    if(other.parentEmail){
+      sendEmail(other.parentEmail,
+        `💬 שיחה חדשה של ${otherName} ב-Drushe`,
+        `שלום ${other.parentName||'הורה יקר'} 👋\n\n${otherName} מקבל/ת עכשיו שיחה חדשה מ-${meName} ב-Drushe.\n\nניתן לצפות בכל השיחות של ${otherName} בכל עת דרך פורטל ההורים באפליקציה.\n\nמזכירים: מומלץ להיות נוכח/ת בשיעור הראשון עם מורה/תלמיד/ה חדש/ה, ולשקול להקליט אותו.\n\n– צוות Drushe 💙`
+      ).catch(()=>{});
+    }
+  }catch(e){console.warn('[notifyParentsOfNewConversation]',e);}
 }
 
 // ─── אישור הורה ─────────────────────────────────────────────────────────────

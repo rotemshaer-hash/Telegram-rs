@@ -334,3 +334,20 @@ describe('external review: fields their own subject must not write', () => {
       set(ref(asStudent(), 'referrals/teacher-uid/student-uid'), { at: 2, code: 'Y' }));
   });
 });
+
+describe('newConversationNotified: one parent-notification email per conversation', () => {
+  const chatId = 'student-uid_teacher-uid';
+
+  it('a participant can flag a new conversation once', async () => {
+    await assertSucceeds(set(ref(asStudent(), `newConversationNotified/${chatId}`), Date.now()));
+  });
+
+  it('a participant cannot re-flag it and trigger a second email', async () => {
+    await assertSucceeds(set(ref(asStudent(), `newConversationNotified/${chatId}`), Date.now()));
+    await assertFails(set(ref(asStudent(), `newConversationNotified/${chatId}`), Date.now()));
+  });
+
+  it('a stranger to the conversation cannot flag it', async () => {
+    await assertFails(set(ref(asStranger(), `newConversationNotified/${chatId}`), Date.now()));
+  });
+});
