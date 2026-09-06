@@ -57,11 +57,13 @@ beforeEach(async () => {
       studentId: STUDENT, teacherId: TEACHER,
       studentName: 'Minor', studentEmail: 'minor@example.com',
       parentName: 'Parent', parentEmail: 'parent@example.com',
-      price: 80, createdAt: 1,
+      price: 80, createdAt: 1, status: 'pending',
     };
     // A completed booking between the same pair, for the review tests: a
-    // review must point at a real, qualifying booking.
+    // review must point at a real, qualifying booking. And an approved one,
+    // for the transitions that start there.
     const completedBooking = { ...booking, status: 'completed', price: 80 };
+    const approvedBooking = { ...booking, status: 'approved' };
     await update(ref(db), {
       'users/student-uid': { name: 'Minor', role: 'student', verified: true },
       'users/teacher-uid': { name: 'Teach', role: 'teacher', verified: true },
@@ -71,6 +73,7 @@ beforeEach(async () => {
       'userBookings/student-uid/b1': booking,
       'teacherBookings/teacher-uid/b1': booking,
       'bookings/b2': completedBooking,
+      'bookings/b4': approvedBooking,
       'reviews/teacher-uid/rev1': { from: STUDENT, fromName: 'Minor', stars: 5, approved: false },
       'pendingReviews/rev1': { from: STUDENT, fromName: 'Minor', reviewId: 'rev1' },
       'reports/rep1': { from: STUDENT, about: TEACHER, text: 'unsafe behaviour', status: 'open' },
@@ -421,12 +424,79 @@ describe('bookings: price and the two parties cannot change after creation', () 
     await assertFails(set(ref(asTeacher(), 'teacherBookings/teacher-uid/b1/price'), 999));
   });
 
-  it('status updates — what the app actually does — still work', async () => {
+  it('the admin can still correct any field', async () => {
+    await assertSucceeds(set(ref(asAdmin(), 'bookings/b1/price'), 50));
+  });
+});
+
+// ── BOOKING STATE MACHINE ────────────────────────────────────────────────
+//
+// Locking the fields left the one field the app does write wide open: any
+// value, from any state, by either party. "cancelled" could go back to
+// "approved", a rejected booking could approve itself, and a student could
+// approve their own request — which is the one that matters, because an
+// approved booking is what unlocks the lesson and, now, the review.
+//
+// The machine, as the app actually drives it:
+//   (new)     → pending
+//   pending   → approved | rejected   (teacher only)
+//   pending   → cancelled             (either party)
+//   approved  → completed             (teacher only)
+//   approved  → cancelled             (either party)
+//   completed | rejected | cancelled  → terminal
+describe('bookings: only the real state transitions are allowed', () => {
+  it('a booking can only be created as pending', async () => {
+    await assertSucceeds(set(ref(asStudent(), 'bookings/new1'),
+      { studentId: STUDENT, teacherId: TEACHER, price: 80, createdAt: 2, status: 'pending' }));
+    await assertFails(set(ref(asStudent(), 'bookings/new2'),
+      { studentId: STUDENT, teacherId: TEACHER, price: 80, createdAt: 2, status: 'approved' }));
+  });
+
+  // The negative goes first on purpose: rewriting a status to the value it
+  // already holds is a no-op and stays allowed, so approving as the teacher
+  // first would make the student's attempt vacuously legal.
+  it('the teacher approves and rejects; the student cannot', async () => {
+    await assertFails(set(ref(asStudent(), 'bookings/b1/status'), 'approved'));
+    await assertFails(set(ref(asStudent(), 'bookings/b1/status'), 'rejected'));
     await assertSucceeds(set(ref(asTeacher(), 'bookings/b1/status'), 'approved'));
   });
 
-  it('the admin can still correct any field', async () => {
-    await assertSucceeds(set(ref(asAdmin(), 'bookings/b1/price'), 50));
+  it('the teacher completes an approved lesson; the student cannot', async () => {
+    await assertFails(set(ref(asStudent(), 'bookings/b4/status'), 'completed'));
+    await assertSucceeds(set(ref(asTeacher(), 'bookings/b4/status'), 'completed'));
+  });
+
+  it('either party can cancel — pending or approved', async () => {
+    await assertSucceeds(set(ref(asStudent(), 'bookings/b1/status'), 'cancelled'));
+    await assertSucceeds(set(ref(asTeacher(), 'bookings/b4/status'), 'cancelled'));
+  });
+
+  it('a completed booking is terminal — it cannot be reopened', async () => {
+    await assertFails(set(ref(asTeacher(), 'bookings/b2/status'), 'approved'));
+    await assertFails(set(ref(asTeacher(), 'bookings/b2/status'), 'pending'));
+    await assertFails(set(ref(asStudent(), 'bookings/b2/status'), 'pending'));
+  });
+
+  it('a cancelled booking cannot walk back to approved', async () => {
+    await assertSucceeds(set(ref(asTeacher(), 'bookings/b4/status'), 'cancelled'));
+    await assertFails(set(ref(asTeacher(), 'bookings/b4/status'), 'approved'));
+  });
+
+  it('a rejected booking cannot approve itself afterwards', async () => {
+    await assertSucceeds(set(ref(asTeacher(), 'bookings/b1/status'), 'rejected'));
+    await assertFails(set(ref(asTeacher(), 'bookings/b1/status'), 'approved'));
+  });
+
+  it('a pending booking cannot skip straight to completed', async () => {
+    await assertFails(set(ref(asTeacher(), 'bookings/b1/status'), 'completed'));
+  });
+
+  it('rewriting the same status is still allowed — retries must not break', async () => {
+    await assertSucceeds(set(ref(asTeacher(), 'bookings/b4/status'), 'approved'));
+  });
+
+  it('the admin can force any transition', async () => {
+    await assertSucceeds(set(ref(asAdmin(), 'bookings/b2/status'), 'approved'));
   });
 });
 
