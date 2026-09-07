@@ -755,16 +755,7 @@ async function submitTeacherQuestion(teacherUid,overlayEl){
       answeredAt:null,
       isPublic:true
     });
-    await db.ref('notifications/'+teacherUid).push({
-      type:'newQuestion',
-      from:currentUserData?.name||currentUser.email.split('@')[0],
-      fromUid:currentUser.uid,
-      teacherUid,
-      qaId:qaRef.key,
-      preview:questionText.substring(0,60),
-      read:false,
-      createdAt:Date.now()
-    }).catch(()=>{});
+    notifyUser(teacherUid,'newQuestion',{teacherUid,qaId:qaRef.key,preview:questionText.substring(0,60)});
     overlayEl?.remove();
     showFireToast('השאלה נשלחה! המורה יענה בקרוב');
     await loadTeacherQA(teacherUid);
@@ -780,15 +771,7 @@ async function answerQA(teacherUid,qaId,askerUid){
     showFireToast('⏳ מפרסם תשובה...');
     await db.ref('teacherQA/'+teacherUid+'/'+qaId).update({answer:answerText,answeredAt:Date.now()});
     if(askerUid&&askerUid!==currentUser.uid){
-      await db.ref('notifications/'+askerUid).push({
-        type:'questionAnswered',
-        from:currentUserData?.name||currentUser.email.split('@')[0],
-        teacherUid,
-        qaId,
-        preview:answerText.substring(0,60),
-        read:false,
-        createdAt:Date.now()
-      }).catch(()=>{});
+      notifyUser(askerUid,'questionAnswered',{teacherUid,qaId,preview:answerText.substring(0,60)});
     }
     _qaAnsweringId=null;
     showFireToast('התשובה פורסמה!');
@@ -1073,7 +1056,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.16';
+const APP_VERSION='4.11.21';
 // מוטבע מחדש בכל פריסה על ידי .github/workflows/deploy.yml. הערך כאן הוא
 // גיבוי לבנייה מקומית בלבד — תאריך שנשמר ביד הלך והזדקן בשקט והוצג
 // למשתמשים כתאריך הבנייה, שבועיים אחרי שהיה נכון.
@@ -1819,7 +1802,7 @@ function Safety(){
         </div>
         ${[
           'כל משתמש יכול לדווח על פוסט, הודעה, מורה או תלמיד בלחיצת כפתור אחת.',
-          'דיווחים מגיעים ישירות למנהל האפליקציה שמטפל בהם בתוך 24 שעות.',
+          'דיווחים מגיעים ישירות למנהל האפליקציה. דיווח על סכנת בטיחות מטופל תוך שעתיים, הטרדה או תוכן בלתי הולם תוך 12 שעות, והשאר עד 48 שעות.',
           'לאחר בדיקת הדיווח, הצוות נוקט פעולה בהתאם — כולל חסימת המשתמש במקרים חמורים.',
           'תוכן לא הולם, שפה פוגענית או ניסיון ליצור קשר מחוץ לאפליקציה – מוביל למחיקת חשבון.',
         ].map(t=>`<div style="display:flex;gap:9px;margin-bottom:10px;align-items:flex-start"><span style="color:#EF4444;font-size:16px;flex-shrink:0;margin-top:1px">✓</span><span style="font-size:13px;line-height:1.6;color:#475569">${t}</span></div>`).join('')}
@@ -2783,13 +2766,7 @@ async function processPayment(payMethod,totalAmount){
       ['teacherBookings/'+t.id+'/'+bookingId]: bookingData,
     });
     // התראה למורה — התשלום הולך ישירות אליו, הוא זה שמאשר את ההזמנה
-    await db.ref('notifications/'+t.id).push({
-      type:'newBooking',from:bookingData.studentName||'תלמיד',
-      bookingId,day:bookingData.day||'',time:bookingData.time||'',
-      amount:totalAmount,
-      preview:'הזמנה חדשה ממתינה לאישורך',
-      read:false,createdAt:Date.now()
-    }).catch(()=>{});
+    notifyUser(t.id,'newBooking',{bookingId,day:bookingData.day||'',time:bookingData.time||'',amount:totalAmount,preview:'הזמנה חדשה ממתינה לאישורך'});
     try{
       // מייל למורה — הזמנה חדשה, ממתינה לאישורו לאחר קבלת התשלום
       const teacherSnap=await db.ref('teachers/'+t.id).get();
@@ -2870,7 +2847,7 @@ async function adminApproveSubscription(subId,uid){
         if(referrer&&referrer.role==='teacher'){
           const curExpiry=(referrer.subscription?.status==='active'&&referrer.subscription.expiresAt>Date.now())?referrer.subscription.expiresAt:Date.now();
           await db.ref('users/'+referrerUid+'/subscription').update({plan:'premium',status:'active',expiresAt:curExpiry+30*24*3600*1000});
-          await db.ref('notifications/'+referrerUid).push({type:'adminMessage',createdAt:Date.now(),read:false,msg:'🎉 מורה שהפנית הצטרף כמנוי משלם! קיבלת חודש נוסף בחינם ב-Drushe.'}).catch(()=>{});
+          await db.ref('notifications/'+referrerUid).push({type:'adminMessage',createdAt:Date.now(),read:false,message:'🎉 מורה שהפנית הצטרף כמנוי משלם! קיבלת חודש נוסף בחינם ב-Drushe.'}).catch(()=>{});
         }
       }
     }catch(refBonusErr){console.warn('Referral bonus error:',refBonusErr);}
@@ -3275,16 +3252,7 @@ async function approveBooking(bookingId){
       ['teacherBookings/'+b.teacherId+'/'+bookingId+'/status']:'approved',
     });
     // התראה לתלמיד
-    await db.ref('notifications/'+b.studentId).push({
-      type:'bookingApproved',
-      bookingId:bookingId,
-      from:b.teacherName,
-      day:b.day,
-      time:b.time,
-      jitsiUrl:b.jitsiUrl,
-      read:false,
-      createdAt:Date.now()
-    });
+    await notifyUser(b.studentId,'bookingApproved',{bookingId,day:b.day,time:b.time});
     // מייל להורה
     db.ref('users/'+b.studentId).get().then(stuSnap=>{
       const stu=stuSnap.val()||{};
@@ -3295,10 +3263,6 @@ async function approveBooking(bookingId){
     const _convInit={otherUid:b.studentId,otherName:b.studentName||'תלמיד',lastMessage:`שיעור אושר ✅ ${b.day||''} ${b.time||''}`,lastTime:Date.now(),unread:false};
     db.ref('userChats/'+currentUser.uid+'/'+b.studentId).set(_convInit).catch(()=>{});
     db.ref('userChats/'+b.studentId+'/'+currentUser.uid).set({..._convInit,otherUid:currentUser.uid,otherName:currentUserData?.name||b.teacherName||'',unread:false}).catch(()=>{});
-    // רישום משתתפי הצ'אט — נדרש לכלל אבטחת messages ב-Firebase
-    const _cid=getChatId(currentUser.uid,b.studentId);
-    db.ref('chatParticipants/'+_cid+'/'+currentUser.uid).set(true).catch(()=>{});
-    db.ref('chatParticipants/'+_cid+'/'+b.studentId).set(true).catch(()=>{});
     showFireToast('✅ אישרת את ההזמנה!');
     await loadTeacherBookings();
     render();
@@ -3332,15 +3296,7 @@ async function cancelBookingAsTeacher(bookingId){
       ['teacherBookings/'+b.teacherId+'/'+bookingId+'/status']:'cancelled',
       ['teacherBookings/'+b.teacherId+'/'+bookingId+'/cancelledAt']:cancelledAt,
     });
-    await db.ref('notifications/'+b.studentId).push({
-      type:'bookingCancelled',
-      bookingId,
-      from:b.teacherName,
-      day:b.day,
-      time:b.time,
-      read:false,
-      createdAt:Date.now()
-    });
+    await notifyUser(b.studentId,'bookingCancelled',{bookingId,day:b.day,time:b.time});
     showFireToast('🚫 השיעור בוטל');
     await loadTeacherBookings();
     render();
@@ -3361,15 +3317,7 @@ async function rejectBooking(bookingId){
       ['userBookings/'+b.studentId+'/'+bookingId+'/status']:'rejected',
       ['teacherBookings/'+b.teacherId+'/'+bookingId+'/status']:'rejected',
     });
-    await db.ref('notifications/'+b.studentId).push({
-      type:'bookingRejected',
-      bookingId:bookingId,
-      from:b.teacherName,
-      day:b.day,
-      time:b.time,
-      read:false,
-      createdAt:Date.now()
-    });
+    await notifyUser(b.studentId,'bookingRejected',{bookingId,day:b.day,time:b.time});
     // מייל להורה
     db.ref('users/'+b.studentId).get().then(stuSnap=>{
       const stu=stuSnap.val()||{};
@@ -3462,30 +3410,34 @@ async function submitDirectReview(teacherId){
   if(!S.ratingStars){showFireToast('אנא בחר דירוג כוכבים');return;}
   if(!teacherId){showFireToast('שגיאה: מזהה מורה חסר');return;}
   if(teacherId===currentUser?.uid){showFireToast('❌ לא ניתן לדרג את עצמך');return;}
-  // בדיקה שיש שיעור מאושר עם המורה הזה
-  const hasLesson = studentBookings.some(b=>
+  // בדיקה שיש שיעור מאושר עם המורה הזה — גם החוק בשרת דורש הזמנה אמיתית, לא
+  // רק הבדיקה כאן: reviews/$teacherId/$bookingId מאמת מול bookings/$bookingId
+  // עצמו שהזוג הזה באמת שייך לשיעור הזה ושהוא מאושר/הושלם.
+  const qualifyingBooking = studentBookings.find(b=>
     b.teacherId === (S.ratingT?.uid || S.ratingT?.id || teacherId) &&
     (b.status === 'completed' || b.status === 'approved')
   );
-  if(!hasLesson){showFireToast('❌ ניתן לדרג רק לאחר שיעור מאושר');return;}
+  if(!qualifyingBooking){showFireToast('❌ ניתן לדרג רק לאחר שיעור מאושר');return;}
   const reviewText=document.getElementById('_reviewTextarea')?.value.trim()||'';
   showFireToast('⏳ שומר ביקורת...');
   try{
     const existingReviews=await db.ref('reviews/'+teacherId).orderByChild('from').equalTo(currentUser.uid).get();
     if(existingReviews.exists()){showFireToast('❌ כבר דירגת מורה זה');return;}
-    // build review — no null fields (Firebase rules may reject null bookingId)
     const reviewData={
       stars:S.ratingStars,
       review:reviewText,
       from:currentUser.uid,
       fromName:currentUserData?.name||currentUser.email.split('@')[0],
       to:teacherId,
+      bookingId:qualifyingBooking.id,
       type:'studentToTeacher',
       approved:false,
       createdAt:Date.now()
     };
-    // write to reviews/{teacherId} — main path
-    const newRef=db.ref('reviews/'+teacherId).push();
+    // reviews/{teacherId}/{bookingId} — מפתח דטרמיניסטי, לא push() אקראי:
+    // זה מה שמאפשר לחוק השרת לוודא את ההזמנה הספציפית ולמנוע ביקורת כפולה
+    // על אותו שיעור בלי לסרוק.
+    const newRef=db.ref('reviews/'+teacherId+'/'+qualifyingBooking.id);
     await newRef.set(reviewData);
     // ALSO write to pendingReviews/ — flat admin queue, guaranteed readable.
     // המפתח הוא reviewId ולא push() אקראי: pendingReviews קריא למנהל בלבד
@@ -3530,7 +3482,8 @@ async function submitReview(bookingId,booking,ratedId,stars,review,isStudent){
       approved:false,
       createdAt:Date.now()
     };
-    const _rRef=db.ref('reviews/'+ratedId).push();
+    // reviews/{ratedId}/{bookingId} — מפתח דטרמיניסטי, ראה submitDirectReview.
+    const _rRef=db.ref('reviews/'+ratedId+'/'+bookingId);
     await _rRef.set(reviewData);
     if(bookingId)await db.ref('bookings/'+bookingId+'/'+(isStudent?'studentRating':'teacherRating')).set(stars);
     // כתוב תור ממתין למנהל + שלח מייל
@@ -3713,9 +3666,9 @@ function showNotificationsPanel(){
   const items=notifications.length===0?
     `<div style="text-align:center;padding:40px 20px"><div style="margin-bottom:12px;display:flex;justify-content:center">${miniBadge('bell','#F59E0B',54)}</div><h3 style="font-weight:900;font-size:17px;margin:0 0 6px;color:#0F1A1F">אין התראות חדשות</h3><p style="color:#64748B;font-size:13px;margin:0">כשתקבל הזמנות או הודעות הן יופיעו כאן</p></div>`:
     notifications.map(n=>{
-      const icons={newBooking:'📚',bookingApproved:'✅',bookingRejected:'❌',bookingCancelled:'🚫',newMessage:'💬',newReview:'⭐',newVideo:'📹',newTeacher:'🎓',newReport:'🚨',newUser:'👋',groupJoin:'🙋',groupApproved:'🎉',groupRejected:'😔',rateLesson:'⭐',lessonSummary:'📖',accountApproved:'🎉',teacherApproved:'🎓',adminMessage:'📣',newPost:'📢',lessonCompleted:'✅',newStory:'📸',briefProposal:'💼',briefAccepted:'🤝',newQuestion:'❓',questionAnswered:'💡',trialReminder:'⏰',emailFailed:'📧',chatDeliveryFailed:'⚠️',registrationFailed:'🚫',employerInquiry:'💼'};
-      const titles={newBooking:'הזמנת שיעור חדשה',bookingApproved:'ההזמנה אושרה!',bookingRejected:'ההזמנה נדחתה',bookingCancelled:'השיעור בוטל',newMessage:'הודעה חדשה',newReview:'דירוג חדש',newVideo:'סרטון חדש לאישור',newTeacher:'מורה חדש נרשם',newReport:'דיווח חדש!',newUser:'משתמש חדש',groupJoin:'בקשת הצטרפות לקבוצה',groupApproved:'התקבלת לקבוצה!',groupRejected:'הבקשה לא אושרה',rateLesson:'דרג את השיעור',lessonSummary:'סיכום שיעור חדש',accountApproved:'החשבון שלך אושר!',teacherApproved:'פרופיל המורה שלך אושר!',adminMessage:'הודעה מהמנהל',newPost:'פוסט חדש בקהילה',lessonCompleted:'השיעור הסתיים',newStory:'סטורי חדש לאישור',briefProposal:'הצעת מורה לדרוש שלך',briefAccepted:'ההצעה שלך התקבלה!',newQuestion:'שאלה חדשה על הפרופיל',questionAnswered:'המורה ענה על שאלתך',trialReminder:'תזכורת ניסיון חינם',emailFailed:'שליחת מייל נכשלה',chatDeliveryFailed:'הודעת צאט לא הועברה',registrationFailed:'הרשמה נכשלה',employerInquiry:'פנייה חדשה מחברה — דרושים'};
-      const cols={newBooking:'#14B8A6',bookingApproved:'#10B981',bookingRejected:'#EF4444',bookingCancelled:'#F59E0B',newMessage:'#06B6D4',newReview:'#FBBF24',newVideo:'#06B6D4',newTeacher:'#14B8A6',newReport:'#E74C3C',newUser:'#0EA5E9',groupJoin:'#14B8A6',groupApproved:'#10B981',groupRejected:'#EF4444',rateLesson:'#FBBF24',lessonSummary:'#06B6D4',accountApproved:'#10B981',teacherApproved:'#14B8A6',adminMessage:'#06B6D4',newPost:'#F59E0B',lessonCompleted:'#10B981',newStory:'#8B5CF6',briefProposal:'#14B8A6',briefAccepted:'#10B981',newQuestion:'#14B8A6',questionAnswered:'#10B981',trialReminder:'#8B5CF6',emailFailed:'#EF4444',chatDeliveryFailed:'#EF4444',registrationFailed:'#EF4444',employerInquiry:'#8B5CF6'};
+      const icons={newBooking:'📚',bookingApproved:'✅',bookingRejected:'❌',bookingCancelled:'🚫',newMessage:'💬',newReview:'⭐',newVideo:'📹',newTeacher:'🎓',newReport:'🚨',newUser:'👋',groupJoin:'🙋',groupApproved:'🎉',groupRejected:'😔',rateLesson:'⭐',lessonSummary:'📖',accountApproved:'🎉',teacherApproved:'🎓',adminMessage:'📣',newPost:'📢',lessonCompleted:'✅',newStory:'📸',briefProposal:'💼',briefAccepted:'🤝',newQuestion:'❓',questionAnswered:'💡',trialReminder:'⏰',referralJoined:'🎁',emailFailed:'📧',chatDeliveryFailed:'⚠️',registrationFailed:'🚫',employerInquiry:'💼'};
+      const titles={newBooking:'הזמנת שיעור חדשה',bookingApproved:'ההזמנה אושרה!',bookingRejected:'ההזמנה נדחתה',bookingCancelled:'השיעור בוטל',newMessage:'הודעה חדשה',newReview:'דירוג חדש',newVideo:'סרטון חדש לאישור',newTeacher:'מורה חדש נרשם',newReport:'דיווח חדש!',newUser:'משתמש חדש',groupJoin:'בקשת הצטרפות לקבוצה',groupApproved:'התקבלת לקבוצה!',groupRejected:'הבקשה לא אושרה',rateLesson:'דרג את השיעור',lessonSummary:'סיכום שיעור חדש',accountApproved:'החשבון שלך אושר!',teacherApproved:'פרופיל המורה שלך אושר!',adminMessage:'הודעה מהמנהל',newPost:'פוסט חדש בקהילה',lessonCompleted:'השיעור הסתיים',newStory:'סטורי חדש לאישור',briefProposal:'הצעת מורה לדרוש שלך',briefAccepted:'ההצעה שלך התקבלה!',newQuestion:'שאלה חדשה על הפרופיל',questionAnswered:'המורה ענה על שאלתך',trialReminder:'תזכורת ניסיון חינם',referralJoined:'הפנייה נקלטה!',emailFailed:'שליחת מייל נכשלה',chatDeliveryFailed:'הודעת צאט לא הועברה',registrationFailed:'הרשמה נכשלה',employerInquiry:'פנייה חדשה מחברה — דרושים'};
+      const cols={newBooking:'#14B8A6',bookingApproved:'#10B981',bookingRejected:'#EF4444',bookingCancelled:'#F59E0B',newMessage:'#06B6D4',newReview:'#FBBF24',newVideo:'#06B6D4',newTeacher:'#14B8A6',newReport:'#E74C3C',newUser:'#0EA5E9',groupJoin:'#14B8A6',groupApproved:'#10B981',groupRejected:'#EF4444',rateLesson:'#FBBF24',lessonSummary:'#06B6D4',accountApproved:'#10B981',teacherApproved:'#14B8A6',adminMessage:'#06B6D4',newPost:'#F59E0B',lessonCompleted:'#10B981',newStory:'#8B5CF6',briefProposal:'#14B8A6',briefAccepted:'#10B981',newQuestion:'#14B8A6',questionAnswered:'#10B981',trialReminder:'#8B5CF6',referralJoined:'#10B981',emailFailed:'#EF4444',chatDeliveryFailed:'#EF4444',registrationFailed:'#EF4444',employerInquiry:'#8B5CF6'};
       const ico=icons[n.type]||'🔔';
       const ttl=titles[n.type]||'התראה';
       const col=cols[n.type]||'#14B8A6';
@@ -3743,6 +3696,7 @@ function showNotificationsPanel(){
       else if(n.type==='newQuestion')sub=(n.from||'')+(n.preview?' • '+n.preview:'');
       else if(n.type==='questionAnswered')sub=(n.from||'המורה')+(n.preview?' • '+n.preview:'');
       else if(n.type==='trialReminder')sub='נשאר/ו '+(n.daysLeft||0)+(n.daysLeft===1?' יום':' ימים')+' — לאחר מכן ₪'+TEACHER_PLAN_PRICE+'/חודש';
+      else if(n.type==='referralJoined')sub=n.message||n.preview||'';
       else if(n.type==='emailFailed')sub='אל: '+(n.to||'')+(n.subject?' • '+n.subject:'')+(n.error?' • '+n.error:'');
       else if(n.type==='chatDeliveryFailed')sub='שלב: '+(n.step||'')+(n.otherUid?' • יעד: '+n.otherUid:'')+(n.error?' • '+n.error:'');
       else if(n.type==='registrationFailed')sub=(n.email||'')+(n.error?' • '+n.error:'');
@@ -4055,6 +4009,11 @@ const USER_DATA_PATHS=['users','userChats','notifications','userBookings','favor
   'chats','userCredits'];
 
 async function deleteAllUserData(uid,role){
+  // כישלון בסריקות שלמטה נבלע עד עכשיו ב-catch ריק. זה בדיוק הדפוס שהחזיר
+  // את באג המחיקה ארבע פעמים: הסריקה נכשלת, המסך מדווח "נמחק בהצלחה",
+  // והעותקים — שנושאים שם של קטין ומייל של ההורה — נשארים במסד. הן מדווחות
+  // עכשיו דרך אותו failedPaths שכבר עוצר את מחיקת ההזדהות.
+  const scanFailures=[];
   const isTeacher=role==='teacher';
 
   // הודעות פרטיות: תלוי בקריאת userChats לפני שהוא נמחק, אז חייב לרוץ ראשון
@@ -4079,7 +4038,7 @@ async function deleteAllUserData(uid,role){
       postsSnap.forEach(p=>{if(p.val().authUid===uid)delPosts.push(p.key);});
       await Promise.all(delPosts.map(k=>db.ref('communityPosts/'+k).remove()));
     }
-  }catch(_e){}
+  }catch(_e){scanFailures.push('communityPosts');}
 
   // ביקורות שהמשתמש כתב (כתלמיד, על מורים שונים — reviews/<teacherId>/<reviewId>).
   // אותו באג בדיוק: הכותב נשמר בשדה from, לא uid.
@@ -4093,7 +4052,7 @@ async function deleteAllUserData(uid,role){
       });
       await Promise.all(delRevs.map(p=>db.ref(p).remove()));
     }
-  }catch(_e){}
+  }catch(_e){scanFailures.push('reviews');}
 
   // pendingReviews — עותק שטוח של כל ביקורת עבור תור המנהל, כולל שם הכותב
   // וטקסט הביקורת. הוא מנוקה רק כשמנהל מאשר/דוחה ביקורת בודדת, ולכן ביקורת
@@ -4112,7 +4071,7 @@ async function deleteAllUserData(uid,role){
       pendSnap.forEach(r=>{if(r.val().from===uid)delPend.push(r.key);});
       await Promise.all(delPend.map(k=>db.ref('pendingReviews/'+k).remove()));
     }
-  }catch(_e){}
+  }catch(_e){/* צפוי: הצומת קריא למנהל בלבד. המחיקה לפי מפתח למעלה כבר כיסתה. */}
 
   // הזמנות. openBooking כותב כל רשומה **משוכפלת לשלושה נתיבים**, וכל עותק
   // נושא studentName, studentEmail, parentName ו-parentEmail — שם של קטין
@@ -4147,14 +4106,14 @@ async function deleteAllUserData(uid,role){
     }
     await Promise.all([...mirrors].map(pth=>db.ref(pth).remove()));
     await Promise.all([...globals].map(pth=>db.ref(pth).remove()));
-  }catch(_e){}
+  }catch(_e){scanFailures.push('bookings');}
 
   const paths=USER_DATA_PATHS.map(p=>p+'/'+uid);
   if(isTeacher)paths.push('teachers/'+uid);
 
   const results=await Promise.allSettled(paths.map(p=>db.ref(p).remove()));
   const failedPaths=results.map((r,i)=>r.status==='rejected'?paths[i]:null).filter(Boolean);
-  return {failedPaths,chatDeleteFailed};
+  return {failedPaths:failedPaths.concat(scanFailures),chatDeleteFailed};
 }
 
 async function deleteMyAccount(){
@@ -4305,8 +4264,6 @@ async function listenToChat(otherUid){
   _chatQuery=null;chatListener=null;
   if(!currentUser||!otherUid){_currentChatOtherUid=null;return;}
   const chatId=getChatId(currentUser.uid,otherUid);
-  // כתיבת המשתתף לפני האזנה — הכרחי לכלל אבטחת messages
-  await db.ref('chatParticipants/'+chatId+'/'+currentUser.uid).set(true).catch(()=>{});
   chatMessages=[];
   chatListener=db.ref('messages/'+chatId);
   _chatQuery=chatListener.limitToLast(100);
@@ -4471,14 +4428,6 @@ async function _sendVoiceMessage(blob,otherUid,otherName){
     reader.onload=async()=>{
       const chatId=getChatId(currentUser.uid,otherUid);
       try{
-        // רשום את שני הצדדים כמשתתפי הצ'אט — אותה סיבה כמו ב-sendChatMessage:
-        // בלעדי זה, פנייה ראשונה בהקלטה קולית נכשלת בשקט אצל הצד המקבל.
-        await Promise.all([
-          db.ref('chatParticipants/'+chatId+'/'+currentUser.uid).set(true),
-          db.ref('chatParticipants/'+chatId+'/'+otherUid).set(true)
-        ]).catch(e=>{
-          notifyAdmin({type:'chatDeliveryFailed',chatId,otherUid,step:'chatParticipants-voice',error:e?.message||'שגיאה לא ידועה'}).catch(()=>{});
-        });
         await db.ref('messages/'+chatId).push({
           from:currentUser.uid,fromName:currentUserData?.name||currentUser.email.split('@')[0],
           to:otherUid,toName:otherName||'',type:'audio',audioData:reader.result,
@@ -4493,7 +4442,7 @@ async function _sendVoiceMessage(blob,otherUid,otherName){
         db.ref('userChats/'+otherUid+'/'+currentUser.uid).set({...last,otherUid:currentUser.uid,otherName:currentUserData?.name||'',unread:true}).catch(e=>{
           notifyAdmin({type:'chatDeliveryFailed',chatId,otherUid,step:'userChats-voice',error:e?.message||'שגיאה לא ידועה'}).catch(()=>{});
         });
-        db.ref('notifications/'+otherUid).push({type:'newMessage',from:currentUserData?.name||'',fromUid:currentUser.uid,preview:'🎤 הודעה קולית',read:false,createdAt:Date.now()}).catch(()=>{});
+        notifyUser(otherUid,'newMessage',{preview:'🎤 הודעה קולית'});
         _sendPushToUser(otherUid).catch(()=>{});
         showFireToast('✅ ההקלטה נשלחה!');
       }catch(e){showFireToast('❌ '+e.message);}
@@ -4571,16 +4520,6 @@ async function sendChatMessage(otherUid,otherName){
   inp.focus();
   const chatId=getChatId(currentUser.uid,otherUid);
   try{
-    // רשום את שני הצדדים כמשתתפי הצ'אט — נחוץ לכלל האבטחה של messages/.
-    // אחרת, אם זו פנייה ראשונה בלי הזמנה מאושרת (למשל "שלח הודעה פרטית"
-    // בפרופיל מורה), הצד השני לעולם לא נרשם, וההאזנה שלו בזמן אמת נכשלת
-    // בשקט (permission-denied) — הוא רואה שההודעה "לא הגיעה".
-    await Promise.all([
-      db.ref('chatParticipants/'+chatId+'/'+currentUser.uid).set(true),
-      db.ref('chatParticipants/'+chatId+'/'+otherUid).set(true)
-    ]).catch(e=>{
-      notifyAdmin({type:'chatDeliveryFailed',chatId,otherUid,step:'chatParticipants',error:e?.message||'שגיאה לא ידועה'}).catch(()=>{});
-    });
     await db.ref('messages/'+chatId).push({
       from:currentUser.uid,
       fromName:currentUserData?.name||currentUser.email.split('@')[0],
@@ -4628,14 +4567,7 @@ async function sendChatMessage(otherUid,otherName){
     }
     // התראה לצד השני
     try{
-      await db.ref('notifications/'+otherUid).push({
-        type:'newMessage',
-        from:currentUserData?.name||currentUser.email.split('@')[0],
-        fromUid:currentUser.uid,
-        preview:text.substring(0,40),
-        read:false,
-        createdAt:Date.now()
-      });
+      await notifyUser(otherUid,'newMessage',{preview:text.substring(0,40)});
     }catch(notifErr){console.warn('Could not send notification:',notifErr);}
     // התראת Push למכשיר של הנמען — מגיעה גם כשהאפליקציה שלו סגורה, בניגוד
     // לרשומה שנכתבה למעלה שנראית רק כשהוא פותח את האפליקציה.
@@ -4881,8 +4813,8 @@ async function _saveLessonSummary(bookingId,enc){
     const tSnap=await db.ref('teachers/'+tid+'/lessons').get();
     await db.ref('teachers/'+tid+'/lessons').set((tSnap.val()||0)+1).catch(()=>{});
     // התראה לתלמיד — סיכום + בקשת דירוג
-    await db.ref('notifications/'+b.studentId).push({type:'lessonSummary',from:summary.teacherName,preview:'סיכום שיעור: '+topic,read:false,createdAt:Date.now()}).catch(()=>{});
-    await db.ref('notifications/'+b.studentId).push({type:'rateLesson',bookingId,teacherId:tid,teacherName:summary.teacherName,from:summary.teacherName,preview:'איך היה השיעור עם '+summary.teacherName+'?',read:false,createdAt:Date.now()+1}).catch(()=>{});
+    notifyUser(b.studentId,'lessonSummary',{bookingId,preview:'סיכום שיעור: '+topic});
+    notifyUser(b.studentId,'rateLesson',{bookingId,teacherId:tid,teacherName:summary.teacherName,preview:'איך היה השיעור עם '+summary.teacherName+'?'});
     // מייל להורה על סיום שיעור — פרטי ההורה כבר על ההזמנה עצמה (b), אין צורך בקריאה נוספת
     try{
       if(b.parentEmail){
@@ -4985,6 +4917,30 @@ function sendAdminEmail(subject,body){
   return sendEmail(ADMIN_EMAIL,subject,body);
 }
 
+// התראה למשתמש אחר — עוברת דרך השרת, תמיד.
+//
+// הכתיבה הישירה ל-notifications/<uid אחר> נסגרה בחוקים: כל מחובר, כולל
+// אורח אנונימי, יכול היה לדחוף לפיד של כל אחד התראה מכל סוג — כולל
+// 'adminMessage', שמוצגת כ־📣 "הודעה מהמנהל". השרת מאמת מי השולח (idToken),
+// מאמת שהיחסים שההתראה טוענת להם קיימים באמת (הזמנה, שיחה, קבוצה, דרוש),
+// וגוזר את שם השולח מ-users/<uid>/name במקום לקבל אותו מהמטען.
+//
+// לא זורקת לעולם: התראה היא תוצר לוואי של הפעולה, ואסור שכישלון שלה יפיל
+// את הפעולה עצמה (אישור הזמנה, שליחת הודעה). זו הייתה ההתנהגות גם קודם —
+// רוב הקריאות היו עטופות ב-catch ריק.
+async function notifyUser(toUid,type,ctx={}){
+  try{
+    if(!currentUser||!toUid)return;
+    const idToken=await currentUser.getIdToken();
+    const res=await fetch(API_BASE+'/api/notify',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({idToken,toUid,type,ctx})
+    });
+    if(!res.ok)console.warn('[notifyUser]',type,res.status);
+  }catch(e){console.warn('[notifyUser]',type,e);}
+}
+
 async function notifyAdmin(notif){
   try{
     await db.ref('adminNotifs').push({...notif,read:false,createdAt:notif.createdAt||Date.now()});
@@ -4999,16 +4955,87 @@ async function notifyAdmin(notif){
 // יזום — זו בדיוק ההגנה שדיווח ידני מקבל, ואין סיבה שדגל אוטומטי יקבל
 // פחות ממנה. נכתב דרך אותו נתיב בדיוק שסביבו קיימים חוקי האבטחה, לא נתיב
 // חדש.
+// ─── שער הבטיחות: חומרה, SLA נמדד ותיעוד ──────────────────────────────────
+//
+// עד עכשיו האפליקציה **הבטיחה** למשתמש טיפול תוך 24 שעות ("דיווחים מגיעים
+// ישירות למנהל האפליקציה שמטפל בהם בתוך 24 שעות"), ולא היה שום דבר שמדד את
+// זה. כל הדיווחים נראו זהים — ספאם ו"סכנת בטיחות" באותו תור, באותו צבע —
+// ואחרי שדיווח נסגר לא נשאר תיעוד מי סגר, מתי, ומה הוחלט. הבטחה בלי מדידה
+// היא הבטחה שלא יידעו שהופרה.
+//
+// ארבעה חלקים, וכולם SSOT אחד: חומרה נגזרת מהסיבה, יעד הזמן נגזר מהחומרה,
+// חריגה נגזרת מהיעד, וההסלמה נגזרת מספירת הדיווחים על אותו יעד.
+const REPORT_SLA_MS={critical:2*3600000,high:12*3600000,medium:48*3600000,low:7*24*3600000};
+const REPORT_SLA_LABEL={critical:'שעתיים',high:'12 שעות',medium:'48 שעות',low:'7 ימים'};
+const REPORT_SEVERITY_META={
+  critical:{label:'קריטי',color:'#DC2626'},
+  high:{label:'גבוה',color:'#EA580C'},
+  medium:{label:'בינוני',color:'#B45309'},
+  low:{label:'נמוך',color:'#6C7686'}
+};
+// 'auto' = זיהוי שיתוף פרטי קשר. הרגע שבו שיחה עוברת לערוץ פרטי הוא הרגע
+// שבו הפיקוח נגמר, ולכן הוא קריטי כמו דיווח מפורש על סכנה.
+const REPORT_SEVERITY_BY_REASON={
+  safety:'critical',auto:'critical',
+  harassment:'high',inappropriate:'high',
+  fake:'medium',other:'medium',
+  spam:'low'
+};
+// כמה דיווחים על אותו יעד הופכים אותו ל"עבריין חוזר". נגזר בזמן הצגה ולא
+// נשמר: הצומת reports קריא למנהל בלבד, ולכן המדווח עצמו אינו יכול לספור.
+const REPORT_ESCALATE_AFTER=3;
+
+function reportSeverityFor(reason){return REPORT_SEVERITY_BY_REASON[reason]||'medium';}
+function reportSlaDueAt(severity,createdAt){return (createdAt||Date.now())+(REPORT_SLA_MS[severity]||REPORT_SLA_MS.medium);}
+// חריגה נמדדת רק על דיווח פתוח — דיווח שנסגר באיחור מתועד ב-audit, אבל הוא
+// כבר לא ממתין לאיש.
+function reportIsBreached(r){return r&&r.status==='open'&&!!r.slaDueAt&&Date.now()>r.slaDueAt;}
+
+// מסלול כתיבה אחד לכל דיווח — ידני ואוטומטי כאחד. קודם היו שתי קריאות
+// push() נפרדות עם שדות שונים, וזה בדיוק הדפוס שגרם ל-deleteAllUserData
+// לחזור ארבע פעמים: שני עותקים של אותה לוגיקה שנשארים שונים.
+async function _fileReport({targetType,targetId,targetName,reason,reasonLabel,description,reporterName,reporterEmail}){
+  const createdAt=Date.now();
+  const severity=reportSeverityFor(reason);
+  const rec={
+    targetType,targetId,targetName,
+    reason,reasonLabel,description:description||'',
+    reporterId:currentUser?.uid||'system',
+    reporterName,reporterEmail:reporterEmail||'',
+    status:'open',
+    severity,
+    slaDueAt:reportSlaDueAt(severity,createdAt),
+    createdAt
+  };
+  const ref=db.ref('reports').push();
+  await ref.set(rec);
+  // מייל להורה של המדווח על דיווח חמור. ההורה של ה**מדווח** מקבל מייל מיד;
+  // ההורה של המדווח-עליו מקבל רק אחרי שהמנהל אישר שהדיווח מבוסס
+  // (adminResolveReport) — אחרת כל אחד היה יכול להפעיל מייל מאשים על ילד
+  // אחר בלחיצת כפתור, וזה הופך את כפתור הדיווח לכלי הטרדה.
+  if((severity==='critical'||severity==='high')&&currentUserData?.parentEmail){
+    sendEmail(currentUserData.parentEmail,
+      `🚩 ${currentUserData?.name||'ילדך'} שלח/ה דיווח ב-Drushe`,
+      `שלום ${currentUserData?.parentName||'הורה יקר'} 👋\n\n${currentUserData?.name||'ילדך'} דיווח/ה על ${targetName||'משתמש'} ב-Drushe.\n\nסיבה: ${reasonLabel||reason}\n\nצוות Drushe קיבל את הדיווח ומטפל בו. יעד הטיפול: ${REPORT_SLA_LABEL[severity]}.\n\nאנחנו מעדכנים אתכם כי מדובר בדיווח חמור, וכדי שתוכלו לדבר עם ${currentUserData?.name||'ילדכם'} על מה שקרה.\n\n– צוות Drushe 💙`
+    ).catch(()=>{});
+  }
+  return {id:ref.key,severity};
+}
+
+// דגלי בטיחות אוטומטיים (למשל זיהוי שיתוף פרטי קשר) נכתבו רק ל-adminNotifs —
+// אותה התראה שמשמשת גם ל"מורה חדש נרשם" ו"ביקורת חדשה". הצומת הזה מוצג
+// כפעמון עם limitToLast(40) על *כל* סוגי ההתראות יחד: דגל בטיחות שקרה
+// בבוקר יכול להיעלם עד הערב מאחורי 40 הזמנות ובקשות רגילות, בלי שאיש
+// יראה אותו בכלל. reports, לעומת זאת, הוא תור פתוח/סגור קבוע שכבר נבדק
+// יזום — זו בדיוק ההגנה שדיווח ידני מקבל, ואין סיבה שדגל אוטומטי יקבל
+// פחות ממנה. נכתב דרך אותו נתיב בדיוק שסביבו קיימים חוקי האבטחה, לא נתיב
+// חדש.
 async function flagForSafetyReview({targetType,targetId,targetName,reasonLabel,description}){
   try{
-    await db.ref('reports').push({
+    await _fileReport({
       targetType,targetId,targetName,
       reason:'auto',reasonLabel,description,
-      reporterId:currentUser?.uid||'system',
-      reporterName:'🤖 זוהה אוטומטית',
-      reporterEmail:'',
-      status:'open',
-      createdAt:Date.now()
+      reporterName:'🤖 זוהה אוטומטית',reporterEmail:''
     });
   }catch(e){console.warn('[flagForSafetyReview]',e);}
 }
@@ -5056,39 +5083,23 @@ async function notifyParentsOfNewConversation(chatId,otherUid){
 }
 
 // ─── אישור הורה ─────────────────────────────────────────────────────────────
-// הטוקן הוא אמצעי הזיהוי היחיד של ההורה — אין לו חשבון ואין לו סיסמה — ולכן
-// הוא נגזר מ-crypto.getRandomValues ולא מ-Math.random. 32 בייטים אקראיים.
-// אסור שיהיה ניתן לגזירה מה-uid או מכל דבר אחר שהילד רואה.
+// הטוקן נוצר ונשלח **בשרת**, לא כאן. אם הלקוח (מכשיר הילד) היה יוצר אותו,
+// הוא היה יודע אותו — וזה הופך "אישור הורה" להוכחת החזקה של הילד בטוקן, לא
+// לפעולה אמיתית של ההורה. ה-idToken מוכיח מי הנרשם; השרת מייצר טוקן אקראי,
+// כותב אותו ל-DB עם ה-admin SDK, ושולח אותו ישירות לתיבת ההורה. הלקוח כאן
+// לא מקבל ולא רואה את הטוקן בשום שלב.
 const PARENT_CONSENT_DAYS=14;
-function _genConsentToken(){
-  const a=new Uint8Array(32);
-  crypto.getRandomValues(a);
-  return Array.from(a,b=>b.toString(16).padStart(2,'0')).join('');
-}
 
-async function _createParentConsent(uid,studentName,parentEmail){
-  const token=_genConsentToken();
-  await db.ref('parentConsent/'+token).set({
-    uid,
-    studentName:studentName||'',
-    parentEmail,
-    status:'pending',
-    createdAt:Date.now(),
-    expiresAt:Date.now()+PARENT_CONSENT_DAYS*24*3600*1000
+async function _createParentConsent(user,studentName,parentEmail){
+  const idToken=await user.getIdToken();
+  const res=await fetch(API_BASE+'/api/parent-consent',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({action:'create',idToken,studentName,parentEmail})
   });
-  const link=location.origin+'/?consent='+token;
-  await sendEmail(parentEmail,
-    'נדרש אישורך — '+(studentName||'ילדך')+' נרשם/ה ל-Drushe',
-    `שלום,\n\n`+
-    `${studentName||'ילדכם'} נרשם/ה ל-Drushe — פלטפורמה שבה בני נוער מלמדים ילדים, בפיקוח הורים.\n\n`+
-    `**החשבון לא פעיל, ולא יופעל בלי אישורכם.** ללא אישורכם, ${studentName||'ילדכם'} לא יוכל/תוכל ליצור קשר עם אף אחד באפליקציה.\n\n`+
-    `לאישור, היכנסו לקישור:\n${link}\n\n`+
-    `לאחר אישורכם, גם צוות Drushe עובר על כל הרשמה לפני שהחשבון נפתח.\n\n`+
-    `הקישור אישי ותקף ל-${PARENT_CONSENT_DAYS} ימים.\n\n`+
-    `אם לא אתם ההורה, או שאינכם מאשרים — פשוט התעלמו מהמייל. החשבון יישאר חסום.\n\n`+
-    `– צוות Drushe`
-  );
-  return token;
+  let data={};
+  try{data=await res.json();}catch(_e){}
+  if(!res.ok)throw new Error(data?.error||'parent-consent create failed ('+res.status+')');
 }
 
 // קריאה לשרת. רק הוא יכול להציב verified=true — החוק מתיר את זה למנהל בלבד,
@@ -5314,6 +5325,9 @@ if(typeof auth!=='undefined'&&auth&&!auth._pushSignOutWrapped){
 let adminAllUsers=[],adminAllTeachers=[],adminAllVideos=[],adminAllReports=[],adminAllBookings=[],adminIncompleteTeachers=[],adminAllPosts=[],adminAllReviews=[],adminAllStories=[],adminAllClientErrors=[];
 let adminAlertStudents=[],adminAlertPosts=[],adminAlertSubscriptions=[],adminContactMessages=[],adminAlertStoriesPending=0; // מקור ראשי לממתינים
 let adminTab='users';
+// מתג הכיבוי של עוזר ה-AI. ברירת המחדל "פועל" תואמת את השרת: רק false
+// מפורש מכבה, כדי שצומת חסר לא ישבית את הפיצ'ר בשקט.
+let _adminAiEnabled=true;
 let _adminPendingCount=0;
 
 // ─── ספירת הממתינים — הגדרה אחת ─────────────────────────────────────────────
@@ -5897,10 +5911,7 @@ async function cancelApprovedBooking(bookingId){
     await db.ref('bookings/'+bookingId).update({status:'cancelled',cancelledAt});
     await db.ref('userBookings/'+b.studentId+'/'+bookingId).update({status:'cancelled',cancelledAt});
     await db.ref('teacherBookings/'+b.teacherId+'/'+bookingId).update({status:'cancelled',cancelledAt});
-    await db.ref('notifications/'+b.teacherId).push({
-      type:'bookingCancelled',from:currentUserData?.name||'תלמיד',
-      day:b.day,time:b.time,ts:cancelledAt,read:false
-    }).catch(()=>{});
+    notifyUser(b.teacherId,'bookingCancelled',{bookingId,day:b.day,time:b.time,ts:cancelledAt});
     await loadStudentBookings();
     render();
     showFireToast('✅ הביטול בוצע');
@@ -6250,13 +6261,68 @@ async function adminDeleteAllPosts(){
   }catch(e){showFireToast('❌ '+e.message);}
 }
 
-async function adminCloseReport(id){
+// כמה דיווחים פתוחים או סגורים קיימים על אותו יעד. נגזר בזמן הצגה ולא נשמר:
+// reports קריא למנהל בלבד, ולכן המדווח עצמו לא יכול לספור, וכל ניסיון לשמור
+// מונה היה נשען על מי שהדיווח מדבר עליו — בדיוק הדפוס שהחוקה כאן אוסרת.
+function reportsAgainst(targetId){
+  if(!targetId)return [];
+  return adminAllReports.filter(r=>r.targetId===targetId);
+}
+// חומרה אפקטיבית: עבריין חוזר מקפיץ כל דיווח עליו לקריטי, גם אם הסיבה
+// עצמה נמוכה. שלושה דיווחים נפרדים הם דפוס, לא אירוע.
+function reportEffectiveSeverity(r){
+  const base=r.severity||reportSeverityFor(r.reason);
+  return reportsAgainst(r.targetId).length>=REPORT_ESCALATE_AFTER?'critical':base;
+}
+
+// סגירת דיווח, עם החלטה מתועדת.
+//
+// 'confirmed' = הדיווח היה מבוסס ונקטנו פעולה. 'dismissed' = נבדק ולא נמצא
+// ממש. ההפרדה אינה קוסמטית: היא מה שקובע אם ההורה של המדווח-עליו מקבל
+// הודעה. מייל אוטומטי בעת ההגשה היה הופך את כפתור הדיווח לכלי הטרדה — כל
+// אחד היה יכול לגרום לשליחת מייל מאשים על ילד אחר בלחיצה. אחרי בדיקת מנהל,
+// ההודעה מבוססת על החלטה ולא על טענה.
+async function adminResolveReport(id,resolution){
+  const r=adminAllReports.find(x=>x.id===id);
+  const note=resolution==='confirmed'
+    ?'הדיווח נמצא מבוסס וננקטה פעולה'
+    :'נבדק — לא נמצא ממש';
+  if(!await _confirm((resolution==='confirmed'?'לסמן את הדיווח כמבוסס?':'לסגור את הדיווח כלא מבוסס?')+'\n\n'+note+(resolution==='confirmed'?'\n\nההורה של המדווח/ת עליו יקבל הודעה.':''),
+    {confirmText:resolution==='confirmed'?'מבוסס':'סגור',cancelText:'ביטול'}))return;
   try{
-    await db.ref('reports/'+id+'/status').set('closed');
-    showFireToast('✅ הדיווח נסגר');
+    const at=Date.now();
+    await db.ref().update({
+      ['reports/'+id+'/status']:'closed',
+      ['reports/'+id+'/resolution']:resolution,
+      ['reports/'+id+'/handledAt']:at,
+      ['reports/'+id+'/handledBy']:currentUser?.uid||'admin',
+      ['reports/'+id+'/handledByName']:currentUserData?.name||'מנהל',
+      // חריגה מתועדת גם אחרי הסגירה — אחרת "נסגר" מוחק את העובדה שזה איחר.
+      ['reports/'+id+'/breachedSla']:!!(r&&r.slaDueAt&&at>r.slaDueAt)
+    });
+    await db.ref('reports/'+id+'/audit').push({
+      at,by:currentUser?.uid||'admin',byName:currentUserData?.name||'מנהל',
+      action:resolution,note
+    });
+    // ההורה של המדווח-עליו — רק עכשיו, ורק כשהדיווח אושר.
+    if(resolution==='confirmed'&&r?.targetId){
+      try{
+        const tu=(await db.ref('users/'+r.targetId).get()).val()||{};
+        if(tu.parentEmail){
+          sendEmail(tu.parentEmail,
+            `הודעה מצוות Drushe בנוגע ל${tu.name||'ילדכם'}`,
+            `שלום ${tu.parentName||'הורה יקר'},\n\nהתקבל דיווח ב-Drushe בנוגע ל${tu.name||'ילדכם'}, וצוות Drushe בדק אותו ומצא אותו מבוסס.\n\nסיבת הדיווח: ${r.reasonLabel||r.reason||''}\n\nאנחנו מעדכנים אתכם כדי שתוכלו לדבר על כך בבית. אם יש שאלות או שנראה לכם שנפלה טעות — אפשר להשיב למייל הזה.\n\n– צוות Drushe 💙`
+          ).catch(()=>{});
+        }
+      }catch(_e){}
+    }
+    showFireToast(resolution==='confirmed'?'✅ סומן כמבוסס':'✅ הדיווח נסגר');
     await loadAdminData();renderAdminPanel();
   }catch(e){showFireToast('❌ '+e.message);}
 }
+
+// נשמרת לתאימות לאחור: דיווחים ישנים והרגל ישן. מסלול אחד, לא שניים.
+async function adminCloseReport(id){return adminResolveReport(id,'dismissed');}
 
 async function adminDeleteReport(id){
   if(!await _confirm('למחוק את הדיווח?',{confirmText:'מחק',cancelText:'ביטול',destructive:true}))return;
@@ -6812,14 +6878,11 @@ async function submitReport(targetType,targetId,targetName){
   const desc=document.getElementById('_repDesc')?.value.trim()||'';
   try{
     showFireToast('⏳ שולח...');
-    await db.ref('reports').push({
+    const {severity}=await _fileReport({
       targetType,targetId,targetName,
       reason:reasonId,reasonLabel,description:desc,
-      reporterId:currentUser.uid,
       reporterName:currentUserData?.name||currentUser.email.split('@')[0],
-      reporterEmail:currentUser.email,
-      status:'open',
-      createdAt:Date.now()
+      reporterEmail:currentUser.email
     });
     // ההתראה למנהל עברה ל-notifyAdmin.
     //
@@ -6838,18 +6901,20 @@ async function submitReport(targetType,targetId,targetName){
     await notifyAdmin({
       type:'newReport',
       from:currentUserData?.name||currentUser.email,
-      targetName,targetType,reasonLabel,description:desc
+      targetName,targetType,reasonLabel,description:desc,
+      severity
     });
     // מייל, כמו בכל זרימה אחרת שדורשת טיפול — דיווח לא אמור לחכות לפתיחת האפליקציה
     sendAdminEmail(
-      `🚩 דיווח חדש על ${targetName||targetType}`,
+      `🚩 דיווח ${REPORT_SEVERITY_META[severity].label} על ${targetName||targetType}`,
+      `חומרה: ${REPORT_SEVERITY_META[severity].label} · יעד טיפול: ${REPORT_SLA_LABEL[severity]}\n`+
       `סיבה: ${reasonLabel||reasonId}\n`+
       `מדווח/ת: ${currentUserData?.name||currentUser.email}\n`+
       `סוג: ${targetType}\n\n`+
       `${desc||'(ללא תיאור)'}\n\n`+
       `לטיפול: פאנל ניהול ← דיווחים`
     ).catch(()=>{});
-    showFireToast('✅ הדיווח נשלח!');
+    showFireToast('✅ הדיווח נשלח! יעד טיפול: '+REPORT_SLA_LABEL[severity]);
     document.querySelector('._repDlg')?.parentElement?.remove();
   }catch(e){showFireToast('❌ '+e.message);}
 }
@@ -7582,7 +7647,8 @@ function showAdminPanel(forceTab=null){
     db.ref('contactMessages').update(upd).catch(()=>{});
     _updateAdminBadge(_adminPending().total);
   }
-  _verifyAdminPin(()=>{loadAdminData().then(()=>{
+  _verifyAdminPin(()=>{loadAdminData().then(async()=>{
+    try{_adminAiEnabled=(await db.ref('adminConfig/aiEnabled').get()).val()!==false;}catch(_e){}
     if(forceTab){
       adminTab=forceTab;
     } else {
@@ -7600,6 +7666,20 @@ function showAdminPanel(forceTab=null){
     }
     renderAdminPanel();
   });});
+}
+
+// מתג כיבוי לעוזר ה-AI. קיים כדי שאפשר יהיה לעצור חיוב חריג *מיד* מהטלפון,
+// בלי להיכנס לקונסולה של Firebase — ברגע שצריך אותו, כל דקה עולה כסף.
+// השרת קורא את אותו דגל בכל בקשה (netlify/functions/ai-assistant.js).
+async function adminToggleAi(){
+  const turningOff=_adminAiEnabled;
+  if(turningOff&&!await _confirm('לכבות את עוזר ה-AI?\n\nהחיפוש החכם ושאלות הבטיחות יפסיקו לעבוד לכל המשתמשים, מיד.',{confirmText:'כבה',cancelText:'ביטול',destructive:true}))return;
+  try{
+    await db.ref('adminConfig/aiEnabled').set(!turningOff);
+    _adminAiEnabled=!turningOff;
+    showFireToast(_adminAiEnabled?'✅ עוזר ה-AI הופעל':'🛑 עוזר ה-AI כובה');
+    renderAdminPanel();
+  }catch(e){showFireToast('❌ '+e.message);}
 }
 
 async function adminSwitchTab(id){
@@ -7752,6 +7832,18 @@ function renderAdminPanel(){
       ${_adminCommunityOrphans.length>0?`<div onclick="adminTab='students';renderAdminPanel()" style="margin-top:8px;background:rgba(239,68,68,0.75);border-radius:12px;padding:10px 14px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:8px;position:relative;z-index:2">${icon("alert-triangle",14)} <span>${_adminCommunityOrphans.length} משתמשים פרסמו בקהילה ללא אישור — לחץ לטיפול</span></div>`:''}
       ${adminContactMessages.filter(m=>!m.read).length>0?`<div onclick="adminSwitchTab('messages')" style="margin-top:8px;background:rgba(6,182,212,0.9);border-radius:12px;padding:10px 14px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:8px;position:relative;z-index:2">${icon("chat",14)} <span>${adminContactMessages.filter(m=>!m.read).length} הודעות חדשות מהאפליקציה — לחץ לצפייה</span></div>`:''}
       ${adminAlertSubscriptions.length>0?`<div onclick="adminSwitchTab('subscriptions')" style="margin-top:8px;background:rgba(139,47,201,0.85);border-radius:12px;padding:10px 14px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:8px;position:relative;z-index:2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg> <span>${adminAlertSubscriptions.length} מנויים ממתינים לאימות תשלום — לחץ לאישור</span></div>`:''}
+      ${(()=>{
+        // חריגה מ-SLA היא הדבר היחיד בפאנל שמשמעותו "ילד ממתין לתשובה שלא
+        // הגיעה". היא יושבת בראש, מעל כל השאר, ולא מחכה שמישהו ייכנס לטאב.
+        const breached=adminAllReports.filter(reportIsBreached);
+        if(!breached.length)return '';
+        const worst=breached.filter(r=>reportEffectiveSeverity(r)==='critical').length;
+        return `<div onclick="adminSwitchTab('reports')" style="margin-top:10px;background:#DC2626;border-radius:12px;padding:11px 14px;font-size:13px;font-weight:900;cursor:pointer;display:flex;align-items:center;gap:8px;position:relative;z-index:2">⏰ <span>${breached.length} דיווחים חרגו מיעד הטיפול${worst?` (${worst} קריטיים)`:''} — לחץ</span></div>`;
+      })()}
+      <div style="margin-top:8px;background:${_adminAiEnabled?'rgba(15,26,31,0.35)':'rgba(239,68,68,0.85)'};border-radius:12px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;position:relative;z-index:2">
+        <span style="font-size:12px;font-weight:800;color:#fff">🤖 עוזר AI — ${_adminAiEnabled?'פעיל':'מושבת'}</span>
+        <button onclick="adminToggleAi()" style="background:${_adminAiEnabled?'rgba(239,68,68,0.9)':'rgba(16,185,129,0.95)'};border:none;color:#fff;border-radius:50px;padding:6px 14px;font-size:12px;font-weight:900;cursor:pointer">${_adminAiEnabled?'כבה עכשיו':'הפעל'}</button>
+      </div>
     </div>
     ${!adminAllTeachers.find(t=>t.uid===currentUser?.uid)?`
     <div style="margin:12px 16px 0;background:linear-gradient(135deg,rgba(245,158,11,0.12),rgba(239,68,68,0.1));border:2px solid rgba(245,158,11,0.5);border-radius:16px;padding:14px">
@@ -8145,8 +8237,26 @@ function renderAdminTab(){
     let html='';
     if(open.length>0){
       html+=`<h4 style="font-weight:800;font-size:14px;color:#EF4444;margin:0 0 10px">🚨 פתוחים (${open.length})</h4>`;
-      html+=open.map(r=>`
-        <div style="background:rgba(231,76,60,0.05);border-radius:18px;padding:14px;margin-bottom:10px">
+      html+=open.map(r=>{
+        const sev=reportEffectiveSeverity(r);
+        const meta=REPORT_SEVERITY_META[sev]||REPORT_SEVERITY_META.medium;
+        const repeats=reportsAgainst(r.targetId).length;
+        const breached=reportIsBreached(r);
+        const leftMs=(r.slaDueAt||0)-Date.now();
+        // דיווח שנוצר לפני שער הבטיחות אין לו slaDueAt. הוא לא "חרג" — פשוט
+        // לא נמדד, וזה מה שהתג אומר, במקום להיראות ריק או באיחור אינסופי.
+        const slaTxt=!r.slaDueAt
+          ?'ללא יעד (דיווח ישן)'
+          :breached
+            ?'חרג מה-SLA ב-'+Math.floor(-leftMs/3600000)+' שעות'
+            :'נותרו '+(leftMs>3600000?Math.floor(leftMs/3600000)+' שעות':Math.max(1,Math.floor(leftMs/60000))+' דקות');
+        return `
+        <div style="background:${breached?'rgba(220,38,38,0.12)':'rgba(231,76,60,0.05)'};border:${breached?'2px solid #DC2626':'none'};border-radius:18px;padding:14px;margin-bottom:10px">
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+            <span style="background:${meta.color};color:#fff;font-size:10px;font-weight:900;padding:3px 9px;border-radius:50px">${meta.label}</span>
+            <span style="background:${breached?'#DC2626':'rgba(15,26,31,0.08)'};color:${breached?'#fff':'#475569'};font-size:10px;font-weight:800;padding:3px 9px;border-radius:50px">${breached?'⏰ ':''}${escapeHtml(slaTxt)}</span>
+            ${repeats>=REPORT_ESCALATE_AFTER?`<span style="background:#7C2D12;color:#fff;font-size:10px;font-weight:900;padding:3px 9px;border-radius:50px">⚠ עבריין חוזר · ${repeats} דיווחים</span>`:(repeats>1?`<span style="background:rgba(180,83,9,0.15);color:#B45309;font-size:10px;font-weight:800;padding:3px 9px;border-radius:50px">${repeats} דיווחים על היעד</span>`:'')}
+          </div>
           <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:10px">
             <div style="flex:1">
               <div style="font-weight:900;font-size:14px;color:#0F1A1F">${icon("alert-triangle",14)} ${escapeHtml(r.reasonLabel||'')}</div>
@@ -8157,10 +8267,11 @@ function renderAdminTab(){
             </div>
           </div>
           <div style="display:flex;gap:8px">
-            <button onclick="adminCloseReport('${r.id}')" style="flex:1;background:#10B981;border:none;color:#fff;border-radius:50px;padding:9px;font-weight:800;font-size:11px;cursor:pointer">✓ סגור דיווח</button>
-            <button onclick="adminDeleteReport('${r.id}')" style="flex:1;background:rgba(239,68,68,0.9);border:none;color:#fff;border-radius:50px;padding:9px;font-weight:800;font-size:11px;cursor:pointer">${icon("trash",14)} מחק</button>
+            <button onclick="adminResolveReport('${r.id}','confirmed')" style="flex:1;background:#DC2626;border:none;color:#fff;border-radius:50px;padding:9px;font-weight:800;font-size:11px;cursor:pointer">✔ מבוסס — טופל</button>
+            <button onclick="adminResolveReport('${r.id}','dismissed')" style="flex:1;background:#10B981;border:none;color:#fff;border-radius:50px;padding:9px;font-weight:800;font-size:11px;cursor:pointer">סגור — לא מבוסס</button>
+            <button onclick="adminDeleteReport('${r.id}')" style="background:rgba(239,68,68,0.9);border:none;color:#fff;border-radius:50px;padding:9px 12px;font-weight:800;font-size:11px;cursor:pointer">🗑</button>
           </div>
-        </div>`).join('');
+        </div>`;}).join('');
     }
     if(closed.length>0){
       html+=`<h4 style="font-weight:800;font-size:14px;color:#10B981;margin:14px 0 10px">${icon("check-circle",14)} סגורים (${closed.length})</h4>`;
@@ -8168,6 +8279,7 @@ function renderAdminTab(){
         <div style="background:rgba(16,185,129,0.05);border-radius:14px;padding:11px;margin-bottom:8px;opacity:0.7">
           <div style="font-size:13px;font-weight:700;color:#0F1A1F">${escapeHtml(r.reasonLabel||'')}</div>
           <div style="font-size:11px;color:#64748B;margin-top:3px">${escapeHtml(r.targetName||'')} • ${new Date(r.createdAt).toLocaleDateString('he-IL')}</div>
+          <div style="font-size:10px;color:#6C7686;margin-top:4px">${r.resolution==='confirmed'?'✔ נמצא מבוסס':r.resolution==='dismissed'?'לא נמצא ממש':'נסגר'}${r.handledByName?' · '+escapeHtml(r.handledByName):''}${r.handledAt?' · '+new Date(r.handledAt).toLocaleString('he-IL'):''}${r.breachedSla?' · <strong style="color:#DC2626">חרג מה-SLA</strong>':''}</div>
         </div>`).join('');
     }
     return html;
@@ -11121,12 +11233,7 @@ async function _submitBriefProposal(briefId){
       price,message,createdAt:Date.now()
     };
     await db.ref('briefProposals/'+briefId+'/'+currentUser.uid).set(proposal);
-    await db.ref('notifications/'+brief.parentUid).push({
-      type:'briefProposal',briefId,
-      from:proposal.teacherName,fromUid:currentUser.uid,
-      price,preview:message.substring(0,80),
-      read:false,createdAt:Date.now()
-    });
+    await notifyUser(brief.parentUid,'briefProposal',{briefId,price,preview:message.substring(0,80)});
     document.getElementById('_bpOv')?.remove();
     showFireToast('✅ ההצעה נשלחה! ההורה יקבל התראה');
   }catch(e){showFireToast('❌ '+e.message);}
@@ -11215,12 +11322,7 @@ async function _acceptBriefProposal(briefId,teacherUid){
       ['parentBriefs/'+briefId+'/acceptedTeacher']:teacherUid,
       ['parentBriefs/'+briefId+'/bookingId']:bookingId
     });
-    await db.ref('notifications/'+teacherUid).push({
-      type:'briefAccepted',briefId,bookingId,
-      from:currentUserData?.name||'הורה',fromUid:currentUser.uid,
-      childName:brief.childName,price,
-      read:false,createdAt:Date.now()
-    });
+    await notifyUser(teacherUid,'briefAccepted',{briefId,bookingId,childName:brief.childName,price});
     const bIdx=(S.parentBriefs||[]).findIndex(b=>b.id===briefId);
     if(bIdx>=0)S.parentBriefs.splice(bIdx,1);
     document.getElementById('_mpOv')?.remove();
@@ -11312,7 +11414,7 @@ function Jobs(){
       ${[
         {n:'1',t:'אתם פונים אלינו',d:'ממלאים את הטופס למטה עם פרטי החברה וסוג הכישרון שאתם מחפשים.',c:'#F59E0B'},
         {n:'2',t:'הצוות שלנו בודק ומתאם',d:'אנחנו בוחנים את הפנייה ומאתרים מורים מתאימים מהמאגר שלנו.',c:'#EC4899'},
-        {n:'3',t:'חיבור בטוח ומפוקח',d:'יצירת קשר עם קטין מתבצעת רק דרכנו ובליווי ואישור הורה מפורש — לעולם לא ישירות.',c:'#8B5CF6'}
+        {n:'3',t:'חיבור דרך הפלטפורמה',d:'ההרשמה מחייבת אישור הורה, וההתכתבות מתועדת ונגישה להורה בכל עת. שיתוף פרטי קשר בצ\'אט מסומן לבדיקה.',c:'#8B5CF6'}
       ].map(s=>`<div style="display:flex;gap:14px;margin-bottom:14px"><div style="width:34px;height:34px;border-radius:50%;background:${s.c};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:15px;flex-shrink:0">${s.n}</div><div><div style="font-weight:800;font-size:14px;color:#0F1A1F;margin-bottom:2px">${s.t}</div><div style="font-size:12.5px;color:#64748B;line-height:1.6">${s.d}</div></div></div>`).join("")}
 
       <div class="warn" style="margin:6px 0 20px"><span>${icon("shield",14)}</span><span>אנחנו לא חושפים פרטי קטינים ישירות לחברות. כל פנייה מתחילה איתנו, ומתקדמת רק בליווי ואישור הורה מפורש.</span></div>
@@ -11501,7 +11603,7 @@ function Support(){
 
       <h3 style="font-weight:900;font-size:15px;margin:18px 0 12px;color:#0F1A1F">${icon('shield',14)} אלימות או בריונות ברשת</h3>
       <div class="card">
-        <p style="margin:0 0 12px;font-size:13px;color:#475569;line-height:1.7">אפשר תמיד לדווח על כל תוכן, הודעה או משתמש בתוך Drushe בלחיצת כפתור — הצוות שלנו מטפל בכל דיווח תוך 24 שעות. אם זה קרה מחוץ ל-Drushe, או שפשוט צריך לדבר עם מישהו מהצוות — אנחנו כאן:</p>
+        <p style="margin:0 0 12px;font-size:13px;color:#475569;line-height:1.7">אפשר תמיד לדווח על כל תוכן, הודעה או משתמש בתוך Drushe בלחיצת כפתור — הצוות שלנו מטפל בכל דיווח לפי דחיפותו — סכנת בטיחות תוך שעתיים, הטרדה או תוכן בלתי הולם תוך 12 שעות, והשאר עד 48 שעות. אם זה קרה מחוץ ל-Drushe, או שפשוט צריך לדבר עם מישהו מהצוות — אנחנו כאן:</p>
         <button onclick='openWhatsApp("972542020812","שלום, אני צריך/ה עזרה או רוצה לדווח על משהו...")' style="width:100%;background:linear-gradient(135deg,#25D366,#128C7E);border:none;color:#fff;border-radius:50px;padding:12px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">${icon('smartphone',14)} דבר/י עם הצוות שלנו בוואטסאפ</button>
       </div>
 
@@ -11569,7 +11671,7 @@ function About(){
       {n:'1',t:'הרשמה עם פרטי הורה חובה',d:'כל ילד – מורה או תלמיד – חייב לספק שם, מייל וטלפון של הורה. ללא הורה – אין הרשמה.',c:'#14B8A6'},
       {n:'2',t:'אישור הורה',d:'ההורה מקבל הודעה אוטומטית על הרשמת הילד ויכול לאשר או לדחות.',c:'#06B6D4'},
       {n:'3',t:'בדיקת מנהל על מורים',d:'כל מורה שנרשם עובר בדיקה ידנית על ידי צוות Drushe לפני שמופיע לתלמידים.',c:'#06B6D4'},
-      {n:'4',t:'שיעור ניסיון מפוקח',d:'השיעור הראשון הוא "ניסיון" קצר. שני הצדדים יכולים לסיים בכל שלב.',c:'#10B981'},
+      {n:'4',t:'שיעור ניסיון קצר',d:'השיעור הראשון הוא "ניסיון" קצר, ומומלץ שהורה יהיה נוכח בו. שני הצדדים יכולים לסיים בכל שלב.',c:'#10B981'},
     ].map(s=>`
       <div class="card" style="display:flex;gap:12px;align-items:flex-start;margin-bottom:10px">
         <div style="width:32px;height:32px;border-radius:50%;background:${s.c};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;flex-shrink:0">${s.n}</div>
@@ -12832,7 +12934,7 @@ async function joinGroup(groupId){
     await db.ref('groupMembers/'+groupId+'/'+currentUser.uid).set({name:currentUserData?.name||currentUser.email,joinedAt:Date.now(),status:'pending'});
     await db.ref('userGroups/'+currentUser.uid+'/'+groupId).set({status:'pending',joinedAt:Date.now()});
     myGroupStatuses[groupId]={status:'pending',joinedAt:Date.now()};
-    if(g?.teacherId)await db.ref('notifications/'+g.teacherId).push({type:'groupJoin',groupId,groupTitle:g.title,studentName:currentUserData?.name||currentUser.email,createdAt:Date.now(),read:false}).catch(()=>{});
+    if(g?.teacherId)notifyUser(g.teacherId,'groupJoin',{groupId,groupTitle:g.title,studentName:currentUserData?.name||''});
     if(g?.isMixed){
       const ub=currentUserData?.badges||[];
       if(!ub.includes('mixedGroup')){await db.ref('users/'+currentUser.uid+'/badges').set([...ub,'mixedGroup']).catch(()=>{});if(currentUserData)currentUserData.badges=[...ub,'mixedGroup'];}
@@ -12939,7 +13041,7 @@ async function _approveGroupMember(groupId,uid,wrap){
     const idx=communityGroups.findIndex(x=>x.id===groupId);
     if(idx>=0){communityGroups[idx].membersCount=newCnt;if(newCnt>=(g?.maxStudents||5))communityGroups[idx].status='full';}
     await db.ref('userGroups/'+uid+'/'+groupId+'/status').set('approved').catch(()=>{});
-    await db.ref('notifications/'+uid).push({type:'groupApproved',groupTitle:g?.title||'',from:currentUserData?.name||'המורה',read:false,createdAt:Date.now()}).catch(()=>{});
+    notifyUser(uid,'groupApproved',{groupId,groupTitle:g?.title||''});
     if(wrap)wrap.innerHTML=`<span style="font-size:11px;font-weight:800;padding:4px 10px;border-radius:50px;background:rgba(16,185,129,0.12);color:#10B981">✓ מאושר</span>`;
     showFireToast('✅ אושר!');
   }catch(e){showFireToast('❌ '+e.message);}
@@ -12949,7 +13051,7 @@ async function _rejectGroupMember(groupId,uid,wrap){
     await db.ref('groupMembers/'+groupId+'/'+uid+'/status').set('rejected');
     const gTitleSnap=await db.ref('groups/'+groupId+'/title').get().catch(()=>null);
     await db.ref('userGroups/'+uid+'/'+groupId+'/status').set('rejected').catch(()=>{});
-    await db.ref('notifications/'+uid).push({type:'groupRejected',groupTitle:gTitleSnap?.val()||'',from:currentUserData?.name||'המורה',read:false,createdAt:Date.now()}).catch(()=>{});
+    notifyUser(uid,'groupRejected',{groupId,groupTitle:gTitleSnap?.val()||''});
     if(wrap)wrap.innerHTML=`<span style="font-size:11px;font-weight:800;padding:4px 10px;border-radius:50px;background:rgba(239,68,68,0.1);color:#EF4444">✗ נדחה</span>`;
     showFireToast('נדחה');
   }catch(e){showFireToast('❌ '+e.message);}
@@ -14048,7 +14150,7 @@ async function firebaseRegister(email,password,userData){
       // רק לתלמידים. מורים עוברים אימות גיל ומסמך מול המנהל, לא דרך הורה.
       if((_userRecord.role||'student')==='student'&&_userRecord.parentEmail){
         try{
-          await _createParentConsent(cred.user.uid,_userRecord.name||'',_userRecord.parentEmail);
+          await _createParentConsent(cred.user,_userRecord.name||'',_userRecord.parentEmail);
         }catch(pcErr){
           // כישלון כאן משאיר את החשבון ממתין לאישור המנהל — כלומר נופל אחורה
           // להתנהגות הקודמת, ולא פותח חשבון בלי הסכמה. אבל הוא לא נבלע:
@@ -14075,7 +14177,7 @@ async function firebaseRegister(email,password,userData){
               await db.ref('userCredits/'+cred.user.uid).transaction(v=>(v||0)+5);
               await db.ref('referrals/'+referrerUid+'/'+cred.user.uid).set({at:Date.now(),code:storedRef});
               await db.ref('users/'+cred.user.uid+'/referredBy').set(referrerUid);
-              await db.ref('notifications/'+referrerUid).push({type:'adminMessage',createdAt:Date.now(),read:false,msg:'חבר שהפנית נרשם ל-Drushe! קיבלת ₪15 קרדיט.'});
+              await notifyUser(referrerUid,'referralJoined',{message:'חבר שהפנית נרשם ל-Drushe! קיבלת ₪15 קרדיט.'});
               sessionStorage.removeItem('_kidRefCode');
             }
           }
@@ -14240,7 +14342,7 @@ function RegSuccess(){
       <div style="display:flex;flex-direction:column;gap:11px">
         <div style="display:flex;gap:11px;align-items:flex-start"><div style="width:32px;height:32px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></div><div style="flex:1;font-size:13px;line-height:1.6;color:#0F1A1F"><strong>${CATS.length} קטגוריות לימוד</strong> – מתמטיקה, מוזיקה, ספורט, אמנות, קוד ועוד</div></div>
         <div style="display:flex;gap:11px;align-items:flex-start"><div style="width:32px;height:32px;border-radius:10px;background:rgba(20,184,166,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12v10H4V12"/><path d="M2 7h20v5H2z"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg></div><div style="flex:1;font-size:13px;line-height:1.6;color:#0F1A1F"><strong>שיעורי ניסיון בחינם</strong> אצל מורים נבחרים – לראות אם זה מתאים לך</div></div>
-        <div style="display:flex;gap:11px;align-items:flex-start"><div style="width:32px;height:32px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#04778A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div><div style="flex:1;font-size:13px;line-height:1.6;color:#0F1A1F"><strong>סביבה בטוחה ומפוקחת</strong> – ההורים יכולים לראות הכל בכל זמן</div></div>
+        <div style="display:flex;gap:11px;align-items:flex-start"><div style="width:32px;height:32px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#04778A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div><div style="flex:1;font-size:13px;line-height:1.6;color:#0F1A1F"><strong>שקיפות מלאה להורים</strong> – ההורים רואים את כל הצ'אטים וההזמנות בכל עת</div></div>
         <div style="display:flex;gap:11px;align-items:flex-start"><div style="width:32px;height:32px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#04778A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg></div><div style="flex:1;font-size:13px;line-height:1.6;color:#0F1A1F"><strong>שיעורי וידאו אונליין</strong> או פרונטליים, איך שנוח לך</div></div>
         <div style="display:flex;gap:11px;align-items:flex-start"><div style="width:32px;height:32px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.5 13.5 17 22l-5-3-5 3 1.5-8.5"/></svg></div><div style="flex:1;font-size:13px;line-height:1.6;color:#0F1A1F"><strong>תעודות ודרגות</strong> – מ"מתחיל" עד "אגדה"!</div></div>
       </div>

@@ -57,7 +57,13 @@ beforeEach(async () => {
       studentId: STUDENT, teacherId: TEACHER,
       studentName: 'Minor', studentEmail: 'minor@example.com',
       parentName: 'Parent', parentEmail: 'parent@example.com',
+      price: 80, createdAt: 1, status: 'pending',
     };
+    // A completed booking between the same pair, for the review tests: a
+    // review must point at a real, qualifying booking. And an approved one,
+    // for the transitions that start there.
+    const completedBooking = { ...booking, status: 'completed', price: 80 };
+    const approvedBooking = { ...booking, status: 'approved' };
     await update(ref(db), {
       'users/student-uid': { name: 'Minor', role: 'student', verified: true },
       'users/teacher-uid': { name: 'Teach', role: 'teacher', verified: true },
@@ -66,6 +72,8 @@ beforeEach(async () => {
       'bookings/b1': booking,
       'userBookings/student-uid/b1': booking,
       'teacherBookings/teacher-uid/b1': booking,
+      'bookings/b2': completedBooking,
+      'bookings/b4': approvedBooking,
       'reviews/teacher-uid/rev1': { from: STUDENT, fromName: 'Minor', stars: 5, approved: false },
       'pendingReviews/rev1': { from: STUDENT, fromName: 'Minor', reviewId: 'rev1' },
       'reports/rep1': { from: STUDENT, about: TEACHER, text: 'unsafe behaviour', status: 'open' },
@@ -349,5 +357,344 @@ describe('newConversationNotified: one parent-notification email per conversatio
 
   it('a stranger to the conversation cannot flag it', async () => {
     await assertFails(set(ref(asStranger(), `newConversationNotified/${chatId}`), Date.now()));
+  });
+});
+
+// ── PARENT CONSENT: server-only ──────────────────────────────────────────
+//
+// An outside review found that the client (the registering minor's own
+// browser) generated the consent token, wrote the parentConsent record
+// itself, and built the approval link — meaning the token passed through
+// code the minor could inspect, and approving their own record required
+// nothing a parent did. netlify/functions/parent-consent.js now creates the
+// record with the admin SDK, which bypasses these rules entirely; what
+// closes the hole is that the client path is gone.
+describe('parentConsent: only the server (admin SDK) may write it', () => {
+  it('a student cannot create their own consent record', async () => {
+    await assertFails(set(ref(asStudent(), 'parentConsent/sometoken'), {
+      uid: STUDENT, studentName: 'Minor', parentEmail: 'parent@example.com',
+      status: 'pending', createdAt: Date.now(), expiresAt: Date.now() + 1000,
+    }));
+  });
+
+  it('a student cannot self-approve an existing record either', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await set(ref(ctx.database(), 'parentConsent/sometoken'), {
+        uid: STUDENT, studentName: 'Minor', parentEmail: 'parent@example.com',
+        status: 'pending', createdAt: Date.now(), expiresAt: Date.now() + 1000,
+      });
+    });
+    await assertFails(set(ref(asStudent(), 'parentConsent/sometoken/status'), 'approved'));
+  });
+
+  it('the admin can still write it, which the server function relies on', async () => {
+    await assertSucceeds(set(ref(asAdmin(), 'parentConsent/sometoken'), {
+      uid: STUDENT, studentName: 'Minor', parentEmail: 'parent@example.com',
+      status: 'pending', createdAt: Date.now(), expiresAt: Date.now() + 1000,
+    }));
+  });
+});
+
+// ── BOOKING: immutable fields ────────────────────────────────────────────
+//
+// The review found that either party to a booking could rewrite it after
+// creation — including the price and who the two parties even are — because
+// only status-shaped writes were exercised by the app, and nothing in the
+// rules said those fields, once set, must stay set.
+describe('bookings: price and the two parties cannot change after creation', () => {
+  it('the student cannot change the price', async () => {
+    await assertFails(set(ref(asStudent(), 'bookings/b1/price'), 999));
+  });
+
+  it('the teacher cannot change the price either', async () => {
+    await assertFails(set(ref(asTeacher(), 'bookings/b1/price'), 1));
+  });
+
+  it('neither party can reassign the booking to someone else', async () => {
+    await assertFails(set(ref(asStudent(), 'bookings/b1/teacherId'), STRANGER));
+    await assertFails(set(ref(asTeacher(), 'bookings/b1/studentId'), STRANGER));
+  });
+
+  it('createdAt cannot be backdated or bumped', async () => {
+    await assertFails(set(ref(asStudent(), 'bookings/b1/createdAt'), 999));
+  });
+
+  it('the same lock holds on the userBookings and teacherBookings mirrors', async () => {
+    await assertFails(set(ref(asStudent(), 'userBookings/student-uid/b1/price'), 999));
+    await assertFails(set(ref(asTeacher(), 'teacherBookings/teacher-uid/b1/price'), 999));
+  });
+
+  it('the admin can still correct any field', async () => {
+    await assertSucceeds(set(ref(asAdmin(), 'bookings/b1/price'), 50));
+  });
+});
+
+// ── SAFETY GATE: the report's verdict belongs to the admin ───────────────
+//
+// Reports gained severity, an SLA due time, a resolution and an audit trail.
+// The reporter writes the report; everything that says what was *decided*
+// about it is the admin's. Otherwise the subject of a report could close it,
+// which is the same shape as every other hole this suite exists to catch.
+describe('reports: filed by anyone, judged by the admin', () => {
+  const report = (extra = {}) => ({
+    targetType: 'user', targetId: TEACHER, targetName: 'Teach',
+    reason: 'safety', reasonLabel: 'סכנת בטיחות', description: 'x',
+    reporterId: STUDENT, reporterName: 'Minor', reporterEmail: 'minor@example.com',
+    status: 'open', severity: 'critical', slaDueAt: Date.now() + 7200000,
+    createdAt: Date.now(), ...extra,
+  });
+
+  it('a user can still file a report, with a severity', async () => {
+    await assertSucceeds(set(ref(asStudent(), 'reports/r1'), report()));
+  });
+
+  it('a made-up severity is refused', async () => {
+    await assertFails(set(ref(asStudent(), 'reports/r2'), report({ severity: 'trivial' })));
+  });
+
+  it('a report cannot be filed already closed', async () => {
+    await assertFails(set(ref(asStudent(), 'reports/r3'), report({ status: 'closed' })));
+  });
+
+  it('the subject of a report cannot close it', async () => {
+    await assertSucceeds(set(ref(asStudent(), 'reports/r4'), report()));
+    await assertFails(set(ref(asTeacher(), 'reports/r4/status'), 'closed'));
+    await assertFails(set(ref(asTeacher(), 'reports/r4/resolution'), 'dismissed'));
+  });
+
+  it('nobody but the admin can forge who handled it', async () => {
+    await assertSucceeds(set(ref(asStudent(), 'reports/r5'), report()));
+    await assertFails(set(ref(asStudent(), 'reports/r5/handledBy'), STUDENT));
+    await assertFails(set(ref(asStudent(), 'reports/r5/handledAt'), Date.now()));
+  });
+
+  it('the audit trail cannot be written or rewritten by a user', async () => {
+    await assertSucceeds(set(ref(asStudent(), 'reports/r6'), report()));
+    await assertFails(set(ref(asStudent(), 'reports/r6/audit/a1'),
+      { at: Date.now(), by: STUDENT, action: 'dismissed', note: 'nothing to see' }));
+  });
+
+  it('the admin resolves it, and that is what gets recorded', async () => {
+    await assertSucceeds(set(ref(asStudent(), 'reports/r7'), report()));
+    await assertSucceeds(set(ref(asAdmin(), 'reports/r7/status'), 'closed'));
+    await assertSucceeds(set(ref(asAdmin(), 'reports/r7/resolution'), 'confirmed'));
+    await assertSucceeds(set(ref(asAdmin(), 'reports/r7/handledBy'), 'admin-uid'));
+    await assertSucceeds(set(ref(asAdmin(), 'reports/r7/audit/a1'),
+      { at: Date.now(), by: 'admin-uid', action: 'confirmed', note: 'actioned' }));
+  });
+
+  it('a reporter still cannot read the queue they file into', async () => {
+    await assertSucceeds(set(ref(asStudent(), 'reports/r8'), report()));
+    await assertFails(get(ref(asStudent(), 'reports')));
+  });
+});
+
+// ── NOTIFICATIONS: no writing into someone else's feed ───────────────────
+//
+// notifications/$uid/$notifId was ".write": "auth != null" — any signed-in
+// user, guests included, could push a notification into any other user's
+// feed. The .validate constrained the shape and the type enum, but the enum
+// contains 'adminMessage', which renders as 📣 "הודעה מהמנהל", and the body
+// was unconstrained. Impersonating the platform to a named minor was a
+// single database write. Cross-user notifications now go through
+// netlify/functions/notify.js, which verifies the relationship being
+// claimed and derives the sender's name server-side.
+describe('notifications: only your own feed, or the server', () => {
+  const notif = { type: 'newMessage', createdAt: Date.now(), read: false };
+
+  it('a stranger cannot write into another user’s feed', async () => {
+    await assertFails(set(ref(asStranger(), 'notifications/student-uid/n1'), notif));
+  });
+
+  it('not even a real counterparty may write it directly', async () => {
+    await assertFails(set(ref(asTeacher(), 'notifications/student-uid/n1'), notif));
+  });
+
+  it('the admin-message impersonation path is closed', async () => {
+    await assertFails(set(ref(asStranger(), 'notifications/student-uid/n2'),
+      { type: 'adminMessage', message: 'שלח לי את מספר הטלפון שלך', createdAt: Date.now(), read: false }));
+  });
+
+  it('a user can still write, read and clear their own feed', async () => {
+    await assertSucceeds(set(ref(asStudent(), 'notifications/student-uid/n3'),
+      { type: 'trialReminder', createdAt: Date.now(), read: false }));
+    await assertSucceeds(get(ref(asStudent(), 'notifications/student-uid')));
+    await assertSucceeds(remove(ref(asStudent(), 'notifications/student-uid/n3')));
+  });
+
+  it('the admin can still notify anyone, which the admin panel relies on', async () => {
+    await assertSucceeds(set(ref(asAdmin(), 'notifications/student-uid/n4'),
+      { type: 'studentApproved', createdAt: Date.now(), read: false }));
+  });
+});
+
+// ── ADMIN QUEUES: submittable, not wipeable ──────────────────────────────
+//
+// adminAlerts and adminNotifs were ".write": "auth != null" on the whole
+// node, so any signed-in user could delete every pending alert and every
+// safety flag in one call. They have to stay writable — that is how a
+// registration, a post and a subscription request reach the admin — so the
+// grant moved down to the individual entry.
+describe('admin queues: a user may add, never wipe', () => {
+  it('a user cannot delete the whole alert queue', async () => {
+    await assertFails(remove(ref(asStudent(), 'adminAlerts')));
+    await assertFails(remove(ref(asStudent(), 'adminAlerts/students')));
+  });
+
+  it('a user cannot wipe the admin notification feed, safety flags included', async () => {
+    await assertFails(remove(ref(asStudent(), 'adminNotifs')));
+  });
+
+  it('a user cannot forge an alert about someone else', async () => {
+    await assertFails(set(ref(asStranger(), 'adminAlerts/students/student-uid'),
+      { name: 'Minor', createdAt: Date.now() }));
+  });
+
+  it('registration still files the user’s own pending alert', async () => {
+    await assertSucceeds(set(ref(asStudent(), 'adminAlerts/students/student-uid'),
+      { name: 'Minor', email: 'minor@example.com', createdAt: Date.now() }));
+  });
+
+  it('a post and a subscription request still reach the admin', async () => {
+    await assertSucceeds(set(ref(asStudent(), 'adminAlerts/posts/p1'),
+      { author: 'Minor', text: 'hello', createdAt: Date.now() }));
+    await assertSucceeds(set(ref(asTeacher(), 'adminAlerts/subscriptions/s1'),
+      { uid: TEACHER, status: 'awaitingPayment', createdAt: Date.now() }));
+  });
+
+  it('a teacher cannot approve their own subscription payment', async () => {
+    await assertFails(set(ref(asTeacher(), 'adminAlerts/subscriptions/s2'),
+      { uid: TEACHER, status: 'approved', createdAt: Date.now() }));
+  });
+
+  it('notifyAdmin still works — a safety flag can always be raised', async () => {
+    await assertSucceeds(set(ref(asStudent(), 'adminNotifs/a1'),
+      { type: 'chatDeliveryFailed', read: false, createdAt: Date.now() }));
+  });
+
+  it('but an existing admin notification cannot be edited away', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await set(ref(ctx.database(), 'adminNotifs/a2'), { type: 'newReport', read: false, createdAt: 1 });
+    });
+    await assertFails(remove(ref(asStudent(), 'adminNotifs/a2')));
+    await assertFails(set(ref(asStudent(), 'adminNotifs/a2/read'), true));
+  });
+});
+
+// ── BOOKING STATE MACHINE ────────────────────────────────────────────────
+//
+// Locking the fields left the one field the app does write wide open: any
+// value, from any state, by either party. "cancelled" could go back to
+// "approved", a rejected booking could approve itself, and a student could
+// approve their own request — which is the one that matters, because an
+// approved booking is what unlocks the lesson and, now, the review.
+//
+// The machine, as the app actually drives it:
+//   (new)     → pending
+//   pending   → approved | rejected   (teacher only)
+//   pending   → cancelled             (either party)
+//   approved  → completed             (teacher only)
+//   approved  → cancelled             (either party)
+//   completed | rejected | cancelled  → terminal
+describe('bookings: only the real state transitions are allowed', () => {
+  it('a booking can only be created as pending', async () => {
+    await assertSucceeds(set(ref(asStudent(), 'bookings/new1'),
+      { studentId: STUDENT, teacherId: TEACHER, price: 80, createdAt: 2, status: 'pending' }));
+    await assertFails(set(ref(asStudent(), 'bookings/new2'),
+      { studentId: STUDENT, teacherId: TEACHER, price: 80, createdAt: 2, status: 'approved' }));
+  });
+
+  // The negative goes first on purpose: rewriting a status to the value it
+  // already holds is a no-op and stays allowed, so approving as the teacher
+  // first would make the student's attempt vacuously legal.
+  it('the teacher approves and rejects; the student cannot', async () => {
+    await assertFails(set(ref(asStudent(), 'bookings/b1/status'), 'approved'));
+    await assertFails(set(ref(asStudent(), 'bookings/b1/status'), 'rejected'));
+    await assertSucceeds(set(ref(asTeacher(), 'bookings/b1/status'), 'approved'));
+  });
+
+  it('the teacher completes an approved lesson; the student cannot', async () => {
+    await assertFails(set(ref(asStudent(), 'bookings/b4/status'), 'completed'));
+    await assertSucceeds(set(ref(asTeacher(), 'bookings/b4/status'), 'completed'));
+  });
+
+  it('either party can cancel — pending or approved', async () => {
+    await assertSucceeds(set(ref(asStudent(), 'bookings/b1/status'), 'cancelled'));
+    await assertSucceeds(set(ref(asTeacher(), 'bookings/b4/status'), 'cancelled'));
+  });
+
+  it('a completed booking is terminal — it cannot be reopened', async () => {
+    await assertFails(set(ref(asTeacher(), 'bookings/b2/status'), 'approved'));
+    await assertFails(set(ref(asTeacher(), 'bookings/b2/status'), 'pending'));
+    await assertFails(set(ref(asStudent(), 'bookings/b2/status'), 'pending'));
+  });
+
+  it('a cancelled booking cannot walk back to approved', async () => {
+    await assertSucceeds(set(ref(asTeacher(), 'bookings/b4/status'), 'cancelled'));
+    await assertFails(set(ref(asTeacher(), 'bookings/b4/status'), 'approved'));
+  });
+
+  it('a rejected booking cannot approve itself afterwards', async () => {
+    await assertSucceeds(set(ref(asTeacher(), 'bookings/b1/status'), 'rejected'));
+    await assertFails(set(ref(asTeacher(), 'bookings/b1/status'), 'approved'));
+  });
+
+  it('a pending booking cannot skip straight to completed', async () => {
+    await assertFails(set(ref(asTeacher(), 'bookings/b1/status'), 'completed'));
+  });
+
+  it('rewriting the same status is still allowed — retries must not break', async () => {
+    await assertSucceeds(set(ref(asTeacher(), 'bookings/b4/status'), 'approved'));
+  });
+
+  it('the admin can force any transition', async () => {
+    await assertSucceeds(set(ref(asAdmin(), 'bookings/b2/status'), 'approved'));
+  });
+});
+
+// ── REVIEWS: must point at a real, qualifying booking ────────────────────
+//
+// The review found reviews/$teacherId/$reviewId writable by anyone claiming
+// to be the author, with no check that a booking between the two ever
+// existed, completed or not — and no protection against writing the same
+// review twice. Reviews are now keyed by bookingId instead of a random push
+// id, which turns "one review per lesson" into a plain create-only rule and
+// lets a rule look the specific booking up by id to verify it.
+describe('reviews: keyed by bookingId, and the booking must qualify', () => {
+  const review = (from, to) => ({
+    from, to, stars: 5, review: 'Great!', type: 'studentToTeacher',
+    approved: false, createdAt: Date.now(), bookingId: 'b2',
+  });
+
+  it('a student can review after a completed booking', async () => {
+    await assertSucceeds(set(ref(asStudent(), 'reviews/teacher-uid/b2'), review(STUDENT, TEACHER)));
+  });
+
+  it('cannot review a second time against the same booking', async () => {
+    await assertSucceeds(set(ref(asStudent(), 'reviews/teacher-uid/b2'), review(STUDENT, TEACHER)));
+    await assertFails(set(ref(asStudent(), 'reviews/teacher-uid/b2'), review(STUDENT, TEACHER)));
+  });
+
+  it('cannot review against a booking that is only pending', async () => {
+    // b1 has no status field at all, i.e. not approved or completed.
+    await assertFails(set(ref(asStudent(), 'reviews/teacher-uid/b1'), review(STUDENT, TEACHER)));
+  });
+
+  it('cannot review a teacher with a booking id that belongs to someone else', async () => {
+    await assertFails(set(ref(asStranger(), 'reviews/teacher-uid/b2'), review(STRANGER, TEACHER)));
+  });
+
+  it('cannot review with a made-up booking id', async () => {
+    await assertFails(set(ref(asStudent(), 'reviews/teacher-uid/nope'),
+      { ...review(STUDENT, TEACHER), bookingId: 'nope' }));
+  });
+
+  it('cannot forge the "from" field to impersonate another reviewer', async () => {
+    await assertFails(set(ref(asStudent(), 'reviews/teacher-uid/b2'), review(TEACHER, TEACHER)));
+  });
+
+  it('the author can still delete their own review, which account deletion needs', async () => {
+    await assertSucceeds(set(ref(asStudent(), 'reviews/teacher-uid/b2'), review(STUDENT, TEACHER)));
+    await assertSucceeds(remove(ref(asStudent(), 'reviews/teacher-uid/b2')));
   });
 });

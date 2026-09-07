@@ -49,8 +49,28 @@ jobs:
           path: playwright-report/
           retention-days: 7
 
+  # אותו job כמו ב-test.yml, וכאן הוא השער האמיתי: הוא חוסם את הפריסה
+  # לייצור. בלעדיו הדיפלוי נשען על ה-e2e בלבד — ורגרסיה בחוקי האבטחה לא
+  # נראית לטסט שרץ מעל ה-JS, כי ה-stub שלו לא מכיר חוקים. זה בדיוק הדפוס
+  # שהחזיר את באג המחיקה ארבע פעמים.
+  rules:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+      - run: npm ci
+      - name: Run security rules tests
+        run: npm run test:rules
+
   deploy:
-    needs: test
+    needs: [test, rules]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

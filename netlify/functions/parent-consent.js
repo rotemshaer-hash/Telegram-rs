@@ -17,23 +17,31 @@
 // הטוקן הוא אמצעי הזיהוי היחיד כאן, ולכן הוא 32 בייטים אקראיים מ-crypto —
 // לא ניתן לניחוש, לא נגזר מה-uid, ולא ניתן לשחזור מתוך שום דבר שהילד רואה.
 
+const crypto = require('crypto');
 const { admin, initAdmin } = require('../lib/firebase-admin-init');
+const { sendViaEmailJS } = require('../lib/emailjs');
 
 const TOKEN_RE = /^[a-f0-9]{64}$/;
+const PARENT_CONSENT_DAYS = 14;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // תקרה גסה נגד סריקה. ניחוש טוקן של 256 ביט אינו מעשי ממילא, אבל תקרה זולה
 // מונעת גם ניסיונות אוטומטיים וגם הצפה של הפונקציה עצמה.
 const RATE_LIMIT_MAX = 20;
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 
+// יצירת בקשת הסכמה: עד 5 ניסיונות לשעה לכל uid. מספיק להרשמה שנכשלה וניסיון
+// חוזר, נמוך מדי כדי לאפשר הצפת תיבת ההורה במיילים.
+const CREATE_RATE_LIMIT_MAX = 5;
+const CREATE_RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
 
-async function withinRateLimit(db, ip) {
+async function withinRateLimit(db, path, ip, max, windowMs) {
   const key = String(ip || 'unknown').replace(/[.#$/[\]]/g, '_');
-  const ref = db.ref('consentRateLimit/' + key);
+  const ref = db.ref(path + '/' + key);
   const now = Date.now();
   const result = await ref.transaction((cur) => {
-    if (!cur || now - cur.start > RATE_LIMIT_WINDOW_MS) return { start: now, count: 1 };
-    if (cur.count >= RATE_LIMIT_MAX) return; // ביטול העסקה — חריגה
+    if (!cur || now - cur.start > windowMs) return { start: now, count: 1 };
+    if (cur.count >= max) return; // ביטול העסקה — חריגה
     return { start: cur.start, count: cur.count + 1 };
   });
   return result.committed;
@@ -73,19 +81,90 @@ exports.handler = async (event) => {
   }
 
   const { token, action } = body;
-  if (!TOKEN_RE.test(String(token || ''))) {
+  if (action !== 'info' && action !== 'approve' && action !== 'create') {
+    return { statusCode: 400, headers, body: JSON.stringify({ error: 'Invalid action' }) };
+  }
+  if (action !== 'create' && !TOKEN_RE.test(String(token || ''))) {
     return { statusCode: 400, headers, body: JSON.stringify({ error: 'Invalid token' }) };
   }
-  if (action !== 'info' && action !== 'approve') {
-    return { statusCode: 400, headers, body: JSON.stringify({ error: 'Invalid action' }) };
+
+  const ip = event.headers['x-nf-client-connection-ip'] || event.headers['client-ip'];
+
+  // ── create ───────────────────────────────────────────────────────────────
+  // חייב לרוץ כאן ולא בלקוח: אם הילד יוצר את הטוקן בעצמו, הוא יודע אותו —
+  // וזה בדיוק מה שהופך את "אישור ההורה" להוכחת החזקה של הילד, לא פעולה של
+  // ההורה. השרת מייצר את הטוקן, כותב אותו ישירות ל-DB עם ה-admin SDK (שעוקף
+  // חוקים), ושולח אותו לתיבת ההורה מהשרת — הלקוח לעולם לא רואה אותו.
+  if (action === 'create') {
+    if (!body.idToken) {
+      return { statusCode: 401, headers, body: JSON.stringify({ error: 'idToken is required' }) };
+    }
+    let uid;
+    try {
+      initAdmin();
+      uid = (await admin.auth().verifyIdToken(body.idToken)).uid;
+    } catch {
+      return { statusCode: 401, headers, body: JSON.stringify({ error: 'invalid or expired session' }) };
+    }
+    const parentEmail = String(body.parentEmail || '').trim();
+    const studentName = String(body.studentName || '').trim().slice(0, 100);
+    if (!EMAIL_RE.test(parentEmail)) {
+      return { statusCode: 400, headers, body: JSON.stringify({ error: 'invalid parentEmail' }) };
+    }
+
+    try {
+      const db = admin.database();
+      if (!(await withinRateLimit(db, 'parentConsentCreateRateLimit', uid, CREATE_RATE_LIMIT_MAX, CREATE_RATE_LIMIT_WINDOW_MS))) {
+        return { statusCode: 429, headers, body: JSON.stringify({ error: 'Too many requests' }) };
+      }
+
+      const newToken = crypto.randomBytes(32).toString('hex');
+      await db.ref('parentConsent/' + newToken).set({
+        uid,
+        studentName,
+        parentEmail,
+        status: 'pending',
+        createdAt: Date.now(),
+        expiresAt: Date.now() + PARENT_CONSENT_DAYS * 24 * 3600 * 1000,
+      });
+
+      const link = ALLOWED_ORIGINS[0] + '/?consent=' + newToken;
+      try {
+        await sendViaEmailJS(
+          parentEmail,
+          'נדרש אישורך — ' + (studentName || 'ילדך') + ' נרשם/ה ל-Drushe',
+          `שלום,\n\n` +
+          `${studentName || 'ילדכם'} נרשם/ה ל-Drushe — פלטפורמה שבה בני נוער מלמדים ילדים, בפיקוח הורים.\n\n` +
+          `**החשבון לא פעיל, ולא יופעל בלי אישורכם.** ללא אישורכם, ${studentName || 'ילדכם'} לא יוכל/תוכל ליצור קשר עם אף אחד באפליקציה.\n\n` +
+          `לאישור, היכנסו לקישור:\n${link}\n\n` +
+          `לאחר אישורכם, גם צוות Drushe עובר על כל הרשמה לפני שהחשבון נפתח.\n\n` +
+          `הקישור אישי ותקף ל-${PARENT_CONSENT_DAYS} ימים.\n\n` +
+          `אם לא אתם ההורה, או שאינכם מאשרים — פשוט התעלמו מהמייל. החשבון יישאר חסום.\n\n` +
+          `– צוות Drushe`
+        );
+      } catch (mailErr) {
+        console.error('[parent-consent] create email failed:', mailErr.message);
+        await db.ref('adminNotifs').push({
+          type: 'registrationFailed',
+          from: studentName || uid,
+          error: 'parentConsent email: ' + String(mailErr.message).slice(0, 200),
+          read: false,
+          createdAt: Date.now(),
+        });
+      }
+
+      return { statusCode: 200, headers, body: JSON.stringify({ ok: true }) };
+    } catch (err) {
+      console.error('[parent-consent] create', err);
+      return { statusCode: 500, headers, body: JSON.stringify({ error: 'server_error' }) };
+    }
   }
 
   try {
     initAdmin();
     const db = admin.database();
 
-    const ip = event.headers['x-nf-client-connection-ip'] || event.headers['client-ip'];
-    if (!(await withinRateLimit(db, ip))) {
+    if (!(await withinRateLimit(db, 'consentRateLimit', ip, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS))) {
       return { statusCode: 429, headers, body: JSON.stringify({ error: 'Too many requests' }) };
     }
 
