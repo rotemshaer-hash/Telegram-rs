@@ -1056,7 +1056,19 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.22';
+const APP_VERSION='4.11.23';
+
+// ─── הודעות קוליות — כבויות ────────────────────────────────────────────────
+// הקלטה קולית היא הערוץ היחיד בין ילדים שאיש לא בודק: אין תמלול, אין סינון,
+// והאודיו נשמר כ-base64 בתוך ההודעה עצמה. כל שאר התוכן עובר במסלול שיש בו
+// סינון או לפחות דיווח, ולכן ההבטחה "יש פיקוח על התוכן" הייתה נכונה בכל
+// מקום חוץ מכאן. ביקורת חיצונית סימנה את זה כחוסם לבדיקה הסגורה, וזו
+// ההחלטה: כבוי עד שיהיה תמלול שעובר באותו מסלול בטיחות.
+//
+// זה דגל ולא מחיקה — הקוד שלם ומחזירים אותו בשינוי השורה הזו. אבל הדגל לבדו
+// הוא UI: האכיפה האמיתית היא ב-database.rules.json, שדוחה הודעה עם audioData
+// או type=='audio', כך שגם קריאה ישירה מהקונסולה לא עוברת.
+const VOICE_ENABLED=false;
 // מוטבע מחדש בכל פריסה על ידי .github/workflows/deploy.yml. הערך כאן הוא
 // גיבוי לבנייה מקומית בלבד — תאריך שנשמר ביד הלך והזדקן בשקט והוצג
 // למשתמשים כתאריך הבנייה, שבועיים אחרי שהיה נכון.
@@ -1442,7 +1454,17 @@ function withTimeout(promise,ms,label){
 // ─── Firebase Storage upload ──────────────────────────────────────────────────
 // Uploads base64 data URL to Firebase Storage; returns download URL.
 // Gracefully falls back to the base64 string if Storage is unavailable.
-async function uploadBase64ToStorage(base64DataUrl, path){
+// `required:true` הוא ההבדל בין תמונה למסמך מזהה.
+//
+// עד היום כל כישלון העלאה החזיר בשקט את ה-base64 עצמו, והקורא כתב אותו
+// ל-RTDB. לתמונת סטורי זו נפילה חיננית סבירה. לצילום תעודת זהות של קטין זו
+// הורדה שקטה של רמת ההגנה: המסמך עובר מדלי שסגור ללקוחות לחלוטין אל תוך
+// מסד הנתונים — ומשם גם לתוך כל גיבוי יומי. איש לא ידע שזה קורה, כי הכישלון
+// היחיד היה console.warn.
+//
+// לכן מסמך מזהה נכשל במקום ליפול חזרה. הקורא אחראי לא לשמור כלום ולומר
+// למשתמש לנסות שוב — לא לשמור אותו במקום פחות מוגן.
+async function uploadBase64ToStorage(base64DataUrl, path, {required=false}={}){
   if(!base64DataUrl||!base64DataUrl.startsWith('data:'))return base64DataUrl||null;
   try{
     // Convert data URL → Blob without fetch() — fetch(data:) hangs in PWA service-worker context
@@ -1458,6 +1480,10 @@ async function uploadBase64ToStorage(base64DataUrl, path){
       return await snap.ref.getDownloadURL();
     })(),10000,'storage-upload');
   }catch(e){
+    if(required){
+      console.error('[Storage] identity-document upload failed, refusing base64 fallback:',e.message);
+      throw new Error('העלאת המסמך נכשלה. לא שמרנו אותו — נסה שוב בעוד רגע.');
+    }
     console.warn('[Storage] upload failed, fallback to base64:',e.message);
     return base64DataUrl;
   }
@@ -2619,10 +2645,18 @@ async function saveTeacherProfile(){
       }
     };
 
-    let _idPhotoValue=null;
+    // כישלון העלאה לא מפיל את שמירת הפרופיל ולא שומר את המסמך במקום פחות
+    // מוגן: הפרופיל נשמר בלי המסמך, האימות נשאר pending, והמורה מתבקש לנסות
+    // שוב. המנהל מקבל התראה, כי אחרת כישלון כזה שקוף לחלוטין.
+    let _idPhotoValue=null,_idPhotoFailed=false;
     if(_idPhotoBase64){
       showFireToast('⏳ מעלה תמונת תז...');
-      _idPhotoValue=await uploadBase64ToStorage(_idPhotoBase64,`id-photos/${currentUser.uid}/teacher-id`);
+      try{
+        _idPhotoValue=await uploadBase64ToStorage(_idPhotoBase64,`id-photos/${currentUser.uid}/teacher-id`,{required:true});
+      }catch(e){
+        _idPhotoFailed=true;
+        notifyAdmin({type:'idPhotoUploadFailed',uid:currentUser.uid,kind:'teacher-id',error:e?.message||''}).catch(()=>{});
+      }
     }
 
     if(_gpsSetup){
@@ -2663,6 +2697,9 @@ async function saveTeacherProfile(){
         idPhoto:_idPhotoValue,
         updatedAt:Date.now()
       });
+    }
+    if(_idPhotoFailed){
+      showFireToast('⚠️ הפרופיל נשמר, אך תמונת תעודת הזהות לא עלתה. נסה להעלות אותה שוב מהפרופיל.');
     }
 
     // מורה מייסד: נקבע פעם אחת, ברגע שהפרופיל נשמר בפועל — זה הרגע שבו הוא
@@ -4405,6 +4442,9 @@ function stopChatListener(){
 let _voiceRecorder=null,_voiceChunks=[],_isRecording=false,_voiceTimer=null,_voiceSecs=0;
 
 async function startVoiceRecording(otherUid,otherName){
+  // נבדק כאן ולא רק בכפתור: הכפתור לא מוצג כשהדגל כבוי, אבל הפונקציה גלובלית
+  // וניתן לקרוא לה מהקונסולה. זו השכבה השנייה מתוך שלוש (כפתור → כאן → חוקים).
+  if(!VOICE_ENABLED){showFireToast('🎤 הודעות קוליות כבויות כרגע');return;}
   if(_isRecording){stopVoiceRecording(otherUid,otherName);return;}
   if(!navigator.mediaDevices||!window.MediaRecorder){showFireToast('⚠️ הדפדפן שלך לא תומך בהקלטה');return;}
   try{
@@ -6351,14 +6391,39 @@ async function adminResolveReport(id,resolution){
 // נשמרת לתאימות לאחור: דיווחים ישנים והרגל ישן. מסלול אחד, לא שניים.
 async function adminCloseReport(id){return adminResolveReport(id,'dismissed');}
 
-async function adminDeleteReport(id){
-  if(!await _confirm('למחוק את הדיווח?',{confirmText:'מחק',cancelText:'ביטול',destructive:true}))return;
+// ארכוב, לא מחיקה.
+//
+// הדיווח נשא עד היום כפתור מחיקה שקרא ל-remove() — כלומר ה-audit trail שנבנה
+// בדיוק כדי לתעד מי טיפל, מתי ומה הוחלט, נמחק יחד עם הדיווח בלחיצה אחת.
+// דיווח בטיחות על קטין הוא בדיוק סוג הרשומה שצריכה לשרוד גם את מי שרוצה
+// שתיעלם, ובכלל זה טעות של המנהל עצמו.
+//
+// גבול ההגנה, בכנות: זו הסרה של המסלול מהאפליקציה. חוקי RTDB אינם יכולים
+// למנוע מהמנהל למחוק — ההרשאה בשורש היא ".write" למנהל, וב-RTDB הרשאה
+// שניתנה בצומת גבוה אינה ניתנת לשלילה מתחתיה. כלומר מי שנכנס לקונסולת
+// Firebase עדיין יכול. מה שנסגר כאן הוא שהאפליקציה כבר לא מציעה את זה,
+// והארכוב משאיר שורה בתיעוד במקום חור.
+async function adminArchiveReport(id){
+  if(!await _confirm('להעביר את הדיווח לארכיון? הוא יישאר מתועד ולא יימחק.',{confirmText:'לארכיון',cancelText:'ביטול'}))return;
   try{
-    await db.ref('reports/'+id).remove();
-    showFireToast('🗑 נמחק');
+    const at=Date.now();
+    await db.ref().update({
+      ['reports/'+id+'/status']:'archived',
+      ['reports/'+id+'/handledAt']:at,
+      ['reports/'+id+'/handledBy']:currentUser?.uid||'admin',
+      ['reports/'+id+'/handledByName']:currentUserData?.name||'מנהל'
+    });
+    await db.ref('reports/'+id+'/audit').push({
+      action:'archived',by:currentUser?.uid||'admin',
+      byName:currentUserData?.name||'מנהל',at
+    });
+    showFireToast('📦 הועבר לארכיון');
     await loadAdminData();renderAdminPanel();
   }catch(e){showFireToast('❌ '+e.message);}
 }
+
+// נשמרת לתאימות לאחור: קריאות ישנות ל-adminDeleteReport לא מוחקות יותר.
+async function adminDeleteReport(id){return adminArchiveReport(id);}
 
 // ─── VIDEO UPLOAD SYSTEM 📹 ──────────────────────────────────────────────
 let teacherVideos=[];
@@ -8296,7 +8361,7 @@ function renderAdminTab(){
           <div style="display:flex;gap:8px">
             <button onclick="adminResolveReport('${r.id}','confirmed')" style="flex:1;background:#DC2626;border:none;color:#fff;border-radius:50px;padding:9px;font-weight:800;font-size:11px;cursor:pointer">✔ מבוסס — טופל</button>
             <button onclick="adminResolveReport('${r.id}','dismissed')" style="flex:1;background:#10B981;border:none;color:#fff;border-radius:50px;padding:9px;font-weight:800;font-size:11px;cursor:pointer">סגור — לא מבוסס</button>
-            <button onclick="adminDeleteReport('${r.id}')" style="background:rgba(239,68,68,0.9);border:none;color:#fff;border-radius:50px;padding:9px 12px;font-weight:800;font-size:11px;cursor:pointer">🗑</button>
+            <button onclick="adminArchiveReport('${r.id}')" style="background:rgba(100,116,139,0.9);border:none;color:#fff;border-radius:50px;padding:9px 12px;font-weight:800;font-size:11px;cursor:pointer" title="לארכיון — נשמר ולא נמחק">📦</button>
           </div>
         </div>`;}).join('');
     }
@@ -10342,7 +10407,7 @@ function Chat(){
     <div class="chat-bar">
       ${_isRecording?`<span id="_voiceTimer" style="font-size:12px;color:#EF4444;font-weight:800;flex-shrink:0">🔴 0s</span>`:''}
       <input id="chatInputBox" placeholder="כתוב הודעה..." ${_isRecording?'disabled':''} onkeydown="if(event.key==='Enter')sendChatMessage('${c.otherUid}','${jsAttrEscape(c.otherName||'')}')">
-      <button id="_micBtn" onclick="startVoiceRecording('${c.otherUid}','${jsAttrEscape(c.otherName||'')}');render()" style="background:${_isRecording?'#EF4444':'rgba(20,184,166,0.1)'};border:${_isRecording?'none':'1.5px solid rgba(20,184,166,0.3)'};border-radius:50%;width:44px;height:44px;color:${_isRecording?'#fff':'#14B8A6'};cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center">${_isRecording?'<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>':'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>'}</button>
+      ${!VOICE_ENABLED?'':`<button id="_micBtn" onclick="startVoiceRecording('${c.otherUid}','${jsAttrEscape(c.otherName||'')}');render()" style="background:${_isRecording?'#EF4444':'rgba(20,184,166,0.1)'};border:${_isRecording?'none':'1.5px solid rgba(20,184,166,0.3)'};border-radius:50%;width:44px;height:44px;color:${_isRecording?'#fff':'#14B8A6'};cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center">${_isRecording?'<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>':'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>'}</button>`}
       <button onclick="sendChatMessage('${c.otherUid}','${jsAttrEscape(c.otherName||'')}')" style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;border-radius:50%;width:44px;height:44px;font-size:20px;color:#fff;cursor:pointer;flex-shrink:0;box-shadow:var(--gp)">↑</button>
     </div>
   </div>`;
@@ -14134,11 +14199,20 @@ async function firebaseRegister(email,password,userData){
     // שמור displayName ב-Auth עצמו — כגיבוי לשם גם אם DB יאבד
     if(userData.name) await cred.user.updateProfile({displayName:userData.name}).catch(()=>{});
     // העלה תמונת תז הורה ל-Storage (אם קיימת) לפני כתיבה ל-RTDB
+    // ההרשמה לא נופלת על כישלון העלאה — אבל המסמך גם לא נשמר כ-base64 ב-RTDB.
+    // הוא פשוט לא נשמר, והמשתמש מתבקש להעלות אותו שוב מהפרופיל. הדרישה היא
+    // שמסמך מזהה לא יישב מחוץ ל-Storage, לא שההרשמה תיכשל.
+    let _parentIdFailed=false;
     if(userData.parentIdPhoto&&userData.parentIdPhoto.startsWith('data:')){
       try{
         showFireToast('⏳ מעלה תמונת תז הורה...');
-        userData={...userData,parentIdPhoto:await uploadBase64ToStorage(userData.parentIdPhoto,`id-photos/${cred.user.uid}/parent-id`)};
-      }catch(storageErr){console.warn('Parent ID photo upload failed:',storageErr);}
+        userData={...userData,parentIdPhoto:await uploadBase64ToStorage(userData.parentIdPhoto,`id-photos/${cred.user.uid}/parent-id`,{required:true})};
+      }catch(storageErr){
+        console.error('Parent ID photo upload failed, not storing it:',storageErr);
+        _parentIdFailed=true;
+        const {parentIdPhoto:_drop,...rest}=userData;
+        userData={...rest,parentIdPhotoPending:true};
+      }
     }
     // שמירת פרטים ב-Database — אם נכשל, מוחקים את חשבון ה-Auth כדי למנוע "עצמות Auth"
     try{
@@ -14173,6 +14247,12 @@ async function firebaseRegister(email,password,userData){
           }
         }
       }
+      if(_parentIdFailed){
+        // מיידעים גם את המנהל: החשבון קיים אבל בלי המסמך, ואיש לא היה יודע.
+        notifyAdmin({type:'idPhotoUploadFailed',uid:cred.user.uid,kind:'parent-id',email}).catch(()=>{});
+        showFireToast('⚠️ החשבון נוצר, אך תמונת תעודת הזהות של ההורה לא עלתה. אפשר להעלות אותה שוב מהפרופיל.');
+      }
+
       // ── אישור הורה: יצירת טוקן ושליחת קישור ────────────────────────────────
       // רק לתלמידים. מורים עוברים אימות גיל ומסמך מול המנהל, לא דרך הורה.
       if((_userRecord.role||'student')==='student'&&_userRecord.parentEmail){
