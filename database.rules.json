@@ -306,7 +306,23 @@
         }
       }
     },
-    "reports": { ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'", ".indexOn": ["status"], "$reportId": { ".write": "auth != null && ((!data.exists() && newData.exists()) || auth.token.email == 'rotemshaer@gmail.com')" } },
+    "reports": {
+      ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'",
+      ".indexOn": ["status"],
+      "$reportId": {
+        ".write": "auth != null && ((!data.exists() && newData.exists()) || auth.token.email == 'rotemshaer@gmail.com')",
+        "severity": {
+          ".validate": "newData.val() == 'low' || newData.val() == 'medium' || newData.val() == 'high' || newData.val() == 'critical'"
+        },
+        "status": {
+          ".validate": "auth.token.email == 'rotemshaer@gmail.com' || newData.val() == 'open'"
+        },
+        "handledBy": { ".validate": "auth.token.email == 'rotemshaer@gmail.com'" },
+        "handledAt": { ".validate": "auth.token.email == 'rotemshaer@gmail.com'" },
+        "resolution": { ".validate": "auth.token.email == 'rotemshaer@gmail.com'" },
+        "audit": { ".write": "auth.token.email == 'rotemshaer@gmail.com'" }
+      }
+    },
     "favorites": {
       "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth != null && auth.uid == $uid" }
     },

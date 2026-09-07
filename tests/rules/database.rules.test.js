@@ -429,6 +429,66 @@ describe('bookings: price and the two parties cannot change after creation', () 
   });
 });
 
+// ── SAFETY GATE: the report's verdict belongs to the admin ───────────────
+//
+// Reports gained severity, an SLA due time, a resolution and an audit trail.
+// The reporter writes the report; everything that says what was *decided*
+// about it is the admin's. Otherwise the subject of a report could close it,
+// which is the same shape as every other hole this suite exists to catch.
+describe('reports: filed by anyone, judged by the admin', () => {
+  const report = (extra = {}) => ({
+    targetType: 'user', targetId: TEACHER, targetName: 'Teach',
+    reason: 'safety', reasonLabel: 'סכנת בטיחות', description: 'x',
+    reporterId: STUDENT, reporterName: 'Minor', reporterEmail: 'minor@example.com',
+    status: 'open', severity: 'critical', slaDueAt: Date.now() + 7200000,
+    createdAt: Date.now(), ...extra,
+  });
+
+  it('a user can still file a report, with a severity', async () => {
+    await assertSucceeds(set(ref(asStudent(), 'reports/r1'), report()));
+  });
+
+  it('a made-up severity is refused', async () => {
+    await assertFails(set(ref(asStudent(), 'reports/r2'), report({ severity: 'trivial' })));
+  });
+
+  it('a report cannot be filed already closed', async () => {
+    await assertFails(set(ref(asStudent(), 'reports/r3'), report({ status: 'closed' })));
+  });
+
+  it('the subject of a report cannot close it', async () => {
+    await assertSucceeds(set(ref(asStudent(), 'reports/r4'), report()));
+    await assertFails(set(ref(asTeacher(), 'reports/r4/status'), 'closed'));
+    await assertFails(set(ref(asTeacher(), 'reports/r4/resolution'), 'dismissed'));
+  });
+
+  it('nobody but the admin can forge who handled it', async () => {
+    await assertSucceeds(set(ref(asStudent(), 'reports/r5'), report()));
+    await assertFails(set(ref(asStudent(), 'reports/r5/handledBy'), STUDENT));
+    await assertFails(set(ref(asStudent(), 'reports/r5/handledAt'), Date.now()));
+  });
+
+  it('the audit trail cannot be written or rewritten by a user', async () => {
+    await assertSucceeds(set(ref(asStudent(), 'reports/r6'), report()));
+    await assertFails(set(ref(asStudent(), 'reports/r6/audit/a1'),
+      { at: Date.now(), by: STUDENT, action: 'dismissed', note: 'nothing to see' }));
+  });
+
+  it('the admin resolves it, and that is what gets recorded', async () => {
+    await assertSucceeds(set(ref(asStudent(), 'reports/r7'), report()));
+    await assertSucceeds(set(ref(asAdmin(), 'reports/r7/status'), 'closed'));
+    await assertSucceeds(set(ref(asAdmin(), 'reports/r7/resolution'), 'confirmed'));
+    await assertSucceeds(set(ref(asAdmin(), 'reports/r7/handledBy'), 'admin-uid'));
+    await assertSucceeds(set(ref(asAdmin(), 'reports/r7/audit/a1'),
+      { at: Date.now(), by: 'admin-uid', action: 'confirmed', note: 'actioned' }));
+  });
+
+  it('a reporter still cannot read the queue they file into', async () => {
+    await assertSucceeds(set(ref(asStudent(), 'reports/r8'), report()));
+    await assertFails(get(ref(asStudent(), 'reports')));
+  });
+});
+
 // ── NOTIFICATIONS: no writing into someone else's feed ───────────────────
 //
 // notifications/$uid/$notifId was ".write": "auth != null" — any signed-in
