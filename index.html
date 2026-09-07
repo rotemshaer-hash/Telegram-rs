@@ -1056,7 +1056,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.21';
+const APP_VERSION='4.11.22';
 // מוטבע מחדש בכל פריסה על ידי .github/workflows/deploy.yml. הערך כאן הוא
 // גיבוי לבנייה מקומית בלבד — תאריך שנשמר ביד הלך והזדקן בשקט והוצג
 // למשתמשים כתאריך הבנייה, שבועיים אחרי שהיה נכון.
@@ -4107,6 +4107,33 @@ async function deleteAllUserData(uid,role){
     await Promise.all([...mirrors].map(pth=>db.ref(pth).remove()));
     await Promise.all([...globals].map(pth=>db.ref(pth).remove()));
   }catch(_e){scanFailures.push('bookings');}
+
+  // ── קבצים ב-Firebase Storage ────────────────────────────────────────────
+  //
+  // עד 7.9.2026 זה לא היה רלוונטי: Storage מעולם לא הופעל בפרויקט, כל
+  // uploadBase64ToStorage נכשל ונפל אחורה לכתיבת ה-base64 ל-RTDB, ומחיקת
+  // ה-RTDB אכן ניקתה אותו. ברגע ש-Storage הופעל, ההעלאות באמת נוחתות שם —
+  // כולל `id-photos/<uid>/teacher-id` ו-`id-photos/<uid>/parent-id`, שהם
+  // צילומי תעודות זהות. בלי הבלוק הזה מחיקת חשבון הייתה מדווחת הצלחה
+  // ומשאירה אותם בדלי לנצח.
+  //
+  // שמות הקבצים בסטוריז ובתיק העבודות נושאים חותמת זמן, ולכן אי אפשר לנחש
+  // אותם — חייבים למנות את התיקייה. חוקי ה-Storage מתירים לבעלים (ולמנהל)
+  // למנות את התיקיות שלו, וזה מכוסה בטסטים ב-tests/rules/storage.rules.test.js.
+  const STORAGE_USER_FOLDERS=['id-photos','stories','portfolio','communityMedia'];
+  try{
+    if(typeof storage!=='undefined'&&storage){
+      for(const folder of STORAGE_USER_FOLDERS){
+        try{
+          const listed=await storage.ref(folder+'/'+uid).listAll();
+          await Promise.all(listed.items.map(it=>it.delete()));
+        }catch(e){
+          // "object-not-found" פירושו שאין מה למחוק — זו לא תקלה.
+          if(e?.code&&e.code!=='storage/object-not-found')throw e;
+        }
+      }
+    }
+  }catch(_e){scanFailures.push('storage');}
 
   const paths=USER_DATA_PATHS.map(p=>p+'/'+uid);
   if(isTeacher)paths.push('teachers/'+uid);

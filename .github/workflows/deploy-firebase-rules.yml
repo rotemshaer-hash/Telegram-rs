@@ -57,21 +57,18 @@ jobs:
       - name: Deploy database rules
         run: GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa.json firebase deploy --only database --project kidemy-83a17 --non-interactive
 
-      # מזהיר ולא מפיל, בכוונה.
+      # חוסם, מ-7.9.2026.
       #
-      # שלושה חסמים נפתרו כאן בזה אחר זה (הרשאת serviceusage, הפעלת ה-API,
-      # ותפקיד Cloud Storage for Firebase Admin), והשלב עדיין נופל על
-      # firebasestorage.defaultBucket.get. ההפרש בין storage ל-database הוא
-      # שחוקי ה-database משתנים בפועל, בעוד storage.rules לא נגע מאז שהריפו
-      # נוצר — ואם ישתנה אפשר לפרסם אותו ידנית בקונסולה בדקה.
+      # ההיסטוריה, כי היא מסבירה למה זה היה אזהרה עד עכשיו: השלב נפל חודשים
+      # על 403, והוענקו שלוש הרשאות IAM שונות כדי לפתור אותו. אף אחת לא
+      # עזרה — כי זו מעולם לא הייתה בעיית הרשאות. Firebase Storage פשוט
+      # לא הופעל בפרויקט, והשגיאה אמרה את זה כל הזמן במילים "or it may not
+      # exist". ברגע שהבעלים לחץ "Get started" ושדרג ל-Blaze, הפריסה עברה.
       #
-      # job שנשאר אדום לתמיד גרוע יותר מ-job שמזהיר: הוא מאמן את כולם
-      # להתעלם מהכישלון הבא. בדיוק זה קרה כאן — 19 הרצות אדומות ברצף הסתירו
-      # את העובדה שגם חוקי ה-database לא נפרסו.
-      #
-      # האזהרה מופיעה בסיכום ההרצה, כך שהפער נשאר גלוי ולא נעלם בשקט.
+      # עד אז זו הייתה אזהרה בכוונה: job שנשאר אדום לתמיד מאמן את כולם
+      # להתעלם מהכישלון הבא, וזה בדיוק מה שקרה — 19 הרצות אדומות ברצף
+      # הסתירו שגם חוקי ה-database לא נפרסו. עכשיו שהוא יכול לעבור, אין שום
+      # סיבה להשאיר אותו רך: storage.rules הוא מה שמגן על צילומי תעודות
+      # הזהות של הקטינים, ושינוי בו שלא נפרס חייב להפיל את ה-CI.
       - name: Deploy storage rules
-        run: |
-          if ! GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa.json firebase deploy --only storage --project kidemy-83a17 --non-interactive; then
-            echo "::warning::Storage rules were NOT deployed — database rules above were. storage.rules is what protects minors' ID photos, so if you changed it, publish it by hand at https://console.firebase.google.com/project/kidemy-83a17/storage/rules . Known cause: the FIREBASE_SERVICE_ACCOUNT service account is denied firebasestorage.defaultBucket.get even with Cloud Storage for Firebase Admin granted; see HANDOFF.md."
-          fi
+        run: GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa.json firebase deploy --only storage --project kidemy-83a17 --non-interactive
