@@ -130,7 +130,9 @@
         ".read": "auth != null && ($chatId.beginsWith(auth.uid + '_') || $chatId.endsWith('_' + auth.uid) || auth.token.email == 'rotemshaer@gmail.com')",
         ".write": "auth != null && !newData.exists() && ($chatId.beginsWith(auth.uid + '_') || $chatId.endsWith('_' + auth.uid))",
         "$msgId": {
-          ".write": "auth != null && ($chatId.beginsWith(auth.uid + '_') || $chatId.endsWith('_' + auth.uid)) && root.child('users').child(auth.uid).child('blocked').val() != true && (!data.exists() && newData.child('from').val() == auth.uid && newData.child('text').isString() && newData.child('createdAt').isNumber())"
+          ".write": "auth != null && ($chatId.beginsWith(auth.uid + '_') || $chatId.endsWith('_' + auth.uid)) && root.child('users').child(auth.uid).child('blocked').val() != true && (!data.exists() && newData.child('from').val() == auth.uid && newData.child('text').isString() && newData.child('createdAt').isNumber())",
+          "audioData": { ".validate": false },
+          "type": { ".validate": "newData.val() != 'audio'" }
         }
       }
     },
@@ -312,7 +314,13 @@
       "$reportId": {
         ".write": "auth != null && ((!data.exists() && newData.exists()) || auth.token.email == 'rotemshaer@gmail.com')",
         "severity": {
-          ".validate": "newData.val() == 'low' || newData.val() == 'medium' || newData.val() == 'high' || newData.val() == 'critical'"
+          ".validate": "auth.token.email == 'rotemshaer@gmail.com' || newData.val() == ((newData.parent().child('reason').val() == 'safety' || newData.parent().child('reason').val() == 'auto') ? 'critical' : ((newData.parent().child('reason').val() == 'harassment' || newData.parent().child('reason').val() == 'inappropriate') ? 'high' : (newData.parent().child('reason').val() == 'spam' ? 'low' : 'medium')))"
+        },
+        "createdAt": {
+          ".validate": "auth.token.email == 'rotemshaer@gmail.com' || (newData.isNumber() && newData.val() <= now && newData.val() > now - 300000)"
+        },
+        "slaDueAt": {
+          ".validate": "auth.token.email == 'rotemshaer@gmail.com' || newData.val() == newData.parent().child('createdAt').val() + ((newData.parent().child('severity').val() == 'critical' ? 7200000 : (newData.parent().child('severity').val() == 'high' ? 43200000 : (newData.parent().child('severity').val() == 'medium' ? 172800000 : 604800000))))"
         },
         "status": {
           ".validate": "auth.token.email == 'rotemshaer@gmail.com' || newData.val() == 'open'"

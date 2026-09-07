@@ -436,13 +436,19 @@ describe('bookings: price and the two parties cannot change after creation', () 
 // about it is the admin's. Otherwise the subject of a report could close it,
 // which is the same shape as every other hole this suite exists to catch.
 describe('reports: filed by anyone, judged by the admin', () => {
-  const report = (extra = {}) => ({
-    targetType: 'user', targetId: TEACHER, targetName: 'Teach',
-    reason: 'safety', reasonLabel: 'סכנת בטיחות', description: 'x',
-    reporterId: STUDENT, reporterName: 'Minor', reporterEmail: 'minor@example.com',
-    status: 'open', severity: 'critical', slaDueAt: Date.now() + 7200000,
-    createdAt: Date.now(), ...extra,
-  });
+  // One timestamp, not two: slaDueAt must now equal createdAt + the severity's
+  // window exactly, so two separate Date.now() calls a millisecond apart would
+  // make every fixture invalid for a reason that has nothing to do with the test.
+  const report = (extra = {}) => {
+    const createdAt = Date.now();
+    return {
+      targetType: 'user', targetId: TEACHER, targetName: 'Teach',
+      reason: 'safety', reasonLabel: 'סכנת בטיחות', description: 'x',
+      reporterId: STUDENT, reporterName: 'Minor', reporterEmail: 'minor@example.com',
+      status: 'open', severity: 'critical', slaDueAt: createdAt + 7200000,
+      createdAt, ...extra,
+    };
+  };
 
   it('a user can still file a report, with a severity', async () => {
     await assertSucceeds(set(ref(asStudent(), 'reports/r1'), report()));
@@ -486,6 +492,100 @@ describe('reports: filed by anyone, judged by the admin', () => {
   it('a reporter still cannot read the queue they file into', async () => {
     await assertSucceeds(set(ref(asStudent(), 'reports/r8'), report()));
     await assertFails(get(ref(asStudent(), 'reports')));
+  });
+
+  // ── severity and SLA are derived, not asserted ──
+  //
+  // Until now the whole safety gate rested on client JS: severity and slaDueAt
+  // were computed in the browser and written verbatim. Whoever filed decided how
+  // urgent their own report was, and could give it a due date in the next century
+  // so it never showed as breached. The rule now derives both from the reason.
+
+  it('a safety report cannot be filed as low severity', async () => {
+    await assertFails(set(ref(asStudent(), 'reports/s1'),
+      report({ severity: 'low', slaDueAt: Date.now() + 604800000 })));
+  });
+
+  it('a spam report cannot be inflated to critical', async () => {
+    const createdAt = Date.now();
+    await assertFails(set(ref(asStudent(), 'reports/s2'),
+      report({ reason: 'spam', severity: 'critical', createdAt, slaDueAt: createdAt + 7200000 })));
+  });
+
+  it('each reason gets exactly its own severity and window', async () => {
+    const cases = [
+      ['safety', 'critical', 7200000], ['auto', 'critical', 7200000],
+      ['harassment', 'high', 43200000], ['inappropriate', 'high', 43200000],
+      ['fake', 'medium', 172800000], ['other', 'medium', 172800000],
+      ['spam', 'low', 604800000],
+    ];
+    for (const [reason, severity, window] of cases) {
+      const createdAt = Date.now();
+      await assertSucceeds(set(ref(asStudent(), `reports/ok-${reason}`),
+        report({ reason, severity, createdAt, slaDueAt: createdAt + window })));
+    }
+  });
+
+  it('the SLA deadline cannot be pushed into the future', async () => {
+    const createdAt = Date.now();
+    await assertFails(set(ref(asStudent(), 'reports/s3'),
+      report({ createdAt, slaDueAt: createdAt + 365 * 24 * 3600000 })));
+  });
+
+  it('a report cannot be backdated to look already overdue, or predated', async () => {
+    await assertFails(set(ref(asStudent(), 'reports/s4'), report({ createdAt: 1000 })));
+    await assertFails(set(ref(asStudent(), 'reports/s5'),
+      report({ createdAt: Date.now() + 3600000 })));
+  });
+
+  it('the admin can archive a report instead of deleting it', async () => {
+    await assertSucceeds(set(ref(asStudent(), 'reports/s6'), report()));
+    await assertSucceeds(set(ref(asAdmin(), 'reports/s6/status'), 'archived'));
+    await assertSucceeds(set(ref(asAdmin(), 'reports/s6/audit/a1'),
+      { at: Date.now(), by: 'admin-uid', action: 'archived' }));
+    await assertFails(set(ref(asStudent(), 'reports/s6/status'), 'archived'));
+  });
+});
+
+// ── VOICE: switched off at the rule, not only in the UI ──────────────────
+//
+// Voice notes were the one channel between children that nothing inspected:
+// no transcription, no filtering, and the audio stored as base64 inside the
+// message. An external review made disabling it a condition of closed
+// testing. The UI flag alone would be cosmetic — startVoiceRecording is a
+// global function anyone can call from the console — so the rule refuses the
+// message itself.
+describe('voice notes are refused', () => {
+  const chat = `${STUDENT}_${TEACHER}`;
+  const msg = (extra = {}) => ({
+    from: STUDENT, fromName: 'Minor', to: TEACHER, toName: 'Teach',
+    text: 'hello', createdAt: Date.now(), ...extra,
+  });
+
+  // Keys must not collide with the seed: `m1` is already seeded, and a write
+  // onto an existing message is refused by the create-only clause — so a test
+  // using that key would pass against the old rules too and prove nothing.
+  it('a message carrying audio data is refused', async () => {
+    await assertFails(set(ref(asStudent(), `messages/${chat}/voice1`),
+      msg({ type: 'audio', audioData: 'data:audio/webm;base64,AAAA', duration: 3 })));
+  });
+
+  it('audio data is refused even when the type does not say audio', async () => {
+    await assertFails(set(ref(asStudent(), `messages/${chat}/voice2`),
+      msg({ audioData: 'data:audio/webm;base64,AAAA' })));
+  });
+
+  it('claiming type audio is refused even with no payload', async () => {
+    await assertFails(set(ref(asStudent(), `messages/${chat}/voice3`), msg({ type: 'audio' })));
+  });
+
+  it('an ordinary text message still goes through', async () => {
+    await assertSucceeds(set(ref(asStudent(), `messages/${chat}/text1`), msg()));
+  });
+
+  it('an image message still goes through', async () => {
+    await assertSucceeds(set(ref(asStudent(), `messages/${chat}/image1`),
+      msg({ type: 'image', text: '📷 תמונה' })));
   });
 });
 

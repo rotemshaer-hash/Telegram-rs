@@ -146,6 +146,36 @@ hdr_check "Strict-Transport-Security"
 
 echo ""
 
+# ── שער הבטיחות: החומרה מוגדרת פעמיים, וחייבת להסכים ─────────────────────────
+echo "-- Report severity mapping (index.html <-> database.rules.json) --"
+
+if _sev_out=$(node scripts/check-severity-ssot.js 2>&1); then
+  pass "Report severity/SLA: $_sev_out"
+else
+  fail "Report severity/SLA drifted between index.html and database.rules.json:"
+  echo "$_sev_out" | sed 's/^/     /'
+fi
+
+echo ""
+
+# ── הודעות קוליות כבויות בשתי השכבות ─────────────────────────────────────────
+# הדגל ב-index.html מסתיר את הכפתור; החוק דוחה את ההודעה. דגל בלי חוק הוא
+# קוסמטיקה — startVoiceRecording היא פונקציה גלובלית שאפשר לקרוא לה מהקונסולה.
+echo "-- Voice notes disabled --"
+
+if grep -q "const VOICE_ENABLED=false" index.html; then
+  pass "VOICE_ENABLED is false in index.html"
+  if grep -q '"audioData": { ".validate": false }' database.rules.json; then
+    pass "database.rules.json refuses audioData"
+  else
+    fail "VOICE_ENABLED is false but database.rules.json still accepts audioData"
+  fi
+else
+  pass "VOICE_ENABLED is on — the rule-level block is not required"
+fi
+
+echo ""
+
 # ── Result ────────────────────────────────────────────────────────────────────
 if [ "$ERRORS" -gt 0 ]; then
   echo "🚫  Validation FAILED — $ERRORS violation(s). Deploy blocked."
