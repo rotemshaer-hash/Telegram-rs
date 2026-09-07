@@ -23,15 +23,15 @@ jobs:
         working-directory: scripts
         run: npm install
 
-      # אם סודות ה-staging חסרים הסקריפט נופל במפורש ולא חוזר בשקט על
-      # הייצור — ראה lib/admin.js. כישלון כזה הוא תקלת הגדרה, לא תרגיל שנכשל,
-      # וההודעה ב-Issue אומרת את ההבדל.
+      # אם STAGING_DB_URL חסר הסקריפט נופל במפורש ולא חוזר בשקט על הייצור —
+      # ראה lib/admin.js. כישלון כזה הוא תקלת הגדרה, לא תרגיל שנכשל, וההודעה
+      # ב-Issue אומרת את ההבדל.
       - name: Restore yesterday's production backup into staging
         working-directory: scripts
         env:
+          # סוד אחד לשתי הסביבות: staging הוא מופע RTDB נוסף באותו פרויקט,
+          # ולכן חשבון השירות הקיים כבר מגיע לשניהם. מה שמפריד הוא הכתובת.
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          FIREBASE_SERVICE_ACCOUNT_STAGING: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_STAGING }}
-          STAGING_PROJECT_ID: ${{ vars.STAGING_PROJECT_ID }}
           STAGING_DB_URL: ${{ vars.STAGING_DB_URL }}
         run: node restore-drill.js
 
@@ -50,8 +50,8 @@ jobs:
               `לוג הריצה: ${url}`,
               '',
               'הלוג מבחין בין שני מקרים שונים לגמרי:',
-              '- **תקלת הגדרה** — חסרים `FIREBASE_SERVICE_ACCOUNT_STAGING`,',
-              '  `STAGING_PROJECT_ID` או `STAGING_DB_URL`. התרגיל לא רץ בכלל.',
+              '- **תקלת הגדרה** — חסר המשתנה `STAGING_DB_URL`.',
+              '  התרגיל לא רץ בכלל.',
               '- **התרגיל נכשל** — הגיבוי ריק, פגום, או שהשחזור יצא חלקי.',
               '  זו תקלה אמיתית בשרשרת הגיבוי, וצריך לטפל בה עכשיו.',
               '',

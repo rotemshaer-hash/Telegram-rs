@@ -1,0 +1,72 @@
+name: Provision Staging Database
+
+# ── למה workflow ולא הוראות לבעלים ──
+#
+# הבעלים עובד מטלפון, וכל צעד בקונסולה שאפשר להימנע ממנו הוא צעד שנחסך.
+# מסתבר שאפשר להימנע כמעט מכולם: מופע RTDB נוסף **באותו פרויקט** נוצר
+# מה-CLI עם חשבון השירות שכבר קיים בסוד FIREBASE_SERVICE_ACCOUNT. אין
+# פרויקט חדש, אין סוד חדש, אין קונפיג להדביק, ואין Blaze שני.
+#
+# ── מה זה כן מבודד ומה לא ──
+#
+# מבודד: **הנתונים**. תרגיל השחזור, סריקת היתומים אחרי מחיקה, וכל preview של
+# PR יכולים לכתוב בלי לגעת במסד שמשתמשים אמיתיים יושבים בו. זה הפער שבגללו
+# הבודק ביקש staging, וזה מה שנסגר.
+#
+# לא מבודד: Auth, Storage, וקריסה ברמת הפרויקט. מי שרוצה הגנה מפני אובדן
+# הפרויקט צריך פרויקט שני — זו החלטה נפרדת, והיא מתועדת ב-HANDOFF ולא
+# מוצגת כאילו נסגרה.
+#
+# רץ על push לענף הזה, כי הסשן שכותב אותו יכול לדחוף אבל אינו יכול להריץ
+# workflow ידנית (403 על dispatches). פעולה חד-פעמית ואידמפוטנטית.
+
+on:
+  push:
+    branches: [claude/provision-staging]
+  workflow_dispatch:
+
+jobs:
+  provision:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install -g firebase-tools
+
+      - name: Write service account credentials
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "::error::חסר הסוד FIREBASE_SERVICE_ACCOUNT."
+            exit 1
+          fi
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > /tmp/sa.json
+
+      - name: Create the staging database instance
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: /tmp/sa.json
+        run: |
+          set -o pipefail
+          echo "== existing instances before =="
+          firebase database:instances:list --project kidemy-83a17 --non-interactive || true
+
+          # אידמפוטנטי: אם המופע כבר קיים, זו הצלחה ולא כישלון. הרצה חוזרת
+          # של פעולת הקמה חייבת להיות בטוחה, אחרת איש לא יעז להריץ אותה שוב.
+          if firebase database:instances:list --project kidemy-83a17 --non-interactive 2>/dev/null | grep -q 'drushe-staging'; then
+            echo "already exists: drushe-staging"
+          else
+            echo "== creating drushe-staging =="
+            firebase database:instances:create drushe-staging \
+              --project kidemy-83a17 --non-interactive
+          fi
+
+          echo ""
+          echo "== instances after =="
+          firebase database:instances:list --project kidemy-83a17 --non-interactive
+
+          echo ""
+          echo "The URL of drushe-staging above is the value for STAGING_DB_URL."

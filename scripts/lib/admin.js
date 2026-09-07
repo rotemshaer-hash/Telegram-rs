@@ -16,9 +16,18 @@ const STORAGE_BUCKET = process.env.FIREBASE_STORAGE_BUCKET || `${PROJECT_ID}.fir
 
 // ─── שתי סביבות, והגבול ביניהן ──────────────────────────────────────────────
 //
-// ייצור כתוב כאן בקוד; staging מגיע ממשתני סביבה. זה לא חוסר עקביות — זה
-// הכיוון הבטוח: סקריפט שרץ בלי הסודות של staging **לא מקבל** יעד staging
-// ונופל, במקום ליפול בשקט חזרה על הייצור. ההפך היה הופך תרגיל שחזור לאירוע.
+// staging הוא **מופע RTDB נוסף באותו פרויקט**, ולא פרויקט שני. זו הייתה
+// החלטה מודעת: פרויקט שני מחייב את הבעלים לעבור רצף מסכים בקונסולה מהטלפון,
+// ליצור חשבון שירות נוסף ולהדביק סוד נוסף — בעוד שמופע נוסף נוצר מה-CLI עם
+// ההרשאות שכבר יש. מה שהבודק ביקש staging בשבילו הוא בידוד **נתונים**, וזה
+// בדיוק מה שמופע נפרד נותן.
+//
+// מה שזה לא נותן, ולא מתחזים לכך: בידוד Auth ו-Storage, והגנה מפני אובדן
+// הפרויקט. שני אלה דורשים פרויקט שני, וזו החלטה פתוחה.
+//
+// כתובת ה-staging מגיעה ממשתנה סביבה, ואין לה ברירת מחדל. סקריפט שרץ בלי
+// הכתובת **נופל**, במקום ליפול בשקט חזרה על הייצור. ההפך היה הופך תרגיל
+// שחזור לאירוע ייצור.
 const ENVS = {
   production: {
     projectId: PROJECT_ID,
@@ -27,29 +36,29 @@ const ENVS = {
     secretVar: 'FIREBASE_SERVICE_ACCOUNT',
   },
   staging: {
-    projectId: process.env.STAGING_PROJECT_ID || '',
+    projectId: PROJECT_ID,
     dbUrl: process.env.STAGING_DB_URL || '',
-    bucket: process.env.STAGING_STORAGE_BUCKET || '',
-    secretVar: 'FIREBASE_SERVICE_ACCOUNT_STAGING',
+    // Storage אינו מבודד — הדלי משותף לפרויקט. סריקת יתומים ב-staging
+    // מכסה את ה-RTDB בלבד, וזה נאמר במפורש ולא מוסתר מאחורי ערך ברירת מחדל.
+    bucket: '',
+    secretVar: 'FIREBASE_SERVICE_ACCOUNT',
   },
 };
 
 function envConfig(name) {
   const cfg = ENVS[name];
   if (!cfg) throw new Error(`סביבה לא מוכרת: ${name}`);
-  if (!cfg.projectId || !cfg.dbUrl) {
+  if (!cfg.dbUrl) {
     throw new Error(
-      `הסביבה '${name}' אינה מוגדרת. חסרים STAGING_PROJECT_ID / STAGING_DB_URL. ` +
-      'לא נופלים חזרה על הייצור.'
+      `הסביבה '${name}' אינה מוגדרת — חסר STAGING_DB_URL. לא נופלים חזרה על הייצור.`
     );
   }
-  // הגבול עצמו. אם משתנה סביבה שגוי מכוון את staging אל הייצור, כל סקריפט
-  // שכותב ל-staging יכתוב לייצור — וזה בדיוק התרחיש שסביבת בדיקות נועדה
-  // למנוע. נבדק כאן, פעם אחת, במקום בכל קורא.
-  if (name !== 'production' && (cfg.dbUrl === DB_URL || cfg.projectId === PROJECT_ID)) {
-    throw new Error(
-      `הסביבה '${name}' מצביעה על פרויקט הייצור (${cfg.projectId}). נעצר.`
-    );
+  // הגבול עצמו, והוא כתובת המסד ולא מזהה הפרויקט: שתי הסביבות חולקות פרויקט
+  // בכוונה, ולכן מה שמפריד ביניהן הוא בדיוק המסד שכותבים אליו. משתנה סביבה
+  // שגוי שמכוון את staging אל מסד הייצור הופך כל כתיבה של תרגיל לכתיבה
+  // אמיתית — וזה התרחיש שסביבת הבדיקות קיימת כדי למנוע.
+  if (name !== 'production' && cfg.dbUrl === DB_URL) {
+    throw new Error(`הסביבה '${name}' מצביעה על מסד הייצור. נעצר.`);
   }
   return cfg;
 }

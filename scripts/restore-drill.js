@@ -10,13 +10,15 @@
 //
 // ── הגבול, וזה כל העניין ──
 //
-// הסקריפט קורא מהייצור וכותב ל-staging. הוא לעולם לא כותב לייצור:
-//   1. lib/admin.js מסרב לתת יעד staging שמצביע על פרויקט הייצור.
+// staging הוא מופע RTDB נוסף **באותו פרויקט**, ולכן מה שמפריד בין תרגיל
+// לאירוע הוא כתובת המסד ותו לא. הסקריפט קורא מהייצור וכותב ל-staging, ולעולם
+// לא כותב לייצור:
+//   1. lib/admin.js מסרב לתת יעד staging שכתובתו היא מסד הייצור.
 //   2. כאן, שוב, לפני הכתיבה — כי בדיקה אחת שנשענת על קובץ אחר היא בדיוק
 //      סוג ההגנה שנשברת כשמישהו משנה את הקובץ ההוא.
 // שכבה כפולה לכתיבה שדורסת מסד שלם היא לא פרנויה, היא פרופורציה.
 'use strict';
-const { withBothEnvs, DB_URL, PROJECT_ID } = require('./lib/admin');
+const { withBothEnvs, DB_URL } = require('./lib/admin');
 
 const PREFIX = 'backups/';
 
@@ -37,10 +39,12 @@ function countNodes(value) {
 }
 
 async function run({ production, staging }) {
-  if (staging.dbUrl === DB_URL || staging.projectId === PROJECT_ID) {
-    throw new Error('יעד התרגיל הוא הייצור. נעצר לפני הכתיבה.');
+  // שתי הסביבות חולקות פרויקט בכוונה, ולכן הבדיקה היא על כתובת המסד.
+  if (staging.dbUrl === DB_URL) {
+    throw new Error('יעד התרגיל הוא מסד הייצור. נעצר לפני הכתיבה.');
   }
-  console.log(`🎯 יעד: ${staging.projectId} (מקור: ${production.projectId})`);
+  console.log(`🎯 יעד: ${staging.dbUrl}`);
+  console.log(`📖 מקור: ${production.dbUrl}`);
 
   const file = await newestBackup(production.bucket);
   const [buf] = await file.download();
