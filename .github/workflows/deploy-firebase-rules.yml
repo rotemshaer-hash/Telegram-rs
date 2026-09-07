@@ -13,7 +13,29 @@ on:
       - 'firebase.json'
 
 jobs:
+  # 85 טסטים נכתבו כדי להגן על database.rules.json — ועד עכשיו הם לא שמרו
+  # עליו בדרך לייצור: ה-workflow הזה פרס את הקובץ לפיירבייס האמיתי בלי
+  # להריץ אף אחד מהם. רגרסיה בחוקים שמוזגה ל-main הייתה עולה לייצור, והיחיד
+  # שהיה תופס אותה הוא ה-job על ענף הפיצ'ר — כלומר *לפני* המיזוג, ורק אם
+  # מישהו הסתכל. עכשיו הפריסה נחסמת.
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+      - run: npm ci
+      - name: Run security rules tests
+        run: npm run test:rules
+
   deploy:
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

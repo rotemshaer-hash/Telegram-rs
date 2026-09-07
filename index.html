@@ -1056,7 +1056,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.19';
+const APP_VERSION='4.11.20';
 // מוטבע מחדש בכל פריסה על ידי .github/workflows/deploy.yml. הערך כאן הוא
 // גיבוי לבנייה מקומית בלבד — תאריך שנשמר ביד הלך והזדקן בשקט והוצג
 // למשתמשים כתאריך הבנייה, שבועיים אחרי שהיה נכון.
@@ -3263,10 +3263,6 @@ async function approveBooking(bookingId){
     const _convInit={otherUid:b.studentId,otherName:b.studentName||'תלמיד',lastMessage:`שיעור אושר ✅ ${b.day||''} ${b.time||''}`,lastTime:Date.now(),unread:false};
     db.ref('userChats/'+currentUser.uid+'/'+b.studentId).set(_convInit).catch(()=>{});
     db.ref('userChats/'+b.studentId+'/'+currentUser.uid).set({..._convInit,otherUid:currentUser.uid,otherName:currentUserData?.name||b.teacherName||'',unread:false}).catch(()=>{});
-    // רישום משתתפי הצ'אט — נדרש לכלל אבטחת messages ב-Firebase
-    const _cid=getChatId(currentUser.uid,b.studentId);
-    db.ref('chatParticipants/'+_cid+'/'+currentUser.uid).set(true).catch(()=>{});
-    db.ref('chatParticipants/'+_cid+'/'+b.studentId).set(true).catch(()=>{});
     showFireToast('✅ אישרת את ההזמנה!');
     await loadTeacherBookings();
     render();
@@ -4013,6 +4009,11 @@ const USER_DATA_PATHS=['users','userChats','notifications','userBookings','favor
   'chats','userCredits'];
 
 async function deleteAllUserData(uid,role){
+  // כישלון בסריקות שלמטה נבלע עד עכשיו ב-catch ריק. זה בדיוק הדפוס שהחזיר
+  // את באג המחיקה ארבע פעמים: הסריקה נכשלת, המסך מדווח "נמחק בהצלחה",
+  // והעותקים — שנושאים שם של קטין ומייל של ההורה — נשארים במסד. הן מדווחות
+  // עכשיו דרך אותו failedPaths שכבר עוצר את מחיקת ההזדהות.
+  const scanFailures=[];
   const isTeacher=role==='teacher';
 
   // הודעות פרטיות: תלוי בקריאת userChats לפני שהוא נמחק, אז חייב לרוץ ראשון
@@ -4037,7 +4038,7 @@ async function deleteAllUserData(uid,role){
       postsSnap.forEach(p=>{if(p.val().authUid===uid)delPosts.push(p.key);});
       await Promise.all(delPosts.map(k=>db.ref('communityPosts/'+k).remove()));
     }
-  }catch(_e){}
+  }catch(_e){scanFailures.push('communityPosts');}
 
   // ביקורות שהמשתמש כתב (כתלמיד, על מורים שונים — reviews/<teacherId>/<reviewId>).
   // אותו באג בדיוק: הכותב נשמר בשדה from, לא uid.
@@ -4051,7 +4052,7 @@ async function deleteAllUserData(uid,role){
       });
       await Promise.all(delRevs.map(p=>db.ref(p).remove()));
     }
-  }catch(_e){}
+  }catch(_e){scanFailures.push('reviews');}
 
   // pendingReviews — עותק שטוח של כל ביקורת עבור תור המנהל, כולל שם הכותב
   // וטקסט הביקורת. הוא מנוקה רק כשמנהל מאשר/דוחה ביקורת בודדת, ולכן ביקורת
@@ -4070,7 +4071,7 @@ async function deleteAllUserData(uid,role){
       pendSnap.forEach(r=>{if(r.val().from===uid)delPend.push(r.key);});
       await Promise.all(delPend.map(k=>db.ref('pendingReviews/'+k).remove()));
     }
-  }catch(_e){}
+  }catch(_e){/* צפוי: הצומת קריא למנהל בלבד. המחיקה לפי מפתח למעלה כבר כיסתה. */}
 
   // הזמנות. openBooking כותב כל רשומה **משוכפלת לשלושה נתיבים**, וכל עותק
   // נושא studentName, studentEmail, parentName ו-parentEmail — שם של קטין
@@ -4105,14 +4106,14 @@ async function deleteAllUserData(uid,role){
     }
     await Promise.all([...mirrors].map(pth=>db.ref(pth).remove()));
     await Promise.all([...globals].map(pth=>db.ref(pth).remove()));
-  }catch(_e){}
+  }catch(_e){scanFailures.push('bookings');}
 
   const paths=USER_DATA_PATHS.map(p=>p+'/'+uid);
   if(isTeacher)paths.push('teachers/'+uid);
 
   const results=await Promise.allSettled(paths.map(p=>db.ref(p).remove()));
   const failedPaths=results.map((r,i)=>r.status==='rejected'?paths[i]:null).filter(Boolean);
-  return {failedPaths,chatDeleteFailed};
+  return {failedPaths:failedPaths.concat(scanFailures),chatDeleteFailed};
 }
 
 async function deleteMyAccount(){
@@ -4263,8 +4264,6 @@ async function listenToChat(otherUid){
   _chatQuery=null;chatListener=null;
   if(!currentUser||!otherUid){_currentChatOtherUid=null;return;}
   const chatId=getChatId(currentUser.uid,otherUid);
-  // כתיבת המשתתף לפני האזנה — הכרחי לכלל אבטחת messages
-  await db.ref('chatParticipants/'+chatId+'/'+currentUser.uid).set(true).catch(()=>{});
   chatMessages=[];
   chatListener=db.ref('messages/'+chatId);
   _chatQuery=chatListener.limitToLast(100);
@@ -4429,14 +4428,6 @@ async function _sendVoiceMessage(blob,otherUid,otherName){
     reader.onload=async()=>{
       const chatId=getChatId(currentUser.uid,otherUid);
       try{
-        // רשום את שני הצדדים כמשתתפי הצ'אט — אותה סיבה כמו ב-sendChatMessage:
-        // בלעדי זה, פנייה ראשונה בהקלטה קולית נכשלת בשקט אצל הצד המקבל.
-        await Promise.all([
-          db.ref('chatParticipants/'+chatId+'/'+currentUser.uid).set(true),
-          db.ref('chatParticipants/'+chatId+'/'+otherUid).set(true)
-        ]).catch(e=>{
-          notifyAdmin({type:'chatDeliveryFailed',chatId,otherUid,step:'chatParticipants-voice',error:e?.message||'שגיאה לא ידועה'}).catch(()=>{});
-        });
         await db.ref('messages/'+chatId).push({
           from:currentUser.uid,fromName:currentUserData?.name||currentUser.email.split('@')[0],
           to:otherUid,toName:otherName||'',type:'audio',audioData:reader.result,
@@ -4529,16 +4520,6 @@ async function sendChatMessage(otherUid,otherName){
   inp.focus();
   const chatId=getChatId(currentUser.uid,otherUid);
   try{
-    // רשום את שני הצדדים כמשתתפי הצ'אט — נחוץ לכלל האבטחה של messages/.
-    // אחרת, אם זו פנייה ראשונה בלי הזמנה מאושרת (למשל "שלח הודעה פרטית"
-    // בפרופיל מורה), הצד השני לעולם לא נרשם, וההאזנה שלו בזמן אמת נכשלת
-    // בשקט (permission-denied) — הוא רואה שההודעה "לא הגיעה".
-    await Promise.all([
-      db.ref('chatParticipants/'+chatId+'/'+currentUser.uid).set(true),
-      db.ref('chatParticipants/'+chatId+'/'+otherUid).set(true)
-    ]).catch(e=>{
-      notifyAdmin({type:'chatDeliveryFailed',chatId,otherUid,step:'chatParticipants',error:e?.message||'שגיאה לא ידועה'}).catch(()=>{});
-    });
     await db.ref('messages/'+chatId).push({
       from:currentUser.uid,
       fromName:currentUserData?.name||currentUser.email.split('@')[0],
