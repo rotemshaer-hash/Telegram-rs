@@ -68,5 +68,10 @@ jobs:
           echo "== instances after =="
           firebase database:instances:list --project kidemy-83a17 --non-interactive
 
+          # הרשימה הרגילה מדפיסה שם בלבד. הכתובת היא הגבול היחיד בין תרגיל
+          # לאירוע ייצור, ולכן היא נקראת מה-API ולא נגזרת מהשם לפי כלל שנראה
+          # נכון — כללי ה-URL של RTDB שונים בין אזורים ובין מופע ברירת המחדל
+          # למופע נוסף, וניחוש כאן היה מכוון את כל הכתיבות למקום לא ידוע.
           echo ""
-          echo "The URL of drushe-staging above is the value for STAGING_DB_URL."
+          echo "== the URL, from the API =="
+          firebase database:instances:list --project kidemy-83a17 --non-interactive --json

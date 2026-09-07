@@ -2,6 +2,11 @@ name: Restore Drill
 
 on:
   workflow_dispatch:
+  # אימות חד-פעמי: הסשן שכתב את התרגיל אינו יכול להריץ workflow ידנית (403),
+  # ותרגיל שחזור שמעולם לא רץ הוא בדיוק ההנחה שהוא נועד להחליף. דחיפה לענף
+  # הזה מריצה אותו על נתונים אמיתיים, אל מסד ה-staging בלבד.
+  push:
+    branches: [claude/verify-restore-drill]
   schedule:
     # שבועי, ראשון ב-02:00 UTC — אחרי הגיבוי היומי של אותו לילה (01:00),
     # כדי שהתרגיל ירוץ על הגיבוי הטרי ביותר ולא על זה של אתמול.
@@ -32,7 +37,6 @@ jobs:
           # סוד אחד לשתי הסביבות: staging הוא מופע RTDB נוסף באותו פרויקט,
           # ולכן חשבון השירות הקיים כבר מגיע לשניהם. מה שמפריד הוא הכתובת.
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          STAGING_DB_URL: ${{ vars.STAGING_DB_URL }}
         run: node restore-drill.js
 
       - name: Open an issue if the drill failed

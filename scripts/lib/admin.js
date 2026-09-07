@@ -14,6 +14,10 @@ const DB_URL = 'https://kidemy-83a17-default-rtdb.firebaseio.com';
 // שהפרויקט נוצר עם השם הישן (‎<project>.appspot.com) ולא החדש.
 const STORAGE_BUCKET = process.env.FIREBASE_STORAGE_BUCKET || `${PROJECT_ID}.firebasestorage.app`;
 
+// מופע ה-RTDB השני באותו פרויקט, שנוצר ב-provision-staging.yml.
+// אומת מול ה-API: state ACTIVE, type USER_DATABASE.
+const STAGING_DB_URL = 'https://drushe-staging.firebaseio.com';
+
 // ─── שתי סביבות, והגבול ביניהן ──────────────────────────────────────────────
 //
 // staging הוא **מופע RTDB נוסף באותו פרויקט**, ולא פרויקט שני. זו הייתה
@@ -37,7 +41,10 @@ const ENVS = {
   },
   staging: {
     projectId: PROJECT_ID,
-    dbUrl: process.env.STAGING_DB_URL || '',
+    // הכתובת נלקחה מתשובת ה-API אחרי היצירה, לא נגזרה מהשם: כללי ה-URL של
+    // RTDB שונים בין אזורים ובין מופע ברירת המחדל למופע נוסף. אינה סוד, ולכן
+    // היא בקוד ולא במשתנה שמישהו צריך לזכור להוסיף.
+    dbUrl: process.env.STAGING_DB_URL || STAGING_DB_URL,
     // Storage אינו מבודד — הדלי משותף לפרויקט. סריקת יתומים ב-staging
     // מכסה את ה-RTDB בלבד, וזה נאמר במפורש ולא מוסתר מאחורי ערך ברירת מחדל.
     bucket: '',
@@ -50,7 +57,7 @@ function envConfig(name) {
   if (!cfg) throw new Error(`סביבה לא מוכרת: ${name}`);
   if (!cfg.dbUrl) {
     throw new Error(
-      `הסביבה '${name}' אינה מוגדרת — חסר STAGING_DB_URL. לא נופלים חזרה על הייצור.`
+      `הסביבה '${name}' אינה מוגדרת. לא נופלים חזרה על הייצור.`
     );
   }
   // הגבול עצמו, והוא כתובת המסד ולא מזהה הפרויקט: שתי הסביבות חולקות פרויקט
@@ -119,4 +126,4 @@ async function withBothEnvs(fn) {
   }
 }
 
-module.exports = { withAdmin, withBothEnvs, envConfig, PROJECT_ID, DB_URL, STORAGE_BUCKET };
+module.exports = { withAdmin, withBothEnvs, envConfig, PROJECT_ID, DB_URL, STORAGE_BUCKET, STAGING_DB_URL };
