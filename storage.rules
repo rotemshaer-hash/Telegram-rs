@@ -2,38 +2,62 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
 
-    // Parent/teacher ID and age-verification photos — the most sensitive content
-    // in the app. Only the account owner and the admin may ever read or write
-    // these; never public.
+    // ── למה create/update ו-delete מופרדים ──────────────────────────────────
+    //
+    // ב-Storage, `allow write` מכסה גם מחיקה — ובמחיקה אין אובייקט נכנס,
+    // כלומר `request.resource` הוא null. תנאי כמו `request.resource.size < N`
+    // לא מחזיר false על מחיקה: הוא **זורק** Null value error, והכלל כולו נדחה.
+    // התוצאה הייתה שאיש לא יכול היה למחוק את הקבצים של עצמו — כולל תמונת
+    // תעודת הזהות שלו במחיקת חשבון.
+    //
+    // זה לא התגלה עד עכשיו כי Firebase Storage מעולם לא הופעל בפרויקט: כל
+    // העלאה נכשלה ונפלה אחורה לכתיבה ל-RTDB, והחוקים האלה מעולם לא נבדקו מול
+    // תעבורה אמיתית. ברגע שהופעל Storage, זה היה הופך למחיקת חשבון שמדווחת
+    // הצלחה ומשאירה את המסמך הרגיש ביותר באפליקציה מאחור — בדיוק הדפוס שחזר
+    // כאן ארבע פעמים ב-RTDB.
+    //
+    // ההפרדה גם אומרת את הכוונה במפורש: הבעלים רשאי למחוק, וזה תנאי למחיקת
+    // חשבון, לא תופעת לוואי.
+
+    // תמונות תעודת זהות ואימות גיל — התוכן הרגיש ביותר באפליקציה. הבעלים
+    // והמנהל בלבד, לעולם לא ציבורי.
     match /id-photos/{uid}/{fileName} {
       allow read: if request.auth != null &&
         (request.auth.uid == uid || request.auth.token.email == 'rotemshaer@gmail.com');
-      allow write: if request.auth != null && request.auth.uid == uid &&
+      allow create, update: if request.auth != null && request.auth.uid == uid &&
         request.resource.size < 15 * 1024 * 1024 &&
         request.resource.contentType.matches('image/.*');
+      allow delete: if request.auth != null &&
+        (request.auth.uid == uid || request.auth.token.email == 'rotemshaer@gmail.com');
     }
 
-    // Story images, community post media, teacher portfolio files — meant to be
-    // shown to other signed-in users inside the app, so read is open to any
-    // authenticated user; only the owner may upload/overwrite their own files.
+    // סטוריז, מדיה של פוסטים בקהילה, ותיק עבודות של מורה — נועדו להיראות
+    // למשתמשים מחוברים אחרים בתוך האפליקציה, ולכן הקריאה פתוחה לכל מחובר;
+    // רק הבעלים מעלה, דורס ומוחק את שלו.
     match /stories/{uid}/{fileName} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.uid == uid &&
+      allow create, update: if request.auth != null && request.auth.uid == uid &&
         request.resource.size < 15 * 1024 * 1024 &&
         request.resource.contentType.matches('image/.*');
+      allow delete: if request.auth != null &&
+        (request.auth.uid == uid || request.auth.token.email == 'rotemshaer@gmail.com');
     }
     match /communityMedia/{uid}/{fileName} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.uid == uid &&
+      allow create, update: if request.auth != null && request.auth.uid == uid &&
         request.resource.size < 25 * 1024 * 1024;
+      allow delete: if request.auth != null &&
+        (request.auth.uid == uid || request.auth.token.email == 'rotemshaer@gmail.com');
     }
     match /portfolio/{uid}/{fileName} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.uid == uid &&
+      allow create, update: if request.auth != null && request.auth.uid == uid &&
         request.resource.size < 25 * 1024 * 1024;
+      allow delete: if request.auth != null &&
+        (request.auth.uid == uid || request.auth.token.email == 'rotemshaer@gmail.com');
     }
 
-    // Deny everything else by default.
+    // כל השאר סגור.
     match /{allPaths=**} {
       allow read, write: if false;
     }

@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "test": "playwright test",
-    "test:rules": "firebase emulators:exec --only database --project demo-drushe \"node --test tests/rules/*.test.js\""
+    "test:rules": "firebase emulators:exec --only database,storage --project demo-drushe \"node --test tests/rules/*.test.js\""
   },
   "dependencies": {
     "firebase-admin": "^12.7.0"

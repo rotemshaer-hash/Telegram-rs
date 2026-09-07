@@ -57,21 +57,26 @@ jobs:
       - name: Deploy database rules
         run: GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa.json firebase deploy --only database --project kidemy-83a17 --non-interactive
 
-      # מזהיר ולא מפיל, בכוונה.
+      # עדיין מזהיר ולא מפיל — ובכוונה, בשלב הזה בלבד.
       #
-      # שלושה חסמים נפתרו כאן בזה אחר זה (הרשאת serviceusage, הפעלת ה-API,
-      # ותפקיד Cloud Storage for Firebase Admin), והשלב עדיין נופל על
-      # firebasestorage.defaultBucket.get. ההפרש בין storage ל-database הוא
-      # שחוקי ה-database משתנים בפועל, בעוד storage.rules לא נגע מאז שהריפו
-      # נוצר — ואם ישתנה אפשר לפרסם אותו ידנית בקונסולה בדקה.
+      # ההיסטוריה: השלב נפל חודשים על 403, והוענקו שלוש הרשאות IAM שונות
+      # כדי לפתור אותו. אף אחת לא עזרה — כי זו לא הייתה בעיית הרשאות אלא
+      # ש-Firebase Storage מעולם לא הופעל בפרויקט. השגיאה אמרה את זה כל
+      # הזמן במילים "or it may not exist". ב-7.9.2026 הבעלים לחץ
+      # "Get started" ושדרג ל-Blaze, והשגיאה אכן זזה — עכשיו היא 403 על
+      # firebaserules.googleapis.com/:test, כלומר לחשבון השירות של ה-CI
+      # חסרה ההרשאה firebaserules.rulesets.test.
       #
-      # job שנשאר אדום לתמיד גרוע יותר מ-job שמזהיר: הוא מאמן את כולם
-      # להתעלם מהכישלון הבא. בדיוק זה קרה כאן — 19 הרצות אדומות ברצף הסתירו
-      # את העובדה שגם חוקי ה-database לא נפרסו.
+      # למה זה עדיין לא חוסם: החשבון שה-workflow משתמש בו הוא הסוד
+      # FIREBASE_SERVICE_ACCOUNT, ואינו בהכרח אותו חשבון שמופיע ב-
+      # netlify/lib/firebase-admin-init.js. כל עוד לא אומת איזה חשבון זה
+      # ושהוענקה לו ההרשאה, hard-fail היה חוסם גם את פריסת חוקי ה-database
+      # — שעובדת מצוין — בגלל יעד אחר. זה בדיוק הכשל שההפרדה לשני שלבים
+      # נועדה למנוע מלכתחילה.
       #
-      # האזהרה מופיעה בסיכום ההרצה, כך שהפער נשאר גלוי ולא נעלם בשקט.
+      # ⬜ להפוך לחוסם ברגע שהרצה אחת עוברת. זה שורה אחת: להסיר את העטיפה.
       - name: Deploy storage rules
         run: |
           if ! GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa.json firebase deploy --only storage --project kidemy-83a17 --non-interactive; then
-            echo "::warning::Storage rules were NOT deployed — database rules above were. storage.rules is what protects minors' ID photos, so if you changed it, publish it by hand at https://console.firebase.google.com/project/kidemy-83a17/storage/rules . Known cause: the FIREBASE_SERVICE_ACCOUNT service account is denied firebasestorage.defaultBucket.get even with Cloud Storage for Firebase Admin granted; see HANDOFF.md."
+            echo "::warning::Storage rules were NOT deployed — database rules above were. Publish by hand at https://console.firebase.google.com/project/kidemy-83a17/storage/rules . Current cause: the CI service account (secret FIREBASE_SERVICE_ACCOUNT) lacks firebaserules.rulesets.test — grant it Firebase Rules Admin in Google Cloud IAM."
           fi
