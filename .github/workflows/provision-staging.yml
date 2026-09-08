@@ -75,3 +75,81 @@ jobs:
           echo ""
           echo "== the URL, from the API =="
           firebase database:instances:list --project kidemy-83a17 --non-interactive --json
+
+      # ── ה-403 של חוקי ה-Storage: לאבחן, ואם אפשר לפתור ──
+      #
+      # השלב הזה נכשל חודשים. שלוש הרשאות IAM שונות הוענקו ולא עזרו, כי השורש
+      # היה אחר לגמרי — Firebase Storage מעולם לא הופעל בפרויקט. אחרי שהופעל
+      # (7.9.2026) השגיאה זזה ל-403 אמיתי על firebaserules:test.
+      #
+      # מה שמעולם לא נבדק, ובגללו הסיבוב המיותר: **איזה** חשבון שירות ה-CI
+      # משתמש בו. פעם אחת נמסרה כאן כתובת שנלקחה מ-netlify/lib, שאינה בהכרח
+      # אותו חשבון. הכתובת מודפסת כאן מתוך הסוד עצמו — היא מזהה ולא סוד
+      # (אי אפשר להתחבר עם כתובת), והיא גלויה ממילא בקונסולת IAM.
+      - name: Diagnose the storage-rules 403
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: /tmp/sa.json
+        run: |
+          SA_EMAIL=$(node -e "console.log(JSON.parse(require('fs').readFileSync('/tmp/sa.json','utf8')).client_email||'')")
+          echo "CI service account: $SA_EMAIL"
+          echo "$SA_EMAIL" > /tmp/sa_email.txt
+
+          echo ""
+          echo "== can it grant itself the role? =="
+          # כמעט בוודאות לא — חשבון שירות של Firebase אינו אמור להחזיק
+          # setIamPolicy. מנסים בכל זאת, כי "לנסות ולדעת" עולה שלושים שניות
+          # ו"להניח" עלה כאן כבר חודשים.
+          # `cmd | tail` מחזיר את קוד היציאה של tail, לא של cmd. הריצה הראשונה
+          # של השלב הזה הדפיסה GRANTED ו-STORAGE_DEPLOY=ok בזמן ששתי הפעולות
+          # נכשלו ב-403 — בדיוק אותו דפוס שתועד כאן כבר פעם אחת, שבו עטיפה
+          # גורמת לשלב כושל לדווח הצלחה. pipefail הוא התיקון.
+          set -o pipefail
+
+          if command -v gcloud >/dev/null 2>&1; then
+            gcloud auth activate-service-account --key-file=/tmp/sa.json --quiet 2>&1 | tail -2 || true
+            if gcloud projects add-iam-policy-binding kidemy-83a17 \
+                 --member="serviceAccount:$SA_EMAIL" \
+                 --role="roles/firebaserules.admin" --quiet 2>&1 | tail -5; then
+              echo "IAM_GRANT=granted"
+            else
+              echo "IAM_GRANT=refused — needs a human with project IAM rights"
+            fi
+          else
+            echo "IAM_GRANT=skipped — gcloud not on this runner"
+          fi
+
+          echo ""
+          echo "== does the storage rules deploy work now? =="
+          if firebase deploy --only storage --project kidemy-83a17 --non-interactive 2>&1 | tail -12; then
+            echo "STORAGE_DEPLOY=ok"
+          else
+            echo "STORAGE_DEPLOY=still-failing"
+          fi
+
+      # ── דלי Storage נפרד לסביבת הבדיקות ──
+      #
+      # מסד הנתונים בודד בהצלחה במופע שני באותו פרויקט. השאלה אם אותו טריק
+      # עובד גם לדלי לא נבדקה מעולם, ולכן היא נבדקת כאן ולא מנוחשת. אם הדלי
+      # נוצר אבל אינו רשום ב-Firebase, חוקי ה-Storage לא יחולו עליו — וזה
+      # יהיה גרוע מכלום. הבדיקה מדפיסה את שני הדברים בנפרד.
+      - name: Try to create a separate staging storage bucket
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: /tmp/sa.json
+        run: |
+          BUCKET="drushe-staging-media"
+          if ! command -v gcloud >/dev/null 2>&1; then
+            echo "gcloud not on this runner — skipping"
+            exit 0
+          fi
+          gcloud auth activate-service-account --key-file=/tmp/sa.json --quiet 2>&1 | tail -1 || true
+          echo "== existing buckets =="
+          gcloud storage buckets list --project kidemy-83a17 --format="value(name)" 2>&1 | tail -10 || true
+          echo ""
+          if gcloud storage buckets describe "gs://$BUCKET" --project kidemy-83a17 >/dev/null 2>&1; then
+            echo "already exists: $BUCKET"
+          else
+            echo "== creating gs://$BUCKET =="
+            gcloud storage buckets create "gs://$BUCKET" \
+              --project kidemy-83a17 --location=US --uniform-bucket-level-access 2>&1 | tail -5 \
+              || echo "could not create the bucket"
+          fi
