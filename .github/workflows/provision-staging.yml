@@ -106,13 +106,24 @@ jobs:
           # לא תיקח אותו שוב.
           set -o pipefail
 
+          # שלושה ניסיונות בהפרש דקה. הענקת IAM בגוגל אינה מיידית — היא יכולה
+          # לקחת כמה דקות להתפשט — ושתי הבדיקות הקודמות רצו דקה ושלוש דקות
+          # אחרי ההענקה. ניסיון בודד באותו חלון מחזיר "עדיין נכשל" גם כשהתפקיד
+          # הוענק נכון, וזו תשובה שגויה שתשלח את הבעלים לתקן משהו שאינו שבור.
           echo ""
           echo "== does the storage rules deploy work now? =="
-          if firebase deploy --only storage --project kidemy-83a17 --non-interactive 2>&1 | tail -12; then
-            echo "STORAGE_DEPLOY=ok"
-          else
-            echo "STORAGE_DEPLOY=still-failing"
-          fi
+          STORAGE_DEPLOY=still-failing
+          for attempt in 1 2 3; do
+            echo "-- attempt $attempt --"
+            if firebase deploy --only storage --project kidemy-83a17 --non-interactive 2>&1 | tail -12; then
+              STORAGE_DEPLOY=ok
+              break
+            fi
+            # if ולא `[ ] && sleep`: הצעד רץ תחת bash -e, ובניסיון האחרון
+            # התנאי מחזיר 1 — מה שהיה מפיל את השלב כולו בדיוק כשהוא מסיים.
+            if [ "$attempt" -lt 3 ]; then sleep 60; fi
+          done
+          echo "STORAGE_DEPLOY=$STORAGE_DEPLOY"
 
       # ── דלי Storage נפרד לסביבת הבדיקות ──
       #
