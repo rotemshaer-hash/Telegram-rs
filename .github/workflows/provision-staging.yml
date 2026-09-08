@@ -99,17 +99,23 @@ jobs:
           # כמעט בוודאות לא — חשבון שירות של Firebase אינו אמור להחזיק
           # setIamPolicy. מנסים בכל זאת, כי "לנסות ולדעת" עולה שלושים שניות
           # ו"להניח" עלה כאן כבר חודשים.
+          # `cmd | tail` מחזיר את קוד היציאה של tail, לא של cmd. הריצה הראשונה
+          # של השלב הזה הדפיסה GRANTED ו-STORAGE_DEPLOY=ok בזמן ששתי הפעולות
+          # נכשלו ב-403 — בדיוק אותו דפוס שתועד כאן כבר פעם אחת, שבו עטיפה
+          # גורמת לשלב כושל לדווח הצלחה. pipefail הוא התיקון.
+          set -o pipefail
+
           if command -v gcloud >/dev/null 2>&1; then
             gcloud auth activate-service-account --key-file=/tmp/sa.json --quiet 2>&1 | tail -2 || true
             if gcloud projects add-iam-policy-binding kidemy-83a17 \
                  --member="serviceAccount:$SA_EMAIL" \
                  --role="roles/firebaserules.admin" --quiet 2>&1 | tail -5; then
-              echo "GRANTED"
+              echo "IAM_GRANT=granted"
             else
-              echo "could not grant — needs a human with project IAM rights"
+              echo "IAM_GRANT=refused — needs a human with project IAM rights"
             fi
           else
-            echo "gcloud not on this runner"
+            echo "IAM_GRANT=skipped — gcloud not on this runner"
           fi
 
           echo ""
