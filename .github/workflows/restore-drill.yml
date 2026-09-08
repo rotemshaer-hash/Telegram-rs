@@ -2,6 +2,10 @@ name: Restore Drill
 
 on:
   workflow_dispatch:
+  # אימות חד-פעמי שני, הפעם לסריקת היתומים — היא מעולם לא רצה על נתונים
+  # אמיתיים, וזו כל הנקודה שלה. יוסר אחריו, כמו הראשון.
+  push:
+    branches: [claude/verify-orphan-scan]
   # הטריגר החד-פעמי לאימות (push לענף claude/verify-restore-drill) הוסר אחרי
   # שהתרגיל רץ בהצלחה על נתונים אמיתיים — ריצה 34147505837: 9142 צמתים
   # שוחזרו ואומתו בקריאה חוזרת מ-staging, RTO של 2.7 שניות. מכאן והלאה
@@ -37,6 +41,15 @@ jobs:
           # ולכן חשבון השירות הקיים כבר מגיע לשניהם. מה שמפריד הוא הכתובת.
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: node restore-drill.js
+
+      # הסריקה רצה **אחרי** השחזור ובאותו ג'וב, כי היא צריכה בדיוק את מה
+      # שהשחזור הרגע הכניס: עותק של נתוני הייצור האמיתיים. סריקה על מסד ריק
+      # לא מוכיחה כלום, ולכן היא לא ג'וב נפרד שעלול לרוץ לבד.
+      - name: Scan the restored copy for orphaned records
+        working-directory: scripts
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: node orphan-scan.js
 
       - name: Open an issue if the drill failed
         if: failure()
