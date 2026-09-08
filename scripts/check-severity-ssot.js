@@ -69,8 +69,21 @@ for (const n of inRules) {
   if (!known.has(n)) errors.push(`database.rules.json מכיל חלון ${n}ms שאינו קיים ב-REPORT_SLA_MS`);
 }
 
+// ─── כתובת מסד הבדיקות, גם היא בשני קבצים ──────────────────────────────────
+// index.html בוחר לפיה לאן הדפדפן מדבר; scripts/lib/admin.js בוחר לפיה לאן
+// תרגיל השחזור כותב. אם הן ייפרדו, אחד משניהם יעבוד מול המסד הלא נכון —
+// ובכיוון אחד מהשניים זה אומר כתיבה על נתוני משתמשים אמיתיים.
+const adminJs = fs.readFileSync('scripts/lib/admin.js', 'utf8');
+const fromAdmin = (adminJs.match(/const STAGING_DB_URL = '([^']+)'/) || [])[1];
+const fromHtml = (html.match(/const STAGING_DB_URL = "([^"]+)"/) || [])[1];
+if (!fromAdmin) errors.push('STAGING_DB_URL לא נמצא ב-scripts/lib/admin.js');
+if (!fromHtml) errors.push('STAGING_DB_URL לא נמצא ב-index.html');
+if (fromAdmin && fromHtml && fromAdmin !== fromHtml) {
+  errors.push(`כתובת מסד הבדיקות שונה בין הקבצים: index.html=${fromHtml} admin.js=${fromAdmin}`);
+}
+
 if (errors.length) {
   console.error(errors.join('\n'));
   process.exit(1);
 }
-console.log(`${Object.keys(SEV).length} סיבות, ${Object.keys(SLA).length} חלונות — זהים בשני הקבצים`);
+console.log(`${Object.keys(SEV).length} סיבות, ${Object.keys(SLA).length} חלונות, וכתובת staging אחת — זהים בשני הקבצים`);

@@ -16,10 +16,51 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-analytics-compat.js"></script>
 <script>
+// ─── לאיזה מסד נתונים הדף הזה מדבר ─────────────────────────────────────────
+//
+// עד היום התשובה הייתה "לייצור, תמיד" — הכתובת הייתה קבועה כאן. המשמעות
+// שהתגלתה רק כשבנינו את סביבת הבדיקות: **כל deploy preview של PR כתב
+// לנתונים של המשתמשים האמיתיים.** לא בדיקה על עותק — כתיבה על המקור. זה לא
+// היה ברשימת הממצאים של אף אחד, כולל הביקורת החיצונית.
+//
+// כיוון הכשל כאן אינו סימטרי, ולכן גם הכלל אינו סימטרי:
+//   • preview שמדבר בטעות עם הייצור = מה שהיה עד היום, וזה מה שמתקנים.
+//   • משתמש אמיתי שמדבר בטעות עם הבדיקות = הנתונים שלו "נעלמו". חמור לאין
+//     ערוך, ובלתי הפיך מבחינתו.
+// לכן **ברירת המחדל היא ייצור**, וסביבת הבדיקות נבחרת רק לפי סימן מובהק.
+// מארח לא מוכר מקבל ייצור, לא בדיקות.
+//
+// הסימן: Netlify מגישה preview ו-branch deploy תמיד בתור
+// `<משהו>--<אתר>.netlify.app`, והייצור הוא `<אתר>.netlify.app` בלי `--`.
+// המפריד הזה הוא כל האות, והוא יציב ומתועד.
+//
+// והפרוטוקול, כי בלעדיו זה באג ולא הגנה: האפליקציה הארוזה טוענת מ-
+// `capacitor://localhost`, ושם `hostname` הוא בדיוק "localhost". בלי בדיקת
+// הפרוטוקול, כל משתמש אנדרואיד/iOS באפליקציה הארוזה היה מנותב לבדיקות.
+const PROD_DB_URL = "https://kidemy-83a17-default-rtdb.firebaseio.com";
+// מופע ה-RTDB השני באותו פרויקט. חייב להישאר זהה ל-STAGING_DB_URL ב-
+// scripts/lib/admin.js — validate.sh אוכף את זה.
+const STAGING_DB_URL = "https://drushe-staging.firebaseio.com";
+
+function _isStagingHost(){
+  try{
+    var proto = location.protocol || '';
+    // capacitor: / file: / ionic: = אפליקציה ארוזה = משתמש אמיתי = ייצור.
+    if(proto !== 'http:' && proto !== 'https:') return false;
+    var h = location.hostname || '';
+    if(h === 'localhost' || h === '127.0.0.1') return true;
+    return h.indexOf('--') !== -1 && /\.netlify\.app$/.test(h);
+  }catch(_e){
+    // ספק כלשהו = ייצור. ראה כיוון הכשל למעלה.
+    return false;
+  }
+}
+const IS_STAGING = _isStagingHost();
+
 const firebaseConfig = {
   apiKey: "AIzaSyAH_mPUppf6_4nTz450N-doDSXUSgigwtE",
   authDomain: "kidemy-83a17.firebaseapp.com",
-  databaseURL: "https://kidemy-83a17-default-rtdb.firebaseio.com",
+  databaseURL: IS_STAGING ? STAGING_DB_URL : PROD_DB_URL,
   projectId: "kidemy-83a17",
   storageBucket: "kidemy-83a17.firebasestorage.app",
   messagingSenderId: "799651449632",
@@ -33,6 +74,22 @@ var auth=null,db=null,storage=null,analytics=null;
 // ל-firebase.analytics() היא מה שמזריק את gtag.js ומציב את עוגיית _ga, ולכן
 // עצם הדחייה שלה היא מה שמונע איסוף לפני שיש הסכמת הורה.
 try{auth=firebase.auth();db=firebase.database();storage=firebase.storage();}catch(e){console.error('Firebase init failed:',e);}
+
+// באנר קבוע כשהדף מדבר עם מסד הבדיקות. בלעדיו preview נראה זהה לייצור,
+// ומי שפותח אותו רואה נתונים שנראים אמיתיים — או, גרוע יותר, **לא** רואה
+// משתמש שהוא יודע שקיים, ומדווח על באג שאינו קיים. עלות: שורה. חיסכון:
+// שעת דיבוג על מסקנה שגויה.
+if(IS_STAGING){
+  document.addEventListener('DOMContentLoaded',function(){
+    try{
+      var b=document.createElement('div');
+      b.id='_stagingBanner';
+      b.style.cssText='position:fixed;bottom:0;left:0;right:0;background:#7C2D12;color:#fff;text-align:center;padding:6px 12px;font-size:11px;font-weight:800;z-index:99999;direction:rtl;letter-spacing:.2px';
+      b.textContent='🧪 סביבת בדיקות — הנתונים כאן אינם של משתמשים אמיתיים';
+      document.body.appendChild(b);
+    }catch(_e){}
+  });
+}
 
 // ─── ניטור שגיאות client-side ──────────────────────────────────────────────
 // עד עכשיו הדרך היחידה לדעת שמשהו נשבר אצל משתמש הייתה שהוא יספר לנו.
@@ -1056,7 +1113,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.23';
+const APP_VERSION='4.11.24';
 
 // ─── הודעות קוליות — כבויות ────────────────────────────────────────────────
 // הקלטה קולית היא הערוץ היחיד בין ילדים שאיש לא בודק: אין תמלול, אין סינון,
