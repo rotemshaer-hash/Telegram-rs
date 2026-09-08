@@ -106,6 +106,19 @@ jobs:
           # לא תיקח אותו שוב.
           set -o pipefail
 
+          # השאלה הראשונה, ולפני כל ניסיון פריסה: האם ההרשאה בכלל שם?
+          #
+          # testIamPermissions שואל "מה מותר **לי**", ולכן הוא נענה גם לחשבון
+          # שאינו יכול לקרוא את מדיניות ה-IAM (getIamPolicy נדחה כאן). זו
+          # תשובה חד-משמעית במקום להסיק מכישלון הפריסה — הכישלון יכול לנבוע
+          # מהרשאה חסרה, מהתפשטות שטרם הסתיימה, או ממשהו שלישי, ובלי הבדיקה
+          # הזו אי אפשר להבדיל ביניהם.
+          echo ""
+          echo "== does this account actually hold the permission? =="
+          gcloud projects test-iam-permissions kidemy-83a17 \
+            --permissions=firebaserules.rulesets.test,firebaserules.rulesets.create,firebaserules.releases.update \
+            --format="value(permissions)" 2>&1 | tail -5 || echo "PERM_CHECK=failed"
+
           # שלושה ניסיונות בהפרש דקה. הענקת IAM בגוגל אינה מיידית — היא יכולה
           # לקחת כמה דקות להתפשט — ושתי הבדיקות הקודמות רצו דקה ושלוש דקות
           # אחרי ההענקה. ניסיון בודד באותו חלון מחזיר "עדיין נכשל" גם כשהתפקיד
