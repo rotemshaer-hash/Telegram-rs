@@ -115,9 +115,25 @@ jobs:
           # הזו אי אפשר להבדיל ביניהם.
           echo ""
           echo "== does this account actually hold the permission? =="
-          gcloud projects test-iam-permissions kidemy-83a17 \
-            --permissions=firebaserules.rulesets.test,firebaserules.rulesets.create,firebaserules.releases.update \
-            --format="value(permissions)" 2>&1 | tail -5 || echo "PERM_CHECK=failed"
+          # דרך ה-API ולא דרך gcloud: `gcloud projects test-iam-permissions`
+          # אינה פקודה קיימת, והניסיון הקודם הדפיס את מסך העזרה של gcloud
+          # ו"נכשל" — כלומר הבדיקה נכשלה, לא ההרשאה. testIamPermissions שואל
+          # "מה מותר **לי**" ולכן הוא נענה גם לחשבון שאינו יכול לקרוא את
+          # מדיניות ה-IAM, וזה המצב כאן.
+          #
+          # התשובה: רשימת ההרשאות שהחשבון **כן** מחזיק מתוך אלה שנשאלו.
+          # רשימה ריקה = ההענקה לא נקלטה. רשימה מלאה + 403 = הבעיה במקום אחר.
+          TOKEN=$(gcloud auth print-access-token 2>/dev/null || echo "")
+          if [ -n "$TOKEN" ]; then
+            curl -s -X POST \
+              -H "Authorization: Bearer $TOKEN" \
+              -H "Content-Type: application/json" \
+              -d '{"permissions":["firebaserules.rulesets.test","firebaserules.rulesets.create","firebaserules.releases.update"]}' \
+              "https://cloudresourcemanager.googleapis.com/v1/projects/kidemy-83a17:testIamPermissions"
+            echo ""
+          else
+            echo "PERM_CHECK=no-token"
+          fi
 
           # שלושה ניסיונות בהפרש דקה. הענקת IAM בגוגל אינה מיידית — היא יכולה
           # לקחת כמה דקות להתפשט — ושתי הבדיקות הקודמות רצו דקה ושלוש דקות
