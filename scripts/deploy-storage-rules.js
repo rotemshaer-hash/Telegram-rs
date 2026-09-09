@@ -90,21 +90,39 @@ async function main() {
       console.log(`📖 לא ניתן לקרוא את ה-release הנוכחי (${e.message.slice(0, 80)})`);
     }
 
+    // השוואת **תוכן**, לא מזהה. ruleset חדש מקבל מזהה חדש גם כשהתוכן זהה,
+    // ולכן השוואת מזהים לעולם לא הייתה חוסכת כלום — כל ריצה הייתה יוצרת
+    // ruleset נוסף ומחליפה את ה-release בלי סיבה.
+    if (before?.rulesetName) {
+      try {
+        const live = await call(accessToken, 'GET', `${API}/${before.rulesetName}`);
+        const liveSource = (live.source?.files || []).map((f) => f.content).join('');
+        if (liveSource.trim() === source.trim()) {
+          console.log('✅ החוקים החיים כבר זהים לקובץ שבריפו. אין מה לפרוס.');
+          return;
+        }
+        console.log('↻ החוקים החיים שונים מהקובץ שבריפו — פורס.');
+      } catch (e) {
+        console.log(`(לא ניתן להשוות תוכן: ${e.message.slice(0, 80)})`);
+      }
+    }
+
     // 2. יצירה בלבד — לא משנה את המצב החי.
     const ruleset = await call(accessToken, 'POST', `${API}/projects/${PROJECT_ID}/rulesets`, {
       source: { files: [{ name: 'storage.rules', content: source }] },
     });
     console.log(`📦 נוצר ruleset: ${ruleset.name}`);
 
-    if (before && before.rulesetName === ruleset.name) {
-      console.log('✅ החוקים החיים כבר זהים. אין מה לעדכן.');
-      return;
-    }
-
     // 3. הרגע היחיד שמשנה מצב.
-    await call(accessToken, 'PATCH',
-      `${API}/${RELEASE}?updateMask=rulesetName`,
-      { name: RELEASE, rulesetName: ruleset.name });
+    //
+    // ה-release עטוף בשדה `release` ו-updateMask יושב בגוף הבקשה — זה מה
+    // ש-UpdateReleaseRequest מגדיר. הניסיון הראשון שלח את השדות ישירות
+    // וקיבל 400 "Unknown name rulesetName". שים לב שזו הייתה 400 ולא 403:
+    // ההרשאות היו תקינות, הצורה לא.
+    await call(accessToken, 'PATCH', `${API}/${RELEASE}`, {
+      release: { name: RELEASE, rulesetName: ruleset.name },
+      updateMask: 'rulesetName',
+    });
     console.log(`✅ ${BUCKET} מצביע עכשיו על ${ruleset.name}`);
 
     // אימות בקריאה חוזרת. פריסה שדיווחה הצלחה ולא נתפסה היא בדיוק הדפוס
