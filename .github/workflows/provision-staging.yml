@@ -35,6 +35,9 @@ jobs:
         with:
           node-version: '22'
       - run: npm install -g firebase-tools
+      - name: Install script dependencies
+        working-directory: scripts
+        run: npm install
 
       - name: Write service account credentials
         env:
@@ -94,37 +97,59 @@ jobs:
           echo "CI service account: $SA_EMAIL"
           echo "$SA_EMAIL" > /tmp/sa_email.txt
 
-          echo ""
-          echo "== can it grant itself the role? =="
-          # כמעט בוודאות לא — חשבון שירות של Firebase אינו אמור להחזיק
-          # setIamPolicy. מנסים בכל זאת, כי "לנסות ולדעת" עולה שלושים שניות
-          # ו"להניח" עלה כאן כבר חודשים.
-          # `cmd | tail` מחזיר את קוד היציאה של tail, לא של cmd. הריצה הראשונה
-          # של השלב הזה הדפיסה GRANTED ו-STORAGE_DEPLOY=ok בזמן ששתי הפעולות
-          # נכשלו ב-403 — בדיוק אותו דפוס שתועד כאן כבר פעם אחת, שבו עטיפה
-          # גורמת לשלב כושל לדווח הצלחה. pipefail הוא התיקון.
+          # ניסיון ההענקה העצמית הוסר: הוא כבר נענה. חשבון השירות אינו יכול
+          # להעניק לעצמו תפקיד — `getIamPolicy` נדחה — ולכן ההענקה נעשתה ביד
+          # על ידי הבעלים דרך Cloud Shell. אין טעם להריץ שוב ניסוי שתשובתו
+          # ידועה; מה שנשאר הוא הבדיקה אם ההענקה באמת פתרה את ה-403.
+          # `cmd | tail` מחזיר את קוד היציאה של tail, לא של cmd — ולכן השלב
+          # הזה הדפיס STORAGE_DEPLOY=ok פעמיים בזמן ש-403 היה בלוג ממש מעליו.
+          # תיקנתי את זה פעם אחת עם pipefail, ואז **מחקתי את התיקון בטעות**
+          # יחד עם הבלוק שהסרתי. זו הפעם השלישית שהדפוס הזה מכשיל כאן משהו.
+          # הוא נשאר כאן, בשורה נפרדת ומעל הפקודה, כדי שמחיקה של בלוק סמוך
+          # לא תיקח אותו שוב.
           set -o pipefail
 
-          if command -v gcloud >/dev/null 2>&1; then
-            gcloud auth activate-service-account --key-file=/tmp/sa.json --quiet 2>&1 | tail -2 || true
-            if gcloud projects add-iam-policy-binding kidemy-83a17 \
-                 --member="serviceAccount:$SA_EMAIL" \
-                 --role="roles/firebaserules.admin" --quiet 2>&1 | tail -5; then
-              echo "IAM_GRANT=granted"
-            else
-              echo "IAM_GRANT=refused — needs a human with project IAM rights"
-            fi
+          # השאלה הראשונה, ולפני כל ניסיון פריסה: האם ההרשאה בכלל שם?
+          #
+          # testIamPermissions שואל "מה מותר **לי**", ולכן הוא נענה גם לחשבון
+          # שאינו יכול לקרוא את מדיניות ה-IAM (getIamPolicy נדחה כאן). זו
+          # תשובה חד-משמעית במקום להסיק מכישלון הפריסה — הכישלון יכול לנבוע
+          # מהרשאה חסרה, מהתפשטות שטרם הסתיימה, או ממשהו שלישי, ובלי הבדיקה
+          # הזו אי אפשר להבדיל ביניהם.
+          echo ""
+          echo "== does this account actually hold the permission? =="
+          # דרך ה-API ולא דרך gcloud: `gcloud projects test-iam-permissions`
+          # אינה פקודה קיימת, והניסיון הקודם הדפיס את מסך העזרה של gcloud
+          # ו"נכשל" — כלומר הבדיקה נכשלה, לא ההרשאה. testIamPermissions שואל
+          # "מה מותר **לי**" ולכן הוא נענה גם לחשבון שאינו יכול לקרוא את
+          # מדיניות ה-IAM, וזה המצב כאן.
+          #
+          # התשובה: רשימת ההרשאות שהחשבון **כן** מחזיק מתוך אלה שנשאלו.
+          # רשימה ריקה = ההענקה לא נקלטה. רשימה מלאה + 403 = הבעיה במקום אחר.
+          # ההפעלה הזו נמחקה יחד עם בלוק ההענקה העצמית, ולכן הבדיקה הקודמת
+          # הדפיסה no-token: לא היה חשבון פעיל שאפשר להנפיק עבורו טוקן. זו
+          # הפעם השלישית שהבדיקה עצמה נכשלת מסיבה אחרת, ולא ההרשאה.
+          gcloud auth activate-service-account --key-file=/tmp/sa.json --quiet 2>&1 | tail -1 || true
+          TOKEN=$(gcloud auth print-access-token 2>/dev/null || echo "")
+          if [ -n "$TOKEN" ]; then
+            curl -s -X POST \
+              -H "Authorization: Bearer $TOKEN" \
+              -H "Content-Type: application/json" \
+              -d '{"permissions":["firebaserules.rulesets.test","firebaserules.rulesets.create","firebaserules.releases.update"]}' \
+              "https://cloudresourcemanager.googleapis.com/v1/projects/kidemy-83a17:testIamPermissions"
+            echo ""
           else
-            echo "IAM_GRANT=skipped — gcloud not on this runner"
+            echo "PERM_CHECK=no-token"
           fi
 
-          echo ""
-          echo "== does the storage rules deploy work now? =="
-          if firebase deploy --only storage --project kidemy-83a17 --non-interactive 2>&1 | tail -12; then
-            echo "STORAGE_DEPLOY=ok"
-          else
-            echo "STORAGE_DEPLOY=still-failing"
-          fi
+          # שלושה ניסיונות בהפרש דקה. הענקת IAM בגוגל אינה מיידית — היא יכולה
+          # לקחת כמה דקות להתפשט — ושתי הבדיקות הקודמות רצו דקה ושלוש דקות
+          # אחרי ההענקה. ניסיון בודד באותו חלון מחזיר "עדיין נכשל" גם כשהתפקיד
+          # הוענק נכון, וזו תשובה שגויה שתשלח את הבעלים לתקן משהו שאינו שבור.
+          # התשובה התקבלה: releases.update ו-rulesets.create קיימות,
+          # rulesets.test חסרה. ה-CLI חסום על בדיקת התחביר המקדימה בלבד, לא
+          # על הפריסה עצמה — ולכן הפריסה עברה ל-scripts/deploy-storage-rules.js
+          # שמדבר ישירות עם ה-API. אין יותר מה לאבחן כאן."
 
       # ── דלי Storage נפרד לסביבת הבדיקות ──
       #
@@ -153,3 +178,14 @@ jobs:
               --project kidemy-83a17 --location=US --uniform-bucket-level-access 2>&1 | tail -5 \
               || echo "could not create the bucket"
           fi
+
+      # ── הפריסה עצמה, דרך ה-API ──
+      #
+      # זו הפעם הראשונה שהקובץ הזה נפרס אוטומטית מאז שהריפו נוצר. אם היא
+      # עוברת, אפשר להסיר את העטיפה המזהירה ב-deploy-firebase-rules.yml
+      # ולהפוך את השלב לחוסם — הפריט ⬜ שנשאר פתוח שם.
+      - name: Deploy storage rules through the API
+        working-directory: scripts
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: node deploy-storage-rules.js
