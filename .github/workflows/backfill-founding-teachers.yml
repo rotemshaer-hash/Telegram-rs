@@ -1,0 +1,31 @@
+name: Backfill Founding Teachers
+
+# חד-פעמי, לתיקון הפער שמתועד ב-scripts/backfill-founding-teachers.js.
+# workflow_dispatch נותר לתיעוד, אך הסשן שכתב את זה אינו יכול להריץ אותו
+# (403) — לכן push לענף הייעודי הוא הטריגר בפועל. יימחק אחרי שהתיקון יאומת.
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/backfill-founding]
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        working-directory: scripts
+        run: npm install
+
+      # ברירת מחדל: dry run. כתיבה אמיתית דורשת APPLY_FOUNDING_BACKFILL=yes
+      # שנקבע ידנית בעריכת הקובץ הזה, לא כברירת מחדל בסוד — כדי שאי אפשר
+      # יהיה להריץ כתיבה על ייצור בטעות דרך push רגיל.
+      - name: Run the backfill
+        working-directory: scripts
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: node backfill-founding-teachers.js
