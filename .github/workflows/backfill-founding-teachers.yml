@@ -1,12 +1,12 @@
 name: Backfill Founding Teachers
 
-# חד-פעמי, לתיקון הפער שמתועד ב-scripts/backfill-founding-teachers.js.
-# workflow_dispatch נותר לתיעוד, אך הסשן שכתב את זה אינו יכול להריץ אותו
-# (403) — לכן push לענף הייעודי הוא הטריגר בפועל. יימחק אחרי שהתיקון יאומת.
+# תוקן: ריצה 34329156954 סימנה את המורה היחיד הקיים (הבעלים, מקום #1) —
+# ראה HANDOFF. הטריגר החד-פעמי (push לענף הייעודי) הוסר; workflow_dispatch
+# נשאר לתיעוד בלבד, למקרה נדיר שבו מורה מוקדם אחר צריך תיקון דומה. הפעלה
+# עתידית דורשת עריכת env.APPLY_FOUNDING_BACKFILL בקובץ הזה ל-"yes" ופריסה —
+# הסקריפט עצמו נשאר אידמפוטנטי וב-dry-run כברירת מחדל.
 on:
   workflow_dispatch:
-  push:
-    branches: [claude/backfill-founding]
 
 jobs:
   backfill:
@@ -28,7 +28,4 @@ jobs:
         working-directory: scripts
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          # הופעל ידנית אחרי שה-dry run אישר: מורה אחד בלבד, מקום #1,
-          # foundingMember עדיין לא true. ריצה 34328938221.
-          APPLY_FOUNDING_BACKFILL: "yes"
         run: node backfill-founding-teachers.js
