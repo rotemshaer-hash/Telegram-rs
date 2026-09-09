@@ -28,4 +28,7 @@ jobs:
         working-directory: scripts
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          # הופעל ידנית אחרי שה-dry run אישר: מורה אחד בלבד, מקום #1,
+          # foundingMember עדיין לא true. ריצה 34328938221.
+          APPLY_FOUNDING_BACKFILL: "yes"
         run: node backfill-founding-teachers.js
