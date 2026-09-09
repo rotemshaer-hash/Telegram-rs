@@ -1,0 +1,31 @@
+name: Backfill Founding Teachers
+
+# תוקן: ריצה 34329156954 סימנה את המורה היחיד הקיים (הבעלים, מקום #1) —
+# ראה HANDOFF. הטריגר החד-פעמי (push לענף הייעודי) הוסר; workflow_dispatch
+# נשאר לתיעוד בלבד, למקרה נדיר שבו מורה מוקדם אחר צריך תיקון דומה. הפעלה
+# עתידית דורשת עריכת env.APPLY_FOUNDING_BACKFILL בקובץ הזה ל-"yes" ופריסה —
+# הסקריפט עצמו נשאר אידמפוטנטי וב-dry-run כברירת מחדל.
+on:
+  workflow_dispatch:
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        working-directory: scripts
+        run: npm install
+
+      # ברירת מחדל: dry run. כתיבה אמיתית דורשת APPLY_FOUNDING_BACKFILL=yes
+      # שנקבע ידנית בעריכת הקובץ הזה, לא כברירת מחדל בסוד — כדי שאי אפשר
+      # יהיה להריץ כתיבה על ייצור בטעות דרך push רגיל.
+      - name: Run the backfill
+        working-directory: scripts
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: node backfill-founding-teachers.js
