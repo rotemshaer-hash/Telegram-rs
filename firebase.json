@@ -1,7 +1,14 @@
 {
-  "database": {
-    "rules": "database.rules.json"
-  },
+  "database": [
+    {
+      "instance": "kidemy-83a17-default-rtdb",
+      "rules": "database.rules.json"
+    },
+    {
+      "instance": "drushe-staging",
+      "rules": "database.rules.json"
+    }
+  ],
   "storage": {
     "rules": "storage.rules"
   },

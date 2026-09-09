@@ -16,10 +16,51 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-analytics-compat.js"></script>
 <script>
+// ─── לאיזה מסד נתונים הדף הזה מדבר ─────────────────────────────────────────
+//
+// עד היום התשובה הייתה "לייצור, תמיד" — הכתובת הייתה קבועה כאן. המשמעות
+// שהתגלתה רק כשבנינו את סביבת הבדיקות: **כל deploy preview של PR כתב
+// לנתונים של המשתמשים האמיתיים.** לא בדיקה על עותק — כתיבה על המקור. זה לא
+// היה ברשימת הממצאים של אף אחד, כולל הביקורת החיצונית.
+//
+// כיוון הכשל כאן אינו סימטרי, ולכן גם הכלל אינו סימטרי:
+//   • preview שמדבר בטעות עם הייצור = מה שהיה עד היום, וזה מה שמתקנים.
+//   • משתמש אמיתי שמדבר בטעות עם הבדיקות = הנתונים שלו "נעלמו". חמור לאין
+//     ערוך, ובלתי הפיך מבחינתו.
+// לכן **ברירת המחדל היא ייצור**, וסביבת הבדיקות נבחרת רק לפי סימן מובהק.
+// מארח לא מוכר מקבל ייצור, לא בדיקות.
+//
+// הסימן: Netlify מגישה preview ו-branch deploy תמיד בתור
+// `<משהו>--<אתר>.netlify.app`, והייצור הוא `<אתר>.netlify.app` בלי `--`.
+// המפריד הזה הוא כל האות, והוא יציב ומתועד.
+//
+// והפרוטוקול, כי בלעדיו זה באג ולא הגנה: האפליקציה הארוזה טוענת מ-
+// `capacitor://localhost`, ושם `hostname` הוא בדיוק "localhost". בלי בדיקת
+// הפרוטוקול, כל משתמש אנדרואיד/iOS באפליקציה הארוזה היה מנותב לבדיקות.
+const PROD_DB_URL = "https://kidemy-83a17-default-rtdb.firebaseio.com";
+// מופע ה-RTDB השני באותו פרויקט. חייב להישאר זהה ל-STAGING_DB_URL ב-
+// scripts/lib/admin.js — validate.sh אוכף את זה.
+const STAGING_DB_URL = "https://drushe-staging.firebaseio.com";
+
+function _isStagingHost(){
+  try{
+    var proto = location.protocol || '';
+    // capacitor: / file: / ionic: = אפליקציה ארוזה = משתמש אמיתי = ייצור.
+    if(proto !== 'http:' && proto !== 'https:') return false;
+    var h = location.hostname || '';
+    if(h === 'localhost' || h === '127.0.0.1') return true;
+    return h.indexOf('--') !== -1 && /\.netlify\.app$/.test(h);
+  }catch(_e){
+    // ספק כלשהו = ייצור. ראה כיוון הכשל למעלה.
+    return false;
+  }
+}
+const IS_STAGING = _isStagingHost();
+
 const firebaseConfig = {
   apiKey: "AIzaSyAH_mPUppf6_4nTz450N-doDSXUSgigwtE",
   authDomain: "kidemy-83a17.firebaseapp.com",
-  databaseURL: "https://kidemy-83a17-default-rtdb.firebaseio.com",
+  databaseURL: IS_STAGING ? STAGING_DB_URL : PROD_DB_URL,
   projectId: "kidemy-83a17",
   storageBucket: "kidemy-83a17.firebasestorage.app",
   messagingSenderId: "799651449632",
@@ -33,6 +74,22 @@ var auth=null,db=null,storage=null,analytics=null;
 // ל-firebase.analytics() היא מה שמזריק את gtag.js ומציב את עוגיית _ga, ולכן
 // עצם הדחייה שלה היא מה שמונע איסוף לפני שיש הסכמת הורה.
 try{auth=firebase.auth();db=firebase.database();storage=firebase.storage();}catch(e){console.error('Firebase init failed:',e);}
+
+// באנר קבוע כשהדף מדבר עם מסד הבדיקות. בלעדיו preview נראה זהה לייצור,
+// ומי שפותח אותו רואה נתונים שנראים אמיתיים — או, גרוע יותר, **לא** רואה
+// משתמש שהוא יודע שקיים, ומדווח על באג שאינו קיים. עלות: שורה. חיסכון:
+// שעת דיבוג על מסקנה שגויה.
+if(IS_STAGING){
+  document.addEventListener('DOMContentLoaded',function(){
+    try{
+      var b=document.createElement('div');
+      b.id='_stagingBanner';
+      b.style.cssText='position:fixed;bottom:0;left:0;right:0;background:#7C2D12;color:#fff;text-align:center;padding:6px 12px;font-size:11px;font-weight:800;z-index:99999;direction:rtl;letter-spacing:.2px';
+      b.textContent='🧪 סביבת בדיקות — הנתונים כאן אינם של משתמשים אמיתיים';
+      document.body.appendChild(b);
+    }catch(_e){}
+  });
+}
 
 // ─── ניטור שגיאות client-side ──────────────────────────────────────────────
 // עד עכשיו הדרך היחידה לדעת שמשהו נשבר אצל משתמש הייתה שהוא יספר לנו.
@@ -1056,7 +1113,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.23';
+const APP_VERSION='4.11.25';
 
 // ─── הודעות קוליות — כבויות ────────────────────────────────────────────────
 // הקלטה קולית היא הערוץ היחיד בין ילדים שאיש לא בודק: אין תמלול, אין סינון,
@@ -12191,6 +12248,10 @@ function showPaymentManagement(){
 
 function showEditTeacherProfileDialog(){
   if(!currentUser){showFireToast('❌ לא מחובר');return;}
+  // _idPhotoBase64 משותף עם מסך ההקמה. איפוס בפתיחה מונע העלאה של בחירה
+  // שנשארה ממסך אחר — שהיא בדיוק סוג הטעות שקשה לשחזר ומדאיגה במיוחד
+  // כשהקובץ הוא מסמך מזהה.
+  _idPhotoBase64=null;
   const t=TEACHERS.find(x=>x.id===currentUser.uid)||{};
   window._etCats=[...(t.cats&&t.cats.length?t.cats:[t.cat||''].filter(Boolean))];
   window._etCustomCats=[...(t.customCats||[])];
@@ -12312,6 +12373,31 @@ function showEditTeacherProfileDialog(){
         <h3 style="font-weight:900;font-size:15px;margin:0 0 4px;color:#14B8A6">${icon("info",14)} שאלות נפוצות על השיעורים שלי</h3>
         <p style="color:#64748B;font-size:12px;margin:0 0 12px">עד 5 שאלות ותשובות שיוצגו בפרופיל הציבורי שלך</p>
         <div id="_etFaqList" style="margin-bottom:12px">${_etRenderFaqList(t.faq||[])}</div>
+
+      <!-- ── מסמך מזהה: החלפה ──────────────────────────────────────────────
+           עד עכשיו אפשר היה להעלות מסמך מזהה **רק במסך ההקמה**, פעם אחת,
+           ולא היה שום מסלול להחליף אותו. זה התגלה כשהבעלים ניסה לבדוק את
+           תיקון ההעלאה ולא מצא איפה — והוא צדק.
+           זה לא היה רק פער נוחות: מ-4.11.23 העלאה שנכשלת אינה נשמרת יותר
+           כ-base64, וההודעה שהמשתמש מקבל אומרת "נסה להעלות שוב מהפרופיל" —
+           כלומר הפנתה למקום שלא היה קיים. -->
+      <div class="card" style="margin-bottom:18px;background:linear-gradient(135deg,rgba(20,184,166,0.08),rgba(6,182,212,0.05))">
+        <h3 style="font-weight:900;font-size:16px;margin:0 0 6px;color:#04778A">🪪 מסמך מזהה</h3>
+        <p style="font-size:12px;color:#64748B;margin:0 0 12px;line-height:1.6">העלאה חדשה מחליפה מסמך קיים, אם יש. אם ההעלאה נכשלה בעבר — כאן מעלים שוב. גלוי לצוות Drushe בלבד.</p>
+        <div id="tIdPhotoPreview" style="display:none;margin-bottom:10px;border-radius:14px;overflow:hidden;border:2px solid rgba(20,184,166,0.3)">
+          <img id="tIdPhotoImg" src="" style="width:100%;max-height:180px;object-fit:cover" alt="תמונת מסמך">
+        </div>
+        <div style="display:flex;gap:8px">
+          <label style="flex:1;background:rgba(20,184,166,0.1);border:2px dashed rgba(20,184,166,0.4);color:#04778A;border-radius:14px;padding:14px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">
+            ${icon("upload",16)} בחר מהגלריה
+            <input type="file" accept="image/*" style="display:none" onchange="previewIdPhoto(this)">
+          </label>
+          <label style="flex:1;background:rgba(20,184,166,0.1);border:2px dashed rgba(20,184,166,0.4);color:#04778A;border-radius:14px;padding:14px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">
+            ${icon("camera",16)} צלם עכשיו
+            <input type="file" accept="image/*" capture="environment" style="display:none" onchange="previewIdPhoto(this)">
+          </label>
+        </div>
+      </div>
         <!-- שבבי הצעות -->
         <div style="margin-bottom:12px">
           <div style="font-size:11px;color:#6C7686;font-weight:700;margin-bottom:7px">הצעות לשאלות:</div>
@@ -12588,8 +12674,25 @@ async function saveTeacherProfileEdits(){
     }
     const t=TEACHERS.find(x=>x.id===currentUser.uid);
     if(t){Object.assign(t,teacherUpdates);if(!t.catProfiles)t.catProfiles={};Object.assign(t.catProfiles,catProfileUpdates);}
+    // מסמך מזהה — אותו מסלול בדיוק כמו במסך ההקמה: required, ולכן כישלון
+    // **לא** נשמר כ-base64 במסד אלא נכשל ואומר את זה. עותק שני של לוגיקת
+    // ההעלאה היה בדיוק הכפילות שהחזירה כאן באגים; לכן זו אותה פונקציה.
+    let _idFailed=false;
+    if(_idPhotoBase64){
+      showFireToast('⏳ מעלה מסמך מזהה...');
+      try{
+        const url=await uploadBase64ToStorage(_idPhotoBase64,`id-photos/${currentUser.uid}/teacher-id`,{required:true});
+        await db.ref('teacherVerification/'+currentUser.uid).update({idPhoto:url,updatedAt:Date.now()});
+      }catch(e){
+        _idFailed=true;
+        notifyAdmin({type:'idPhotoUploadFailed',uid:currentUser.uid,kind:'teacher-id-edit',error:e?.message||''}).catch(()=>{});
+      }
+      _idPhotoBase64=null;
+    }
     document.getElementById('_etOv')?.remove();
-    showFireToast('✅ הפרופיל עודכן!');
+    showFireToast(_idFailed
+      ? '⚠️ הפרופיל עודכן, אך המסמך לא עלה. נסה שוב בעוד רגע.'
+      : '✅ הפרופיל עודכן!');
     render();
   }catch(e){showFireToast('❌ '+e.message);}
 }

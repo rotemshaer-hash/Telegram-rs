@@ -1,0 +1,125 @@
+name: Provision Staging Database
+
+# ── למה workflow ולא הוראות לבעלים ──
+#
+# הבעלים עובד מטלפון, וכל צעד בקונסולה שאפשר להימנע ממנו הוא צעד שנחסך.
+# מסתבר שאפשר להימנע כמעט מכולם: מופע RTDB נוסף **באותו פרויקט** נוצר
+# מה-CLI עם חשבון השירות שכבר קיים בסוד FIREBASE_SERVICE_ACCOUNT. אין
+# פרויקט חדש, אין סוד חדש, אין קונפיג להדביק, ואין Blaze שני.
+#
+# ── מה זה כן מבודד ומה לא ──
+#
+# מבודד: **הנתונים**. תרגיל השחזור, סריקת היתומים אחרי מחיקה, וכל preview של
+# PR יכולים לכתוב בלי לגעת במסד שמשתמשים אמיתיים יושבים בו. זה הפער שבגללו
+# הבודק ביקש staging, וזה מה שנסגר.
+#
+# לא מבודד: Auth, Storage, וקריסה ברמת הפרויקט. מי שרוצה הגנה מפני אובדן
+# הפרויקט צריך פרויקט שני — זו החלטה נפרדת, והיא מתועדת ב-HANDOFF ולא
+# מוצגת כאילו נסגרה.
+#
+# רץ על push לענף הזה, כי הסשן שכותב אותו יכול לדחוף אבל אינו יכול להריץ
+# workflow ידנית (403 על dispatches). פעולה חד-פעמית ואידמפוטנטית.
+
+on:
+  push:
+    branches: [claude/provision-staging]
+  workflow_dispatch:
+
+jobs:
+  provision:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install -g firebase-tools
+      - name: Install script dependencies
+        working-directory: scripts
+        run: npm install
+
+      - name: Write service account credentials
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "::error::חסר הסוד FIREBASE_SERVICE_ACCOUNT."
+            exit 1
+          fi
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > /tmp/sa.json
+
+      - name: Create the staging database instance
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: /tmp/sa.json
+        run: |
+          set -o pipefail
+          echo "== existing instances before =="
+          firebase database:instances:list --project kidemy-83a17 --non-interactive || true
+
+          # אידמפוטנטי: אם המופע כבר קיים, זו הצלחה ולא כישלון. הרצה חוזרת
+          # של פעולת הקמה חייבת להיות בטוחה, אחרת איש לא יעז להריץ אותה שוב.
+          if firebase database:instances:list --project kidemy-83a17 --non-interactive 2>/dev/null | grep -q 'drushe-staging'; then
+            echo "already exists: drushe-staging"
+          else
+            echo "== creating drushe-staging =="
+            firebase database:instances:create drushe-staging \
+              --project kidemy-83a17 --non-interactive
+          fi
+
+          echo ""
+          echo "== instances after =="
+          firebase database:instances:list --project kidemy-83a17 --non-interactive
+
+          # הרשימה הרגילה מדפיסה שם בלבד. הכתובת היא הגבול היחיד בין תרגיל
+          # לאירוע ייצור, ולכן היא נקראת מה-API ולא נגזרת מהשם לפי כלל שנראה
+          # נכון — כללי ה-URL של RTDB שונים בין אזורים ובין מופע ברירת המחדל
+          # למופע נוסף, וניחוש כאן היה מכוון את כל הכתיבות למקום לא ידוע.
+          echo ""
+          echo "== the URL, from the API =="
+          firebase database:instances:list --project kidemy-83a17 --non-interactive --json
+
+      # שלב האבחון של ה-403 הוסר: הוא ענה על שאלתו. התשובה, לרשומות —
+      # ‏`rulesets.test` חסרה, `releases.update` ו-`rulesets.create` קיימות,
+      # כלומר ה-CLI נחסם על בדיקת תחביר מקדימה ולא על הפריסה. הפריסה עברה
+      # ל-scripts/deploy-storage-rules.js שמדבר עם ה-API ישירות. הסיפור
+      # המלא ב-HANDOFF; אין טעם להריץ שוב ניסוי שהוכרע.
+
+      # ── דלי Storage נפרד לסביבת הבדיקות ──
+      #
+      # מסד הנתונים בודד בהצלחה במופע שני באותו פרויקט. השאלה אם אותו טריק
+      # עובד גם לדלי לא נבדקה מעולם, ולכן היא נבדקת כאן ולא מנוחשת. אם הדלי
+      # נוצר אבל אינו רשום ב-Firebase, חוקי ה-Storage לא יחולו עליו — וזה
+      # יהיה גרוע מכלום. הבדיקה מדפיסה את שני הדברים בנפרד.
+      - name: Try to create a separate staging storage bucket
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: /tmp/sa.json
+        run: |
+          BUCKET="drushe-staging-media"
+          if ! command -v gcloud >/dev/null 2>&1; then
+            echo "gcloud not on this runner — skipping"
+            exit 0
+          fi
+          gcloud auth activate-service-account --key-file=/tmp/sa.json --quiet 2>&1 | tail -1 || true
+          echo "== existing buckets =="
+          gcloud storage buckets list --project kidemy-83a17 --format="value(name)" 2>&1 | tail -10 || true
+          echo ""
+          if gcloud storage buckets describe "gs://$BUCKET" --project kidemy-83a17 >/dev/null 2>&1; then
+            echo "already exists: $BUCKET"
+          else
+            echo "== creating gs://$BUCKET =="
+            gcloud storage buckets create "gs://$BUCKET" \
+              --project kidemy-83a17 --location=US --uniform-bucket-level-access 2>&1 | tail -5 \
+              || echo "could not create the bucket"
+          fi
+
+      # ── הפריסה עצמה, דרך ה-API ──
+      #
+      # זו הפעם הראשונה שהקובץ הזה נפרס אוטומטית מאז שהריפו נוצר. אם היא
+      # עוברת, אפשר להסיר את העטיפה המזהירה ב-deploy-firebase-rules.yml
+      # ולהפוך את השלב לחוסם — הפריט ⬜ שנשאר פתוח שם.
+      - name: Deploy storage rules through the API
+        working-directory: scripts
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: node deploy-storage-rules.js

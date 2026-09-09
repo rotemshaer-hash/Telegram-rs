@@ -1,0 +1,88 @@
+name: Restore Drill
+
+on:
+  workflow_dispatch:
+  # גם הטריגר החד-פעמי של סריקת היתומים הוסר אחרי שרצה — ריצה 34262805242,
+  # שמצאה 41 רשומות יתומות ב-7 מקומות בעותק המשוחזר.
+  # הטריגר החד-פעמי לאימות (push לענף claude/verify-restore-drill) הוסר אחרי
+  # שהתרגיל רץ בהצלחה על נתונים אמיתיים — ריצה 34147505837: 9142 צמתים
+  # שוחזרו ואומתו בקריאה חוזרת מ-staging, RTO של 2.7 שניות. מכאן והלאה
+  # מתוזמן בלבד.
+  schedule:
+    # שבועי, ראשון ב-02:00 UTC — אחרי הגיבוי היומי של אותו לילה (01:00),
+    # כדי שהתרגיל ירוץ על הגיבוי הטרי ביותר ולא על זה של אתמול.
+    - cron: '0 2 * * 0'
+
+jobs:
+  drill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        working-directory: scripts
+        run: npm install
+
+      # אם STAGING_DB_URL חסר הסקריפט נופל במפורש ולא חוזר בשקט על הייצור —
+      # ראה lib/admin.js. כישלון כזה הוא תקלת הגדרה, לא תרגיל שנכשל, וההודעה
+      # ב-Issue אומרת את ההבדל.
+      - name: Restore yesterday's production backup into staging
+        working-directory: scripts
+        env:
+          # סוד אחד לשתי הסביבות: staging הוא מופע RTDB נוסף באותו פרויקט,
+          # ולכן חשבון השירות הקיים כבר מגיע לשניהם. מה שמפריד הוא הכתובת.
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: node restore-drill.js
+
+      # הסריקה רצה **אחרי** השחזור ובאותו ג'וב, כי היא צריכה בדיוק את מה
+      # שהשחזור הרגע הכניס: עותק של נתוני הייצור האמיתיים. סריקה על מסד ריק
+      # לא מוכיחה כלום, ולכן היא לא ג'וב נפרד שעלול לרוץ לבד.
+      - name: Scan the restored copy for orphaned records
+        working-directory: scripts
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: node orphan-scan.js
+
+      - name: Open an issue if the drill failed
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = '🚨 תרגיל השחזור השבועי נכשל';
+            const url = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const body = [
+              'התרגיל השבועי של **Restore Drill** נכשל. כלומר **לא ידוע אם',
+              'אפשר לשחזר מהגיבוי** — הגיבוי עצמו אולי תקין, אבל השחזור ממנו',
+              'לא הוכח.',
+              '',
+              `לוג הריצה: ${url}`,
+              '',
+              'הלוג מבחין בין שני מקרים שונים לגמרי:',
+              '- **תקלת הגדרה** — חסר המשתנה `STAGING_DB_URL`.',
+              '  התרגיל לא רץ בכלל.',
+              '- **התרגיל נכשל** — הגיבוי ריק, פגום, או שהשחזור יצא חלקי.',
+              '  זו תקלה אמיתית בשרשרת הגיבוי, וצריך לטפל בה עכשיו.',
+              '',
+              '_נפתח אוטומטית. סגור אותו אחרי שהריצה הבאה מצליחה._',
+            ].join('\n');
+            const existing = await github.rest.issues.listForRepo({
+              owner: context.repo.owner, repo: context.repo.repo,
+              state: 'open', labels: 'restore-drill',
+            });
+            if (existing.data.length) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: existing.data[0].number, body,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner, repo: context.repo.repo,
+                title, body, labels: ['restore-drill'],
+              });
+            }
