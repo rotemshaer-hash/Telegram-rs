@@ -285,6 +285,11 @@ input,textarea,select{font-family:inherit;-webkit-appearance:none;appearance:non
 .tabs.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 .tabs.scroll::-webkit-scrollbar{display:none}
 .tabs.scroll button{flex:0 0 auto;white-space:nowrap}
+/* ה-scrollbar כבוי בכוונה (שורה למעלה), אבל בלעדיו אין שום רמז שיש עוד
+   טאבים מעבר לקצה — משתמש שיש לו כמה מקצועות פשוט לא יודע ש"אודות" בכלל
+   קיים. הצל הזה מתווסף רק כשיש באמת גלישה (ראה _markScrollableTabRows),
+   כדי שלא יופיע בטעות על שורה שכל הטאבים שלה כבר נראים במסך. */
+.tabs.scroll.can-scroll{box-shadow:inset -14px 0 10px -8px rgba(15,26,31,.16),inset 14px 0 10px -8px rgba(15,26,31,.16)}
 
 /* OTP */
 .otp{display:flex;gap:8px;justify-content:center;margin-bottom:20px}
@@ -1113,7 +1118,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.26';
+const APP_VERSION='4.11.27';
 
 // ─── הודעות קוליות — כבויות ────────────────────────────────────────────────
 // הקלטה קולית היא הערוץ היחיד בין ילדים שאיש לא בודק: אין תמלול, אין סינון,
@@ -13541,6 +13546,17 @@ function _hs(inp){
   requestAnimationFrame(()=>{const si=document.getElementById('homeSearch');if(si&&document.activeElement!==si)si.focus({preventScroll:true});});
 }
 
+// שורת טאבים כמו זו שבפרופיל מורה (`.tabs.scroll`) גוללת בשקט — ה-scrollbar
+// כבוי בכוונה (ראה ה-CSS), כך שמשתמש עם כמה מקצועות לא רואה שום רמז ש"אודות"
+// בכלל קיים מעבר לקצה. זה בדיוק מה שקרה בפועל: הבעלים חיפש את "אודות" בלי
+// לדעת שהוא שם, פשוט לא נראה. הפונקציה הזו רצה אחרי כל render() ומסמנת רק
+// שורה שבאמת גולשת (scrollWidth>clientWidth), כדי שהצל ב-CSS לא יופיע על
+// שורה שכל הטאבים שלה כבר נראים.
+function _markScrollableTabRows(){
+  document.querySelectorAll('.tabs.scroll').forEach(el=>{
+    el.classList.toggle('can-scroll',el.scrollWidth>el.clientWidth+1);
+  });
+}
 function render(){
   // Guard: תלמיד שלא אושר לא יכול לגשת למסכי האפליקציה
   //
@@ -13587,6 +13603,7 @@ function render(){
   const fn=SCREENS[S.screen]||Home;
   // הרענון נעשה עכשיו במשיכה למטה (pull-to-refresh) במקום כפתור צף.
   document.getElementById("app").innerHTML=fn()+SharePanel()
+  requestAnimationFrame(_markScrollableTabRows);
 
   if(_prevScreen===S.screen){
     // ביטול אנימציית הכניסה ברינדור חוזר של אותו מסך.
