@@ -35,6 +35,9 @@ jobs:
         with:
           node-version: '22'
       - run: npm install -g firebase-tools
+      - name: Install script dependencies
+        working-directory: scripts
+        run: npm install
 
       - name: Write service account credentials
         env:
@@ -143,20 +146,10 @@ jobs:
           # לקחת כמה דקות להתפשט — ושתי הבדיקות הקודמות רצו דקה ושלוש דקות
           # אחרי ההענקה. ניסיון בודד באותו חלון מחזיר "עדיין נכשל" גם כשהתפקיד
           # הוענק נכון, וזו תשובה שגויה שתשלח את הבעלים לתקן משהו שאינו שבור.
-          echo ""
-          echo "== does the storage rules deploy work now? =="
-          STORAGE_DEPLOY=still-failing
-          for attempt in 1 2 3; do
-            echo "-- attempt $attempt --"
-            if firebase deploy --only storage --project kidemy-83a17 --non-interactive 2>&1 | tail -12; then
-              STORAGE_DEPLOY=ok
-              break
-            fi
-            # if ולא `[ ] && sleep`: הצעד רץ תחת bash -e, ובניסיון האחרון
-            # התנאי מחזיר 1 — מה שהיה מפיל את השלב כולו בדיוק כשהוא מסיים.
-            if [ "$attempt" -lt 3 ]; then sleep 60; fi
-          done
-          echo "STORAGE_DEPLOY=$STORAGE_DEPLOY"
+          # התשובה התקבלה: releases.update ו-rulesets.create קיימות,
+          # rulesets.test חסרה. ה-CLI חסום על בדיקת התחביר המקדימה בלבד, לא
+          # על הפריסה עצמה — ולכן הפריסה עברה ל-scripts/deploy-storage-rules.js
+          # שמדבר ישירות עם ה-API. אין יותר מה לאבחן כאן."
 
       # ── דלי Storage נפרד לסביבת הבדיקות ──
       #
@@ -185,3 +178,14 @@ jobs:
               --project kidemy-83a17 --location=US --uniform-bucket-level-access 2>&1 | tail -5 \
               || echo "could not create the bucket"
           fi
+
+      # ── הפריסה עצמה, דרך ה-API ──
+      #
+      # זו הפעם הראשונה שהקובץ הזה נפרס אוטומטית מאז שהריפו נוצר. אם היא
+      # עוברת, אפשר להסיר את העטיפה המזהירה ב-deploy-firebase-rules.yml
+      # ולהפוך את השלב לחוסם — הפריט ⬜ שנשאר פתוח שם.
+      - name: Deploy storage rules through the API
+        working-directory: scripts
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: node deploy-storage-rules.js
