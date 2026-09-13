@@ -1,0 +1,42 @@
+name: Orphan Cleanup
+
+# ⬜ הפריט "לנקות" מרשימת ה-41 רשומות היתומות שנמצאו ב-orphan-scan.js
+# (ריצה 34262805242, עותק משוחזר אמיתי). ברירת המחדל היא staging + dry run —
+# שני שינויי קלט מפורשים נדרשים כדי לגעת בייצור בפועל, ומחיקה בייצור עוד
+# דורשת גיבוי טרי (פחות מ-30 שעות) — orphan-cleanup.js נועל את זה בעצמו,
+# לא רק ה-workflow.
+on:
+  workflow_dispatch:
+    inputs:
+      target_env:
+        description: 'סביבת היעד'
+        required: true
+        default: 'staging'
+        type: choice
+        options: [staging, production]
+      apply:
+        description: 'מחיקה אמיתית (לא סימון בלבד). השאר כבוי לצפייה במועמדים בלבד.'
+        required: true
+        default: false
+        type: boolean
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        working-directory: scripts
+        run: npm install
+
+      - name: Run orphan cleanup
+        working-directory: scripts
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          CLEANUP_ENV: ${{ inputs.target_env }}
+          APPLY_ORPHAN_CLEANUP: ${{ inputs.apply && 'yes' || 'no' }}
+        run: node orphan-cleanup.js

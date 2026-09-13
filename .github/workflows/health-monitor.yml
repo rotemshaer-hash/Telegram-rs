@@ -1,0 +1,80 @@
+name: Health Monitor
+
+# הפריט "monitoring אמיתי" מרשימת החוסמים של הביקורת.
+#
+# רץ פעמיים ביום ולא כל שעה: האותות שהוא בודק (גיבוי יומי, חריגת SLA,
+# מכסת AI יומית, שגיאות ב-24 שעות) משתנים בקצב של שעות. ריצה כל שעה הייתה
+# מייצרת רעש ולא מידע — ורעש הוא בדיוק מה שגורם לאנשים להפסיק להסתכל.
+#
+# ה-SLA הקריטי הוא שעתיים, ולכן שתי ריצות ביום אינן מספיקות **כערוץ ההתראה
+# היחיד** לדיווח בטיחות. הן לא. הבאנר בפאנל הניהול הוא הערוץ המיידי; זה
+# הרשת שתופסת מה שאיש לא פתח את הפאנל כדי לראות.
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 06:00 ו-18:00 UTC — בוקר וערב בישראל.
+    - cron: '0 6,18 * * *'
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        working-directory: scripts
+        run: npm install
+
+      - name: Check the health signals already in the database
+        id: check
+        working-directory: scripts
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: node health-monitor.js
+
+      # Issue אחד מתעדכן, ולא Issue חדש בכל ריצה. עשרים Issues פתוחים על
+      # אותה בעיה הם בדיוק הרעש שמאמן להתעלם, וזה הדפוס שכבר עלה כאן ביוקר.
+      - name: Open or update the alert issue
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = '🚨 ניטור: נמצאו ממצאים';
+            const url = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const body = [
+              'ריצת הניטור מצאה ממצאים. **הפירוט המדויק בלוג** — הוא לא מועתק',
+              'לכאן, כי הוא נוגע בספירות של דיווחי בטיחות.',
+              '',
+              `לוג הריצה: ${url}`,
+              '',
+              'מה נבדק:',
+              '- גיבוי מהיממה האחרונה קיים',
+              '- דיווחי בטיחות שחרגו מיעד הטיפול',
+              '- מכסת ה-AI היומית ומתג הכיבוי',
+              '- שגיאות לקוח ב-24 השעות האחרונות',
+              '- כשלי מסירה, הרשמה והעלאת מסמך',
+              '',
+              '_נפתח אוטומטית ומתעדכן. סגור אותו אחרי שהריצה הבאה נקייה._',
+            ].join('\n');
+            const existing = await github.rest.issues.listForRepo({
+              owner: context.repo.owner, repo: context.repo.repo,
+              state: 'open', labels: 'health-monitor',
+            });
+            if (existing.data.length) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: existing.data[0].number, body,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner, repo: context.repo.repo,
+                title, body, labels: ['health-monitor'],
+              });
+            }
