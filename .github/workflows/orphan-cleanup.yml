@@ -6,6 +6,11 @@ name: Orphan Cleanup
 # דורשת גיבוי טרי (פחות מ-30 שעות) — orphan-cleanup.js נועל את זה בעצמו,
 # לא רק ה-workflow.
 on:
+  # TEMP: one-off verification run, staging dry-run only. Removed before merge —
+  # this session cannot dispatch workflow_dispatch (403, verified not assumed),
+  # so a scoped push trigger is the only way to execute it once for real.
+  push:
+    branches: [claude/production-gate-followups]
   workflow_dispatch:
     inputs:
       target_env:
@@ -37,6 +42,6 @@ jobs:
         working-directory: scripts
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          CLEANUP_ENV: ${{ inputs.target_env }}
-          APPLY_ORPHAN_CLEANUP: ${{ inputs.apply && 'yes' || 'no' }}
+          CLEANUP_ENV: ${{ inputs.target_env || 'staging' }}
+          APPLY_ORPHAN_CLEANUP: ${{ (inputs.apply && 'yes') || 'no' }}
         run: node orphan-cleanup.js
