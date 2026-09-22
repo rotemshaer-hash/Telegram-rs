@@ -14,6 +14,15 @@
         "active": {
           ".validate": "auth.token.email == 'rotemshaer@gmail.com' || newData.val() == false"
         },
+        "rating": {
+          ".validate": "auth.token.email == 'rotemshaer@gmail.com' || newData.val() == 0 || newData.val() == data.val()"
+        },
+        "reviews": {
+          ".validate": "auth.token.email == 'rotemshaer@gmail.com' || newData.val() == 0 || newData.val() == data.val()"
+        },
+        "lessons": {
+          ".validate": "auth.token.email == 'rotemshaer@gmail.com' || newData.val() == 0 || newData.val() == data.val() || (data.exists() && newData.val() == data.val() + 1) || (!data.exists() && newData.val() == 1)"
+        },
         "ageVerification": {
           "status": {
             ".validate": "auth.token.email == 'rotemshaer@gmail.com' || newData.val() != 'verified'"
@@ -179,7 +188,6 @@
     },
     "clientErrors": {
       ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'",
-      ".write": "auth != null",
       "$errorId": { ".write": "auth != null && !data.exists()" }
     },
     "parentTokens": {
@@ -219,6 +227,9 @@
           ".write": "auth.token.email == 'rotemshaer@gmail.com' || (auth != null && ((data.exists() && data.child('from').val() == auth.uid && !newData.exists()) || (!data.exists() && newData.child('from').val() == auth.uid && newData.child('to').val() == $targetId && auth.uid != $targetId && (root.child('bookings').child($bookingId).child('status').val() == 'approved' || root.child('bookings').child($bookingId).child('status').val() == 'completed') && ((root.child('bookings').child($bookingId).child('studentId').val() == auth.uid && root.child('bookings').child($bookingId).child('teacherId').val() == $targetId) || (root.child('bookings').child($bookingId).child('teacherId').val() == auth.uid && root.child('bookings').child($bookingId).child('studentId').val() == $targetId)))))",
           "approved": {
             ".validate": "auth.token.email == 'rotemshaer@gmail.com' || newData.val() != true"
+          },
+          "stars": {
+            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 5"
           }
         }
       }
@@ -351,8 +362,8 @@
     "schedules": {
       "$uid": { ".read": "auth != null && (auth.uid == $uid || root.child('teachers').child($uid).exists() || auth.token.email == 'rotemshaer@gmail.com')", ".write": "auth.uid == $uid || auth.token.email == 'rotemshaer@gmail.com'" }
     },
-    "contactMessages": { ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'", ".write": "auth != null" },
-    "employerInquiries": { ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'", ".write": "auth != null" },
+    "contactMessages": { ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'", "$msgId": { ".write": "auth != null && !data.exists()" } },
+    "employerInquiries": { ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'", "$inquiryId": { ".write": "auth != null && !data.exists()" } },
     "pendingCategories": { ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'", "$suggestionId": { ".write": "auth != null && ((!data.exists() && newData.exists()) || auth.token.email == 'rotemshaer@gmail.com')" } },
     "stories": {
       ".read": "auth != null",
@@ -377,7 +388,7 @@
     "_analytics": {
       ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'",
       "$month": {
-        ".write": "auth != null"
+        "$eventId": { ".write": "auth != null && !data.exists()" }
       }
     },
     "refCodes": {
