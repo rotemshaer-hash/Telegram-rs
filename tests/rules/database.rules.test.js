@@ -798,3 +798,98 @@ describe('reviews: keyed by bookingId, and the booking must qualify', () => {
     await assertSucceeds(remove(ref(asStudent(), 'reviews/teacher-uid/b2')));
   });
 });
+
+// ── AUDIT 22.9.2026 ─────────────────────────────────────────────────────────
+// Four collections still carried a node-level ".write": "auth != null" — the
+// same "may submit one = may delete all" pattern as the queues above. A child
+// rule cannot take back what a parent granted, so the create-only rule that
+// already sat under clientErrors/$errorId never restricted anything.
+describe('submission collections: anyone may add one, nobody may wipe them', () => {
+  for (const node of ['clientErrors', 'contactMessages', 'employerInquiries']) {
+    it(`${node}: a user can add an entry`, async () => {
+      await assertSucceeds(set(ref(asStudent(), `${node}/e1`), { text: 'hello', createdAt: 1 }));
+    });
+    it(`${node}: a user cannot delete the whole collection`, async () => {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await set(ref(ctx.database(), `${node}/existing`), { text: 'keep me', createdAt: 1 });
+      });
+      await assertFails(remove(ref(asStudent(), node)));
+      await assertFails(set(ref(asStudent(), `${node}/existing`), null));
+    });
+    it(`${node}: the admin can still manage it`, async () => {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await set(ref(ctx.database(), `${node}/existing`), { text: 'x', createdAt: 1 });
+      });
+      await assertSucceeds(update(ref(asAdmin(), node), { 'existing/read': true }));
+    });
+  }
+
+  it('_analytics: a user can log an event but cannot wipe a month', async () => {
+    await assertSucceeds(set(ref(asStudent(), '_analytics/2026-09/ev1'), { e: 'open', ts: 1 }));
+    await assertFails(remove(ref(asStudent(), '_analytics/2026-09')));
+  });
+});
+
+// A teacher could write any rating, review count or lesson count onto their
+// own public profile — parents choose by those numbers.
+describe('teacher reputation numbers come from the admin, not the teacher', () => {
+  it('a teacher cannot give themselves a rating', async () => {
+    await assertFails(set(ref(asTeacher(), 'teachers/teacher-uid/rating'), 5));
+  });
+  it('a teacher cannot inflate their review count', async () => {
+    await assertFails(set(ref(asTeacher(), 'teachers/teacher-uid/reviews'), 40));
+  });
+  it('a teacher cannot jump their lesson count', async () => {
+    await assertFails(set(ref(asTeacher(), 'teachers/teacher-uid/lessons'), 999));
+  });
+  it('a teacher cannot raise the old counter one at a time either', async () => {
+    await assertFails(set(ref(asTeacher(), 'teachers/teacher-uid/lessons'), 1));
+  });
+  // Lessons are counted as one marker per completed booking. The marker is
+  // only accepted for a booking that really is this teacher's and really is
+  // completed, so each real lesson counts once and nothing else counts.
+  it('a completed booking of this teacher can be counted', async () => {
+    await assertSucceeds(set(ref(asTeacher(), 'teachers/teacher-uid/completedLessons/b2'), true));
+  });
+  it('a booking that is not completed cannot be counted', async () => {
+    await assertFails(set(ref(asTeacher(), 'teachers/teacher-uid/completedLessons/b1'), true));
+    await assertFails(set(ref(asTeacher(), 'teachers/teacher-uid/completedLessons/b4'), true));
+  });
+  it('a made-up booking id cannot be counted', async () => {
+    await assertFails(set(ref(asTeacher(), 'teachers/teacher-uid/completedLessons/fake-1'), true));
+  });
+  it('another teacher’s completed booking cannot be counted', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await set(ref(ctx.database(), 'bookings/other'), { studentId: STUDENT, teacherId: 'someone-else', status: 'completed', price: 80, createdAt: 1 });
+    });
+    await assertFails(set(ref(asTeacher(), 'teachers/teacher-uid/completedLessons/other'), true));
+  });
+  it('a marker must be exactly true', async () => {
+    await assertFails(set(ref(asTeacher(), 'teachers/teacher-uid/completedLessons/b2'), 50));
+  });
+  it('first-time setup, which writes zeros, still works', async () => {
+    await assertSucceeds(update(ref(asTeacher(), 'teachers/teacher-uid'), { rating: 0, reviews: 0, lessons: 0 }));
+  });
+  it('the admin recomputes the rating after approving a review', async () => {
+    await assertSucceeds(update(ref(asAdmin(), 'teachers/teacher-uid'), { rating: 4.5, reviews: 2 }));
+  });
+  it('a student still cannot touch a teacher’s rating', async () => {
+    await assertFails(set(ref(asStudent(), 'teachers/teacher-uid/rating'), 1));
+  });
+});
+
+describe('review stars stay between 1 and 5', () => {
+  const review = (stars) => ({
+    from: STUDENT, to: TEACHER, stars, review: 'x', type: 'studentToTeacher',
+    approved: false, createdAt: Date.now(), bookingId: 'b2',
+  });
+  it('rejects 6 stars', async () => {
+    await assertFails(set(ref(asStudent(), 'reviews/teacher-uid/b2'), review(6)));
+  });
+  it('rejects 0 stars', async () => {
+    await assertFails(set(ref(asStudent(), 'reviews/teacher-uid/b2'), review(0)));
+  });
+  it('accepts 4 stars', async () => {
+    await assertSucceeds(set(ref(asStudent(), 'reviews/teacher-uid/b2'), review(4)));
+  });
+});

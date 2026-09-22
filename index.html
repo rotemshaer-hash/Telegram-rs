@@ -204,6 +204,16 @@ input,textarea,select{font-family:inherit;-webkit-appearance:none;appearance:non
 /* CARDS */
 .card{background:var(--card);border-radius:var(--radius);padding:18px;margin-bottom:14px;box-shadow:var(--shadow)}
 .card-sm{background:var(--card);border-radius:var(--radius-sm);padding:14px 16px;margin-bottom:10px;box-shadow:none}
+/* דף מורה — כרטיסים בגוון המנטה של האפליקציה (לא לבן), וטאבים */
+.tpcard{background:linear-gradient(135deg,rgba(20,184,166,.09),rgba(6,182,212,.05));border:1px solid rgba(20,184,166,.15);border-radius:22px;box-shadow:0 4px 18px rgba(20,184,166,.08);padding:18px;margin-bottom:14px}
+.tp-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.tp-head h4{margin:0;font-weight:900;font-size:15.5px;color:#0F1A1F;flex:1}
+.tp-ic{width:34px;height:34px;border-radius:42% 58% 63% 37%/45% 40% 60% 55%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.tp-tabs{display:flex;gap:4px;background:rgba(20,184,166,.08);border:1px solid rgba(20,184,166,.14);border-radius:50px;padding:5px;margin-bottom:16px}
+.tp-tab{flex:1;text-align:center;padding:9px 2px;border-radius:50px;font-size:12.5px;font-weight:800;color:#64748B;background:none;border:none;cursor:pointer;font-family:inherit;white-space:nowrap}
+.tp-tab.on{background:linear-gradient(135deg,#14B8A6,#0e7a72);color:#fff;box-shadow:0 3px 10px rgba(14,122,114,.35)}
+.tp-sub{background:rgba(255,255,255,.45);border-radius:16px;padding:12px 14px;margin-bottom:10px}
+.dwc{font-size:11.5px;font-weight:800;margin:6px 0 8px}
 
 /* NAV */
 .bnav{position:fixed;bottom:0;left:0;right:0;
@@ -855,7 +865,8 @@ async function deleteQA(teacherUid,qaId){
 
 function _notifGoToQA(teacherUid){
   const _t=TEACHERS.find(x=>x.id===teacherUid)||S.teacher;
-  if(_t){S.teacher=_t;loadTeacherQA(teacherUid).then(()=>go('teacher'));}
+  // דף המורה מחולק לטאבים; התראה על שאלה צריכה לנחות על טאב השאלות.
+  if(_t){S.teacher=_t;S._tabFor=_t.id;S.teacherTab='qa';loadTeacherQA(teacherUid).then(()=>go('teacher'));}
 }
 
 let communityGroups=[];
@@ -984,7 +995,7 @@ async function loadRealTeachers(){
             price:t.price||40,
             rating:t.rating||0,
             reviews:t.reviews||0,
-            lessons:t.lessons||0,
+            lessons:teacherLessonCount(t),
             mode:t.mode||['online'],
             av:t.photo?'📸':catObj.em,
             photo:t.photo||null,
@@ -1118,7 +1129,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.27';
+const APP_VERSION='4.11.28';
 
 // ─── הודעות קוליות — כבויות ────────────────────────────────────────────────
 // הקלטה קולית היא הערוץ היחיד בין ילדים שאיש לא בודק: אין תמלול, אין סינון,
@@ -2362,8 +2373,8 @@ function TeacherSetup(){
       <!-- תיאור -->
       <div class="card" style="margin-bottom:18px">
         <h3 style="font-weight:900;font-size:16px;margin:0 0 14px;color:#14B8A6">✍️ ספר על עצמך</h3>
-        <textarea id="tDesc" class="inp" placeholder="לדוגמה: מנגן גיטרה 6 שנים, זכיתי בתחרות בית הספר. מלמד מתחילים עד מתקדמים..." style="min-height:100px;resize:none"></textarea>
-        <p style="font-size:11px;color:#6C7686;margin:6px 0 0">מינימום 20 תווים</p>
+        <textarea id="tDesc" class="inp" oninput="_updDescWc(this)" placeholder="לדוגמה: מנגן גיטרה 6 שנים, זכיתי בתחרות בית הספר. מלמד מתחילים עד מתקדמים..." style="min-height:100px;resize:none"></textarea>
+        ${descWordCounter('')}
         <div style="margin-top:16px;border-top:1px solid rgba(20,184,166,0.15);padding-top:14px">
           <div style="font-size:13px;font-weight:800;color:#14B8A6;margin-bottom:4px">${icon("chat",14)} כרטיס היכרות <span style="font-weight:500;color:#6C7686;font-size:11px">(אופציונלי — בונה אמון עם תלמידים)</span></div>
           <p style="color:#64748B;font-size:11px;margin:0 0 12px">3 שאלות שיראו בפרופיל שלך ויעזרו לתלמידים להכיר אותך</p>
@@ -2642,6 +2653,29 @@ async function uploadSetupPhoto(input){
   }catch(e){showFireToast('❌ '+(e.message||'שגיאה'));}
 }
 
+// ─── תיאור מורה: מינימום מילים ─────────────────────────────────────────────
+// כל תיאור שמוצג בדף המורה (התיאור בהרשמה, ותיאור לכל מקצוע) חייב לפחות
+// MIN_DESC_WORDS מילים. ארבעה מסלולי שמירה כותבים תיאור, וכולם עוברים דרך
+// descTooShort — כלל אחד, לא ארבע בדיקות שיכולות לסטות זו מזו.
+const MIN_DESC_WORDS=20;
+function countWords(s){return String(s||'').trim().split(/\s+/).filter(Boolean).length;}
+function descTooShort(text,label){
+  const n=countWords(text);
+  if(n>=MIN_DESC_WORDS)return false;
+  showFireToast(`❌ ${label}: צריך לפחות ${MIN_DESC_WORDS} מילים (כתבת ${n})`);
+  return true;
+}
+// מונה חי מתחת לשדה. ה-textarea מקבל oninput="_updDescWc(this)", והמונה
+// הוא האלמנט הבא אחריו.
+function descWordCounter(text){
+  const n=countWords(text),ok=n>=MIN_DESC_WORDS;
+  return `<p class="dwc" style="color:${ok?'#059669':'#B45309'}">${ok?'✅':'✍️'} ${n}/${MIN_DESC_WORDS} מילים</p>`;
+}
+function _updDescWc(el){
+  const wc=el&&el.nextElementSibling;
+  if(wc&&wc.classList.contains('dwc'))wc.outerHTML=descWordCounter(el.value);
+}
+
 async function saveTeacherProfile(){
   if(!currentUser){showFireToast('❌ צריך להיות מחובר');return;}
   const area=document.getElementById('tArea');
@@ -2654,7 +2688,7 @@ async function saveTeacherProfile(){
   if(!area?.value){showFireToast('❌ בחר אזור');return;}
   if(!city?.value.trim()){showFireToast('❌ הכנס עיר');return;}
   if(!price?.value||parseInt(price.value)<20){showFireToast('❌ מחיר מינימלי ₪20');return;}
-  if(!desc?.value.trim()||desc.value.length<20){showFireToast('❌ תיאור לפחות 20 תווים');return;}
+  if(descTooShort(desc?.value,'התיאור')){return;}
   if(!_modeOnline&&!_modeFrontal){showFireToast('❌ בחר לפחות אופן הוראה אחד');return;}
   if(!kcbChecked('tAgeConfirm')){showFireToast('❌ יש לאשר שאתה/ת בין גיל 14 ל-18');return;}
   const _ageVal=parseInt(document.getElementById('tAge')?.value||0);
@@ -3550,12 +3584,8 @@ async function submitDirectReview(teacherId){
     if(!verify.exists()){
       throw new Error('הביקורת לא נשמרה — בדוק הרשאות Firebase');
     }
-    // update teacher rating (only approved count — this review is not approved yet)
-    const allSnap=await db.ref('reviews/'+teacherId).get();
-    let total=0,count=0;
-    if(allSnap.exists())allSnap.forEach(r=>{const rv=r.val();if(rv&&rv.type==='studentToTeacher'&&rv.approved===true){total+=rv.stars;count++;}});
-    await db.ref('teachers/'+teacherId+'/rating').set(count>0?parseFloat((total/count).toFixed(1)):0);
-    await db.ref('teachers/'+teacherId+'/reviews').set(count);
+    // הדירוג לא מחושב כאן: ביקורת חדשה עוד לא מאושרת ולכן לא משנה את הממוצע,
+    // והחישוב מתבצע באישור המנהל (recomputeTeacherRating).
     showFireToast('✅ הביקורת נשלחה לאישור מנהל — תופיע בקרוב!');
     S.ratingDone=true;
     render();
@@ -3590,20 +3620,7 @@ async function submitReview(bookingId,booking,ratedId,stars,review,isStudent){
       db.ref('pendingReviews/'+_rRef.key).set({...reviewData,reviewId:_rRef.key}).catch(()=>{});
       sendAdminEmail('⭐ ביקורת חדשה ממתינה לאישור',`מאת: ${reviewData.fromName}\nלמורה: ${reviewData.to}\nדירוג: ${'⭐'.repeat(stars)} (${stars}/5)\n\nביקורת:\n"${(review||'').substring(0,200)}"\n\nאשר/דחה בפאנל המנהל:\nhttps://kidemy-app.netlify.app`).catch(()=>{});
     }
-    // עדכון ממוצע מורה אם תלמיד דירג — רק ביקורות מאושרות
-    if(isStudent){
-      const allReviewsSnap=await db.ref('reviews/'+ratedId).get();
-      let total=0,count=0;
-      if(allReviewsSnap.exists()){
-        allReviewsSnap.forEach(r=>{
-          const rv=r.val();
-          if(rv.type==='studentToTeacher'&&rv.approved===true){total+=rv.stars;count++;}
-        });
-      }
-      const avg=count>0?(total/count):0;
-      await db.ref('teachers/'+ratedId+'/rating').set(parseFloat(avg.toFixed(1)));
-      await db.ref('teachers/'+ratedId+'/reviews').set(count);
-    }
+    // ממוצע המורה מחושב באישור המנהל (recomputeTeacherRating) — לא כאן.
     // מייל להורה כשהתלמיד שלח ביקורת
     if(isStudent&&currentUserData?.parentEmail){
       sendEmail(currentUserData.parentEmail,`⭐ ${currentUserData?.name||'ילדך'} דירג/ה מורה ב-Drushe`,
@@ -4909,6 +4926,12 @@ function _showLessonSummaryDialog(enc){
   window._lsRating=0;
 }
 
+// מספר השיעורים של מורה = השיעורים שנספרו לפני המעבר לרשומה-לכל-הזמנה (השדה
+// הישן lessons, שמאז נעול לכתיבה של המורה) + רשומה אחת לכל הזמנה שהושלמה.
+function teacherLessonCount(t){
+  return (Number(t?.lessons)||0)+Object.keys(t?.completedLessons||{}).length;
+}
+
 async function _saveLessonSummary(bookingId,enc){
   const topic=document.getElementById('_lsTopic')?.value.trim();
   if(!topic){showFireToast('❌ הכנס נושא שיעור');return;}
@@ -4938,9 +4961,10 @@ async function _saveLessonSummary(bookingId,enc){
       ['userBookings/'+b.studentId+'/'+bookingId+'/status']: 'completed',
       ['teacherBookings/'+tid+'/'+bookingId+'/status']: 'completed',
     });
-    // הגדל ספירת שיעורים אצל המורה
-    const tSnap=await db.ref('teachers/'+tid+'/lessons').get();
-    await db.ref('teachers/'+tid+'/lessons').set((tSnap.val()||0)+1).catch(()=>{});
+    // שיעור שהושלם נרשם לפי מזהה ההזמנה, ולא כ-+1 על מונה: חוקי ה-DB מקבלים
+    // את הרשומה רק אם bookings/<id> באמת שייכת למורה הזה ובאמת 'completed',
+    // ולכן כל שיעור אמיתי נספר פעם אחת בדיוק ואין דרך לנפח. ראה teacherLessonCount.
+    await db.ref('teachers/'+tid+'/completedLessons/'+bookingId).set(true).catch(()=>{});
     // התראה לתלמיד — סיכום + בקשת דירוג
     notifyUser(b.studentId,'lessonSummary',{bookingId,preview:'סיכום שיעור: '+topic});
     notifyUser(b.studentId,'rateLesson',{bookingId,teacherId:tid,teacherName:summary.teacherName,preview:'איך היה השיעור עם '+summary.teacherName+'?'});
@@ -7916,6 +7940,19 @@ async function adminSwitchTab(id){
   renderAdminPanel();
 }
 
+// דירוג המורה = ממוצע הביקורות **המאושרות** בלבד. רק המנהל משנה את קבוצת
+// הביקורות המאושרות (אישור / מחיקה), ולכן רק הוא מחשב מחדש — וחוקי ה-DB
+// ממילא לא מתירים לאף אחד אחר לכתוב teachers/<uid>/rating. בעבר גם מכשיר
+// התלמיד ניסה לחשב אחרי שליחת ביקורת: הכתיבה נדחתה, והתלמיד קיבל "שגיאה
+// בשמירת הביקורת" על ביקורת שנשמרה בהצלחה.
+async function recomputeTeacherRating(teacherId){
+  const allSnap=await db.ref('reviews/'+teacherId).get();
+  let total=0,count=0;
+  if(allSnap.exists())allSnap.forEach(r=>{const rv=r.val();if(rv&&rv.type==='studentToTeacher'&&rv.approved===true){total+=rv.stars;count++;}});
+  await db.ref('teachers/'+teacherId+'/rating').set(count>0?parseFloat((total/count).toFixed(1)):0);
+  await db.ref('teachers/'+teacherId+'/reviews').set(count);
+}
+
 async function adminApproveReview(reviewId,teacherId){
   if(!isAdmin())return;
   try{
@@ -7923,11 +7960,7 @@ async function adminApproveReview(reviewId,teacherId){
     // clean matching entry in pendingReviews backup queue
     const pSnap=await db.ref('pendingReviews').get();
     if(pSnap.exists()){const dels=[];pSnap.forEach(r=>{const v=r.val();if(v.reviewId===reviewId||r.key===reviewId)dels.push(db.ref('pendingReviews/'+r.key).remove());});await Promise.all(dels);}
-    const allSnap=await db.ref('reviews/'+teacherId).get();
-    let total=0,count=0;
-    if(allSnap.exists())allSnap.forEach(r=>{const rv=r.val();if(rv.type==='studentToTeacher'&&rv.approved===true){total+=rv.stars;count++;}});
-    await db.ref('teachers/'+teacherId+'/rating').set(count>0?parseFloat((total/count).toFixed(1)):0);
-    await db.ref('teachers/'+teacherId+'/reviews').set(count);
+    await recomputeTeacherRating(teacherId);
     showFireToast('✅ ביקורת אושרה ופורסמה!');
     await loadAdminData();
     renderAdminPanel();
@@ -7942,6 +7975,8 @@ async function adminRejectReview(reviewId,teacherId){
     // clean matching entry in pendingReviews backup queue
     const pSnap=await db.ref('pendingReviews').get();
     if(pSnap.exists()){const dels=[];pSnap.forEach(r=>{const v=r.val();if(v.reviewId===reviewId||r.key===reviewId)dels.push(db.ref('pendingReviews/'+r.key).remove());});await Promise.all(dels);}
+    // ייתכן שהביקורת שנמחקה כבר אושרה — בלי חישוב מחדש הכוכבים שלה נשארים בממוצע.
+    await recomputeTeacherRating(teacherId);
     showFireToast('✅ ביקורת נמחקה');
     await loadAdminData();
     renderAdminPanel();
@@ -8278,7 +8313,7 @@ function renderAdminTab(){
         return `
         <div style="background:rgba(16,185,129,0.05);border-radius:14px;padding:11px;margin-bottom:8px">
           <div style="display:flex;justify-content:space-between;align-items:center">
-            <div style="flex:1"><div style="font-weight:800;font-size:13px;color:#0F1A1F">${escapeHtml(t.name||'ללא שם')}${_isFounding?' 🏆':''}</div><div style="font-size:11px;color:#64748B">${escapeHtml(CATS.find(c=>c.id===t.cat)?.lbl||t.cat||'')} • ${t.lessons||0} שיעורים • ${t.rating||0}${icon("star",14)}</div></div>
+            <div style="flex:1"><div style="font-weight:800;font-size:13px;color:#0F1A1F">${escapeHtml(t.name||'ללא שם')}${_isFounding?' 🏆':''}</div><div style="font-size:11px;color:#64748B">${escapeHtml(CATS.find(c=>c.id===t.cat)?.lbl||t.cat||'')} • ${teacherLessonCount(t)} שיעורים • ${t.rating||0}${icon("star",14)}</div></div>
             <div style="display:flex;gap:6px;flex-shrink:0">
               <button onclick="adminToggleFounding('${t.uid}','${jsAttrEscape(t.name||t.email||'')}',${_isFounding})" title="${_isFounding?'הסר סטטוס מייסד':'הענק סטטוס מורה מייסד'}" style="background:${_isFounding?'rgba(251,191,36,0.18)':'rgba(100,116,139,0.1)'};color:${_isFounding?'#B45309':'#64748B'};border-radius:50px;padding:6px 12px;font-size:11px;font-weight:800;cursor:pointer">🏆</button>
               <button onclick="adminDeleteUser('${t.uid}','${jsAttrEscape(t.name||t.email||'')}','teacher')" title="מחק לצמיתות" style="background:rgba(239,68,68,0.1);color:#EF4444;border-radius:50px;padding:6px 12px;font-size:11px;font-weight:800;cursor:pointer">${icon("trash",14)}</button>
@@ -9801,246 +9836,221 @@ function Teacher(){
     </div>
   </div>`;
 
+  // ── דף המורה: כותרת קומפקטית, כרטיס מחירים, וטאבים ──
+  // התוכן מחולק לארבעה טאבים (סקירה / וידאו / ביקורות / שאלות) במקום ערימה
+  // אחת ארוכה של כרטיסים. הטאב מתאפס לסקירה בכל מעבר למורה אחר, חוץ ממעבר
+  // שכבר קבע טאב (התראה על שאלה פותחת ישר את טאב השאלות).
+  if(S._tabFor!==t.id){S._tabFor=t.id;S.teacherTab='overview';}
+  const _tab=S.teacherTab||'overview';
+  const _isOwn=!!currentUser&&t.id===currentUser.uid;
+  const _canAct=!!currentUser&&typeof t.id==='string'&&!_isOwn;
+  const cat=S.teacherCat?CATS.find(x=>x.id===S.teacherCat):null;
+  const catProfile=S.teacherCat&&t.catProfiles?.[S.teacherCat];
+  const desc=S.teacherCat?(catProfile?.desc||''):(t.desc||'');
+  const tags=S.teacherCat?(catProfile?.tags||[]):(t.tags||[]);
+  const col=(cat||catById(t.cat)||{}).col||t.col||'#14B8A6';
+  const _head=(ic,c,title,extra)=>`<div class="tp-head"><div class="tp-ic" style="background:linear-gradient(135deg,${c}CC,${c});box-shadow:0 3px 8px ${c}55">${icon(ic,16,'#fff')}</div><h4>${title}</h4>${extra||''}</div>`;
+  const _stars=(n,size)=>[1,2,3,4,5].map(i=>`<span style="color:${i<=Math.round(n)?'#FBBF24':'rgba(255,255,255,.35)'};font-size:${size}px">★</span>`).join('');
+  const _isNew=(t.rating||0)===0&&(t.lessons||0)===0&&publicTeacherReviews.length===0;
+  const _strictMatch=S.teacherCat?publicTeacherVideos.filter(v=>v.cat===S.teacherCat):publicTeacherVideos;
+  const filtPubVids=S.teacherCat?(_strictMatch.length>0?_strictMatch:publicTeacherVideos.filter(v=>!v.cat)):publicTeacherVideos;
+  const _tabs=[['overview','סקירה'],['videos','וידאו'+(filtPubVids.length?' ('+filtPubVids.length+')':'')],['reviews','ביקורות ('+publicTeacherReviews.length+')'],['qa','שאלות'+(publicTeacherQA.length?' ('+publicTeacherQA.length+')':'')]];
+  const _roundBtn='width:40px;height:40px;border-radius:50%;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0';
+
+  // ── טאב סקירה ──
+  const _overview=()=>`
+    ${_isNew?`
+    <div class="tpcard" style="display:flex;align-items:center;gap:10px;padding:12px 14px">
+      <span style="font-size:22px">🌱</span>
+      <div><div style="font-weight:800;font-size:13px;color:#0e7a72">מורה חדש/ה ב-<span style="font-weight:900;letter-spacing:-.3px"><span style="color:#0F1A1F">Dru</span><span style="color:#8b2fc9">s</span><span style="color:#0e7a72">he</span></span></div><div style="font-size:11.5px;color:#5b6b6a;margin-top:1px">עדיין אין ביקורות — היה/י הראשונ/ה ללמוד כאן</div></div>
+    </div>`:''}
+    <div class="tpcard">
+      ${_head('user',col,'קצת עליי'+(cat?' ב'+cat.lbl:''),_isOwn&&S.teacherCat?`<button onclick="showEditSubjectDialog('${S.teacherCat}')" style="background:${col}18;color:${col};border:none;border-radius:50px;padding:7px 12px;font-size:12px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:4px">${icon("edit",13)} ערוך</button>`:'')}
+      ${desc?`<p style="margin:0;font-size:14px;line-height:1.8;color:#334155">${escapeHtml(desc)}</p>`:`<p style="margin:0;font-size:13px;color:#94A3B8">${_isOwn?'עדיין לא כתבת תיאור — לחץ "ערוך" כדי להוסיף':'המורה עוד לא כתב/ה תיאור'}</p>`}
+    </div>
+    ${tags.length?`<div class="tpcard">${_head('tag','#8b2fc9','מה אני מלמד/ת'+(cat?' ב'+cat.lbl:''))}
+      <div style="display:flex;gap:8px;flex-wrap:wrap">${tags.map(tg=>`<span style="background:rgba(139,47,201,.08);color:#8b2fc9;border:1px solid rgba(139,47,201,.22);padding:7px 14px;border-radius:50px;font-size:12.5px;font-weight:800">${escapeHtml(tg)}</span>`).join('')}</div></div>`:''}
+    ${(t.whyTeach||t.proudOf||t.typicalLesson)?`<div class="tpcard">${_head('chat','#0e7a72','כרטיס היכרות')}
+      ${[['❓','למה אני מלמד/ת?',t.whyTeach],['🏆','הצלחה שאני גאה בה',t.proudOf],['🎯','איך נראה שיעור אצלי',t.typicalLesson]].filter(r=>r[2]).map((r,i,a)=>`
+      <div style="display:flex;gap:12px;${i<a.length-1?'margin-bottom:12px;padding-bottom:12px;border-bottom:1px dashed rgba(14,122,114,.25)':''}">
+        <div style="font-size:20px;line-height:1">${r[0]}</div>
+        <div><div style="font-size:12px;font-weight:900;color:#0e7a72;margin-bottom:3px">${r[1]}</div><div style="font-size:13.5px;line-height:1.65;color:#334155">${escapeHtml(r[2])}</div></div>
+      </div>`).join('')}</div>`:''}
+    <div class="tpcard">${_head('calendar','#06B6D4','איך לומדים איתי')}
+      <div style="display:flex;gap:8px;flex-wrap:wrap">${t.mode.map(m=>mTag(m)).join("")}</div>
+      ${t.group?`<div class="info" style="margin-top:12px">${icon("users",14)} מלמד/ת גם שיעורי קבוצה עד 4 תלמידים!</div>`:""}
+      ${t.mode.includes("frontal")?`<div class="warn" style="margin-top:12px"><span>${icon("alert-triangle",14)}</span><span>פגישות פרונטליות מחייבות נוכחות הורה.</span></div>`:""}
+    </div>
+    ${(t.instagram||t.tiktok||t.facebook)?`<div style="display:flex;gap:8px;margin-bottom:14px">${safeUrl(t.instagram)?`<a href="${safeUrl(t.instagram)}" target="_blank" rel="noopener noreferrer" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;background:linear-gradient(135deg,#E1306C,#833AB4);color:#fff;border-radius:50px;padding:12px;font-weight:800;font-size:12px;text-decoration:none">${icon("camera",14)} Instagram</a>`:''} ${safeUrl(t.tiktok)?`<a href="${safeUrl(t.tiktok)}" target="_blank" rel="noopener noreferrer" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;background:linear-gradient(135deg,#010101,#EE1D52);color:#fff;border-radius:50px;padding:12px;font-weight:800;font-size:12px;text-decoration:none">🎵 TikTok</a>`:''} ${safeUrl(t.facebook)?`<a href="${safeUrl(t.facebook)}" target="_blank" rel="noopener noreferrer" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;background:#1877F2;color:#fff;border-radius:50px;padding:12px;font-weight:800;font-size:12px;text-decoration:none">👍 Facebook</a>`:''}</div>`:''}`;
+
+  // ── טאב וידאו (כולל גלריית העבודות) ──
+  const _videos=()=>{
+    const gallery=renderPortfolioGallery(t.id,t.portfolio||[])||'';
+    if(!filtPubVids.length&&!gallery)return `<div class="tpcard" style="text-align:center;padding:26px 18px"><div style="font-size:34px;margin-bottom:6px">📹</div><div style="font-size:13px;color:#64748B;font-weight:700">עדיין אין סרטונים${S.teacherCat&&cat?' ב'+cat.lbl:''}</div></div>`;
+    return `${filtPubVids.length?`<div class="tpcard" style="padding:16px">
+      ${_head('video','#14B8A6','סרטוני הדגמה'+(cat?' – '+cat.lbl:'')+(S.teacherCat&&_strictMatch.length===0?' (ללא קטגוריה)':''))}
+      ${filtPubVids.slice(0,5).map(v=>{
+        const ytId=v.platform==='youtube'?(v.url||'').match(/(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/)([^&?\s]+)/)?.[1]:null;
+        const thumb=v.thumbnail||(ytId?'https://img.youtube.com/vi/'+ytId+'/hqdefault.jpg':null);
+        const platLabel=v.platform==='youtube'?'YouTube':v.platform==='instagram'?'Instagram':v.platform==='tiktok'?'TikTok':'וידאו';
+        const catObj=v.cat?CATS.find(c=>c.id===v.cat):null;
+        const _vUrl=safeUrl(v.url||'');
+        return `<div style="border-radius:18px;overflow:hidden;margin-bottom:14px;box-shadow:0 4px 18px rgba(0,0,0,0.10);cursor:pointer;background:#fff" onclick="${_vUrl?`window.open(${JSON.stringify(_vUrl).replace(/"/g,'&quot;')},'_blank')`:''}">
+          <div style="aspect-ratio:16/9;background:${thumb?'url('+thumb+') center/cover no-repeat,':''} linear-gradient(135deg,#14B8A6,#06B6D4);position:relative">
+            <div style="position:absolute;inset:0;background:linear-gradient(to bottom,transparent 40%,rgba(0,0,0,0.55));display:flex;align-items:center;justify-content:center">
+              <div style="background:rgba(255,255,255,0.22);backdrop-filter:blur(6px);border:2px solid rgba(255,255,255,0.6);width:58px;height:58px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:0 6px 20px rgba(0,0,0,0.3)">▶️</div>
+            </div>
+            <div style="position:absolute;bottom:9px;left:10px;display:flex;gap:6px;align-items:center">
+              <span style="background:rgba(0,0,0,0.72);color:#fff;padding:3px 9px;border-radius:8px;font-size:10px;font-weight:700">${platLabel}</span>
+              ${catObj?`<span style="background:${catObj.col}cc;color:#fff;padding:3px 9px;border-radius:8px;font-size:10px;font-weight:700;display:inline-flex;align-items:center;gap:3px">${catIcon(catObj,10,'#fff')} ${catObj.lbl}</span>`:''}
+            </div>
+            ${v.views>0?`<div style="position:absolute;top:9px;left:10px;background:rgba(0,0,0,0.6);color:#fff;padding:3px 9px;border-radius:8px;font-size:10px;font-weight:700">👁 ${v.views}</div>`:''}
+            ${v.approved!==true&&currentUser?.uid===t.id?`<div style="position:absolute;top:9px;right:10px;background:rgba(245,158,11,0.92);color:#fff;padding:3px 9px;border-radius:8px;font-size:10px;font-weight:800">⏳ ממתין לאישור</div>`:''}
+          </div>
+          <div style="padding:12px 14px 14px">
+            <p style="margin:0 0 5px;font-weight:900;font-size:14px;color:#0F1A1F;line-height:1.35">${escapeHtml(v.title||'סרטון הדגמה')}</p>
+            ${v.desc?`<p style="margin:0;font-size:12px;color:#64748B;line-height:1.5">${escapeHtml(v.desc.substring(0,90))}${v.desc.length>90?'...':''}</p>`:''}
+          </div>
+        </div>`;
+      }).join('')}</div>`:''}
+    ${gallery}`;
+  };
+
+  // ── טאב ביקורות ──
+  const _reviews=()=>{
+    const starsHtml=n=>'⭐'.repeat(n)+'☆'.repeat(5-n);
+    return `<div id="_reviewsSection" class="tpcard" style="padding:16px">
+      ${_head('star','#FBBF24','ביקורות תלמידים',publicTeacherReviews.length?`<span style="background:rgba(251,191,36,0.18);color:#B45309;font-size:11px;font-weight:800;padding:4px 10px;border-radius:50px">${publicTeacherReviews.length}</span>`:'')}
+      ${!publicTeacherReviews.length?`<div style="text-align:center;padding:14px 0;color:#6C7686;font-size:13px">אין ביקורות מאושרות עדיין</div>`:`
+      ${publicTeacherReviews.slice(0,5).map(r=>`
+      <div class="tp-sub">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="width:30px;height:30px;border-radius:50%;background:rgba(20,184,166,0.15);display:flex;align-items:center;justify-content:center">${icon("user",14)}</div>
+            <span style="font-weight:800;font-size:13px;color:#0F1A1F">${escapeHtml(r.fromName||'תלמיד')}</span>
+          </div>
+          <span style="font-size:11px;color:#6C7686">לפני ${timeAgoTxt(r.createdAt||0)}</span>
+        </div>
+        <div style="font-size:14px;margin-bottom:4px">${starsHtml(r.stars||0)}</div>
+        ${r.review?`<p style="margin:0;font-size:13px;color:#374151;line-height:1.6">${escapeHtml(r.review)}</p>`:''}
+      </div>`).join('')}
+      ${publicTeacherReviews.length>5?`<p style="text-align:center;color:#6C7686;font-size:12px;margin:0">${publicTeacherReviews.length-5} ביקורות נוספות...</p>`:''}`}
+      ${!_isOwn?`<button onclick="${currentUser?`S.ratingT='${t.id}';S.ratingDone=false;S.ratingStars=0;render()`:`showFireToast('יש להתחבר כדי לכתוב ביקורת');go('login')`}" style="width:100%;background:rgba(251,191,36,0.14);color:#B45309;border:none;border-radius:50px;padding:12px;font-weight:800;font-size:14px;cursor:pointer;margin-top:6px;display:flex;align-items:center;justify-content:center;gap:8px">${icon("star",14)} כתוב ביקורת על המורה</button>`:''}
+    </div>`;
+  };
+
+  // ── טאב שאלות (שאלות ותשובות + שאלות נפוצות) ──
+  const _qa=()=>{
+    const _qaAgo=ts=>{const m=Math.round((Date.now()-ts)/60000);return m<60?m+' דק\'':m<1440?Math.floor(m/60)+' שע\'':Math.floor(m/1440)+' ימים';};
+    return `<div id="_qaSection" class="tpcard" style="padding:16px">
+      ${_head('chat','#14B8A6','שאלות ותשובות',`<span style="background:rgba(20,184,166,0.12);color:#14B8A6;font-size:11px;font-weight:800;padding:4px 10px;border-radius:50px">${publicTeacherQA.length}</span>`)}
+      ${!publicTeacherQA.length?`<div style="text-align:center;padding:10px 0 8px;color:#6C7686;font-size:13px">היה הראשון לשאול שאלה!</div>`:''}
+      ${publicTeacherQA.slice(0,10).map(qa=>`
+      <div class="tp-sub">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="width:30px;height:30px;border-radius:50%;background:rgba(20,184,166,0.15);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:#14B8A6">${escapeHtml((qa.askerName||'?').charAt(0))}</div>
+            <span style="font-weight:800;font-size:13px;color:#14B8A6">${escapeHtml(qa.askerName||'משתמש')}</span>
+            ${_isOwn?`<button onclick="deleteQA('${t.id}','${qa.id}')" style="background:none;border:none;color:#CBD5E1;font-size:15px;cursor:pointer;padding:0 4px;line-height:1;font-weight:700" title="מחק שאלה">&#x2715;</button>`:''}
+          </div>
+          <span style="font-size:11px;color:#6C7686">לפני ${_qaAgo(qa.askedAt||0)}</span>
+        </div>
+        <p style="margin:0 0 8px;font-size:14px;color:#0F1A1F;line-height:1.6;font-weight:600">${escapeHtml(qa.question||'')}</p>
+        ${qa.answer?`
+          <div style="border-right:3px solid #14B8A6;padding-right:12px;margin-right:4px;margin-top:8px">
+            <div style="font-size:11px;font-weight:800;color:#14B8A6;margin-bottom:5px">${icon("check-circle",12)} תשובת המורה</div>
+            <p style="margin:0 0 4px;font-size:13px;color:#374151;line-height:1.6">${escapeHtml(qa.answer)}</p>
+            <div style="font-size:10px;color:#6C7686">לפני ${_qaAgo(qa.answeredAt||0)}</div>
+          </div>
+        `:_isOwn?`
+          <div style="margin-top:8px">
+            ${_qaAnsweringId===qa.id?`
+              <textarea id="_qaAnswer_${qa.id}" placeholder="כתוב תשובה פומבית..." style="width:100%;border:1.5px solid rgba(20,184,166,0.4);border-radius:12px;padding:10px 12px;font-size:13px;font-family:inherit;direction:rtl;outline:none;box-sizing:border-box;resize:none;min-height:80px;margin-bottom:8px"></textarea>
+              <div style="display:flex;gap:8px">
+                <button onclick="_qaAnsweringId=null;render()" style="flex:1;background:#F1F5F9;border:none;border-radius:50px;padding:9px;font-weight:700;font-size:13px;cursor:pointer;color:#64748B">ביטול</button>
+                <button onclick="answerQA('${t.id}','${qa.id}','${qa.askerUid||''}')" style="flex:2;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:9px;font-weight:800;font-size:13px;cursor:pointer">פרסם תשובה</button>
+              </div>
+            `:`<button onclick="_qaAnsweringId='${qa.id}';render()" style="background:rgba(20,184,166,0.1);color:#14B8A6;border:none;border-radius:50px;padding:8px 16px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:6px">${icon("chat",13)} ענה על שאלה זו</button>`}
+          </div>
+        `:`<div style="margin-top:6px;font-size:12px;color:#6C7686;font-style:italic">&#x23F3; ממתין לתשובה...</div>`}
+      </div>`).join('')}
+      ${!_isOwn?`<button onclick="showAskQuestionDialog('${t.id}')" style="width:100%;background:rgba(20,184,166,0.1);color:#14B8A6;border:none;border-radius:50px;padding:12px;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;margin-top:6px">${icon("chat",14)} שאל שאלה</button>`:''}
+    </div>
+    ${renderFaq(t.faq||[])}`;
+  };
+
   return `<div class="screen" style="background:linear-gradient(165deg,#ECFEFF 0%,#F0F9FF 50%,#EEF2FF 100%)">
-    <div style="background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);padding:24px 20px 40px;border-radius:0 0 32px 32px;text-align:center;color:#fff;position:relative;overflow:hidden">
-      <div style="position:absolute;top:-60px;right:-60px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.06)"></div>
-      <button onclick="back()" style="background:rgba(255,255,255,.2);border:none;color:#fff;font-size:14px;cursor:pointer;border-radius:50px;padding:8px 16px;font-weight:700;display:block;text-align:right;margin-bottom:18px;position:relative;z-index:1">← חזור</button>
-      ${currentUser&&typeof t.id==='string'&&t.id!==currentUser.uid?`
-        <button onclick="toggleFavorite('${t.id}')" style="position:absolute;top:24px;left:20px;background:${favorites.includes(t.id)?'rgba(231,76,60,0.95)':'rgba(255,255,255,0.2)'};border:none;color:#fff;font-size:18px;cursor:pointer;border-radius:50%;width:42px;height:42px;display:flex;align-items:center;justify-content:center;z-index:2;${favorites.includes(t.id)?'box-shadow:0 4px 14px rgba(231,76,60,0.4)':''}">${favorites.includes(t.id)?'❤️':'🤍'}</button>
-        <button onclick="showReportDialog('teacher','${t.id}','${jsAttrEscape(t.name||'')}')" style="position:absolute;top:24px;left:72px;background:rgba(231,76,60,0.85);border:none;color:#fff;cursor:pointer;border-radius:50%;width:42px;height:42px;display:flex;align-items:center;justify-content:center;z-index:2"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></button>
-      `:''}
-      <div style="position:relative;display:inline-block;z-index:1">
-        <div style="width:88px;height:88px;border-radius:42% 58% 63% 37%/45% 40% 60% 55%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:44px;margin:0 auto;overflow:hidden">${t.av}</div>
-        ${t.online?`<div style="position:absolute;bottom:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#14B8A6;border:3px solid #fff;animation:pulse 1.5s infinite"></div>`:""}
+    <div style="background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);padding:20px 20px 24px;border-radius:0 0 32px 32px;position:relative;overflow:hidden;color:#fff">
+      <div style="position:absolute;top:-60px;left:-60px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.06)"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;position:relative;z-index:1">
+        <button onclick="back()" style="background:rgba(255,255,255,.18);border:none;color:#fff;font-size:14px;cursor:pointer;border-radius:50px;padding:8px 16px;font-weight:800">← חזור</button>
+        <div style="display:flex;gap:8px">
+          ${_canAct?`
+          <button onclick="showReportDialog('teacher','${t.id}','${jsAttrEscape(t.name||'')}')" title="דיווח" style="${_roundBtn};background:rgba(231,76,60,0.85)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></button>
+          <button onclick="toggleFavorite('${t.id}')" title="מועדפים" style="${_roundBtn};background:${favorites.includes(t.id)?'rgba(231,76,60,0.95)':'rgba(255,255,255,0.18)'};font-size:18px">${favorites.includes(t.id)?'❤️':'🤍'}</button>`:''}
+          <button onclick="shareTeacher(TEACHERS.find(x=>String(x.id)==='${jsAttrEscape(String(t.id))}'))" title="שתף" style="${_roundBtn};background:rgba(255,255,255,.18)">${icon("share",18,'#fff')}</button>
+        </div>
       </div>
-      <h2 style="font-size:24px;font-weight:900;margin:12px 0 4px;position:relative;z-index:1">${escapeHtml(t.name||'')}</h2>
-      <p style="font-size:14px;opacity:.88;margin:0;position:relative;z-index:1">גיל ${t.age} • ${escapeHtml(t.city||'')}</p>
-      <div style="margin-top:10px;display:flex;gap:6px;justify-content:center;flex-wrap:wrap;position:relative;z-index:1">
-        ${gTag(t.badge)} ${lTag(t.online)} ${t.group?`<span class="gbadge">${icon("users",14)} קבוצתי</span>`:""}
+      <div style="display:flex;align-items:center;gap:16px;position:relative;z-index:1">
+        <div style="position:relative;flex-shrink:0">
+          <div style="width:84px;height:84px;border-radius:42% 58% 63% 37%/45% 40% 60% 55%;background:rgba(255,255,255,.18);border:3px solid rgba(255,255,255,.45);display:flex;align-items:center;justify-content:center;font-size:42px;overflow:hidden">${t.av}</div>
+          ${t.online?`<div style="position:absolute;bottom:4px;left:4px;width:16px;height:16px;border-radius:50%;background:#22C55E;border:3px solid #fff"></div>`:''}
+        </div>
+        <div style="flex:1;min-width:0">
+          <h2 style="margin:0;font-size:23px;font-weight:900;line-height:1.2">${escapeHtml(t.name||'')}</h2>
+          <div style="font-size:13px;opacity:.85;margin:3px 0 6px">גיל ${t.age} · ${escapeHtml(t.city||'')}</div>
+          ${(t.rating||0)>0
+            ?`<div style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:800;flex-wrap:wrap">${_stars(t.rating,14)} <span>${t.rating}</span><span style="opacity:.75;font-weight:600">· ${t.lessons||0} שיעורים</span></div>`
+            :`<div style="font-size:12.5px;font-weight:800;opacity:.9">🌱 מורה חדש/ה${t.lessons?' · '+t.lessons+' שיעורים':''}</div>`}
+        </div>
       </div>
-      <div style="margin-top:10px;display:flex;gap:7px;justify-content:center;flex-wrap:wrap;position:relative;z-index:1">
+      <div style="display:flex;gap:7px;margin-top:14px;flex-wrap:wrap;position:relative;z-index:1">
         ${(t.cats&&t.cats.length?t.cats:[t.cat]).map(cid=>{
-          const cat=catById(cid);
-          const active=S.teacherCat===cid;
-          return `<button onclick="S.teacherCat='${cid}';render()" style="background:${active?'#fff':'rgba(255,255,255,0.22)'};color:${active?t.col:'#fff'};border:${active?'none':'1.5px solid rgba(255,255,255,0.35)'};border-radius:50px;padding:6px 14px;font-size:12px;font-weight:800;cursor:pointer;transition:all 0.2s;${active?'box-shadow:0 3px 12px rgba(0,0,0,0.2)':''};display:flex;align-items:center;gap:5px">${catIcon(cat,14)} ${cat.lbl}</button>`;
+          const c=catById(cid);
+          const on=S.teacherCat===cid;
+          return `<button onclick="S.teacherCat='${cid}';render()" style="display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border-radius:50px;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;${on?`background:#fff;color:${c.col};border:none;box-shadow:0 3px 12px rgba(0,0,0,.2)`:'background:rgba(255,255,255,.18);color:#fff;border:1.5px solid rgba(255,255,255,.3)'}">${catIcon(c,13,on?c.col:'#fff')} ${c.lbl}</button>`;
         }).join('')}
+        ${t.badge?`<span style="padding:6px 12px;border-radius:50px;font-size:12px;font-weight:800;background:rgba(251,191,36,.22);color:#FDE68A">🛡 ${escapeHtml(t.badge)}</span>`:''}
+        ${t.group?`<span style="padding:6px 12px;border-radius:50px;font-size:12px;font-weight:800;background:rgba(255,255,255,.14);color:#fff">👥 קבוצתי</span>`:''}
       </div>
-      <!-- Share teacher -->
-      <button onclick="shareTeacher(TEACHERS.find(x=>String(x.id)==='${jsAttrEscape(String(t.id))}'))" style="position:absolute;top:22px;left:${currentUser&&typeof t.id==='string'&&t.id!==currentUser.uid?124:20}px;background:rgba(255,255,255,.2);border:none;color:#fff;cursor:pointer;border-radius:50%;width:40px;height:40px;display:flex;align-items:center;justify-content:center;z-index:2">
-<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
     </div>
 
-    <div style="padding:18px 20px 100px">
-      <!-- New teacher — reframes an empty stats row instead of hiding it -->
-      ${((t.rating||0)===0&&(t.lessons||0)===0&&publicTeacherReviews.length===0)?`
-      <div style="display:flex;align-items:center;gap:10px;background:linear-gradient(135deg,rgba(14,122,114,.09),rgba(139,47,201,.07));border:1px solid rgba(14,122,114,.16);border-radius:16px;padding:12px 14px;margin-bottom:14px">
-        <span style="font-size:22px">🌱</span>
-        <div><div style="font-weight:800;font-size:13px;color:#0e7a72">מורה חדש/ה ב-<span style="font-weight:900;letter-spacing:-.3px"><span style="color:#0F1A1F">Dru</span><span style="color:#8b2fc9">s</span><span style="color:#0e7a72">he</span></span></div><div style="font-size:11.5px;color:#5b6b6a;margin-top:1px">עדיין אין ביקורות — היה/י הראשונ/ה ללמוד כאן</div></div>
-      </div>`:''}
-      <!-- Stats -->
-      <div style="display:flex;gap:10px;margin-bottom:16px">
-        <div class="card-sm" style="flex:1;text-align:center;padding:14px 8px;margin-bottom:0"><div style="width:38px;height:38px;border-radius:42% 58% 63% 37%/45% 40% 60% 55%;background:linear-gradient(135deg,#FBBF24CC,#FBBF24);display:flex;align-items:center;justify-content:center;margin:0 auto 5px;box-shadow:0 3px 8px rgba(251,191,36,0.4)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div><div style="font-weight:900;font-size:18px">${t.rating||0}</div><div style="font-size:11px;color:${C.muted};font-weight:600">דירוג</div></div>
-        <div class="card-sm" onclick="document.getElementById('_reviewsSection')?.scrollIntoView({behavior:'smooth'})" style="flex:1;text-align:center;padding:14px 8px;margin-bottom:0;cursor:pointer"><div style="width:38px;height:38px;border-radius:42% 58% 63% 37%/45% 40% 60% 55%;background:linear-gradient(135deg,#06B6D4CC,#06B6D4);display:flex;align-items:center;justify-content:center;margin:0 auto 5px;box-shadow:0 3px 8px rgba(6,182,212,0.4)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div style="font-weight:900;font-size:18px">${publicTeacherReviews.length}</div><div style="font-size:11px;color:#14B8A6;font-weight:700">ביקורות ↓</div></div>
-        <div class="card-sm" style="flex:1;text-align:center;padding:14px 8px;margin-bottom:0"><div style="width:38px;height:38px;border-radius:42% 58% 63% 37%/45% 40% 60% 55%;background:linear-gradient(135deg,#14B8A6CC,#14B8A6);display:flex;align-items:center;justify-content:center;margin:0 auto 5px;box-shadow:0 3px 8px rgba(20,184,166,0.4)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></div><div style="font-weight:900;font-size:18px">${t.lessons||0}</div><div style="font-size:11px;color:${C.muted};font-weight:600">שיעורים</div></div>
+    <div style="padding:16px 20px 0">
+      <div class="tpcard" style="padding:14px 12px;display:flex;align-items:center;gap:8px">
+        <div style="flex:1;text-align:center"><div style="font-size:11.5px;color:#64748B;font-weight:700">שיעור 45 דק׳</div><div style="font-size:23px;font-weight:900;color:#0F1A1F">₪${t.price}</div></div>
+        <div style="width:1px;height:40px;background:rgba(20,184,166,.2)"></div>
+        <div ${_canAct?`onclick="S.bookStep=1;S.bookType='trial';S.bookDayIdx=null;S.bookTime=null;S.booked=false;go('booking',{teacher:S.teacher})"`:''} style="flex:1;text-align:center;${_canAct?'cursor:pointer':''}"><div style="font-size:11.5px;color:#B45309;font-weight:800">🎁 שיעור ניסיון</div><div style="font-size:23px;font-weight:900;color:#F59E0B">₪${Math.round(t.price/2)}</div></div>
+        <div style="width:1px;height:40px;background:rgba(20,184,166,.2)"></div>
+        <div style="flex:1;text-align:center"><div style="font-size:11.5px;color:#64748B;font-weight:700">5 שיעורים</div><div style="font-size:20px;font-weight:900;color:#0e7a72">₪${t.price*5-20}</div></div>
       </div>
 
       ${(()=>{const _rsb=responseStatsBadge(t);return _rsb?`<div style="margin-bottom:14px">${_rsb}</div>`:''})()}
 
-      <!-- Trial -->
-      <div class="trial">
-        <div><div style="font-weight:800;font-size:14px">${icon("target",14)} שיעור ניסיון!</div><div style="font-size:12px;color:${C.muted};margin-top:2px">שיעור ראשון במחיר חצי</div></div>
-        <div style="text-align:center"><div style="font-size:22px;font-weight:900;color:#FF9800">₪${Math.round(t.price/2)}</div><div style="font-size:11px;color:${C.muted};text-decoration:line-through">₪${t.price}</div></div>
+      <div class="tp-tabs" role="tablist">
+        ${_tabs.map(([id,lbl])=>`<button class="tp-tab${_tab===id?' on':''}" role="tab" onclick="S.teacherTab='${id}';render()">${lbl}</button>`).join('')}
       </div>
 
-      ${(t.instagram||t.tiktok||t.facebook)?`<div style="display:flex;gap:8px;margin-bottom:16px">${safeUrl(t.instagram)?`<a href="${safeUrl(t.instagram)}" target="_blank" rel="noopener noreferrer" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;background:linear-gradient(135deg,#E1306C,#833AB4);color:#fff;border-radius:50px;padding:12px;font-weight:800;font-size:12px;text-decoration:none">${icon("camera",14)} Instagram</a>`:''} ${safeUrl(t.tiktok)?`<a href="${safeUrl(t.tiktok)}" target="_blank" rel="noopener noreferrer" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;background:linear-gradient(135deg,#010101,#EE1D52);color:#fff;border-radius:50px;padding:12px;font-weight:800;font-size:12px;text-decoration:none">🎵 TikTok</a>`:''} ${safeUrl(t.facebook)?`<a href="${safeUrl(t.facebook)}" target="_blank" rel="noopener noreferrer" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;background:#1877F2;color:#fff;border-radius:50px;padding:12px;font-weight:800;font-size:12px;text-decoration:none">👍 Facebook</a>`:''}</div>`:''}
+      ${_tab==='videos'?_videos():_tab==='reviews'?_reviews():_tab==='qa'?_qa():_overview()}
 
-      <!-- About — per category if selected -->
-      ${(()=>{
-        const cat=S.teacherCat?CATS.find(x=>x.id===S.teacherCat):null;
-        const catProfile=S.teacherCat&&t.catProfiles?.[S.teacherCat];
-        const desc=S.teacherCat?(catProfile?.desc||''):(t.desc||'');
-        const tags=S.teacherCat?(catProfile?.tags||[]):(t.tags||[]);
-        const isOwn=currentUser&&t.id===currentUser.uid;
-        return `
-        ${cat?`<div style="background:linear-gradient(135deg,${t.col}15,${t.col}08);border-radius:18px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:10px">
-          ${catBadge(cat,44)}
-          <div><div style="font-weight:900;font-size:15px;color:${t.col}">${cat.lbl}</div><div style="font-size:12px;color:#64748B">פרופיל קטגוריה</div></div>
-          ${isOwn?`<button onclick="showEditSubjectDialog('${S.teacherCat}')" style="margin-right:auto;background:${t.col}18;color:${t.col};border-radius:50px;padding:7px 14px;font-size:12px;font-weight:800;cursor:pointer">${icon("edit",14)} ערוך מלא</button>`:''}
-        </div>`:''}
-        <div class="card"><h4 style="margin:0 0 10px;font-weight:800">👋 קצת עליי${cat?' ב'+cat.lbl:''}</h4><p style="margin:0;font-size:14px;line-height:1.7">${escapeHtml(desc)}</p></div>
-        ${tags.length?`<div class="card"><h4 style="margin:0 0 12px;font-weight:800">🏷 מה אני מלמד/ת${cat?' ב'+cat.lbl:''}</h4>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">${tags.map(tg=>`<span style="background:${t.col}18;color:${t.col};padding:7px 16px;border-radius:50px;font-size:13px;font-weight:700">${escapeHtml(tg)}</span>`).join("")}</div></div>`:''}
-        ${(t.whyTeach||t.proudOf||t.typicalLesson)?`
-        <div class="card" style="background:linear-gradient(135deg,rgba(20,184,166,0.05),rgba(6,182,212,0.04))">
-          <h4 style="margin:0 0 14px;font-weight:900;font-size:15px">${icon("chat",14)} כרטיס היכרות</h4>
-          ${t.whyTeach?`<div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid rgba(20,184,166,0.1)"><div style="font-size:11px;font-weight:800;color:#14B8A6;margin-bottom:4px">❓ למה אני מלמד?</div><div style="font-size:14px;line-height:1.6;color:var(--text)">${escapeHtml(t.whyTeach)}</div></div>`:''}
-          ${t.proudOf?`<div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid rgba(20,184,166,0.1)"><div style="font-size:11px;font-weight:800;color:#14B8A6;margin-bottom:4px">${icon("award",14)} הצלחה שגאה בי</div><div style="font-size:14px;line-height:1.6;color:var(--text)">${escapeHtml(t.proudOf)}</div></div>`:''}
-          ${t.typicalLesson?`<div><div style="font-size:11px;font-weight:800;color:#F59E0B;margin-bottom:4px">${icon("target",14)} שיעור טיפוסי</div><div style="font-size:14px;line-height:1.6;color:var(--text)">${escapeHtml(t.typicalLesson)}</div></div>`:''}
-        </div>`:''}`;
-      })()}
-
-      <!-- Mode -->
-      <div class="card"><h4 style="margin:0 0 12px;font-weight:800;display:flex;align-items:center;gap:6px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>אופן הלימוד</h4>
-        <div style="display:flex;gap:10px;flex-wrap:wrap">${t.mode.map(m=>mTag(m)).join("")}</div>
-        ${t.group?`<div style="margin-top:12px;background:rgba(20,184,166,.07);border-radius:12px;padding:10px 14px;font-size:13px;color:var(--s);font-weight:600">${icon("users",14)} מלמד/ת גם שיעורי קבוצה עד 4 תלמידים!</div>`:""}
-        ${t.mode.includes("frontal")?`<div class="warn" style="margin-top:12px"><span>${icon("alert-triangle",14)}</span><span>פגישות פרונטליות מחייבות נוכחות הורה.</span></div>`:""}
-      </div>
-
-      <!-- Pricing -->
-      <div style="background:transparent;border-radius:var(--radius);padding:20px;margin-bottom:16px;box-shadow:none">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <div style="text-align:center"><div style="color:#64748B;font-size:12px">חבילה 5 שיעורים</div><div style="color:#14B8A6;font-size:22px;font-weight:900">₪${t.price*5-20}</div><div style="color:#6C7686;font-size:11px">חיסכון ₪20</div></div>
-          <div style="width:1px;height:50px;background:rgba(20,184,166,.15)"></div>
-          <div style="text-align:center"><div style="color:#64748B;font-size:12px">שיעור בודד</div><div style="color:#F59E0B;font-size:28px;font-weight:900">₪${t.price}</div><div style="color:#6C7686;font-size:11px">45 דק׳</div></div>
-          <div style="width:1px;height:50px;background:rgba(20,184,166,.15)"></div>
-          <div style="text-align:center"><div style="color:#64748B;font-size:12px">ממוצע דירוג</div><div style="color:#F59E0B;font-size:22px;font-weight:900">${t.rating>0?'⭐'+t.rating:'חדש'}</div></div>
-        </div>
-      </div>
-
-      <!-- Videos section in public profile -->
-      ${(()=>{
-        const _strictMatch=S.teacherCat?publicTeacherVideos.filter(v=>v.cat===S.teacherCat):publicTeacherVideos;
-        const filtPubVids=S.teacherCat?(_strictMatch.length>0?_strictMatch:publicTeacherVideos.filter(v=>!v.cat)):publicTeacherVideos;
-        if(!filtPubVids.length)return '';
-        return `<div class="card" style="padding:16px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-          <h4 style="margin:0;font-weight:900;font-size:16px;color:#0F1A1F;display:flex;align-items:center;gap:5px">📹 סרטוני הדגמה${S.teacherCat?(()=>{const c=CATS.find(x=>x.id===S.teacherCat);return c?' – '+catIcon(c,14)+' '+c.lbl:'';})():''}${S.teacherCat&&_strictMatch.length===0&&filtPubVids.length>0?' (ללא קטגוריה)':''}</h4>
-          <span style="background:rgba(20,184,166,0.12);color:#14B8A6;font-size:11px;font-weight:800;padding:4px 10px;border-radius:50px">${filtPubVids.length} סרטונים</span>
-        </div>
-        ${filtPubVids.slice(0,5).map(v=>{
-          const ytId=v.platform==='youtube'?(v.url||'').match(/(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/)([^&?\s]+)/)?.[1]:null;
-          const thumb=v.thumbnail||(ytId?'https://img.youtube.com/vi/'+ytId+'/hqdefault.jpg':null);
-          const platLabel=v.platform==='youtube'?'YouTube':v.platform==='instagram'?'Instagram':v.platform==='tiktok'?'TikTok':'וידאו';
-          const catObj=v.cat?CATS.find(c=>c.id===v.cat):null;
-          const _vUrl=safeUrl(v.url||'');
-          return `<div style="border-radius:18px;overflow:hidden;margin-bottom:14px;box-shadow:0 4px 18px rgba(0,0,0,0.10);cursor:pointer;background:#fff" onclick="${_vUrl?`window.open(${JSON.stringify(_vUrl).replace(/"/g,'&quot;')},'_blank')`:''}">
-            <div style="aspect-ratio:16/9;background:${thumb?'url('+thumb+') center/cover no-repeat,':''} linear-gradient(135deg,#14B8A6,#06B6D4);position:relative">
-              <div style="position:absolute;inset:0;background:linear-gradient(to bottom,transparent 40%,rgba(0,0,0,0.55));display:flex;align-items:center;justify-content:center">
-                <div style="background:rgba(255,255,255,0.22);backdrop-filter:blur(6px);border:2px solid rgba(255,255,255,0.6);width:58px;height:58px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:0 6px 20px rgba(0,0,0,0.3)">▶️</div>
-              </div>
-              <div style="position:absolute;bottom:9px;left:10px;display:flex;gap:6px;align-items:center">
-                <span style="background:rgba(0,0,0,0.72);color:#fff;padding:3px 9px;border-radius:8px;font-size:10px;font-weight:700">${platLabel}</span>
-                ${catObj?`<span style="background:${catObj.col}cc;color:#fff;padding:3px 9px;border-radius:8px;font-size:10px;font-weight:700;display:inline-flex;align-items:center;gap:3px">${catIcon(catObj,10,'#fff')} ${catObj.lbl}</span>`:''}
-              </div>
-              ${v.views>0?`<div style="position:absolute;top:9px;left:10px;background:rgba(0,0,0,0.6);color:#fff;padding:3px 9px;border-radius:8px;font-size:10px;font-weight:700">👁 ${v.views}</div>`:''}
-              ${v.approved!==true&&currentUser?.uid===t.id?`<div style="position:absolute;top:9px;right:10px;background:rgba(245,158,11,0.92);color:#fff;padding:3px 9px;border-radius:8px;font-size:10px;font-weight:800">⏳ ממתין לאישור</div>`:''}
-            </div>
-            <div style="padding:12px 14px 14px">
-              <p style="margin:0 0 5px;font-weight:900;font-size:14px;color:#0F1A1F;line-height:1.35">${escapeHtml(v.title||'סרטון הדגמה')}</p>
-              ${v.desc?`<p style="margin:0;font-size:12px;color:#64748B;line-height:1.5">${escapeHtml(v.desc.substring(0,90))}${v.desc.length>90?'...':''}</p>`:''}
-            </div>
-          </div>`;
-        }).join('')}
-      </div>`;
-      })()}
-
-      ${(()=>{return renderPortfolioGallery(t.id,t.portfolio||[]);})()||''}
-
-      <!-- Reviews section -->
-      ${(()=>{
-        const starsHtml=n=>'⭐'.repeat(n)+'☆'.repeat(5-n);
-        const ago=timeAgoTxt;
-        return `<div id="_reviewsSection" class="card" style="padding:16px;margin-bottom:16px">
-          ${(()=>{
-            return '';
-          })()}
-          ${!publicTeacherReviews.length?`<div style="text-align:center;padding:20px 0;color:#6C7686;font-size:13px">אין ביקורות מאושרות עדיין</div>`:`
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-            <span style="background:rgba(251,191,36,0.15);color:#B45309;font-size:11px;font-weight:800;padding:4px 10px;border-radius:50px">${publicTeacherReviews.length} ביקורות</span>
-            <h4 style="margin:0;font-weight:900;font-size:16px;color:#0F1A1F;display:flex;align-items:center;gap:6px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#FBBF24" stroke-width="2" stroke-linecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>ביקורות תלמידים</h4>
-          </div>
-          ${publicTeacherReviews.slice(0,5).map(r=>`
-          <div style="border-bottom:1px solid rgba(0,0,0,0.06);padding-bottom:12px;margin-bottom:12px">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-              <span style="font-size:11px;color:#6C7686">${ago(r.createdAt||0)} לפני</span>
-              <div style="display:flex;align-items:center;gap:8px">
-                <span style="font-weight:800;font-size:13px;color:#0F1A1F">${escapeHtml(r.fromName||'תלמיד')}</span>
-                <div style="width:30px;height:30px;border-radius:50%;background:rgba(20,184,166,0.15);display:flex;align-items:center;justify-content:center;font-size:14px">${icon("user",14)}</div>
-              </div>
-            </div>
-            <div style="font-size:16px;margin-bottom:5px;text-align:right">${starsHtml(r.stars||0)}</div>
-            ${r.review?`<p style="margin:0;font-size:13px;color:#374151;line-height:1.6;text-align:right">${escapeHtml(r.review)}</p>`:''}
-          </div>`).join('')}
-          ${publicTeacherReviews.length>5?`<p style="text-align:center;color:#6C7686;font-size:12px;margin:0">${publicTeacherReviews.length-5} ביקורות נוספות...</p>`:''}
-        `}
-        </div>`;
-      })()}
-      <!-- Q&A section -->
-      ${(()=>{
-        const _isOwner=currentUser?.uid===t.id;
-        const _canAsk=currentUser&&!_isOwner;
-        const _qaAgo=ts=>{const m=Math.round((Date.now()-ts)/60000);return m<60?m+' דק\'':m<1440?Math.floor(m/60)+' שע\'':Math.floor(m/1440)+' ימים';};
-        return `<div id="_qaSection" class="card" style="padding:16px;margin-bottom:16px">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:${publicTeacherQA.length?'14px':'10px'}">
-            <span style="background:rgba(20,184,166,0.12);color:#14B8A6;font-size:11px;font-weight:800;padding:4px 10px;border-radius:50px">${publicTeacherQA.length} שאלות</span>
-            <h4 style="margin:0;font-weight:900;font-size:16px;color:#0F1A1F;display:flex;align-items:center;gap:6px">${icon("chat",15)} שאלות ותשובות</h4>
-          </div>
-          ${!publicTeacherQA.length?`<div style="text-align:center;padding:14px 0 8px;color:#6C7686;font-size:13px">היה הראשון לשאול שאלה!</div>`:''}
-          ${publicTeacherQA.slice(0,10).map(qa=>`
-          <div style="border-bottom:1px solid rgba(0,0,0,0.06);padding-bottom:14px;margin-bottom:14px">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-              <span style="font-size:11px;color:#6C7686">${_qaAgo(qa.askedAt||0)} לפני</span>
-              <div style="display:flex;align-items:center;gap:8px">
-                ${_isOwner?`<button onclick="deleteQA('${t.id}','${qa.id}')" style="background:none;border:none;color:#CBD5E1;font-size:15px;cursor:pointer;padding:0 4px;line-height:1;font-weight:700" title="מחק שאלה">&#x2715;</button>`:''}
-                <span style="font-weight:800;font-size:13px;color:#14B8A6">${escapeHtml(qa.askerName||'משתמש')}</span>
-                <div style="width:30px;height:30px;border-radius:50%;background:rgba(20,184,166,0.15);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:#14B8A6">${(qa.askerName||'?').charAt(0)}</div>
-              </div>
-            </div>
-            <p style="margin:0 0 10px;font-size:14px;color:#0F1A1F;line-height:1.6;text-align:right;font-weight:600">${escapeHtml(qa.question||'')}</p>
-            ${qa.answer?`
-              <div style="border-right:3px solid #14B8A6;padding-right:12px;margin-right:4px;margin-top:8px">
-                <div style="font-size:11px;font-weight:800;color:#14B8A6;margin-bottom:5px">${icon("check-circle",12)} תשובת המורה</div>
-                <p style="margin:0 0 4px;font-size:13px;color:#374151;line-height:1.6;text-align:right">${escapeHtml(qa.answer)}</p>
-                <div style="font-size:10px;color:#6C7686">${_qaAgo(qa.answeredAt||0)} לפני</div>
-              </div>
-            `:_isOwner?`
-              <div style="margin-top:8px">
-                ${_qaAnsweringId===qa.id?`
-                  <textarea id="_qaAnswer_${qa.id}" placeholder="כתוב תשובה פומבית..." style="width:100%;border:1.5px solid rgba(20,184,166,0.4);border-radius:12px;padding:10px 12px;font-size:13px;font-family:inherit;direction:rtl;outline:none;box-sizing:border-box;resize:none;min-height:80px;margin-bottom:8px"></textarea>
-                  <div style="display:flex;gap:8px">
-                    <button onclick="_qaAnsweringId=null;render()" style="flex:1;background:#F1F5F9;border:none;border-radius:50px;padding:9px;font-weight:700;font-size:13px;cursor:pointer;color:#64748B">ביטול</button>
-                    <button onclick="answerQA('${t.id}','${qa.id}','${qa.askerUid||''}')" style="flex:2;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:9px;font-weight:800;font-size:13px;cursor:pointer">פרסם תשובה</button>
-                  </div>
-                `:`<button onclick="_qaAnsweringId='${qa.id}';render()" style="background:rgba(20,184,166,0.1);color:#14B8A6;border-radius:50px;padding:8px 16px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:6px">${icon("chat",13)} ענה על שאלה זו</button>`}
-              </div>
-            `:`<div style="margin-top:6px;font-size:12px;color:#6C7686;font-style:italic">&#x23F3; ממתין לתשובה...</div>`}
-          </div>`).join('')}
-          ${!_isOwner?`<button onclick="showAskQuestionDialog('${t.id}')" style="width:100%;background:rgba(20,184,166,0.08);color:#14B8A6;border-radius:50px;padding:12px;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px">${icon("chat",14)} שאל שאלה</button>`:''}
-        </div>`;
-      })()}
-
-      <!-- FAQ section -->
-      ${renderFaq(t.faq||[])}
-
-      <!-- Share -->
-      <button onclick="shareTeacher(S.teacher)" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);color:#fff;border:none;border-radius:50px;padding:12px 20px;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;margin-bottom:16px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>שתף מורה</button>
-
-      ${t.id!==currentUser?.uid?`
-        <button onclick="${currentUser?`S.chat={otherUid:'${t.id}',otherName:'${jsAttrEscape(t.name||'')}'}; go('chat')`:`showFireToast('יש להתחבר כדי לשלוח הודעה');go('login')`}" style="width:100%;background:rgba(6,182,212,0.1);color:#04778A;border-radius:50px;padding:13px;font-weight:800;font-size:14px;cursor:pointer;margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:8px">${icon("chat",14)} שלח הודעה פרטית</button>
-        <button onclick="${currentUser?`S.ratingT='${t.id}';S.ratingDone=false;S.ratingStars=0;render()`:`showFireToast('יש להתחבר כדי לכתוב ביקורת');go('login')`}" style="width:100%;background:rgba(251,191,36,0.1);color:#B45309;border-radius:50px;padding:13px;font-weight:800;font-size:14px;cursor:pointer;margin-bottom:14px;display:flex;align-items:center;justify-content:center;gap:8px">${icon("star",14)} כתוב ביקורת על המורה</button>
-      `:''}
-
-      <!-- Book -->
       ${S.booked
-        ?`<div style="background:rgba(20,184,166,.08);border-radius:var(--radius);padding:20px;text-align:center">
+        ?`<div class="tpcard" style="text-align:center;padding:20px">
             <div style="font-size:44px;margin-bottom:10px">🎉</div>
-            <p style="font-weight:800;color:#14B8A6;font-size:16px;margin:0 0 4px">הבקשה נשלחה!</p>
-            <p style="color:#14B8A6;font-size:13px;margin:0 0 14px">${escapeHtml(t.name||'')} יאשר/תאשר תוך 24 שעות. ההורים יקבלו הודעה.</p>
+            <p style="font-weight:800;color:#0e7a72;font-size:16px;margin:0 0 4px">הבקשה נשלחה!</p>
+            <p style="color:#0e7a72;font-size:13px;margin:0 0 14px">${escapeHtml(t.name||'')} יאשר/תאשר תוך 24 שעות. ההורים יקבלו הודעה.</p>
             <div style="display:flex;gap:10px">
               <button class="btn bs" style="flex:1;padding:13px" onclick="S.ratingT='${t.id}';S.booked=false;render()">${icon("star",14)} דרג שיעור</button>
               <button onclick="shareTeacher(S.teacher)" style="background:linear-gradient(135deg,#833AB4,#FD1D1D);color:#fff;border:none;border-radius:50px;padding:13px 18px;font-weight:800;cursor:pointer">${icon("send",14)}</button>
             </div>
-          </div>`
-        :`<button class="btn bp" onclick="S.booked=false;go('booking',{teacher:S.teacher})">📅 קבע שיעור עכשיו</button>`}
+          </div>`:''}
+      <div style="height:6px"></div>
+
+      ${!_isOwn&&!S.booked?`
+      <div style="position:sticky;bottom:0;z-index:5;margin:0 -20px;padding:12px 20px 18px;background:rgba(236,254,255,.93);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-top:1px solid rgba(20,184,166,.15);display:flex;align-items:center;gap:12px">
+        <div style="text-align:center;min-width:72px"><div style="font-size:22px;font-weight:900;color:#0F1A1F;line-height:1">₪${t.price}</div><div style="font-size:11px;color:#64748B;font-weight:700">לשיעור · 45 דק׳</div></div>
+        <button class="btn bp" style="flex:1;padding:14px 16px;font-size:15px" onclick="S.booked=false;go('booking',{teacher:S.teacher})">📅 קבע שיעור עכשיו</button>
+        <button onclick="${currentUser?`S.chat={otherUid:'${t.id}',otherName:'${jsAttrEscape(t.name||'')}'}; go('chat')`:`showFireToast('יש להתחבר כדי לשלוח הודעה');go('login')`}" title="שלח הודעה פרטית" style="${_roundBtn};width:48px;height:48px;background:rgba(20,184,166,.12)">${icon("chat",20,'#0e7a72')}</button>
+      </div>`:'<div style="height:30px"></div>'}
     </div>
-    ${currentUser&&typeof t.id==='string'&&t.id!==currentUser.uid&&!S.booked?`
-    <div style="position:fixed;bottom:14px;left:14px;right:14px;max-width:460px;margin:0 auto;background:#fff;border-radius:20px;padding:10px 12px;box-shadow:0 10px 30px rgba(15,26,26,.18);display:flex;align-items:center;gap:10px;z-index:95">
-      <div style="text-align:center;padding:0 6px">
-        <div style="font-weight:900;font-size:17px;color:#0F1A1F">₪${Math.round(t.price/2)}</div>
-        <div style="font-size:10px;color:#6C7686;font-weight:700">שיעור ניסיון</div>
-      </div>
-      <button onclick="S.bookStep=1;S.bookType='trial';S.bookDayIdx=null;S.bookTime=null;S.booked=false;go('booking',{teacher:S.teacher})" style="flex:1;background:linear-gradient(135deg,#0e7a72,#0a5952);border:none;color:#fff;border-radius:14px;padding:13px 10px;font-weight:800;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">${icon("target",14)} קבע שיעור ניסיון</button>
-    </div>`:''}
   </div>`;
 }
 
@@ -10519,8 +10529,8 @@ function Profile(){
       <div style="display:flex;align-items:center;gap:12px">${catBadge(catObj,52)}<div><div style="font-weight:900;font-size:17px;color:${catObj.col}">${catObj.lbl}</div><div style="font-size:12px;color:#64748B">${catVids.length>0?catVids.length:teacherVideos.filter(v=>!v.cat).length} סרטונים${catVids.length===0&&teacherVideos.filter(v=>!v.cat).length>0?' ⚠️':''}</div></div></div>
       <button onclick="showEditSubjectDialog('${tab}')" style="background:${catObj.col};border:none;color:#fff;border-radius:50px;padding:9px 18px;font-size:13px;font-weight:800;cursor:pointer;box-shadow:0 4px 12px ${catObj.col}44">${icon("edit",14)} ערוך</button>
     </div>
-    ${catProfile?.desc?`<div class="card"><h4 style="margin:0 0 8px;font-weight:800">${icon("file-text",14)} תיאור</h4><p style="margin:0;font-size:14px;line-height:1.7">${catProfile.desc}</p></div>`:'<div class="card" style="text-align:center;padding:22px"><p style="margin:0;font-size:13px;color:#64748B">עדיין לא הוספת תיאור — לחץ <strong>ערוך</strong></p></div>'}
-    ${catProfile?.tags?.length?`<div class="card"><h4 style="margin:0 0 10px;font-weight:800">🏷 נושאים</h4><div style="display:flex;gap:8px;flex-wrap:wrap">${catProfile.tags.map(tg=>`<span style="background:${catObj.col}18;color:${catObj.col};padding:6px 14px;border-radius:50px;font-size:13px;font-weight:700">${tg}</span>`).join('')}</div></div>`:''}
+    ${catProfile?.desc?`<div class="card"><h4 style="margin:0 0 8px;font-weight:800">${icon("file-text",14)} תיאור</h4><p style="margin:0;font-size:14px;line-height:1.7">${escapeHtml(catProfile.desc)}</p></div>`:'<div class="card" style="text-align:center;padding:22px"><p style="margin:0;font-size:13px;color:#64748B">עדיין לא הוספת תיאור — לחץ <strong>ערוך</strong></p></div>'}
+    ${catProfile?.tags?.length?`<div class="card"><h4 style="margin:0 0 10px;font-weight:800">🏷 נושאים</h4><div style="display:flex;gap:8px;flex-wrap:wrap">${catProfile.tags.map(tg=>`<span style="background:${catObj.col}18;color:${catObj.col};padding:6px 14px;border-radius:50px;font-size:13px;font-weight:700">${escapeHtml(tg)}</span>`).join('')}</div></div>`:''}
     <div style="display:flex;justify-content:space-between;align-items:center;margin:14px 0 10px">
       <p style="font-weight:800;font-size:15px;margin:0">📹 סרטונים (${catVids.length})</p>
       <button onclick="showVideoUploadDialog('${tab}')" style="background:linear-gradient(135deg,${catObj.col},#06B6D4);border:none;color:#fff;border-radius:50px;padding:8px 16px;font-size:12px;font-weight:800;cursor:pointer">+ הוסף סרטון</button>
@@ -12308,7 +12318,7 @@ function showEditTeacherProfileDialog(){
         </div>
         <div style="margin-bottom:0">
           <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">${icon("file-text",14)} קצת עליי</label>
-          <textarea id="_etBio" class="inp" placeholder="ספר קצת על עצמך..." style="min-height:65px;resize:none;border-radius:14px">${(currentUserData?.bio||'').replace(/`/g,"'")}</textarea>
+          <textarea id="_etBio" class="inp" placeholder="ספר קצת על עצמך..." style="min-height:65px;resize:none;border-radius:14px">${escapeHtml(currentUserData?.bio||'')}</textarea>
         </div>
       </div>
 
@@ -12348,7 +12358,7 @@ function showEditTeacherProfileDialog(){
       </div>
       <div style="margin-bottom:14px">
         <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:6px">🏙 עיר</label>
-        <input id="_etCity" class="inp" value="${t.city||''}" placeholder="עיר בה אתה מלמד">
+        <input id="_etCity" class="inp" value="${escapeHtml(t.city||'')}" placeholder="עיר בה אתה מלמד">
       </div>
       <div style="margin-bottom:14px">
         <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:6px">${icon("video",14)} קישור שיעור (Zoom / Google Meet)</label>
@@ -12480,11 +12490,11 @@ function _etRenderSubjectDescs(t){
       </div>
       <div style="margin-bottom:10px">
         <label style="font-size:11px;color:#64748B;font-weight:700;display:block;margin-bottom:5px">${icon("file-text",14)} תיאור ל${c.lbl}</label>
-        <textarea id="_etDesc_${cid}" class="inp" placeholder="ספר על עצמך כמורה ל${c.lbl}..." style="min-height:70px;resize:none;border-radius:12px">${desc}</textarea>
+        <textarea id="_etDesc_${cid}" class="inp" oninput="_updDescWc(this)" placeholder="ספר על עצמך כמורה ל${c.lbl}..." style="min-height:70px;resize:none;border-radius:12px">${escapeHtml(desc)}</textarea>${descWordCounter(desc)}
       </div>
       <div>
         <label style="font-size:11px;color:#64748B;font-weight:700;display:block;margin-bottom:5px">🏷 תגיות ל${c.lbl} (בפסיק)</label>
-        <input id="_etTags_${cid}" class="inp" value="${tags}" placeholder="למשל: מתחילים, פופ, רוק">
+        <input id="_etTags_${cid}" class="inp" value="${escapeHtml(tags)}" placeholder="למשל: מתחילים, פופ, רוק">
       </div>
     </div>`;
   }).join('');
@@ -12633,11 +12643,11 @@ function showEditCatProfileDialog(catId){
       </div>
       <div style="margin-bottom:14px">
         <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:6px">${icon("file-text",14)} תיאור ב${cat.lbl}</label>
-        <textarea id="_ecDesc" class="inp" placeholder="ספר על עצמך כמורה ל${cat.lbl}..." style="min-height:90px;resize:none;border-radius:14px">${(existing.desc||'').split(String.fromCharCode(96)).join("'")}</textarea>
+        <textarea id="_ecDesc" class="inp" oninput="_updDescWc(this)" placeholder="ספר על עצמך כמורה ל${cat.lbl}..." style="min-height:90px;resize:none;border-radius:14px">${escapeHtml(existing.desc||'')}</textarea>${descWordCounter(existing.desc)}
       </div>
       <div style="margin-bottom:14px">
         <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:6px">🏷 תגיות ל${cat.lbl} (מופרדות בפסיק)</label>
-        <input id="_ecTags" class="inp" value="${(existing.tags||[]).join(', ')}" placeholder="למשל: מתחילים, רמה מתקדמת, אקורדים">
+        <input id="_ecTags" class="inp" value="${escapeHtml((existing.tags||[]).join(', '))}" placeholder="למשל: מתחילים, רמה מתקדמת, אקורדים">
       </div>
     </div>`;
   document.body.appendChild(ov);
@@ -12645,6 +12655,7 @@ function showEditCatProfileDialog(catId){
 }
 async function saveCatProfileEdits(catId){
   const desc=document.getElementById('_ecDesc')?.value.trim();
+  if(descTooShort(desc,'התיאור ב'+catById(catId).lbl))return;
   const tagsRaw=document.getElementById('_ecTags')?.value.trim();
   const tags=tagsRaw?tagsRaw.split(',').map(s=>s.trim()).filter(Boolean):[];
   try{
@@ -12682,6 +12693,7 @@ async function saveTeacherProfileEdits(){
   let firstDesc='';
   for(const cid of cats){
     const d=document.getElementById('_etDesc_'+cid)?.value.trim()||'';
+    if(descTooShort(d,'התיאור ל'+(CATS.find(x=>x.id===cid)?.lbl||cid)))return;
     const tr=document.getElementById('_etTags_'+cid)?.value.trim()||'';
     const tg=tr?tr.split(',').map(s=>s.trim()).filter(Boolean):[];
     catProfileUpdates[cid]={desc:d,tags:tg};
@@ -12744,9 +12756,9 @@ function showEditSubjectDialog(catId){
         <h3 style="font-weight:900;font-size:18px;margin:0;color:#0F1A1F;display:flex;align-items:center;gap:6px">${catIcon(catObj,18)} ערוך ${catObj.lbl}</h3>
       </div>
       <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">${icon("file-text",14)} תיאור</label>
-      <textarea id="_esDesc" rows="3" style="width:100%;background:rgba(20,184,166,0.06);border:1.5px solid rgba(20,184,166,0.25);border-radius:12px;padding:11px;font-size:13px;font-family:inherit;direction:rtl;outline:none;box-sizing:border-box;resize:none;margin-bottom:12px">${cp.desc||''}</textarea>
+      <textarea id="_esDesc" oninput="_updDescWc(this)" rows="3" style="width:100%;background:rgba(20,184,166,0.06);border:1.5px solid rgba(20,184,166,0.25);border-radius:12px;padding:11px;font-size:13px;font-family:inherit;direction:rtl;outline:none;box-sizing:border-box;resize:none;margin-bottom:12px">${escapeHtml(cp.desc||'')}</textarea>${descWordCounter(cp.desc)}
       <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">🏷 נושאים (מופרדים בפסיק)</label>
-      <input id="_esTags" value="${(cp.tags||[]).join(', ')}" style="width:100%;background:rgba(20,184,166,0.06);border:1.5px solid rgba(20,184,166,0.25);border-radius:12px;padding:11px;font-size:13px;font-family:inherit;direction:rtl;outline:none;box-sizing:border-box;margin-bottom:12px">
+      <input id="_esTags" value="${escapeHtml((cp.tags||[]).join(', '))}" style="width:100%;background:rgba(20,184,166,0.06);border:1.5px solid rgba(20,184,166,0.25);border-radius:12px;padding:11px;font-size:13px;font-family:inherit;direction:rtl;outline:none;box-sizing:border-box;margin-bottom:12px">
       <div style="display:flex;gap:10px;margin-bottom:16px">
         <div style="flex:1">
           <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">${icon("dollar",14)} מחיר לשעה (₪)</label>
@@ -12754,7 +12766,7 @@ function showEditSubjectDialog(catId){
         </div>
         <div style="flex:1">
           <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">🏙 עיר</label>
-          <input id="_esCity" value="${t.city||''}" style="width:100%;background:rgba(6,182,212,0.06);border:1.5px solid rgba(6,182,212,0.25);border-radius:12px;padding:11px;font-size:13px;direction:rtl;outline:none;box-sizing:border-box">
+          <input id="_esCity" value="${escapeHtml(t.city||'')}" style="width:100%;background:rgba(6,182,212,0.06);border:1.5px solid rgba(6,182,212,0.25);border-radius:12px;padding:11px;font-size:13px;direction:rtl;outline:none;box-sizing:border-box">
         </div>
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
@@ -12768,6 +12780,7 @@ function showEditSubjectDialog(catId){
 }
 async function _saveSubjectEdit(catId){
   const desc=document.getElementById('_esDesc')?.value.trim()||'';
+  if(descTooShort(desc,'התיאור ב'+catById(catId).lbl))return;
   const tagsRaw=document.getElementById('_esTags')?.value.trim()||'';
   const tags=tagsRaw?tagsRaw.split(',').map(s=>s.trim()).filter(Boolean):[];
   const price=parseInt(document.getElementById('_esPrice')?.value)||80;
@@ -13057,7 +13070,7 @@ function showCreateGroupDialog(){
         <input id="_cgTime" type="time" value="17:00" style="width:100%;background:rgba(6,182,212,0.06);border:1.5px solid rgba(6,182,212,0.25);border-radius:12px;padding:11px;font-size:13px;outline:none;box-sizing:border-box"></div>
     </div>
     <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">${icon("pin",14)} מיקום (פארק, כתובת, שכונה)</label>
-    <input id="_cgLocation" placeholder="לדוגמה: פארק הירקון תל אביב" value="${myT?.city||''}" style="width:100%;background:rgba(16,185,129,0.06);border:1.5px solid rgba(16,185,129,0.25);border-radius:12px;padding:11px;font-size:13px;direction:rtl;outline:none;box-sizing:border-box;margin-bottom:12px">
+    <input id="_cgLocation" placeholder="לדוגמה: פארק הירקון תל אביב" value="${escapeHtml(myT?.city||'')}" style="width:100%;background:rgba(16,185,129,0.06);border:1.5px solid rgba(16,185,129,0.25);border-radius:12px;padding:11px;font-size:13px;direction:rtl;outline:none;box-sizing:border-box;margin-bottom:12px">
     <div style="display:flex;gap:10px;margin-bottom:14px">
       <div style="flex:1"><label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">${icon("users",14)} מקסימום ילדים</label>
         <select id="_cgMax" style="width:100%;background:rgba(20,184,166,0.06);border:1.5px solid rgba(20,184,166,0.25);border-radius:12px;padding:11px;font-size:13px;font-family:inherit;direction:rtl;outline:none;box-sizing:border-box">
