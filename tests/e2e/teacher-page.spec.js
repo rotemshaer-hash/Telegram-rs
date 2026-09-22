@@ -140,3 +140,44 @@ test.describe('the teacher page tabs', () => {
     await expect(page.locator('.tp-tab.on')).toContainText('שאלות');
   });
 });
+
+// Lessons are counted as one marker per completed booking, not as a counter
+// the teacher's own device raises (see database.rules.json, completedLessons).
+test.describe('lesson count', () => {
+  test('is the legacy counter plus one per completed booking', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => typeof teacherLessonCount === 'function');
+    const r = await page.evaluate(() => [
+      teacherLessonCount({}),
+      teacherLessonCount({ lessons: 3 }),
+      teacherLessonCount({ lessons: 3, completedLessons: { b1: true, b2: true } }),
+      teacherLessonCount({ completedLessons: { b1: true } }),
+    ]);
+    expect(r).toEqual([0, 3, 5, 1]);
+  });
+
+  test('finishing a lesson records the booking, and never touches the old counter', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => typeof _saveLessonSummary === 'function');
+    const writes = await page.evaluate(async () => {
+      const writes = [];
+      const ref = (path = '') => ({
+        set: (v) => { writes.push(['set', path]); return Promise.resolve(); },
+        update: (v) => { writes.push(['update', path, Object.keys(v)]); return Promise.resolve(); },
+        get: () => Promise.resolve({ exists: () => false, val: () => null, forEach: () => {} }),
+        push: () => Promise.resolve(),
+      });
+      db = { ref };
+      currentUser = { uid: 'teacher-under-test', email: 't@example.com', emailVerified: true };
+      currentUserData = { name: 'מורה', role: 'teacher', verified: true };
+      window.notifyUser = () => Promise.resolve();
+      document.body.insertAdjacentHTML('beforeend', '<input id="_lsTopic" value="חיבור וחיסור">');
+      const b = { studentId: 'kid', teacherId: 'teacher-under-test', studentName: 'ילד' };
+      await _saveLessonSummary('booking-7', encodeURIComponent(JSON.stringify(b)));
+      return writes;
+    });
+    const paths = writes.map((w) => w[1]);
+    expect(paths).toContain('teachers/teacher-under-test/completedLessons/booking-7');
+    expect(paths).not.toContain('teachers/teacher-under-test/lessons');
+  });
+});

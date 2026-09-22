@@ -21,7 +21,12 @@
           ".validate": "auth.token.email == 'rotemshaer@gmail.com' || newData.val() == 0 || newData.val() == data.val()"
         },
         "lessons": {
-          ".validate": "auth.token.email == 'rotemshaer@gmail.com' || newData.val() == 0 || newData.val() == data.val() || (data.exists() && newData.val() == data.val() + 1) || (!data.exists() && newData.val() == 1)"
+          ".validate": "auth.token.email == 'rotemshaer@gmail.com' || newData.val() == 0 || newData.val() == data.val()"
+        },
+        "completedLessons": {
+          "$bookingId": {
+            ".validate": "newData.val() == true && root.child('bookings').child($bookingId).child('teacherId').val() == $teacherUid && root.child('bookings').child($bookingId).child('status').val() == 'completed'"
+          }
         },
         "ageVerification": {
           "status": {

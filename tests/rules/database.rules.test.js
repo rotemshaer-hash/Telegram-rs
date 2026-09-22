@@ -842,10 +842,30 @@ describe('teacher reputation numbers come from the admin, not the teacher', () =
   it('a teacher cannot jump their lesson count', async () => {
     await assertFails(set(ref(asTeacher(), 'teachers/teacher-uid/lessons'), 999));
   });
-  it('completing a lesson still adds exactly one', async () => {
-    await assertSucceeds(set(ref(asTeacher(), 'teachers/teacher-uid/lessons'), 1));
-    await assertSucceeds(set(ref(asTeacher(), 'teachers/teacher-uid/lessons'), 2));
-    await assertFails(set(ref(asTeacher(), 'teachers/teacher-uid/lessons'), 4));
+  it('a teacher cannot raise the old counter one at a time either', async () => {
+    await assertFails(set(ref(asTeacher(), 'teachers/teacher-uid/lessons'), 1));
+  });
+  // Lessons are counted as one marker per completed booking. The marker is
+  // only accepted for a booking that really is this teacher's and really is
+  // completed, so each real lesson counts once and nothing else counts.
+  it('a completed booking of this teacher can be counted', async () => {
+    await assertSucceeds(set(ref(asTeacher(), 'teachers/teacher-uid/completedLessons/b2'), true));
+  });
+  it('a booking that is not completed cannot be counted', async () => {
+    await assertFails(set(ref(asTeacher(), 'teachers/teacher-uid/completedLessons/b1'), true));
+    await assertFails(set(ref(asTeacher(), 'teachers/teacher-uid/completedLessons/b4'), true));
+  });
+  it('a made-up booking id cannot be counted', async () => {
+    await assertFails(set(ref(asTeacher(), 'teachers/teacher-uid/completedLessons/fake-1'), true));
+  });
+  it('another teacher’s completed booking cannot be counted', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await set(ref(ctx.database(), 'bookings/other'), { studentId: STUDENT, teacherId: 'someone-else', status: 'completed', price: 80, createdAt: 1 });
+    });
+    await assertFails(set(ref(asTeacher(), 'teachers/teacher-uid/completedLessons/other'), true));
+  });
+  it('a marker must be exactly true', async () => {
+    await assertFails(set(ref(asTeacher(), 'teachers/teacher-uid/completedLessons/b2'), 50));
   });
   it('first-time setup, which writes zeros, still works', async () => {
     await assertSucceeds(update(ref(asTeacher(), 'teachers/teacher-uid'), { rating: 0, reviews: 0, lessons: 0 }));

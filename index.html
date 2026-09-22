@@ -995,7 +995,7 @@ async function loadRealTeachers(){
             price:t.price||40,
             rating:t.rating||0,
             reviews:t.reviews||0,
-            lessons:t.lessons||0,
+            lessons:teacherLessonCount(t),
             mode:t.mode||['online'],
             av:t.photo?'📸':catObj.em,
             photo:t.photo||null,
@@ -4926,6 +4926,12 @@ function _showLessonSummaryDialog(enc){
   window._lsRating=0;
 }
 
+// מספר השיעורים של מורה = השיעורים שנספרו לפני המעבר לרשומה-לכל-הזמנה (השדה
+// הישן lessons, שמאז נעול לכתיבה של המורה) + רשומה אחת לכל הזמנה שהושלמה.
+function teacherLessonCount(t){
+  return (Number(t?.lessons)||0)+Object.keys(t?.completedLessons||{}).length;
+}
+
 async function _saveLessonSummary(bookingId,enc){
   const topic=document.getElementById('_lsTopic')?.value.trim();
   if(!topic){showFireToast('❌ הכנס נושא שיעור');return;}
@@ -4955,9 +4961,10 @@ async function _saveLessonSummary(bookingId,enc){
       ['userBookings/'+b.studentId+'/'+bookingId+'/status']: 'completed',
       ['teacherBookings/'+tid+'/'+bookingId+'/status']: 'completed',
     });
-    // הגדל ספירת שיעורים אצל המורה
-    const tSnap=await db.ref('teachers/'+tid+'/lessons').get();
-    await db.ref('teachers/'+tid+'/lessons').set((tSnap.val()||0)+1).catch(()=>{});
+    // שיעור שהושלם נרשם לפי מזהה ההזמנה, ולא כ-+1 על מונה: חוקי ה-DB מקבלים
+    // את הרשומה רק אם bookings/<id> באמת שייכת למורה הזה ובאמת 'completed',
+    // ולכן כל שיעור אמיתי נספר פעם אחת בדיוק ואין דרך לנפח. ראה teacherLessonCount.
+    await db.ref('teachers/'+tid+'/completedLessons/'+bookingId).set(true).catch(()=>{});
     // התראה לתלמיד — סיכום + בקשת דירוג
     notifyUser(b.studentId,'lessonSummary',{bookingId,preview:'סיכום שיעור: '+topic});
     notifyUser(b.studentId,'rateLesson',{bookingId,teacherId:tid,teacherName:summary.teacherName,preview:'איך היה השיעור עם '+summary.teacherName+'?'});
@@ -8306,7 +8313,7 @@ function renderAdminTab(){
         return `
         <div style="background:rgba(16,185,129,0.05);border-radius:14px;padding:11px;margin-bottom:8px">
           <div style="display:flex;justify-content:space-between;align-items:center">
-            <div style="flex:1"><div style="font-weight:800;font-size:13px;color:#0F1A1F">${escapeHtml(t.name||'ללא שם')}${_isFounding?' 🏆':''}</div><div style="font-size:11px;color:#64748B">${escapeHtml(CATS.find(c=>c.id===t.cat)?.lbl||t.cat||'')} • ${t.lessons||0} שיעורים • ${t.rating||0}${icon("star",14)}</div></div>
+            <div style="flex:1"><div style="font-weight:800;font-size:13px;color:#0F1A1F">${escapeHtml(t.name||'ללא שם')}${_isFounding?' 🏆':''}</div><div style="font-size:11px;color:#64748B">${escapeHtml(CATS.find(c=>c.id===t.cat)?.lbl||t.cat||'')} • ${teacherLessonCount(t)} שיעורים • ${t.rating||0}${icon("star",14)}</div></div>
             <div style="display:flex;gap:6px;flex-shrink:0">
               <button onclick="adminToggleFounding('${t.uid}','${jsAttrEscape(t.name||t.email||'')}',${_isFounding})" title="${_isFounding?'הסר סטטוס מייסד':'הענק סטטוס מורה מייסד'}" style="background:${_isFounding?'rgba(251,191,36,0.18)':'rgba(100,116,139,0.1)'};color:${_isFounding?'#B45309':'#64748B'};border-radius:50px;padding:6px 12px;font-size:11px;font-weight:800;cursor:pointer">🏆</button>
               <button onclick="adminDeleteUser('${t.uid}','${jsAttrEscape(t.name||t.email||'')}','teacher')" title="מחק לצמיתות" style="background:rgba(239,68,68,0.1);color:#EF4444;border-radius:50px;padding:6px 12px;font-size:11px;font-weight:800;cursor:pointer">${icon("trash",14)}</button>
