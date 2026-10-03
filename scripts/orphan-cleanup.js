@@ -53,6 +53,29 @@ async function assertRecentProductionBackup(bucket) {
   console.log(`✅ גיבוי טרי אומת (${Math.round(ageH)} שעות).`);
 }
 
+// אותה רשימה, גם כהערה (annotation) של GitHub Actions ולא רק בלוג. הסיבה
+// מעשית: הלוג מוגש מאחסון חיצוני ולא מ-api.github.com, ובנייד צריך לפתוח
+// שלב בתוך job כדי לראות אותו בכלל. הערה יושבת בראש דף הריצה, נפתחת
+// בלחיצה אחת, ונקראת דרך ה-API — כלומר הבדיקה שהסקריפט דורש לפני מחיקה
+// אפשרית גם מטלפון וגם מסשן שאין לו גישה ללוגים.
+//
+// הכל בהערה אחת ולא אחת לכל רשומה: GitHub מציג לכל היותר 10 הערות לשלב,
+// ו-32 רשומות היו נחתכות ל-10 בלי שום סימן שמשהו חסר.
+function annotationEscape(s) {
+  return String(s).replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A');
+}
+
+function emitAnnotation(items, env) {
+  if (!process.env.GITHUB_ACTIONS) return;
+  const shown = items.slice(0, MAX_LISTED);
+  const lines = shown.map((it) => `${it.refPath}   (${it.kind}, uid ${it.uid})`);
+  if (items.length > shown.length) {
+    lines.push(`… ועוד ${items.length - shown.length}`);
+  }
+  const title = `${items.length} מועמדות לניקוי ב-${env}`;
+  console.log(`::notice title=${annotationEscape(title)}::${annotationEscape(lines.join('\n'))}`);
+}
+
 async function run({ db, env, bucket }) {
   console.log(`🔎 סורק ${env}`);
   const items = await findOrphans(db);
@@ -80,6 +103,7 @@ async function run({ db, env, bucket }) {
   if (items.length > MAX_LISTED) {
     console.log(`   … ועוד ${items.length - MAX_LISTED} (מוצגות ${MAX_LISTED} הראשונות)`);
   }
+  emitAnnotation(items, env);
 
   if (!APPLY) {
     console.log('\n(dry run — שום דבר לא נמחק. APPLY_ORPHAN_CLEANUP=yes למחיקה אמיתית)');
