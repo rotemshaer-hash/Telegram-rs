@@ -32,6 +32,10 @@ const CLEANUP_ENV = process.env.CLEANUP_ENV === 'production' ? 'production' : 's
 // אותו סף בדיוק כמו health-monitor.js — "גיבוי טרי" מוגדר במקום אחד ברוח
 // הדברים, גם אם שני הקבצים לא יכולים לייבא קבוע משותף בלי תלות מיותרת.
 const RECENT_BACKUP_MAX_AGE_H = 30;
+// תקרה להדפסת הרשימה המפורטת. הסריקות עד היום החזירו עשרות רשומות, אבל
+// מסד שנשבר באמת יכול להחזיר אלפים, ולוג שנחתך באמצע גרוע מלוג שאומר
+// כמה הושמטו.
+const MAX_LISTED = 200;
 
 async function assertRecentProductionBackup(bucket) {
   if (!bucket) throw new Error('אין גישה לדלי הגיבויים — נעצר לפני מחיקת ייצור.');
@@ -63,6 +67,18 @@ async function run({ db, env, bucket }) {
   console.log(`\n${APPLY ? '🗑️' : '🔎'} ${items.length} רשומות יתומות ב-${byWhere.size} מקומות (${env}):`);
   for (const [where, count] of [...byWhere.entries()].sort((a, b) => b[1] - a[1])) {
     console.log(`   ${String(count).padStart(5)}  ${where}`);
+  }
+
+  // הנתיב המלא של כל רשומה, לא רק הספירה. בלי זה אי אפשר לקיים את הכלל
+  // שכתוב בראש הקובץ — "לקרוא את הרשימה לפני שמריצים עם APPLY=yes" — כי
+  // הרשימה לא הייתה מודפסת בשום מקום. בריצת אמת זה גם הופך את הלוג לרישום
+  // של מה בדיוק נמחק, אחרי שהמחיקה כבר בלתי הפיכה.
+  console.log('\nהמועמדות, אחת-אחת:');
+  for (const it of items.slice(0, MAX_LISTED)) {
+    console.log(`   ${it.refPath}   (${it.kind}, uid ${it.uid})`);
+  }
+  if (items.length > MAX_LISTED) {
+    console.log(`   … ועוד ${items.length - MAX_LISTED} (מוצגות ${MAX_LISTED} הראשונות)`);
   }
 
   if (!APPLY) {
