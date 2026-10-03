@@ -76,6 +76,22 @@ function emitAnnotation(items, env) {
   console.log(`::notice title=${annotationEscape(title)}::${annotationEscape(lines.join('\n'))}`);
 }
 
+// עדכון מרובה-נתיבים ב-RTDB נדחה כולו אם נתיב אחד בו הוא אב של נתיב אחר,
+// ו-findOrphans מחזיר בדיוק את הצירוף הזה: מורה שנמחק מחזיר גם את
+// `reviews/<uid>` כולו וגם ביקורות בודדות בתוכו, שהכותב שלהן נמחק אף הוא.
+// 32 הרשומות בייצור נפלו על זה. מחיקת האב מוחקת ממילא את הצאצאים, ולכן
+// הצאצאים יורדים מהעדכון — הנמחק זהה, רק מתואר בפחות נתיבים.
+function dropNested(paths) {
+  const all = new Set(paths);
+  return paths.filter((p) => {
+    const parts = p.split('/');
+    for (let i = 1; i < parts.length; i++) {
+      if (all.has(parts.slice(0, i).join('/'))) return false;
+    }
+    return true;
+  });
+}
+
 async function run({ db, env, bucket }) {
   console.log(`🔎 סורק ${env}`);
   const items = await findOrphans(db);
@@ -114,13 +130,20 @@ async function run({ db, env, bucket }) {
     await assertRecentProductionBackup(bucket);
   }
 
+  const paths = dropNested(items.map((it) => it.refPath));
   const updates = {};
-  for (const it of items) updates[it.refPath] = null;
+  for (const p of paths) updates[p] = null;
   await db.ref().update(updates);
-  console.log(`\n✔ ${items.length} רשומות נמחקו מ-${env}.`);
+  console.log(`\n✔ ${items.length} רשומות נמחקו מ-${env} (${paths.length} נתיבים).`);
 }
 
 withAdmin((h) => run(h), CLEANUP_ENV).catch((e) => {
   console.error('❌ ניקוי היתומים נכשל:', e.message);
+  // גם השגיאה כהערה, מאותה סיבה שהרשימה היא הערה: ה-job מסומן "failure"
+  // בלי שום רמז למה, וכדי לקרוא את הסיבה צריך את הלוג — שמוגש מאחסון חיצוני.
+  // הריצה שנפלה על עדכון מקונן בייצור היא בדיוק המקרה.
+  if (process.env.GITHUB_ACTIONS) {
+    console.log(`::error title=${annotationEscape('ניקוי היתומים נכשל')}::${annotationEscape(e.message)}`);
+  }
   process.exitCode = 1;
 });
