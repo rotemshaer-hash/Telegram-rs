@@ -70,6 +70,22 @@ function dropNested(paths) {
   });
 }
 
+// עדכון מרובה-נתיבים ב-RTDB נדחה כולו אם נתיב אחד בו הוא אב של נתיב אחר,
+// ו-findOrphans מחזיר בדיוק את הצירוף הזה: מורה שנמחק מחזיר גם את
+// `reviews/<uid>` כולו וגם ביקורות בודדות בתוכו, שהכותב שלהן נמחק אף הוא.
+// 32 הרשומות בייצור נפלו על זה. מחיקת האב מוחקת ממילא את הצאצאים, ולכן
+// הצאצאים יורדים מהעדכון — הנמחק זהה, רק מתואר בפחות נתיבים.
+function dropNested(paths) {
+  const all = new Set(paths);
+  return paths.filter((p) => {
+    const parts = p.split('/');
+    for (let i = 1; i < parts.length; i++) {
+      if (all.has(parts.slice(0, i).join('/'))) return false;
+    }
+    return true;
+  });
+}
+
 async function run({ db, env, bucket }) {
   console.log(`🔎 סורק ${env}`);
   const items = await findOrphans(db);
