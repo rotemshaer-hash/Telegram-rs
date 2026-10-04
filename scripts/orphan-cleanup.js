@@ -65,15 +65,13 @@ function annotationEscape(s) {
   return String(s).replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A');
 }
 
-function emitAnnotation(items, env) {
+function emitNotice(title, lines) {
   if (!process.env.GITHUB_ACTIONS) return;
-  const shown = items.slice(0, MAX_LISTED);
-  const lines = shown.map((it) => `${it.refPath}   (${it.kind}, uid ${it.uid})`);
-  if (items.length > shown.length) {
-    lines.push(`… ועוד ${items.length - shown.length}`);
+  const shown = lines.slice(0, MAX_LISTED);
+  if (lines.length > shown.length) {
+    shown.push(`… ועוד ${lines.length - shown.length}`);
   }
-  const title = `${items.length} מועמדות לניקוי ב-${env}`;
-  console.log(`::notice title=${annotationEscape(title)}::${annotationEscape(lines.join('\n'))}`);
+  console.log(`::notice title=${annotationEscape(title)}::${annotationEscape(shown.join('\n'))}`);
 }
 
 // עדכון מרובה-נתיבים ב-RTDB נדחה כולו אם נתיב אחד בו הוא אב של נתיב אחר,
@@ -119,7 +117,7 @@ async function run({ db, env, bucket }) {
   if (items.length > MAX_LISTED) {
     console.log(`   … ועוד ${items.length - MAX_LISTED} (מוצגות ${MAX_LISTED} הראשונות)`);
   }
-  emitAnnotation(items, env);
+  emitNotice(`${items.length} מועמדות לניקוי ב-${env}`, items.map((it) => `${it.refPath}   (${it.kind}, uid ${it.uid})`));
 
   if (!APPLY) {
     console.log('\n(dry run — שום דבר לא נמחק. APPLY_ORPHAN_CLEANUP=yes למחיקה אמיתית)');
@@ -135,6 +133,11 @@ async function run({ db, env, bucket }) {
   for (const p of paths) updates[p] = null;
   await db.ref().update(updates);
   console.log(`\n✔ ${items.length} רשומות נמחקו מ-${env} (${paths.length} נתיבים).`);
+  // הרישום של מה שנמחק בפועל, ולא רק של מה שהיה מועמד. רשימת המועמדות
+  // מודפסת גם בריצת יובש, ולכן היא לבדה אינה מעידה שמחיקה קרתה — אחרי
+  // המחיקה הראשונה בייצור לא היה שום מקור נגיש שאומר אם היא בוצעה, וכדי
+  // לדעת היה צריך להריץ סריקה נוספת. ההערה הזו נכתבת רק אחרי שהכתיבה חזרה.
+  emitNotice(`נמחקו ${items.length} רשומות ב-${env}`, paths);
 }
 
 withAdmin((h) => run(h), CLEANUP_ENV).catch((e) => {
