@@ -39,6 +39,19 @@ function mb(bytes) {
   return (bytes / MB).toFixed(1);
 }
 
+// ממצא מסיים את ה-job בכישלון, וזה מכוון — אותו דפוס בדיוק כמו
+// health-monitor.js. ריצה שבועית שאיש לא פותח אינה שווה כלום: כישלון הוא מה
+// ש-GitHub שולח עליו התראה, וזו הדרך היחידה שבה סריקה מתוזמנת מגיעה לבעלים
+// בלי שמישהו יזכור להיכנס ולהסתכל.
+//
+// חשוב מה **לא** נחשב ממצא: סריקה שלא מצאה כלום עוברת. כלומר ה-job אדום רק
+// כשבאמת יש מה לנקות, ולא ככלל קבוע שמאבד את משמעותו.
+function withFindings(findings) {
+  const err = new Error(findings.join(' | '));
+  err.findings = findings;
+  return err;
+}
+
 async function run({ db, bucket }) {
   if (!bucket) throw new Error('אין גישה לדלי — נעצר.');
 
@@ -103,6 +116,7 @@ async function run({ db, bucket }) {
 
   if (!orphans.length) {
     console.log('\n✅ לא נמצאו קבצים יתומים.');
+    if (unknown.length) throw withFindings([`${unknown.length} קבצים בקידומת שאינה מוכרת — לא נבדקו.`]);
     return;
   }
 
@@ -118,10 +132,19 @@ async function run({ db, bucket }) {
   annotate.notice(`${orphans.length} קבצים יתומים ב-Storage (${mb(orphanBytes)}MB)`, lines);
 
   console.log('\n(סריקה בלבד — הסקריפט הזה לא מוחק דבר.)');
+
+  const findings = [`${orphans.length} קבצים יתומים (${mb(orphanBytes)}MB).`];
+  if (unknown.length) findings.push(`${unknown.length} קבצים בקידומת שאינה מוכרת — לא נבדקו.`);
+  throw withFindings(findings);
 }
 
 withAdmin((h) => run(h), 'production').catch((e) => {
-  console.error('❌ סריקת ה-Storage נכשלה:', e.message);
-  annotate.error('סריקת ה-Storage נכשלה', e.message);
+  // שתי סיבות שונות לגמרי לאותו job אדום, ואסור שייראו זהות: סריקה שלא
+  // הצליחה לרוץ (הרשאה, דלי, מסד ריק) לעומת סריקה שרצה כשורה ומצאה משהו.
+  // הראשונה אומרת שאיננו יודעים מה מצב ה-Storage; השנייה אומרת בדיוק מה הוא.
+  const found = Array.isArray(e.findings);
+  const title = found ? 'סריקת ה-Storage מצאה ממצאים' : 'סריקת ה-Storage נכשלה';
+  console.error(`${found ? '🚨' : '❌'} ${title}:`, e.message);
+  annotate.error(title, e.message);
   process.exitCode = 1;
 });
