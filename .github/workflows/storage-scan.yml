@@ -1,0 +1,26 @@
+name: Storage Scan
+
+# סריקת קבצים יתומים ב-Firebase Storage. **קריאה בלבד** — אין לסקריפט הזה
+# מצב מחיקה ואין לו קלט, בדיוק כמו orphan-scan.js. הוא רץ על הייצור כי
+# ל-staging אין דלי משלו (ראה scripts/lib/admin.js), ולכן אין מה לבחור.
+on:
+  workflow_dispatch:
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        working-directory: scripts
+        run: npm install
+
+      - name: Run storage scan
+        working-directory: scripts
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: node storage-scan.js

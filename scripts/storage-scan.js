@@ -1,0 +1,107 @@
+// סריקת יתומים ב-Storage — המקבילה של orphan-scan.js לדלי הקבצים.
+//
+// ── למה זה נדרש בנפרד ──
+//
+// findOrphans (lib/orphans.js) סורק את ה-RTDB בלבד. הקבצים עצמם — תמונות
+// תעודת זהות של קטינים ושל ההורים שלהם, סטוריז, מדיה בקהילה ותיק עבודות —
+// יושבים ב-Firebase Storage, ושום סריקה מעולם לא נגעה בהם. ניקוי היתומים
+// של 4.10 מחק 32 רשומות מהמסד, וביניהן רשומת `teacherVerification` של קטין,
+// אבל **הקובץ שהיא הצביעה עליו** לא נבדק מעולם.
+//
+// ── קריאה בלבד, במכוון ──
+//
+// הסקריפט הזה לא מוחק דבר ואין לו דגל שמאפשר זאת. זה בדיוק הדפוס של
+// orphan-scan.js: קודם יודעים מה יש, מסתכלים על הרשימה, ורק אז נבנה ניקוי.
+// מחיקה של קובץ ב-Storage אינה הפיכה, ותמונת תעודת זהות שנמחקה בטעות אינה
+// ניתנת לשחזור מהמשתמש בלי לבקש ממנו להעלות אותה שוב.
+//
+// ── ייצור בלבד ──
+//
+// ל-staging אין דלי משלו: Storage אינו מבודד בין הסביבות (ראה lib/admin.js),
+// והדלי משותף לפרויקט. סריקה "על staging" הייתה סורקת את קבצי הייצור
+// ומדווחת עליהם כאילו הם של סביבת בדיקות. לכן הסביבה כאן קבועה, והעובדה
+// נאמרת ולא מוסתרת.
+'use strict';
+const { withAdmin } = require('./lib/admin');
+const annotate = require('./lib/annotate');
+
+// הקידומות שבהן המקטע הראשון אחרי הקידומת הוא uid. נלקחו מ-storage.rules,
+// שהוא מקור האמת לאיזה נתיב מותר למי — לא מרשימה שנכתבה כאן מהזיכרון.
+const UID_PREFIXES = ['id-photos', 'stories', 'communityMedia', 'portfolio'];
+
+// נתיבים שאינם של משתמשים ואסור לדווח עליהם כיתומים. backups/ נכתב בידי
+// חשבון השירות ואין לו uid כלל.
+const NON_USER_PREFIXES = ['backups'];
+
+const MB = 1024 * 1024;
+
+function mb(bytes) {
+  return (bytes / MB).toFixed(1);
+}
+
+async function run({ db, bucket }) {
+  if (!bucket) throw new Error('אין גישה לדלי — נעצר.');
+
+  const usersSnap = await db.ref('users').once('value');
+  const live = new Set(Object.keys(usersSnap.val() || {}));
+  // אותה הגנה כמו ב-findOrphans: מסד שחזר ריק הוא תקלה, וסריקה שתרוץ עליו
+  // תכריז על **כל** קובץ בדלי כיתום.
+  if (!live.size) throw new Error('אין אף משתמש ב-users. כנראה תקלת הרשאה — נעצר.');
+
+  const [files] = await bucket.getFiles();
+  console.log(`🔎 ${files.length} קבצים בדלי, ${live.size} משתמשים חיים.`);
+
+  const orphans = [];
+  const unknown = [];
+  let totalBytes = 0;
+  let orphanBytes = 0;
+
+  for (const f of files) {
+    const size = Number(f.metadata?.size || 0);
+    totalBytes += size;
+    const [prefix, uid] = f.name.split('/');
+    if (NON_USER_PREFIXES.includes(prefix)) continue;
+    if (!UID_PREFIXES.includes(prefix)) {
+      // קידומת שלא מוכרת לסקריפט אינה "לא יתומה" — היא **לא נבדקה**, וזה
+      // הבדל שחייב להופיע בדוח. אחרת קידומת חדשה שמישהו יוסיף תיעלם בשקט.
+      unknown.push(f.name);
+      continue;
+    }
+    if (uid && !live.has(uid)) {
+      orphans.push({ name: f.name, uid, prefix, size });
+      orphanBytes += size;
+    }
+  }
+
+  console.log(`\nנפח כולל: ${mb(totalBytes)}MB.`);
+
+  if (unknown.length) {
+    console.log(`\n⚠️ ${unknown.length} קבצים בקידומות שהסקריפט אינו מכיר — לא נבדקו:`);
+    for (const n of unknown.slice(0, annotate.MAX_LINES)) console.log(`   ${n}`);
+    annotate.notice(`${unknown.length} קבצים לא נבדקו (קידומת לא מוכרת)`, unknown);
+  }
+
+  if (!orphans.length) {
+    console.log('\n✅ לא נמצאו קבצים יתומים.');
+    return;
+  }
+
+  const byPrefix = new Map();
+  for (const o of orphans) byPrefix.set(o.prefix, (byPrefix.get(o.prefix) || 0) + 1);
+  console.log(`\n🔎 ${orphans.length} קבצים יתומים, ${mb(orphanBytes)}MB:`);
+  for (const [prefix, count] of [...byPrefix.entries()].sort((a, b) => b[1] - a[1])) {
+    console.log(`   ${String(count).padStart(5)}  ${prefix}`);
+  }
+
+  const lines = orphans.map((o) => `${o.name}   (${mb(o.size)}MB, uid ${o.uid})`);
+  for (const l of lines.slice(0, annotate.MAX_LINES)) console.log(`   ${l}`);
+  annotate.notice(`${orphans.length} קבצים יתומים ב-Storage (${mb(orphanBytes)}MB)`, lines);
+
+  console.log('\n(סריקה בלבד — הסקריפט הזה לא מוחק דבר.)');
+}
+
+withAdmin((h) => run(h), 'production').catch((e) => {
+  console.error('❌ סריקת ה-Storage נכשלה:', e.message);
+  annotate.error('סריקת ה-Storage נכשלה', e.message);
+  process.exitCode = 1;
+});
