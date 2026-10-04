@@ -26,16 +26,17 @@
 'use strict';
 const { withAdmin } = require('./lib/admin');
 const { findOrphans } = require('./lib/orphans');
+const annotate = require('./lib/annotate');
 
 const APPLY = process.env.APPLY_ORPHAN_CLEANUP === 'yes';
 const CLEANUP_ENV = process.env.CLEANUP_ENV === 'production' ? 'production' : 'staging';
 // אותו סף בדיוק כמו health-monitor.js — "גיבוי טרי" מוגדר במקום אחד ברוח
 // הדברים, גם אם שני הקבצים לא יכולים לייבא קבוע משותף בלי תלות מיותרת.
 const RECENT_BACKUP_MAX_AGE_H = 30;
-// תקרה להדפסת הרשימה המפורטת. הסריקות עד היום החזירו עשרות רשומות, אבל
-// מסד שנשבר באמת יכול להחזיר אלפים, ולוג שנחתך באמצע גרוע מלוג שאומר
-// כמה הושמטו.
-const MAX_LISTED = 200;
+// תקרה להדפסת הרשימה המפורטת בלוג. אותו ערך שבו ההערות חותכות, ומיובא
+// משם ולא נכתב שוב — שתי תקרות שונות היו אומרות שהלוג וההערה מראים
+// רשימות שונות מאותה ריצה.
+const MAX_LISTED = annotate.MAX_LINES;
 
 async function assertRecentProductionBackup(bucket) {
   if (!bucket) throw new Error('אין גישה לדלי הגיבויים — נעצר לפני מחיקת ייצור.');
@@ -51,27 +52,6 @@ async function assertRecentProductionBackup(bucket) {
     throw new Error(`הגיבוי האחרון בן ${Math.round(ageH)} שעות (סף: ${RECENT_BACKUP_MAX_AGE_H}) — נעצר לפני מחיקת ייצור.`);
   }
   console.log(`✅ גיבוי טרי אומת (${Math.round(ageH)} שעות).`);
-}
-
-// אותה רשימה, גם כהערה (annotation) של GitHub Actions ולא רק בלוג. הסיבה
-// מעשית: הלוג מוגש מאחסון חיצוני ולא מ-api.github.com, ובנייד צריך לפתוח
-// שלב בתוך job כדי לראות אותו בכלל. הערה יושבת בראש דף הריצה, נפתחת
-// בלחיצה אחת, ונקראת דרך ה-API — כלומר הבדיקה שהסקריפט דורש לפני מחיקה
-// אפשרית גם מטלפון וגם מסשן שאין לו גישה ללוגים.
-//
-// הכל בהערה אחת ולא אחת לכל רשומה: GitHub מציג לכל היותר 10 הערות לשלב,
-// ו-32 רשומות היו נחתכות ל-10 בלי שום סימן שמשהו חסר.
-function annotationEscape(s) {
-  return String(s).replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A');
-}
-
-function emitNotice(title, lines) {
-  if (!process.env.GITHUB_ACTIONS) return;
-  const shown = lines.slice(0, MAX_LISTED);
-  if (lines.length > shown.length) {
-    shown.push(`… ועוד ${lines.length - shown.length}`);
-  }
-  console.log(`::notice title=${annotationEscape(title)}::${annotationEscape(shown.join('\n'))}`);
 }
 
 // עדכון מרובה-נתיבים ב-RTDB נדחה כולו אם נתיב אחד בו הוא אב של נתיב אחר,
@@ -117,7 +97,7 @@ async function run({ db, env, bucket }) {
   if (items.length > MAX_LISTED) {
     console.log(`   … ועוד ${items.length - MAX_LISTED} (מוצגות ${MAX_LISTED} הראשונות)`);
   }
-  emitNotice(`${items.length} מועמדות לניקוי ב-${env}`, items.map((it) => `${it.refPath}   (${it.kind}, uid ${it.uid})`));
+  annotate.notice(`${items.length} מועמדות לניקוי ב-${env}`, items.map((it) => `${it.refPath}   (${it.kind}, uid ${it.uid})`));
 
   if (!APPLY) {
     console.log('\n(dry run — שום דבר לא נמחק. APPLY_ORPHAN_CLEANUP=yes למחיקה אמיתית)');
@@ -137,7 +117,7 @@ async function run({ db, env, bucket }) {
   // מודפסת גם בריצת יובש, ולכן היא לבדה אינה מעידה שמחיקה קרתה — אחרי
   // המחיקה הראשונה בייצור לא היה שום מקור נגיש שאומר אם היא בוצעה, וכדי
   // לדעת היה צריך להריץ סריקה נוספת. ההערה הזו נכתבת רק אחרי שהכתיבה חזרה.
-  emitNotice(`נמחקו ${items.length} רשומות ב-${env}`, paths);
+  annotate.notice(`נמחקו ${items.length} רשומות ב-${env}`, paths);
 }
 
 withAdmin((h) => run(h), CLEANUP_ENV).catch((e) => {
@@ -145,8 +125,6 @@ withAdmin((h) => run(h), CLEANUP_ENV).catch((e) => {
   // גם השגיאה כהערה, מאותה סיבה שהרשימה היא הערה: ה-job מסומן "failure"
   // בלי שום רמז למה, וכדי לקרוא את הסיבה צריך את הלוג — שמוגש מאחסון חיצוני.
   // הריצה שנפלה על עדכון מקונן בייצור היא בדיוק המקרה.
-  if (process.env.GITHUB_ACTIONS) {
-    console.log(`::error title=${annotationEscape('ניקוי היתומים נכשל')}::${annotationEscape(e.message)}`);
-  }
+  annotate.error('ניקוי היתומים נכשל', e.message);
   process.exitCode = 1;
 });
