@@ -75,6 +75,26 @@ async function run({ db, bucket }) {
 
   console.log(`\nנפח כולל: ${mb(totalBytes)}MB.`);
 
+  // ההיקף שנסרק, תמיד — לא רק החריגים. דוח שמדווח רק מה שחרג אינו מבדיל
+  // בין "נסרקו 500 קבצים וכולם תקינים" לבין "הדלי ריק": שתי התוצאות נראות
+  // זהות למי שקורא, וה"0 יתומים" השני אינו אומר דבר על בריאות המערכת.
+  // מספר הקבצים לפי קידומת הוא גם הדרך לראות ש-Storage בכלל בשימוש.
+  const scanned = new Map();
+  for (const f of files) {
+    const prefix = f.name.split('/')[0];
+    scanned.set(prefix, (scanned.get(prefix) || 0) + 1);
+  }
+  annotate.notice(
+    `נסרקו ${files.length} קבצים ב-Storage (${mb(totalBytes)}MB) — ${orphans.length} יתומים`,
+    [
+      `משתמשים חיים: ${live.size}`,
+      `קבצים יתומים: ${orphans.length} (${mb(orphanBytes)}MB)`,
+      `קבצים שלא נבדקו: ${unknown.length}`,
+      '',
+      ...[...scanned.entries()].sort((a, b) => b[1] - a[1]).map(([p, c]) => `${String(c).padStart(5)}  ${p}/`),
+    ]
+  );
+
   if (unknown.length) {
     console.log(`\n⚠️ ${unknown.length} קבצים בקידומות שהסקריפט אינו מכיר — לא נבדקו:`);
     for (const n of unknown.slice(0, annotate.MAX_LINES)) console.log(`   ${n}`);
