@@ -95,8 +95,9 @@
 - **הקוד:** ריפו נפרד `rotemshaer-hash/buildall`, שמתארח ב־**GitHub Pages**. זה חינם
   ולא נוגע בקרדיטים של Netlify. **לא לשים אותו בריפו של Drushe:** שם `publish = "."`,
   ולכן כל קובץ היה מוגש תחת הדומיין של Drushe.
-  - **עדכון 9.10:** הריפו עוד לא נפתח, ורותם צריך לפתוח אותו. עד אז הקוד שמור רק
-    בקונטיינר של הסשן, ב־`/home/user/buildall`, עם היסטוריית git מקומית.
+  - **9.10:** רותם פתח את הריפו, והקוד נדחף ל־`main`. מופעל `.nojekyll`. **GitHub Pages
+    מפעילים ידנית** (לסשן אין הרשאה): Settings ← Pages ← Deploy from a branch ←
+    `main` / `(root)`. הקישור הישיר: https://github.com/rotemshaer-hash/buildall/settings/pages
 - **מבנה:** האתר נבנה מ־`src/` בפקודה `node build.mjs`. ה־`README.md` בריפו מפרט מה
   נערך איפה. ההדר, הפוטר, הטופס, האייקונים, הלוגו והכתובת נכתבים פעם אחת
   ב־`src/layout.mjs`, וכל דף משתמש בהם.
