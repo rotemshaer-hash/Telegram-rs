@@ -58,6 +58,30 @@ No duplicates. No inline magic numbers. Refer to the one definition everywhere.
   the number. Skip it for build config, CI, or rules-only changes, which never
   show up there and would only send him looking for a number that never comes.
 
+## Every change must look like it belongs (asked for explicitly, 12.10.2026)
+
+Anything a user can see has to match the rest of the app and read as part of
+it — not as a correct patch bolted on. This is a gate, not a preference: a
+screen that works but looks foreign is not finished.
+
+Before calling any visible change done, check it against the app itself:
+
+- **Never a white surface.** Cards and panels use the app's own colours — the
+  surface gradient `linear-gradient(165deg,#ECFEFF 0%,#F0F9FF 50%,#EEF2FF 100%)`,
+  or the mint tint of `.tpcard`. He has had to say this twice: on the teacher
+  page, and again on the onboarding card.
+- **Colours come from the token block at the top of `index.html`**, never from
+  a new hex invented for one screen. `--grad-main` for primary buttons, the
+  protected dark gradient for brand headers, `#0F1A1F` for titles, `#64748B`
+  and `#475569` for body text.
+- **Reuse the existing component and its wording.** If a screen for this
+  already exists, extend it rather than building a second one beside it.
+- **Render it on the real app and look at it** before saying it is ready —
+  then send him the image. A screenshot catches what reading the diff does not.
+
+The same holds for copy: it addresses the role actually using the screen, and
+it never contradicts something another screen already tells the user.
+
 ## Workflow Rules
 
 - **Never push or merge without explicit user approval ("כן").**

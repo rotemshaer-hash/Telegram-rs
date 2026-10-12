@@ -1034,10 +1034,26 @@ async function loadRealTeachers(){
 async function loadDiscoverFeed(force=false){
   if(discoverFeedLoading)return;
   if(discoverFeedLoaded&&!force)return;
-  if(!currentUser||!db)return;
+  // ── למה היציאה הזו מסמנת "נטען" ──
+  //
+  // קודם היא עשתה `return` בשקט, בלי לגעת ב-discoverFeedLoaded. אבל מסך
+  // הדרילס מרנדר את מסך הטעינה השחור בדיוק על התנאי `!discoverFeedLoaded`,
+  // ואין שום דבר שמנסה שוב. כלומר כל פעם שהפונקציה יצאה כאן, המשתמש נשאר
+  // על "טוען דרילס..." **לתמיד**, עם כפתור חזרה כמוצא היחיד.
+  //
+  // זה לא תיאורטי: הפונקציה נקראת גם במעבר למסך הדרילס וגם מראש בטעינת האפליקציה,
+  // ומיד אחרי התחברות יש חלון שבו currentUser כבר קיים אבל חיבור ה-RTDB עדיין
+  // לא אימת מחדש (אותו מרוץ שמתועד בהרשמה). מי שנכנס לדרילס בחלון הזה נתקע.
+  //
+  // המצב הנכון כשאין מה לטעון אינו "טוען" אלא "אין עדיין סרטונים" — מסך שכבר
+  // קיים למטה. לכן מסמנים שהניסיון הסתיים ומרנדרים.
+  if(!currentUser||!db){discoverFeedLoaded=true;if(S.screen==='discover')render();return;}
   discoverFeedLoading=true;
   try{
-    if(!teachersLoaded)await loadRealTeachers();
+    // withTimeout גם כאן, ולא רק על קריאת הסרטונים: loadRealTeachers תלויה
+    // ברשת בדיוק באותה מידה, ובלי תקרה קריאה תקועה משאירה discoverFeedLoading
+    // דלוק לנצח — אותו מסך שחור, מדרך שנייה.
+    if(!teachersLoaded)await withTimeout(loadRealTeachers(),12000,'discover-teachers');
     const snap=await withTimeout(db.ref('videos').get(),12000,'discover-feed');
     const list=[];
     if(snap.exists())snap.forEach(teacherSnap=>{
@@ -1064,10 +1080,12 @@ async function loadDiscoverFeed(force=false){
     // ערבוב לגילוי מגוון (לא רק הכי חדש למעלה, כמו רילס אמיתי)
     for(let i=list.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[list[i],list[j]]=[list[j],list[i]];}
     DISCOVER_FEED.length=0;DISCOVER_FEED.push(...list);
-    discoverFeedLoaded=true;
-    if(S.screen==='discover')render();
-  }catch(e){console.warn('Failed to load discover feed:',e);discoverFeedLoaded=true;}
-  finally{discoverFeedLoading=false;}
+  }catch(e){console.warn('Failed to load discover feed:',e);}
+  // discoverFeedLoaded ו-render ב-finally ולא בסוף ה-try: כך **כל** יציאה
+  // מהפונקציה — הצלחה, שגיאה או פסק זמן — מורידה את מסך הטעינה. הגרסה
+  // הקודמת סימנה אותו בשני מקומות נפרדים, וזה בדיוק הדפוס שמשאיר מסלול
+  // שלישי בלי סימון.
+  finally{discoverFeedLoaded=true;discoverFeedLoading=false;if(S.screen==='discover')render();}
 }
 
 const CONVOS=[];
@@ -1129,7 +1147,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.28';
+const APP_VERSION='4.11.29';
 
 // ─── הודעות קוליות — כבויות ────────────────────────────────────────────────
 // הקלטה קולית היא הערוץ היחיד בין ילדים שאיש לא בודק: אין תמלול, אין סינון,
@@ -1482,13 +1500,47 @@ function toggleDarkMode(){
 function initDarkMode(){document.body.classList.toggle('dark',darkMode);}
 
 // ─── ONBOARDING ───────────────────────────────────────────────────────────────
-function showOnboarding(){
-  if(localStorage.getItem('_onboardingDone'))return;
-  const steps=[
-    {em:'🔍',title:'מצא מורה',desc:'חפש מורה לפי מקצוע, מיקום ומחיר — מורים מאומתים ובדוקים'},
-    {em:'📅',title:'הזמן שיעור',desc:'בחר תאריך ושעה שנוחים לך ושלם בקלות — ביט, PayPal או PayBox'},
-    {em:'🌟',title:'למד והתקדם',desc:'קבל סיכומי שיעורים, עקוב אחר ההתקדמות ורכוש הישגים'},
+//
+// שני מסלולים, לפי התפקיד. עד עכשיו היה מסלול אחד — "מצא מורה / הזמן שיעור /
+// למד והתקדם" — והוא נכתב כולו לתלמיד או להורה. כלומר נער בן 16 שהוריד את
+// האפליקציה כדי **ללמד** ראה בכניסה הראשונה הדרכה שמסבירה לו איך למצוא מורה,
+// ולא הבין אם הוא במקום הנכון. זו החוויה של כל מורה מייסד שגויס עד היום.
+//
+// המפתח ב-localStorage כולל את התפקיד: מי שנרשם כתלמיד והפך למורה יראה את
+// ההדרכה של המורה, במקום לקבל "כבר ראית" על הדרכה שכלל לא נוגעת לו.
+const _OB_KEY_PREFIX='_onboardingDone';
+function _obKey(role){return `${_OB_KEY_PREFIX}_${role==='teacher'?'teacher':'student'}`;}
+
+function _obSteps(role){
+  if(role!=='teacher'){
+    return [
+      {em:'🔍',title:'מצא מורה',desc:'חפש מורה לפי מקצוע, מיקום ומחיר — מורים מאומתים ובדוקים'},
+      {em:'📅',title:'הזמן שיעור',desc:'בחר תאריך ושעה שנוחים לך ושלם בקלות — ביט, PayPal או PayBox'},
+      {em:'🌟',title:'למד והתקדם',desc:'קבל סיכומי שיעורים, עקוב אחר ההתקדמות ורכוש הישגים'},
+    ];
+  }
+  return [
+    {em:'✍️',title:'בנה פרופיל שבוחרים בו',desc:'ספר מה אתה הכי טוב בו, כתוב תיאור אמיתי וקבע את המחיר שלך. ההורים קוראים את התיאור לפני שהם בוחרים — שם זה נסגר.'},
+    {em:'🛡️',title:'מאומת, ולכן סומכים עליך',desc:'אנחנו מאמתים תעודה מזהה, וההורה שלך מאשר. זה מה שנותן להורה אחר את הביטחון לשלוח אליך את הילד שלו.'},
+    // השורה השנייה מופיעה רק כל עוד אין תלמידים, ונשענת על אותו דגל שמסך
+    // ההרשמה כבר נשען עליו (PLATFORM_HAS_STUDENTS). שתי הודעות שסותרות זו את
+    // זו באותה אפליקציה הן בדיוק מה שהגילוי המלא שם נועד למנוע.
+    {em:'💰',title:'כל שקל נשאר אצלך',desc:`Drushe לא לוקחת עמלה מהשיעורים שלך. אף פעם.${PLATFORM_HAS_STUDENTS?'':' ואתה מגיע לפני כולם — המנוי של המורים המייסדים חינם לתמיד.'}`},
   ];
+}
+
+// איפוס המדריך מהפאנל: מוחק את שני המפתחות. כפתור שמוחק רק אחד מהם מדווח
+// "יאופס" ואז לא מאפס — וזה בדיוק מה שהיה קורה אחרי שהמפתח פוצל לפי תפקיד.
+function _obReset(){
+  ['teacher','student'].forEach(r=>{try{localStorage.removeItem(_obKey(r));}catch(e){}});
+  try{localStorage.removeItem(_OB_KEY_PREFIX);}catch(e){}
+}
+
+function showOnboarding(){
+  const role=currentUserData?.role==='teacher'?'teacher':'student';
+  if(localStorage.getItem(_obKey(role)))return;
+  const steps=_obSteps(role);
+  const _done=()=>{localStorage.setItem(_obKey(role),'1');ov.remove();};
   let step=0;
   const ov=document.createElement('div');
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:999999;display:flex;align-items:center;justify-content:center;direction:rtl;backdrop-filter:blur(20px)';
@@ -1496,20 +1548,30 @@ function showOnboarding(){
     const s=steps[step];
     const dots=steps.map((_,i)=>`<div style="width:${i===step?24:8}px;height:8px;border-radius:4px;background:${i===step?'#14B8A6':'rgba(20,184,166,.2)'};transition:all .3s"></div>`).join('');
     ov.innerHTML=`
-      <div style="background:#fff;border-radius:28px;padding:40px 28px;width:88%;max-width:360px;text-align:center;box-shadow:0 20px 60px rgba(20,184,166,0.2)">
-        <div style="font-size:72px;margin-bottom:20px">${s.em}</div>
-        <h2 style="font-weight:900;font-size:24px;margin:0 0 12px;color:#0F1A1F">${s.title}</h2>
-        <p style="color:#64748B;font-size:15px;margin:0 0 28px;line-height:1.7">${s.desc}</p>
-        <div style="display:flex;gap:8px;justify-content:center;margin-bottom:28px">${dots}</div>
-        <button id="_obNext" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:16px;font-size:16px;font-weight:900;cursor:pointer">${step<steps.length-1?'הבא →':'התחל !'}</button>
-        ${step>0?`<button id="_obBack" style="width:100%;background:none;border:none;color:#6C7686;padding:12px;font-size:14px;cursor:pointer;margin-top:6px">← חזור</button>`:''}
+      <div style="background:linear-gradient(165deg,#ECFEFF 0%,#F0F9FF 50%,#EEF2FF 100%);border-radius:28px;width:88%;max-width:360px;text-align:center;box-shadow:0 20px 60px rgba(20,184,166,0.2);overflow:hidden">
+        <div style="background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);padding:18px 20px 16px;color:#fff">
+          <div style="font-weight:900;font-size:17px;letter-spacing:.5px">Drushe</div>
+          <div style="font-size:12px;opacity:.85;margin-top:2px">${role==='teacher'?'ככה מתחילים ללמד':'ככה מתחילים ללמוד'}</div>
+        </div>
+        <div style="padding:32px 28px 28px">
+          <div style="font-size:66px;margin-bottom:18px;line-height:1">${s.em}</div>
+          <h2 style="font-weight:900;font-size:23px;margin:0 0 12px;color:#0F1A1F">${s.title}</h2>
+          <p style="color:#475569;font-size:15px;margin:0 0 26px;line-height:1.75">${s.desc}</p>
+          <div style="display:flex;gap:8px;justify-content:center;margin-bottom:26px">${dots}</div>
+          <button id="_obNext" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:16px;font-size:16px;font-weight:900;cursor:pointer">${step<steps.length-1?'הבא →':(role==='teacher'?'בוא נתחיל':'התחל !')}</button>
+          ${step>0
+            ?`<button id="_obBack" style="width:100%;background:none;border:none;color:#475569;padding:12px;font-size:14px;cursor:pointer;margin-top:6px">← חזור</button>`
+            :`<button id="_obSkip" style="width:100%;background:none;border:none;color:#64748B;padding:12px;font-size:14px;cursor:pointer;margin-top:6px">דלג</button>`}
+        </div>
       </div>`;
     ov.querySelector('#_obNext').onclick=()=>{
       if(step<steps.length-1){step++;_draw();}
-      else{localStorage.setItem('_onboardingDone','1');ov.remove();}
+      else _done();
     };
     const b=ov.querySelector('#_obBack');
     if(b)b.onclick=()=>{step--;_draw();};
+    const sk=ov.querySelector('#_obSkip');
+    if(sk)sk.onclick=_done;
   }
   _draw();
   document.body.appendChild(ov);
@@ -10684,7 +10746,7 @@ function Profile(){
     </div>
     ${[["edit",'#14B8A6',"ערוך פרופיל",isTeacher?"showEditTeacherProfileDialog()":`showEditProfileDialog()`],["dollar",'#F59E0B',"ניהול תשלומים","showPaymentManagement()"],["award",'#8B5CF6',"ראה לידרבורד","go('leaderboard')"],["x-circle",'#E74C3C',"התנתקות","confirmLogout()"]].map(([ic,col,l,fn])=>`<div class="card-sm" style="display:flex;align-items:center;gap:13px;cursor:pointer" onclick="${fn}">${miniBadge(ic,col,32)}<span style="font-weight:700;font-size:15px;color:${l==="התנתקות"?"#E74C3C":"#1A1A2E"}">${l}</span><span style="margin-right:auto;color:#6F7786">←</span></div>`).join("")}
     <div style="margin-top:12px;text-align:center">
-      <button onclick="localStorage.removeItem('_onboardingDone');showFireToast('✅ Tutorial יאופס בכניסה הבאה')" style="background:transparent;color:rgba(255,255,255,0.7);border-radius:12px;padding:10px 18px;font-size:13px;cursor:pointer;margin-top:8px">${icon("info",14)} הצג מדריך מחדש</button>
+      <button onclick="_obReset();showFireToast('✅ Tutorial יאופס בכניסה הבאה')" style="background:transparent;color:rgba(255,255,255,0.7);border-radius:12px;padding:10px 18px;font-size:13px;cursor:pointer;margin-top:8px">${icon("info",14)} הצג מדריך מחדש</button>
     </div>`;
 
   if(isTeacher&&tab==='bookings'){
