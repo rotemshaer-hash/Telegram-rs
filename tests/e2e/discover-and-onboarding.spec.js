@@ -36,8 +36,11 @@ test.describe('Reels cannot get stuck on the loading screen', () => {
     });
     expect(text.loading, 'the loading flag must not stay set').toBe(false);
     expect(text.loaded, 'the attempt must be marked finished').toBe(true);
-    expect(text.html).toContain('אין עדיין סרטונים להצגה');
     expect(text.html).not.toContain('טוען דרילס');
+    // A timeout is not an empty platform, and must not claim to be one.
+    expect(text.html).toContain('לא הצלחנו לטעון את הדרילס');
+    expect(text.html).toContain('נסה שוב');
+    expect(text.html).not.toContain('אין עדיין סרטונים');
   });
 
   test('entering before the connection is ready shows the empty state, not a spinner', async ({ page }) => {
@@ -51,7 +54,7 @@ test.describe('Reels cannot get stuck on the loading screen', () => {
       return Discover();
     });
     expect(html).not.toContain('טוען דרילס');
-    expect(html).toContain('אין עדיין סרטונים להצגה');
+    expect(html).toContain('לא הצלחנו לטעון את הדרילס');
   });
 });
 
@@ -221,5 +224,47 @@ test.describe('the tutorial reset is reachable', () => {
       return ['teacher', 'student'].filter((x) => localStorage.getItem('_onboardingDone_' + x));
     });
     expect(left).toEqual([]);
+  });
+});
+
+// A network blip must not lock the screen on a message that is simply untrue.
+test.describe('a failed load is told apart from an empty platform', () => {
+  test('a genuinely empty feed still says there are no videos yet', async ({ page }) => {
+    await boot(page);
+    const html = await page.evaluate(async () => {
+      currentUser = { uid: 'u1', email: 'u@example.com', emailVerified: true };
+      teachersLoaded = true;
+      discoverFeedLoaded = false; discoverFeedLoading = false; discoverFeedFailed = false;
+      db = { ref: () => ({ get: () => Promise.resolve({ exists: () => false, forEach: () => {} }) }) };
+      S.screen = 'discover';
+      await loadDiscoverFeed(true);
+      return Discover();
+    });
+    expect(html).toContain('אין עדיין סרטונים להצגה');
+    expect(html).not.toContain('נסה שוב');
+  });
+
+  test('retrying after a failure recovers the feed', async ({ page }) => {
+    await boot(page);
+    const r = await page.evaluate(async () => {
+      const V = { t1: { v1: { title: 'חזר אחרי ניסיון', url: 'https://x/y', platform: 'youtube', approved: true } } };
+      const snap = (o) => ({ exists: () => true, forEach: (fn) => Object.entries(o).forEach(([k, inner]) => fn({ key: k, forEach: (f2) => Object.entries(inner).forEach(([k2, v]) => f2({ key: k2, val: () => v })) })) });
+      currentUser = { uid: 'u1', email: 'u@example.com', emailVerified: true };
+      TEACHERS.length = 0; TEACHERS.push({ id: 't1', name: 'מורה', cat: 'math', price: 50, photo: null, col: '#14B8A6', av: '📐' });
+      teachersLoaded = true;
+      discoverFeedLoaded = false; discoverFeedLoading = false; discoverFeedFailed = false;
+      let firstCall = true;
+      db = { ref: () => ({ get: () => { if (firstCall) { firstCall = false; return Promise.reject(new Error('network')); } return Promise.resolve(snap(V)); } }) };
+      S.screen = 'discover';
+      await loadDiscoverFeed(true);
+      const afterFail = Discover();
+      // exactly what the retry button does
+      await loadDiscoverFeed(true);
+      return { afterFail, afterRetry: Discover(), failed: discoverFeedFailed };
+    });
+    expect(r.afterFail).toContain('לא הצלחנו לטעון את הדרילס');
+    expect(r.failed).toBe(false);
+    expect(r.afterRetry).toContain('חזר אחרי ניסיון');
+    expect(r.afterRetry).not.toContain('לא הצלחנו');
   });
 });

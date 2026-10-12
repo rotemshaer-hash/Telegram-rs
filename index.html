@@ -750,6 +750,9 @@ let teachersLoaded=false;
 const DISCOVER_FEED=[]; // פיד "רילס" - סרטונים מאושרים מכל המורים, נטען מ-Firebase
 let discoverFeedLoaded=false;
 let discoverFeedLoading=false;
+// האם הניסיון האחרון נכשל. בלי זה "אין עדיין סרטונים" נאמר גם כשהטעינה
+// נפלה על הרשת — הודעה שקרית, ומטעה יותר ממסך טעינה תקוע.
+let discoverFeedFailed=false;
 let realStats={teachers:0,students:0,cities:0,categories:CATS.length};
 let publicTeacherVideos=[];
 let publicTeacherReviews=[];
@@ -1047,7 +1050,7 @@ async function loadDiscoverFeed(force=false){
   //
   // המצב הנכון כשאין מה לטעון אינו "טוען" אלא "אין עדיין סרטונים" — מסך שכבר
   // קיים למטה. לכן מסמנים שהניסיון הסתיים ומרנדרים.
-  if(!currentUser||!db){discoverFeedLoaded=true;if(S.screen==='discover')render();return;}
+  if(!currentUser||!db){discoverFeedLoaded=true;discoverFeedFailed=true;if(S.screen==='discover')render();return;}
   discoverFeedLoading=true;
   try{
     // withTimeout גם כאן, ולא רק על קריאת הסרטונים: loadRealTeachers תלויה
@@ -1080,7 +1083,8 @@ async function loadDiscoverFeed(force=false){
     // ערבוב לגילוי מגוון (לא רק הכי חדש למעלה, כמו רילס אמיתי)
     for(let i=list.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[list[i],list[j]]=[list[j],list[i]];}
     DISCOVER_FEED.length=0;DISCOVER_FEED.push(...list);
-  }catch(e){console.warn('Failed to load discover feed:',e);}
+    discoverFeedFailed=false;
+  }catch(e){console.warn('Failed to load discover feed:',e);discoverFeedFailed=true;}
   // discoverFeedLoaded ו-render ב-finally ולא בסוף ה-try: כך **כל** יציאה
   // מהפונקציה — הצלחה, שגיאה או פסק זמן — מורידה את מסך הטעינה. הגרסה
   // הקודמת סימנה אותו בשני מקומות נפרדים, וזה בדיוק הדפוס שמשאיר מסלול
@@ -9747,12 +9751,20 @@ function Discover(){
     </div>`;
   }
   if(!DISCOVER_FEED.length){
+    // שתי סיבות שונות לפיד ריק, ואסור שייראו זהות: אין סרטונים, לעומת
+    // הטעינה נפלה. הראשונה היא מצב אמיתי של המערכת; השנייה היא תקלה חולפת,
+    // ו"אין עדיין סרטונים" במקרה הזה הוא פשוט לא נכון.
+    //
+    // כפתור הניסיון החוזר אינו קישוט: loadDiscoverFeed יוצאת מוקדם כש-
+    // discoverFeedLoaded דלוק, ומשיכה לרענון מושבתת במסך הזה (NO_PTR), אז
+    // בלעדיו תקלת רשת אחת נועלת את המסך על הודעה שקרית עד סגירת האפליקציה.
     return `<div class="screen" style="position:fixed;inset:0;background:#000;display:flex;align-items:center;justify-content:center;color:#fff;padding:20px;text-align:center">
       ${backBtn}
       <div>
-        <div style="font-size:44px;margin-bottom:14px">🎬</div>
-        <p style="font-weight:800;font-size:16px;margin:0 0 6px">אין עדיין סרטונים להצגה</p>
-        <p style="font-size:13px;color:rgba(255,255,255,.7)">מורים שיעלו סרטונים מאושרים יופיעו כאן</p>
+        <div style="font-size:44px;margin-bottom:14px">${discoverFeedFailed?'📡':'🎬'}</div>
+        <p style="font-weight:800;font-size:16px;margin:0 0 6px">${discoverFeedFailed?'לא הצלחנו לטעון את הדרילס':'אין עדיין סרטונים להצגה'}</p>
+        <p style="font-size:13px;color:rgba(255,255,255,.7);margin:0 0 18px">${discoverFeedFailed?'בדוק את החיבור לאינטרנט ונסה שוב':'מורים שיעלו סרטונים מאושרים יופיעו כאן'}</p>
+        ${discoverFeedFailed?`<button onclick="loadDiscoverFeed(true)" style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:13px 30px;font-weight:900;font-size:14px;cursor:pointer;font-family:inherit">נסה שוב</button>`:''}
       </div>
     </div>`;
   }
