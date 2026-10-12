@@ -36,8 +36,11 @@ test.describe('Reels cannot get stuck on the loading screen', () => {
     });
     expect(text.loading, 'the loading flag must not stay set').toBe(false);
     expect(text.loaded, 'the attempt must be marked finished').toBe(true);
-    expect(text.html).toContain('אין עדיין סרטונים להצגה');
     expect(text.html).not.toContain('טוען דרילס');
+    // A timeout is not an empty platform, and must not claim to be one.
+    expect(text.html).toContain('לא הצלחנו לטעון את הדרילס');
+    expect(text.html).toContain('נסה שוב');
+    expect(text.html).not.toContain('אין עדיין סרטונים');
   });
 
   test('entering before the connection is ready shows the empty state, not a spinner', async ({ page }) => {
@@ -51,7 +54,7 @@ test.describe('Reels cannot get stuck on the loading screen', () => {
       return Discover();
     });
     expect(html).not.toContain('טוען דרילס');
-    expect(html).toContain('אין עדיין סרטונים להצגה');
+    expect(html).toContain('לא הצלחנו לטעון את הדרילס');
   });
 });
 
@@ -180,5 +183,88 @@ test.describe('Reels still plays a real feed', () => {
     await expect(page.locator('#_discoverScroller')).toBeVisible();
     await expect(page.locator('.discover-slide')).toHaveCount(3);
     await expect(page.getByText('שבר ראשון')).toBeVisible();
+  });
+});
+
+// The reset button existed but was white text at 70% opacity on the app's
+// light background — a contrast ratio near 1:1. The owner could not find it.
+// It now sits in the action list above it, the component already used for
+// edit profile / payments / leaderboard / log out.
+test.describe('the tutorial reset is reachable', () => {
+  test('is a row in the profile action list, not invisible text', async ({ page }) => {
+    await boot(page);
+    const r = await page.evaluate(() => {
+      currentUser = { uid: 'me', email: 'me@example.com', emailVerified: true };
+      currentUserData = { name: 'רותם', role: 'teacher', verified: true, achievements: [] };
+      S.pTab = 'about';
+      go('profile');
+      render();
+      const rows = [...document.querySelectorAll('.card-sm')]
+        .filter((el) => el.textContent.includes('הצג מדריך מחדש'));
+      if (!rows.length) return { found: false };
+      const span = [...rows[0].querySelectorAll('span')].find((s) => s.textContent.includes('הצג מדריך'));
+      return { found: true, colour: getComputedStyle(span).color, visible: rows[0].offsetHeight > 0 };
+    });
+    expect(r.found, 'the reset must be one of the action rows').toBe(true);
+    expect(r.visible).toBe(true);
+    // Never white-on-light again: the row uses the same ink as its siblings.
+    expect(r.colour).toBe('rgb(26, 26, 46)');
+  });
+
+  test('clicking it clears both role keys', async ({ page }) => {
+    await boot(page);
+    const left = await page.evaluate(() => {
+      ['teacher', 'student'].forEach((x) => localStorage.setItem('_onboardingDone_' + x, '1'));
+      currentUser = { uid: 'me', email: 'me@example.com', emailVerified: true };
+      currentUserData = { name: 'רותם', role: 'teacher', verified: true, achievements: [] };
+      S.pTab = 'about';
+      go('profile'); render();
+      [...document.querySelectorAll('.card-sm')]
+        .find((el) => el.textContent.includes('הצג מדריך מחדש')).click();
+      return ['teacher', 'student'].filter((x) => localStorage.getItem('_onboardingDone_' + x));
+    });
+    expect(left).toEqual([]);
+  });
+});
+
+// A network blip must not lock the screen on a message that is simply untrue.
+test.describe('a failed load is told apart from an empty platform', () => {
+  test('a genuinely empty feed still says there are no videos yet', async ({ page }) => {
+    await boot(page);
+    const html = await page.evaluate(async () => {
+      currentUser = { uid: 'u1', email: 'u@example.com', emailVerified: true };
+      teachersLoaded = true;
+      discoverFeedLoaded = false; discoverFeedLoading = false; discoverFeedFailed = false;
+      db = { ref: () => ({ get: () => Promise.resolve({ exists: () => false, forEach: () => {} }) }) };
+      S.screen = 'discover';
+      await loadDiscoverFeed(true);
+      return Discover();
+    });
+    expect(html).toContain('אין עדיין סרטונים להצגה');
+    expect(html).not.toContain('נסה שוב');
+  });
+
+  test('retrying after a failure recovers the feed', async ({ page }) => {
+    await boot(page);
+    const r = await page.evaluate(async () => {
+      const V = { t1: { v1: { title: 'חזר אחרי ניסיון', url: 'https://x/y', platform: 'youtube', approved: true } } };
+      const snap = (o) => ({ exists: () => true, forEach: (fn) => Object.entries(o).forEach(([k, inner]) => fn({ key: k, forEach: (f2) => Object.entries(inner).forEach(([k2, v]) => f2({ key: k2, val: () => v })) })) });
+      currentUser = { uid: 'u1', email: 'u@example.com', emailVerified: true };
+      TEACHERS.length = 0; TEACHERS.push({ id: 't1', name: 'מורה', cat: 'math', price: 50, photo: null, col: '#14B8A6', av: '📐' });
+      teachersLoaded = true;
+      discoverFeedLoaded = false; discoverFeedLoading = false; discoverFeedFailed = false;
+      let firstCall = true;
+      db = { ref: () => ({ get: () => { if (firstCall) { firstCall = false; return Promise.reject(new Error('network')); } return Promise.resolve(snap(V)); } }) };
+      S.screen = 'discover';
+      await loadDiscoverFeed(true);
+      const afterFail = Discover();
+      // exactly what the retry button does
+      await loadDiscoverFeed(true);
+      return { afterFail, afterRetry: Discover(), failed: discoverFeedFailed };
+    });
+    expect(r.afterFail).toContain('לא הצלחנו לטעון את הדרילס');
+    expect(r.failed).toBe(false);
+    expect(r.afterRetry).toContain('חזר אחרי ניסיון');
+    expect(r.afterRetry).not.toContain('לא הצלחנו');
   });
 });
