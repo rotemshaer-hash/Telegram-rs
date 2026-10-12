@@ -116,3 +116,69 @@ test.describe('onboarding speaks to the role that signed up', () => {
     expect(r.last.includes('מייסדים')).toBe(!r.flag);
   });
 });
+
+// The owner has three approved videos on one teacher, so the feed must still
+// work end to end after the loading change — not only its empty state.
+test.describe('Reels still plays a real feed', () => {
+  const ROTEM = {
+    id: 'rotem-uid', name: 'רותם', cat: 'math', city: 'תל אביב', price: 80,
+    rating: 4.8, photo: null, col: '#14B8A6', av: '📐',
+  };
+  const VIDEOS = {
+    'rotem-uid': {
+      v1: { title: 'שבר ראשון', url: 'https://youtu.be/aaa', platform: 'youtube', approved: true, createdAt: 3, views: 5 },
+      v2: { title: 'משוואות', url: 'https://youtu.be/bbb', platform: 'youtube', approved: true, createdAt: 2, views: 9 },
+      v3: { title: 'גאומטריה', url: 'https://youtu.be/ccc', platform: 'youtube', approved: true, createdAt: 1, views: 1 },
+      v4: { title: 'עוד לא אושר', url: 'https://youtu.be/ddd', platform: 'youtube', approved: false, createdAt: 0 },
+    },
+  };
+
+  async function feed(page) {
+    await boot(page);
+    return page.evaluate(async (data) => {
+      // A snapshot shaped like the RTDB one: forEach over teachers, then videos.
+      const snap = (obj) => ({
+        exists: () => true,
+        forEach: (fn) => Object.entries(obj).forEach(([k, inner]) => fn({
+          key: k,
+          forEach: (f2) => Object.entries(inner).forEach(([k2, v]) => f2({ key: k2, val: () => v })),
+        })),
+      });
+      currentUser = { uid: 'viewer', email: 'v@example.com', emailVerified: true };
+      currentUserData = { name: 'צופה', role: 'student', verified: true };
+      TEACHERS.length = 0; TEACHERS.push(data.ROTEM);
+      teachersLoaded = true;
+      discoverFeedLoaded = false; discoverFeedLoading = false;
+      db = { ref: () => ({ get: () => Promise.resolve(snap(data.VIDEOS)) }) };
+      S.screen = 'discover';
+      await loadDiscoverFeed(true);
+      return { count: DISCOVER_FEED.length, html: Discover() };
+    }, { ROTEM, VIDEOS });
+  }
+
+  test('shows every approved video and none that is pending', async ({ page }) => {
+    const r = await feed(page);
+    expect(r.count, 'three approved, the fourth is pending').toBe(3);
+    expect(r.html).toContain('שבר ראשון');
+    expect(r.html).toContain('משוואות');
+    expect(r.html).toContain('גאומטריה');
+    expect(r.html).not.toContain('עוד לא אושר');
+  });
+
+  test('each slide carries the teacher and a way to book', async ({ page }) => {
+    const r = await feed(page);
+    expect(r.html).not.toContain('טוען דרילס');
+    expect(r.html).not.toContain('אין עדיין סרטונים');
+    expect(r.html).toContain('רותם');
+    expect(r.html).toContain('הזמן שיעור · ₪80');
+    expect((r.html.match(/class="discover-slide"/g) || []).length).toBe(3);
+  });
+
+  test('the feed renders into the real screen, scroller and all', async ({ page }) => {
+    await feed(page);
+    await page.evaluate(() => render());
+    await expect(page.locator('#_discoverScroller')).toBeVisible();
+    await expect(page.locator('.discover-slide')).toHaveCount(3);
+    await expect(page.getByText('שבר ראשון')).toBeVisible();
+  });
+});

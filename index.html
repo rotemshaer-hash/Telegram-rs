@@ -1548,7 +1548,7 @@ function showOnboarding(){
     const s=steps[step];
     const dots=steps.map((_,i)=>`<div style="width:${i===step?24:8}px;height:8px;border-radius:4px;background:${i===step?'#14B8A6':'rgba(20,184,166,.2)'};transition:all .3s"></div>`).join('');
     ov.innerHTML=`
-      <div style="background:#fff;border-radius:28px;width:88%;max-width:360px;text-align:center;box-shadow:0 20px 60px rgba(20,184,166,0.2);overflow:hidden">
+      <div style="background:linear-gradient(165deg,#ECFEFF 0%,#F0F9FF 50%,#EEF2FF 100%);border-radius:28px;width:88%;max-width:360px;text-align:center;box-shadow:0 20px 60px rgba(20,184,166,0.2);overflow:hidden">
         <div style="background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);padding:18px 20px 16px;color:#fff">
           <div style="font-weight:900;font-size:17px;letter-spacing:.5px">Drushe</div>
           <div style="font-size:12px;opacity:.85;margin-top:2px">${role==='teacher'?'ככה מתחילים ללמד':'ככה מתחילים ללמוד'}</div>
