@@ -182,3 +182,44 @@ test.describe('Reels still plays a real feed', () => {
     await expect(page.getByText('שבר ראשון')).toBeVisible();
   });
 });
+
+// The reset button existed but was white text at 70% opacity on the app's
+// light background — a contrast ratio near 1:1. The owner could not find it.
+// It now sits in the action list above it, the component already used for
+// edit profile / payments / leaderboard / log out.
+test.describe('the tutorial reset is reachable', () => {
+  test('is a row in the profile action list, not invisible text', async ({ page }) => {
+    await boot(page);
+    const r = await page.evaluate(() => {
+      currentUser = { uid: 'me', email: 'me@example.com', emailVerified: true };
+      currentUserData = { name: 'רותם', role: 'teacher', verified: true, achievements: [] };
+      S.pTab = 'about';
+      go('profile');
+      render();
+      const rows = [...document.querySelectorAll('.card-sm')]
+        .filter((el) => el.textContent.includes('הצג מדריך מחדש'));
+      if (!rows.length) return { found: false };
+      const span = [...rows[0].querySelectorAll('span')].find((s) => s.textContent.includes('הצג מדריך'));
+      return { found: true, colour: getComputedStyle(span).color, visible: rows[0].offsetHeight > 0 };
+    });
+    expect(r.found, 'the reset must be one of the action rows').toBe(true);
+    expect(r.visible).toBe(true);
+    // Never white-on-light again: the row uses the same ink as its siblings.
+    expect(r.colour).toBe('rgb(26, 26, 46)');
+  });
+
+  test('clicking it clears both role keys', async ({ page }) => {
+    await boot(page);
+    const left = await page.evaluate(() => {
+      ['teacher', 'student'].forEach((x) => localStorage.setItem('_onboardingDone_' + x, '1'));
+      currentUser = { uid: 'me', email: 'me@example.com', emailVerified: true };
+      currentUserData = { name: 'רותם', role: 'teacher', verified: true, achievements: [] };
+      S.pTab = 'about';
+      go('profile'); render();
+      [...document.querySelectorAll('.card-sm')]
+        .find((el) => el.textContent.includes('הצג מדריך מחדש')).click();
+      return ['teacher', 'student'].filter((x) => localStorage.getItem('_onboardingDone_' + x));
+    });
+    expect(left).toEqual([]);
+  });
+});
