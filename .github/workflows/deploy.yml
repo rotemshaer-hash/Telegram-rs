@@ -108,8 +108,13 @@ jobs:
           sed -i "s/^const APP_BUILD='[^']*';/const APP_BUILD='$TODAY';/" index.html
           grep -n "const APP_BUILD=" index.html
 
+      # נעוץ בכוונה. ההתקנה הייתה `netlify-cli` בלי גרסה, כלומר כל פריסה
+      # לייצור הורידה את הגרסה האחרונה שיצאה באותו רגע. בין הפריסה המוצלחת
+      # ב-22.9 לכישלון ב-12.10 יצאו 27.11.0 ו-27.12.0, והפריסה התחילה לדווח
+      # כישלון — למרות ש-Netlify פרסם בהצלחה. פריסה לייצור לא צריכה להיות
+      # תלויה בשחרור של מישהו אחר.
       - name: Install Netlify CLI
-        run: npm install -g netlify-cli
+        run: npm install -g netlify-cli@27.12.0
       - name: Unlock production deploys
         run: |
           SITE=$(curl -s "https://api.netlify.com/api/v1/sites/${{ secrets.NETLIFY_SITE_ID }}" \
@@ -128,6 +133,41 @@ jobs:
             echo "No locked deploy found"
           fi
       - name: Deploy to Netlify
-        run: netlify deploy --prod --dir=. --site=${{ secrets.NETLIFY_SITE_ID }}
+        id: netlify
+        # `|| true` ולא כישלון מיידי — קוד היציאה של ה-CLI אינו העדות הקובעת
+        # אם האתר עלה. השלב הבא שואל את Netlify עצמו, וזה מה שמכריע.
+        run: |
+          set -o pipefail
+          netlify deploy --prod --dir=. --site=${{ secrets.NETLIFY_SITE_ID }} && CLI_EXIT=0 || CLI_EXIT=$?
+          echo "cli_exit=$CLI_EXIT" >> "$GITHUB_OUTPUT"
+          exit 0
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+
+      # ── למה יש כאן אימות ולא רק קוד היציאה של ה-CLI ──
+      #
+      # ב-12.10 הפריסה סומנה אדום פעמיים, בעוד Netlify פרסם את שתיהן בהצלחה
+      # והאתר החי היה מעודכן. ה-CLI פרסם ואז יצא עם שגיאה. אדום על פריסה
+      # שעבדה הוא לא רק רעש: הוא שוחק את האמון בסימן, וביום שפריסה **באמת**
+      # תיכשל איש לא יבחין.
+      #
+      # המקור הקובע הוא Netlify: הפריסה שפורסמה חייבת להיות על הקומיט הזה
+      # ובמצב ready. אם כן — הפריסה הצליחה, גם אם ה-CLI התלונן, וזה מודפס
+      # במפורש כדי שלא ייעלם. אם לא — ה-job נכשל, וזה כישלון אמיתי.
+      - name: Verify the live site is this commit
+        run: |
+          SITE=$(curl -sS "https://api.netlify.com/api/v1/sites/${{ secrets.NETLIFY_SITE_ID }}" \
+            -H "Authorization: Bearer ${{ secrets.NETLIFY_AUTH_TOKEN }}")
+          echo "$SITE" | CLI_EXIT="${{ steps.netlify.outputs.cli_exit }}" SHA="$GITHUB_SHA" python3 -c "
+          import json,os,sys
+          pd=(json.load(sys.stdin) or {}).get('published_deploy') or {}
+          state,ref=pd.get('state'),pd.get('commit_ref')
+          sha,cli=os.environ['SHA'],os.environ['CLI_EXIT']
+          print(f'published deploy: state={state} commit={ref}')
+          if state!='ready' or ref!=sha:
+              print(f'::error title=הפריסה לא פורסמה::האתר החי אינו על {sha[:7]} (state={state}, commit={(ref or \"-\")[:7]})')
+              sys.exit(1)
+          if cli!='0':
+              print(f'::warning title=ה-CLI יצא עם {cli} אבל הפריסה פורסמה::האתר החי על {sha[:7]}. בדוק אם netlify-cli צריך עדכון נעיצה.')
+          print('✅ האתר החי הוא הקומיט הזה.')
+          "
