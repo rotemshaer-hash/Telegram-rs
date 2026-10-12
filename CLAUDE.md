@@ -92,8 +92,20 @@ it never contradicts something another screen already tells the user.
   by one cost four times what the same work costs merged together. So hold
   finished work on the branch and merge it in one go. Merge alone and
   immediately for a security fix or anything broken — 15 credits never
-  outweigh that. Pushes touching only `.md` no longer deploy at all
-  (`paths-ignore` in `deploy.yml`), so documentation is free.
+  outweigh that.
+
+  ⚠️ **`paths-ignore` does not make a push free, and this entry used to claim
+  it did.** Netlify is linked to the repo with *auto publishing on*, so it
+  builds and publishes **every** push to `main` by itself — confirmed on
+  12.10.2026: commit `85320de` went live although `deploy.yml` correctly
+  skipped it. `paths-ignore` saves the GitHub Actions run, not the deploy.
+
+  The cost is the smaller half of it. Netlify's own publish runs **no gate**:
+  `netlify.toml` has an empty build command, so it serves the repo as-is
+  without `validate.sh`, the e2e suite or the rules suite. Everything we
+  built to block a bad deploy runs only in our workflow — which Netlify
+  publishes ahead of. Until auto publishing is turned off, assume a push to
+  `main` is live within a minute, unchecked.
 - Read the relevant code section before any edit — never edit blind.
 - After every fix, explain the root cause that was addressed, not just what changed.
 - Development happens on the `claude/*` branch the session is given; merges go
