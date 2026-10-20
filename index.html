@@ -1151,7 +1151,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.30';
+const APP_VERSION='4.11.31';
 
 // ─── הודעות קוליות — כבויות ────────────────────────────────────────────────
 // הקלטה קולית היא הערוץ היחיד בין ילדים שאיש לא בודק: אין תמלול, אין סינון,
@@ -1211,7 +1211,12 @@ function stopAnalyticsCollection(){
 function kLog(event,params={}){
   try{if(analytics)analytics.logEvent(event,params);}catch(_){}
   try{
-    if(!db||!currentUser)return;
+    // אותו שער בדיוק כמו למעלה, ולא רק `currentUser`. הגיבוי ב-DB שומר uid,
+    // שם אירוע וזמן — כלומר מעקב אחרי קטין לכל דבר. עד 20.10.2026 הוא נכתב
+    // לכל משתמש מחובר, כולל כזה שההורה שלו עוד לא אישר: ההגנה שנבנתה במכוון
+    // שורה אחת למעלה נעקפה שורה אחת למטה, והנימוק שכתוב שם ("אסור לאסוף
+    // נתונים מקטין לפני שהורה אישר") לא התקיים בפועל.
+    if(!db||!currentUser||currentUserData?.verified!==true)return;
     const mo=new Date().toISOString().slice(0,7);
     db.ref('_analytics/'+mo).push({e:event,p:params,uid:currentUser.uid,ts:Date.now()}).catch(()=>{});
   }catch(_){}
@@ -6046,6 +6051,16 @@ async function adminApproveTeacher(uid){
       showFireToast('❌ יש לאמת גיל וזהות (כפתור "אמת גיל וזהות") לפני אישור המורה');
       return;
     }
+    // הסכמת הורה מאומתת היא תנאי לאישור, בדיוק כמו אימות הגיל. בלי החסימה
+    // הזו המייל להורה הוא קישוט: המנהל יכול לאשר מורה בן 14 בזמן שההורה
+    // עדיין לא פתח את הקישור, והחשבון נפתח בלי שאיש מחוץ למכשיר של הנער
+    // אישר דבר. הבדיקה היא על users/<uid>/parentConsentAt, שרק השרת כותב
+    // אחרי שההורה לחץ — ולכן אי אפשר לזייף אותה מהמכשיר.
+    const pcSnap=await db.ref('users/'+uid+'/parentConsentAt').get();
+    if(!pcSnap.val()){
+      showFireToast('❌ ההורה עדיין לא אישר. המורה יאושר רק אחרי שההורה ילחץ על הקישור שנשלח אליו במייל');
+      return;
+    }
     await db.ref('teachers/'+uid+'/verified').set(true);
     await db.ref('teachers/'+uid+'/active').set(true);
     await db.ref('users/'+uid+'/verified').set(true);
@@ -6236,7 +6251,7 @@ function adminFilterStudents(){
       <div style="font-size:12px;color:#64748B;direction:ltr;text-align:right">${escapeHtml(u.email||'')}</div>
       ${u.verified===false?'<div style="font-size:11px;color:#F59E0B;font-weight:700;margin-top:4px">⏳ ממתין לאישור</div>':''}
       <div style="display:flex;gap:8px;margin-top:8px">
-        ${(u.verified===false||u._fromAlert)&&(u.role||'student')==='student'?(u.parentConsentAt?`<div style="padding:0 16px 6px;font-size:11px;color:#059669;font-weight:800">✅ הורה אישר · ${new Date(u.parentConsentAt).toLocaleDateString('he-IL')}</div>`:`<div style="padding:0 16px 6px;font-size:11px;color:#B45309;font-weight:800">⏳ ממתין לאישור הורה</div>`):''}
+        ${(u.verified===false||u._fromAlert)?(u.parentConsentAt?`<div style="padding:0 16px 6px;font-size:11px;color:#059669;font-weight:800">✅ הורה אישר · ${new Date(u.parentConsentAt).toLocaleDateString('he-IL')}</div>`:`<div style="padding:0 16px 6px;font-size:11px;color:#B45309;font-weight:800">⏳ ממתין לאישור הורה</div>`):''}
         ${(u.verified===false||u._fromAlert)&&!u.blocked?`<button onclick="adminVerifyStudent('${u.uid}')" style="flex:2;background:#10B981;border:none;color:#fff;border-radius:50px;padding:8px;font-size:12px;font-weight:800;cursor:pointer">${icon("check-circle",14)} אשר</button><button onclick="adminRejectStudent('${u.uid}')" style="flex:1;background:rgba(239,68,68,0.9);border:none;color:#fff;border-radius:50px;padding:8px;font-size:12px;font-weight:800;cursor:pointer">🚫 דחה</button>`:''}
       </div>
     </div>`;
@@ -8237,7 +8252,7 @@ function renderAdminTab(){
         </div>
         <div style="display:flex;gap:8px">
           ${(u.parentEmail||u.parentPhone)?`<button onclick='showWhatsAppDialog("${jsAttrEscape(u.parentPhone||'')}","שלום ${jsAttrEscape(u.parentName||'')}, פנייה מטעם Drushe בעניין ${jsAttrEscape(u.name||'')}.","פניה להורה")' style="flex:1;background:linear-gradient(135deg,#25D366,#128C7E);border:none;color:#fff;border-radius:50px;padding:8px;font-size:11px;font-weight:800;cursor:pointer">${icon("smartphone",14)} פנה להורה</button>`:''}
-          ${(u.verified===false||u._fromAlert)&&(u.role||'student')==='student'?(u.parentConsentAt?`<div style="padding:0 16px 6px;font-size:11px;color:#059669;font-weight:800">✅ הורה אישר · ${new Date(u.parentConsentAt).toLocaleDateString('he-IL')}</div>`:`<div style="padding:0 16px 6px;font-size:11px;color:#B45309;font-weight:800">⏳ ממתין לאישור הורה</div>`):''}
+          ${(u.verified===false||u._fromAlert)?(u.parentConsentAt?`<div style="padding:0 16px 6px;font-size:11px;color:#059669;font-weight:800">✅ הורה אישר · ${new Date(u.parentConsentAt).toLocaleDateString('he-IL')}</div>`:`<div style="padding:0 16px 6px;font-size:11px;color:#B45309;font-weight:800">⏳ ממתין לאישור הורה</div>`):''}
         ${(u.verified===false||u._fromAlert)&&!u.blocked?`<button onclick="adminVerifyStudent('${u.uid}')" style="flex:2;background:#10B981;border:none;color:#fff;border-radius:50px;padding:8px;font-size:11px;font-weight:800;cursor:pointer">${icon("check-circle",14)} אשר</button><button onclick="adminRejectStudent('${u.uid}')" style="flex:1;background:rgba(239,68,68,0.9);border:none;color:#fff;border-radius:50px;padding:8px;font-size:11px;font-weight:800;cursor:pointer">🚫 דחה</button>`:''}
           ${!u._fromAlert?(u.blocked?
             `<button onclick="adminUnblockUser('${u.uid}')" style="flex:1;background:#10B981;border:none;color:#fff;border-radius:50px;padding:8px;font-size:11px;font-weight:800;cursor:pointer">${icon("unlock",14)} שחרר חסימה</button>`:
@@ -14482,8 +14497,21 @@ async function firebaseRegister(email,password,userData){
       }
 
       // ── אישור הורה: יצירת טוקן ושליחת קישור ────────────────────────────────
-      // רק לתלמידים. מורים עוברים אימות גיל ומסמך מול המנהל, לא דרך הורה.
-      if((_userRecord.role||'student')==='student'&&_userRecord.parentEmail){
+      //
+      // **לכל קטין שנרשם, מורה או תלמיד.** עד 20.10.2026 זה רץ רק לתלמידים,
+      // בנימוק ש"מורים עוברים אימות גיל ומסמך מול המנהל". הנימוק לא החזיק:
+      // מסך ההורה (parentReg) ממולא על אותו מכשיר של הנער, ותיבת ההסכמה שם
+      // מסומנת באותה אצבע. כלומר למסלול המורה לא הייתה שום פעולה שההורה
+      // עושה בעצמו — בדיוק מה שהערה אצל _createParentConsent מזהירה מפניו
+      // ("הוכחת החזקה של הילד בטוקן, לא פעולה אמיתית של ההורה").
+      //
+      // ודווקא במסלול המורה ההימור גבוה יותר: נער בן 14 יישאר לבד בשיחת
+      // וידאו עם ילד, יקבל תשלומים, ותעודת הזהות שלו תישמר. גיוס 3,000
+      // מורים בני 14–18 עובר כולו כאן, אז זה לא מקרה קצה אלא המסלול הראשי.
+      //
+      // הפונקציה בשרת מעולם לא הסתכלה על role — היא מקבלת idToken ומייל
+      // הורה ושולחת. לכן התיקון הוא הסרת התנאי, לא מנגנון שני.
+      if(_userRecord.parentEmail){
         try{
           await _createParentConsent(cred.user,_userRecord.name||'',_userRecord.parentEmail);
         }catch(pcErr){
