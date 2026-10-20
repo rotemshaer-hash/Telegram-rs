@@ -1,0 +1,31 @@
+name: Analytics Retention
+
+# מוחק דליים חודשיים ישנים מ-`_analytics`. הלוג הזה שומר uid של קטינים לכל
+# פעולה, והוא היה הצומת היחיד בלי תקופת שמירה.
+#
+# חודשי ולא יומי: המחיקה היא לפי חודש שלם, אז ריצה יומית לא הייתה מוצאת מה
+# למחוק ב-29 מתוך 30 ימים. ב-2 בחודש ולא ב-1, כדי שהחודש שהרגע נסגר יהיה
+# סגור בוודאות בכל אזור זמן.
+on:
+  schedule:
+    - cron: '25 3 2 * *'
+  workflow_dispatch:
+
+jobs:
+  retention:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        working-directory: scripts
+        run: npm install
+
+      - name: Delete expired analytics months
+        working-directory: scripts
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: node analytics-retention.js
