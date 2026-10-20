@@ -12,8 +12,12 @@ written to disk, and media is never stored.
 2. Copy `.env.example` to `.env` and fill in `ANTHROPIC_API_KEY` and
    `WHATSAPP_PHONE_NUMBER` (digits only, international format, e.g.
    `972501234567`).
-3. Copy `groups.config.example.json` to `groups.config.json` and list the
-   exact names of the WhatsApp groups to follow.
+3. List the exact names of the WhatsApp groups to follow — either the
+   `GROUPS` env var (one name per line) or, for local dev, copy
+   `groups.config.example.json` to `groups.config.json`. `GROUPS` wins if
+   both are set. Use `GROUPS` in production: the JSON file is gitignored on
+   purpose (group names can be sensitive), so it won't exist on a server
+   deployed straight from GitHub.
 4. `npm run dev` (or `npm run build && npm start` for production).
 5. Open the status page at `http://localhost:3000` (or whatever `PORT` is
    set to) — it shows the WhatsApp pairing code once the socket connects.

@@ -3,13 +3,23 @@ import type { WASocket } from '@whiskeysockets/baileys';
 import { config } from './config.js';
 
 export function loadConfiguredGroupNames(): string[] {
+  // Preferred in production: a GROUPS env var, one group name per line — the
+  // JSON file below is gitignored (group names can be sensitive) so it won't
+  // exist on a server deployed straight from GitHub.
+  if (config.groupsEnv && config.groupsEnv.trim()) {
+    return config.groupsEnv
+      .split('\n')
+      .map((name) => name.trim())
+      .filter((name) => name.length > 0);
+  }
+
   let raw: string;
   try {
     raw = readFileSync(config.groupsConfigPath, 'utf-8');
   } catch {
     throw new Error(
-      `Could not read groups config file at ${config.groupsConfigPath}. ` +
-        'Create it from groups.config.example.json with your group names.',
+      `No GROUPS environment variable set, and could not read ${config.groupsConfigPath}. ` +
+        'Either set GROUPS (one group name per line), or create the file from groups.config.example.json.',
     );
   }
   const parsed = JSON.parse(raw);
