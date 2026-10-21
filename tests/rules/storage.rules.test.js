@@ -117,7 +117,7 @@ describe('id-photos: the most sensitive object in the app', () => {
 // purpose: tightening these would break stories, the community feed and
 // teacher portfolios without anyone noticing until users complained.
 describe('stories, portfolio and communityMedia: readable, owner-written', () => {
-  for (const folder of ['stories', 'portfolio', 'communityMedia']) {
+  for (const folder of ['stories', 'portfolio', 'communityMedia', 'profilePhotos']) {
     const mine = `${folder}/${OWNER}/a.png`;
 
     it(`${folder}: the owner uploads`, async () => {
@@ -176,7 +176,7 @@ describe('any other path is closed', () => {
 describe('a user can enumerate their own folders', () => {
   const { listAll } = require('firebase/storage');
 
-  for (const folder of ['id-photos', 'stories', 'portfolio', 'communityMedia']) {
+  for (const folder of ['id-photos', 'stories', 'portfolio', 'communityMedia', 'profilePhotos']) {
     it(`${folder}: the owner can list their own folder`, async () => {
       await seed(`${folder}/${OWNER}/a.png`);
       await assertSucceeds(listAll(ref(asOwner(), `${folder}/${OWNER}`)));

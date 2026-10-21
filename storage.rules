@@ -57,6 +57,20 @@ service firebase.storage {
         (request.auth.uid == uid || request.auth.token.email == 'rotemshaer@gmail.com');
     }
 
+    // תמונת פרופיל — נראית לכל משתמש מחובר (כולל אורח אנונימי) בכל כרטיס
+    // מורה ברשימה. עד עכשיו הייתה base64 בתוך users/$uid/photo ו-
+    // teachers/$uid/photo, כלומר כל מי שמביא את צומת teachers מוריד את כל
+    // התמונות של כל המורים בכל פעם. 15 מגה-בייט כאן הוא תקרת בטיחות, לא
+    // היעד בפועל: _resizeFileForProfile כבר מקטין ל-400px לפני ההעלאה.
+    match /profilePhotos/{uid}/{fileName} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null && request.auth.uid == uid &&
+        request.resource.size < 15 * 1024 * 1024 &&
+        request.resource.contentType.matches('image/.*');
+      allow delete: if request.auth != null &&
+        (request.auth.uid == uid || request.auth.token.email == 'rotemshaer@gmail.com');
+    }
+
     // כל השאר סגור.
     match /{allPaths=**} {
       allow read, write: if false;

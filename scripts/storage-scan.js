@@ -27,7 +27,7 @@ const annotate = require('./lib/annotate');
 
 // הקידומות שבהן המקטע הראשון אחרי הקידומת הוא uid. נלקחו מ-storage.rules,
 // שהוא מקור האמת לאיזה נתיב מותר למי — לא מרשימה שנכתבה כאן מהזיכרון.
-const UID_PREFIXES = ['id-photos', 'stories', 'communityMedia', 'portfolio'];
+const UID_PREFIXES = ['id-photos', 'stories', 'communityMedia', 'portfolio', 'profilePhotos'];
 
 // נתיבים שאינם של משתמשים ואסור לדווח עליהם כיתומים. backups/ נכתב בידי
 // חשבון השירות ואין לו uid כלל.

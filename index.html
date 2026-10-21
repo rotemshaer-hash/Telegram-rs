@@ -514,6 +514,18 @@ body.dark .online-dot{border-color:#0D1117 !important}
 function _lsGet(key,fallback=null){try{return localStorage.getItem(key);}catch(e){return fallback;}}
 function _lsSet(key,val){try{localStorage.setItem(key,val);}catch(e){}}
 function _lsRemove(key){try{localStorage.removeItem(key);}catch(e){}}
+// ─── AGE RANGE ────────────────────────────────────────────────────────────────
+// מקור אמת יחיד לטווח הגיל המותר לכל תפקיד. עד עכשיו היו חמש הגדרות נפרדות
+// בקוד (שני מסכי הרשמה ושני מסכי עריכת פרופיל, ועוד תווית input) — אחת מהן,
+// input הגיל בעריכת פרופיל מורה, אמרה 6-120 בזמן שכל מקום אחר אמר 14-18.
+// עריכת פרופיל (להבדיל מהרשמה) לא בדקה טווח גיל בכלל — מורה שאושר כבר יכול
+// היה לשמור כל גיל. database.rules.json אוכף את אותו טווח גם בשרת, כדי
+// שהבדיקה לא תהיה תלויה רק בקוד שרץ בדפדפן של המשתמש עצמו.
+const AGE_RANGE={student:{min:8,max:18},teacher:{min:14,max:18}};
+function _ageOk(age,role){
+  const r=role==='teacher'?AGE_RANGE.teacher:AGE_RANGE.student;
+  return Number.isInteger(age)&&age>=r.min&&age<=r.max;
+}
 // ─── DATA ─────────────────────────────────────────────────────────────────────
 let darkMode=_lsGet('_dk')==='1';
 const _CL={p:"#14B8A6",s:"#14B8A6",g:"#14B8A6",y:"#FFD23F",dark:"#0F1A1F",muted:"#6F7786",text:"#1A1A2E"};
@@ -1161,7 +1173,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.32';
+const APP_VERSION='4.11.33';
 
 // ─── הודעות קוליות — כבויות ────────────────────────────────────────────────
 // הקלטה קולית היא הערוץ היחיד בין ילדים שאיש לא בודק: אין תמלול, אין סינון,
@@ -2233,7 +2245,7 @@ function Register(){
           <span style="font-size:11px;color:#64748B;margin-top:2px;display:block">אותיות אנגליות, מספרים וקו תחתון בלבד</span>
         </div>
         <div class="ing"><label>גיל</label>
-          <input id="regAge" class="inp" type="number" min="8" max="18" placeholder="גיל בין 8-18"
+          <input id="regAge" class="inp" type="number" min="${AGE_RANGE.student.min}" max="${AGE_RANGE.student.max}" placeholder="גיל בין ${AGE_RANGE.student.min}-${AGE_RANGE.student.max}"
             value="${(()=>{try{return sessionStorage.getItem('_rAge')||'';}catch(e){return '';}})()} "
             oninput="try{sessionStorage.setItem('_rAge',this.value);}catch(e){}"></div>
         <div class="ing"><label>מגדר</label>
@@ -2310,7 +2322,7 @@ async function quickRegister(){
   const rawUsername=usernameEl.value.trim().toLowerCase().replace(/[^a-z0-9_]/g,'');
   if(rawUsername.length<3){showFireToast('❌ שם משתמש חייב להכיל לפחות 3 תווים');return;}
   if(rawUsername.length>20){showFireToast('❌ שם משתמש ארוך מדי – עד 20 תווים');return;}
-  if(!age||!age.value||parseInt(age.value)<8||parseInt(age.value)>18){showFireToast('❌ גיל חייב להיות בין 8-18');return;}
+  if(!age||!_ageOk(parseInt(age.value),'student')){showFireToast(`❌ גיל חייב להיות בין ${AGE_RANGE.student.min}-${AGE_RANGE.student.max}`);return;}
   if(!pass||pass.value.length<6){showFireToast('❌ סיסמה לפחות 6 תווים');return;}
   if(!pass2||pass.value!==pass2.value){showFireToast('❌ הסיסמאות לא תואמות');return;}
   if(!kcbChecked('regTerms')){showFireToast('❌ נדרש אישור תנאי שימוש');return;}
@@ -2420,7 +2432,7 @@ function TeacherSetup(){
         <h3 style="font-weight:900;font-size:16px;margin:0 0 8px;color:#04778A;display:flex;align-items:center;gap:6px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><circle cx="8" cy="10" r="2"/><path d="M14 9h6M14 13h6M5 17h14"/></svg> אימות גיל וזהות המורה</h3>
         <p style="font-size:12px;color:#64748B;margin:0 0 14px;line-height:1.6">נדרש לאישור הפרופיל. המידע גלוי לצוות Drushe בלבד.</p>
         <div class="ing" style="margin-bottom:12px"><label>גיל (14–18)</label>
-          <input type="number" id="tAge" class="inp" placeholder="לדוגמה: 14" min="14" max="18">
+          <input type="number" id="tAge" class="inp" placeholder="לדוגמה: 14" min="${AGE_RANGE.teacher.min}" max="${AGE_RANGE.teacher.max}">
         </div>
         <div class="ing" style="margin-bottom:12px"><label>סוג מסמך מזהה</label>
           <select id="tIdType" class="inp">
@@ -2773,7 +2785,7 @@ async function saveTeacherProfile(){
   if(!_modeOnline&&!_modeFrontal){showFireToast('❌ בחר לפחות אופן הוראה אחד');return;}
   if(!kcbChecked('tAgeConfirm')){showFireToast('❌ יש לאשר שאתה/ת בין גיל 14 ל-18');return;}
   const _ageVal=parseInt(document.getElementById('tAge')?.value||0);
-  if(!_ageVal||_ageVal<14||_ageVal>18){showFireToast('❌ הכנס גיל תקין בין 14 ל-18');return;}
+  if(!_ageOk(_ageVal,'teacher')){showFireToast(`❌ הכנס גיל תקין בין ${AGE_RANGE.teacher.min} ל-${AGE_RANGE.teacher.max}`);return;}
   const _idTypeVal=document.getElementById('tIdType')?.value||'';
   if(!_idTypeVal){showFireToast('❌ בחר סוג מסמך לאימות זהות');return;}
   if(_idTypeVal!=='parent_confirm'&&!_idPhotoBase64){showFireToast('❌ יש לצלם או להעלות את מסמך הזיהוי');return;}
@@ -4317,7 +4329,7 @@ async function deleteAllUserData(uid,role){
   // שמות הקבצים בסטוריז ובתיק העבודות נושאים חותמת זמן, ולכן אי אפשר לנחש
   // אותם — חייבים למנות את התיקייה. חוקי ה-Storage מתירים לבעלים (ולמנהל)
   // למנות את התיקיות שלו, וזה מכוסה בטסטים ב-tests/rules/storage.rules.test.js.
-  const STORAGE_USER_FOLDERS=['id-photos','stories','portfolio','communityMedia'];
+  const STORAGE_USER_FOLDERS=['id-photos','stories','portfolio','communityMedia','profilePhotos'];
   try{
     if(typeof storage!=='undefined'&&storage){
       for(const folder of STORAGE_USER_FOLDERS){
@@ -4440,6 +4452,14 @@ function _resizeFileForProfile(file, size){
   });
 }
 
+// תמונת פרופיל נשמרה כ-base64 ישירות בתוך users/$uid/photo ו-
+// teachers/$uid/photo — כלומר כל מי שמביא את כל צומת teachers (כל טעינה של
+// מסך הגילוי) מוריד את התמונה המלאה של כל מורה בפלטפורמה. ב-3,000 מורים
+// זה 120-200MB טקסט בכל כניסה, רק כדי להציג רשימה. התמונה עולה עכשיו ל-
+// Storage (כמו id-photos, stories ו-portfolio כבר עושים) ורק הקישור נשמר
+// ב-DB — אותו תיקון בדיוק, לאותה סיבה, פשוט על נתיב שעד היום לא עבר דרכה.
+// required:true בכוונה: אם ההעלאה נכשלת, עדיף שהמשתמש ינסה שוב מאשר
+// שהתמונה תיפול אחורה ל-base64 ונחזור בדיוק לבעיה שהתיקון הזה סוגר.
 async function uploadProfilePhoto(){
   if(!currentUser){showFireToast('❌ לא מחובר');return;}
   const input=document.getElementById('profilePhotoInput');
@@ -4448,12 +4468,13 @@ async function uploadProfilePhoto(){
   showFireToast('⏳ מעלה תמונה...');
   try{
     const dataUrl=await _resizeFileForProfile(file,400);
-    await db.ref('users/'+currentUser.uid+'/photo').set(dataUrl);
-    if(currentUserData)currentUserData.photo=dataUrl;
+    const url=await uploadBase64ToStorage(dataUrl,`profilePhotos/${currentUser.uid}/${Date.now()}`,{required:true});
+    await db.ref('users/'+currentUser.uid+'/photo').set(url);
+    if(currentUserData)currentUserData.photo=url;
     if(currentUserData?.role==='teacher'){
-      await db.ref('teachers/'+currentUser.uid+'/photo').set(dataUrl);
+      await db.ref('teachers/'+currentUser.uid+'/photo').set(url);
       const t=TEACHERS.find(x=>x.id===currentUser.uid);
-      if(t)t.photo=dataUrl;
+      if(t)t.photo=url;
     }
     showFireToast('✅ התמונה הועלתה!');
     render();
@@ -12280,7 +12301,7 @@ function showEditProfileDialog(){
       </div>
       <div style="margin-bottom:14px">
         <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:6px">🎂 גיל</label>
-        <input id="_epAge" class="inp" type="number" min="8" max="18" value="${d.age||''}" placeholder="גיל">
+        <input id="_epAge" class="inp" type="number" min="${AGE_RANGE.student.min}" max="${AGE_RANGE.student.max}" value="${d.age||''}" placeholder="גיל">
       </div>
       <div style="margin-bottom:14px">
         <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:6px">🌍 עיר</label>
@@ -12301,6 +12322,7 @@ async function saveProfileEdits(){
   const city=document.getElementById('_epCity')?.value.trim();
   const bio=document.getElementById('_epBio')?.value.trim();
   if(!name){showFireToast('❌ שם לא יכול להיות ריק');return;}
+  if(age&&!_ageOk(parseInt(age),'student')){showFireToast(`❌ גיל חייב להיות בין ${AGE_RANGE.student.min}-${AGE_RANGE.student.max}`);return;}
   try{
     const updates={};
     if(name)updates.name=name;
@@ -12410,7 +12432,7 @@ function showEditTeacherProfileDialog(){
         </div>
         <div style="margin-bottom:11px">
           <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">🎂 גיל</label>
-          <input id="_etAge" class="inp" type="number" min="6" max="120" value="${currentUserData?.age||''}" placeholder="גיל">
+          <input id="_etAge" class="inp" type="number" min="${AGE_RANGE.teacher.min}" max="${AGE_RANGE.teacher.max}" value="${currentUserData?.age||''}" placeholder="גיל">
         </div>
         <div style="margin-bottom:0">
           <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">${icon("file-text",14)} קצת עליי</label>
@@ -12782,6 +12804,7 @@ async function saveTeacherProfileEdits(){
   const customCats=window._etCustomCats||[];
   const allCats=[...cats,...customCats.map(c=>'custom:'+c)];
   if(!name){showFireToast('❌ שם לא יכול להיות ריק');return;}
+  if(age&&!_ageOk(age,'teacher')){showFireToast(`❌ גיל חייב להיות בין ${AGE_RANGE.teacher.min} ל-${AGE_RANGE.teacher.max}`);return;}
   if(price<10||price>500){showFireToast('❌ מחיר בין 10 ל-500');return;}
   if(!allCats.length){showFireToast('❌ חייב לפחות מקצוע אחד');return;}
   // קרא תיאורים ותגיות לכל מקצוע
