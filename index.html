@@ -1173,7 +1173,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.33';
+const APP_VERSION='4.11.34';
 
 // ─── הודעות קוליות — כבויות ────────────────────────────────────────────────
 // הקלטה קולית היא הערוץ היחיד בין ילדים שאיש לא בודק: אין תמלול, אין סינון,
@@ -1263,6 +1263,16 @@ function _myRefLink(){
   const code=currentUserData?.refCode||'';
   if(!code)return window.location.origin;
   return window.location.origin+'?ref='+code;
+}
+// שיתוף הקישור האישי — מקור אמת יחיד לנוסח ולהתנהגות. היה כתוב פעם אחת
+// בתוך onclick inline בטאב wallet; כרטיס "אין לך עדיין הזמנות" במסך הבית
+// צריך בדיוק אותה פעולה, ובלי הפונקציה הזו היו נוצרים שני נוסחים שעלולים
+// להתפצל זה מזה בפעם הבאה שמישהו יעדכן רק אחד מהם.
+function shareMyReferralLink(){
+  const link=_myRefLink();
+  const text='הצטרף ל-Drushe דרך הלינק שלי ותקבל ₪5 קרדיט לשיעור הראשון! '+link;
+  if(navigator.share){navigator.share({title:'Drushe – פלטפורמת מורים',text,url:link}).catch(()=>{});}
+  else{window.open('https://wa.me/?text='+encodeURIComponent(text),'_blank');}
 }
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -3209,6 +3219,10 @@ function Subscribe(){
 // טוען הזמנות של מורה (לתצוגה ב-Home)
 let teacherPendingBookings=[];
 let teacherAllBookings=[];
+// 0 הזמנות אמיתי מול "עוד לא נטען" הם שני מצבים שונים — בלעדי הדגל הזה
+// כרטיס "אין לך עדיין הזמנות" היה מהבהב לרגע גם למורה עם הזמנות, עד
+// שהטעינה האמיתית מסתיימת ומרנדרת מחדש.
+let teacherBookingsLoaded=false;
 let STORIES=[];
 let MY_PENDING_STORIES=[];
 
@@ -3415,6 +3429,7 @@ async function loadTeacherBookings(){
       teacherAllBookings.sort((a,b)=>b.createdAt-a.createdAt);
       teacherPendingBookings.sort((a,b)=>b.createdAt-a.createdAt);
     }
+    teacherBookingsLoaded=true;
   }catch(e){}
 }
 
@@ -5392,19 +5407,44 @@ function calcCommission(gross){
   return{gross,commission:0,net:gross};
 }
 // ── מודל מנוי: רק מורים משלמים, תלמידים בחינם לגמרי ─────────────────────────
-const TRIAL_DAYS=30; // ימי ניסיון חינם למורה לפני חובת מנוי
+const TRIAL_DAYS=30; // ימי ניסיון חינם למורה, נספרים מההזמנה הראשונה שקיבל — לא מההרשמה
 // מחיר המנוי החודשי למורה, בשקלים. היה כתוב כמספר קשיח ב-12 מקומות — מסכי
 // הרשמה, מסך המנוי, מייל התזכורת, ההתראה, הפרופיל וגוף בקשת המנוי — כך
 // ששינוי מחיר חייב לפגוע בכולם בדיוק. הגדרה אחת, ו-validate.sh שומר עליה.
 const TEACHER_PLAN_PRICE=49;
+// מורה שעוד לא קיבל אף הזמנה לא "משתמש" בניסיון שלו — אין לו עדיין למי
+// ללמד, וזו בדיוק הבעיה שה-30 יום אמורים לפתור לו, לא לרוץ עליו בשקט.
+// בלי תקרה זה הופך למנוי חינם לצמיתות למורה שלא פעיל בכלל, ולכן
+// NO_BOOKING_GRACE_DAYS קיים: אחריו המורה נדרש להחליט (מנוי או פרישה)
+// גם בלי אף הזמנה. 90 יום נבחר כי זה פי שלושה מ-TRIAL_DAYS — מספיק זמן
+// אמיתי לגיוס תלמידים לפני שדורשים ממנו לשלם על כלום.
+const NO_BOOKING_GRACE_DAYS=90;
+// ההזמנה המוקדמת ביותר שהמורה קיבל אי-פעם (כל סטטוס — גם דחויה או בוטלה
+// מעידה שהייתה ביקוש אמיתי). 0 אם טרם נטען או אם אין אף הזמנה — שני
+// המצבים האלה מתנהגים אותו הדבר כאן: "עדיין אין נקודת התחלה לניסיון".
+function _teacherFirstBookingAt(){
+  if(!teacherAllBookings.length)return 0;
+  return Math.min(...teacherAllBookings.map(b=>b.createdAt||Infinity));
+}
 function isTeacherTrialExpired(){
   const ca=currentUserData?.createdAt||0;
-  return ca>0&&(Date.now()-ca)>TRIAL_DAYS*86400000;
+  if(!ca)return false;
+  const firstBooking=_teacherFirstBookingAt();
+  if(firstBooking>0)return (Date.now()-firstBooking)>TRIAL_DAYS*86400000;
+  return (Date.now()-ca)>NO_BOOKING_GRACE_DAYS*86400000;
 }
 function teacherTrialDaysLeft(){
   const ca=currentUserData?.createdAt||0;
   if(!ca)return TRIAL_DAYS;
-  return Math.max(0,Math.ceil(TRIAL_DAYS-(Date.now()-ca)/86400000));
+  const firstBooking=_teacherFirstBookingAt();
+  if(firstBooking>0)return Math.max(0,Math.ceil(TRIAL_DAYS-(Date.now()-firstBooking)/86400000));
+  return Math.max(0,Math.ceil(NO_BOOKING_GRACE_DAYS-(Date.now()-ca)/86400000));
+}
+// true כל עוד למורה אין אף הזמנה והוא בתוך תקופת החסד — המסך צריך לומר
+// לו שהשעון טרם התחיל, לא "נותרו X ימים" עם מספר שמחושב מתקופת חסד
+// שונה לגמרי מה-30 יום שמוצג לכל מורה אחר.
+function _teacherTrialNotYetStarted(){
+  return teacherBookingsLoaded&&_teacherFirstBookingAt()===0&&!isTeacherTrialExpired();
 }
 // ── מורים מייסדים ────────────────────────────────────────────────────────────
 // 500 המורים הראשונים פטורים ממנוי לתמיד. זה כלי גיוס: הוא נותן סיבה להצטרף
@@ -5441,6 +5481,17 @@ function foundingSlotsLeft(){
 function teacherNeedsSubscription(){
   if(isFoundingTeacher())return false;
   return currentUserData?.role==='teacher'&&isTeacherTrialExpired()&&!isActiveSubscription();
+}
+// כרטיס המנוי/ניסיון בטאב "אודות" של הפרופיל. היה ternary אחד ענק בתוך
+// ה-template של Profile() — הוצא לכאן כדי שאפשר יהיה להוסיף את מצב
+// "הניסיון עוד לא התחיל" בלי לערוך שורה בת 3500+ תווים בטעות.
+function _teacherSubscriptionBanner(){
+  if(isFoundingTeacher())return `<div style="background:linear-gradient(135deg,rgba(251,191,36,0.16),rgba(139,47,201,0.08));border:1.5px solid rgba(251,191,36,0.4);border-radius:16px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:10px"><div style="font-size:22px">🏆</div><div><div style="font-weight:800;font-size:14px;color:#B45309">מורה מייסד — חינם לתמיד</div><div style="font-size:11px;color:#64748B;margin-top:1px">אתה מ-${FOUNDING_TEACHER_LIMIT} המורים הראשונים ב-Drushe. אין ואף פעם לא יהיה מנוי.</div></div></div>`;
+  if(isActiveSubscription())return `<div style="background:linear-gradient(135deg,rgba(139,47,201,0.12),rgba(6,182,212,0.08));border-radius:16px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:10px"><div style="font-size:22px">💎</div><div><div style="font-weight:800;font-size:14px;color:#8B5CF6">מנוי פרימיום פעיל</div><div style="font-size:11px;color:#64748B;margin-top:1px">תוקף עד: ${new Date(currentUserData.subscription.expiresAt).toLocaleDateString('he-IL')}</div></div></div>`;
+  if(currentUserData?.subscription?.status==='pending')return `<div style="background:rgba(245,158,11,0.08);border-radius:16px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:10px;cursor:pointer" onclick="go('subscribe')"><div style="font-size:22px">⏳</div><div><div style="font-weight:800;font-size:14px;color:#D97706">מנוי ממתין לאישור</div><div style="font-size:11px;color:#64748B;margin-top:1px">הצוות מאמת את התשלום — לחץ לפרטים</div></div></div>`;
+  if(_teacherTrialNotYetStarted())return `<div style="background:linear-gradient(135deg,rgba(139,47,201,0.06),rgba(6,182,212,0.04));border:1.5px dashed rgba(139,47,201,0.25);border-radius:16px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:10px"><div style="font-size:22px">🎁</div><div><div style="font-weight:800;font-size:13px;color:#8B5CF6">הניסיון החינם עוד לא התחיל</div><div style="font-size:11px;color:#64748B;margin-top:1px">30 הימים נספרים מההזמנה הראשונה שתקבל — לא מהיום שנרשמת. אין מה לשלם עד אז.</div></div></div>`;
+  if(!isTeacherTrialExpired())return `<div style="background:linear-gradient(135deg,rgba(139,47,201,${teacherTrialDaysLeft()<=3?'0.12':'0.06'}),rgba(6,182,212,0.04));border:1.5px dashed rgba(139,47,201,${teacherTrialDaysLeft()<=3?'0.4':'0.25'});border-radius:16px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="go('subscribe')"><div style="display:flex;align-items:center;gap:10px"><div style="font-size:22px">${teacherTrialDaysLeft()<=3?'⏰':'🎁'}</div><div><div style="font-weight:800;font-size:13px;color:#8B5CF6">נותרו ${teacherTrialDaysLeft()} ימים לניסיון החינם</div><div style="font-size:11px;color:#64748B;margin-top:1px">לאחר מכן ₪${TEACHER_PLAN_PRICE}/חודש כדי להמשיך להופיע ולקבל תלמידים</div></div></div><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></div>`;
+  return `<div style="background:linear-gradient(135deg,rgba(139,47,201,0.06),rgba(6,182,212,0.04));border:1.5px dashed rgba(139,47,201,0.25);border-radius:16px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="go('subscribe')"><div style="display:flex;align-items:center;gap:10px"><div style="font-size:22px">💎</div><div><div style="font-weight:800;font-size:13px;color:#8B5CF6">הניסיון החינם הסתיים — ₪${TEACHER_PLAN_PRICE}/חודש</div><div style="font-size:11px;color:#64748B;margin-top:1px">כדי להמשיך להופיע ולקבל תלמידים</div></div></div><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></div>`;
 }
 // שולח מייל + התראה באפליקציה למורה כשנשארו לו 3 ימים או יום אחד לסיום הניסיון.
 // כל תזכורת נשלחת פעם אחת בלבד (מסומנת ב-DB), כדי לא להציף באימיילים חוזרים.
@@ -9506,6 +9557,20 @@ function Home(){
         `).join('')}
       </div>`:''}
 
+      ${currentUserData?.role==='teacher'&&!isAdmin()&&teacherBookingsLoaded&&!teacherAllBookings.length?`
+      <!-- Teacher: zero bookings ever — the actual point of friction, not a text-only approval message -->
+      <div style="background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);border-radius:24px;padding:18px;margin-bottom:18px;color:#fff;box-shadow:0 10px 30px rgba(20,184,166,0.3)">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+          <div style="width:32px;height:32px;display:flex;align-items:center;justify-content:center">${icon("users",28)}</div>
+          <div style="flex:1">
+            <div style="font-weight:900;font-size:16px">עדיין אין לך הזמנות</div>
+            <div style="font-size:12px;opacity:0.9">התחל מתלמידים שאתה כבר מכיר</div>
+          </div>
+        </div>
+        <p style="font-size:13px;line-height:1.6;opacity:0.95;margin:0 0 14px">שלח את הקישור האישי שלך לתלמידים שאתה כבר מלמד — הם מקבלים ₪5 קרדיט לשיעור הראשון, ואתה ₪15 כשהם מצטרפים.</p>
+        <button onclick="kLog('referral_card_click',{from:'home_zero_bookings'});shareMyReferralLink()" style="width:100%;background:#fff;color:#0e7a72;border:none;border-radius:50px;padding:12px;font-weight:900;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">${icon("send",16)} שלח לתלמידים שלי</button>
+      </div>`:''}
+
       ${currentUserData?.role==='teacher'&&!isAdmin()?(()=>{
         const _earn=_teacherEarnings();
         const _streak=_teacherStreak();
@@ -10789,7 +10854,7 @@ function Profile(){
     </div>`;}
 
   if(tab==="about") content=`
-    ${!isTeacher?'':isFoundingTeacher()?`<div style="background:linear-gradient(135deg,rgba(251,191,36,0.16),rgba(139,47,201,0.08));border:1.5px solid rgba(251,191,36,0.4);border-radius:16px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:10px"><div style="font-size:22px">🏆</div><div><div style="font-weight:800;font-size:14px;color:#B45309">מורה מייסד — חינם לתמיד</div><div style="font-size:11px;color:#64748B;margin-top:1px">אתה מ-${FOUNDING_TEACHER_LIMIT} המורים הראשונים ב-Drushe. אין ואף פעם לא יהיה מנוי.</div></div></div>`:isActiveSubscription()?`<div style="background:linear-gradient(135deg,rgba(139,47,201,0.12),rgba(6,182,212,0.08));border-radius:16px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:10px"><div style="font-size:22px">💎</div><div><div style="font-weight:800;font-size:14px;color:#8B5CF6">מנוי פרימיום פעיל</div><div style="font-size:11px;color:#64748B;margin-top:1px">תוקף עד: ${new Date(currentUserData.subscription.expiresAt).toLocaleDateString('he-IL')}</div></div></div>`:currentUserData?.subscription?.status==='pending'?`<div style="background:rgba(245,158,11,0.08);border-radius:16px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:10px;cursor:pointer" onclick="go('subscribe')"><div style="font-size:22px">⏳</div><div><div style="font-weight:800;font-size:14px;color:#D97706">מנוי ממתין לאישור</div><div style="font-size:11px;color:#64748B;margin-top:1px">הצוות מאמת את התשלום — לחץ לפרטים</div></div></div>`:!isTeacherTrialExpired()?`<div style="background:linear-gradient(135deg,rgba(139,47,201,${teacherTrialDaysLeft()<=3?'0.12':'0.06'}),rgba(6,182,212,0.04));border:1.5px dashed rgba(139,47,201,${teacherTrialDaysLeft()<=3?'0.4':'0.25'});border-radius:16px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="go('subscribe')"><div style="display:flex;align-items:center;gap:10px"><div style="font-size:22px">${teacherTrialDaysLeft()<=3?'⏰':'🎁'}</div><div><div style="font-weight:800;font-size:13px;color:#8B5CF6">נותרו ${teacherTrialDaysLeft()} ימים לניסיון החינם</div><div style="font-size:11px;color:#64748B;margin-top:1px">לאחר מכן ₪${TEACHER_PLAN_PRICE}/חודש כדי להמשיך להופיע ולקבל תלמידים</div></div></div><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></div>`:`<div style="background:linear-gradient(135deg,rgba(139,47,201,0.06),rgba(6,182,212,0.04));border:1.5px dashed rgba(139,47,201,0.25);border-radius:16px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="go('subscribe')"><div style="display:flex;align-items:center;gap:10px"><div style="font-size:22px">💎</div><div><div style="font-weight:800;font-size:13px;color:#8B5CF6">הניסיון החינם הסתיים — ₪${TEACHER_PLAN_PRICE}/חודש</div><div style="font-size:11px;color:#64748B;margin-top:1px">כדי להמשיך להופיע ולקבל תלמידים</div></div></div><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></div>`}
+    ${!isTeacher?'':_teacherSubscriptionBanner()}
     <div class="card"><h4 style="margin:0 0 10px;font-weight:800">👋 קצת עליי</h4><p style="margin:0;font-size:14px;line-height:1.7">${currentUserData?.bio?escapeHtml(currentUserData.bio):'עדיין לא כתבת קצת על עצמך.'}</p></div>
     <div class="ref-card">
       <h4 style="margin:0 0 6px;font-weight:900;font-size:16px">${icon("gift",14)} הפנה חבר – קבל ₪15!</h4>
@@ -10799,7 +10864,7 @@ function Profile(){
       ${currentUserData?.refCode?`<div style="background:rgba(0,0,0,.2);border-radius:10px;padding:8px 12px;margin-bottom:10px;font-size:12px;font-family:monospace;word-break:break-all;direction:ltr;text-align:left;color:#E0FDF4">${_myRefLink()}</div>`:''}
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         ${currentUserData?.refCode?`<button onclick="(async()=>{try{await navigator.clipboard.writeText('${_myRefLink()}');showFireToast('📋 הלינק הועתק!');}catch(_){showFireToast('❌ לא ניתן להעתיק');}})();" style="background:rgba(255,255,255,.2);color:#fff;border-radius:50px;padding:9px 16px;font-weight:700;cursor:pointer;font-size:12px">📋 העתק לינק</button>`:''}
-        <button onclick="(()=>{const link='${_myRefLink()}';const text='הצטרף ל-Drushe דרך הלינק שלי ותקבל ₪5 קרדיט לשיעור הראשון! '+link;if(navigator.share){navigator.share({title:'Drushe – פלטפורמת מורים',text:text,url:link}).catch(()=>{});}else{window.open('https://wa.me/?text='+encodeURIComponent(text),'_blank');}})()" style="background:rgba(255,255,255,.2);color:#fff;border-radius:50px;padding:9px 16px;font-weight:700;cursor:pointer;font-size:12px">${icon("send",12)} שתף</button>
+        <button onclick="shareMyReferralLink()" style="background:rgba(255,255,255,.2);color:#fff;border-radius:50px;padding:9px 16px;font-weight:700;cursor:pointer;font-size:12px">${icon("send",12)} שתף</button>
       </div>
     </div>
     ${[["edit",'#14B8A6',"ערוך פרופיל",isTeacher?"showEditTeacherProfileDialog()":`showEditProfileDialog()`],["dollar",'#F59E0B',"ניהול תשלומים","showPaymentManagement()"],["award",'#8B5CF6',"ראה לידרבורד","go('leaderboard')"],["info",'#06B6D4',"הצג מדריך מחדש","_obReset();showFireToast('✅ המדריך יוצג בכניסה הבאה')"],["x-circle",'#E74C3C',"התנתקות","confirmLogout()"]].map(([ic,col,l,fn])=>`<div class="card-sm" style="display:flex;align-items:center;gap:13px;cursor:pointer" onclick="${fn}">${miniBadge(ic,col,32)}<span style="font-weight:700;font-size:15px;color:${l==="התנתקות"?"#E74C3C":"#1A1A2E"}">${l}</span><span style="margin-right:auto;color:#6F7786">←</span></div>`).join("")}`;
