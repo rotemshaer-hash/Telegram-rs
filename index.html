@@ -504,8 +504,18 @@ body.dark .online-dot{border-color:#0D1117 !important}
 <div id="app"></div>
 <script>
 "use strict";
+// ─── SAFE STORAGE ─────────────────────────────────────────────────────────────
+// localStorage זורק (SecurityError) בגלישה פרטית, במכשיר שחסם אחסון, או
+// ב-WebView עם אחסון מושבת. השורה הראשונה של הסקריפט הזה קראה אותו בלי
+// try/catch — קריסה כאן קורית לפני שהאפליקציה בכלל מתחילה לרנדר, ולכן
+// window.addEventListener('error',...) שמוגדר מעל לא עוזר: הוא מדווח ל-DB,
+// וה-DB עדיין לא קיים בנקודה הזו. _lsGet/_lsSet הן נקודת הכניסה היחידה
+// ל-localStorage בקובץ הזה (SSOT) כדי שהכשל הזה לא יחזור במקום הבא שישתמש בו.
+function _lsGet(key,fallback=null){try{return localStorage.getItem(key);}catch(e){return fallback;}}
+function _lsSet(key,val){try{localStorage.setItem(key,val);}catch(e){}}
+function _lsRemove(key){try{localStorage.removeItem(key);}catch(e){}}
 // ─── DATA ─────────────────────────────────────────────────────────────────────
-let darkMode=localStorage.getItem('_dk')==='1';
+let darkMode=_lsGet('_dk')==='1';
 const _CL={p:"#14B8A6",s:"#14B8A6",g:"#14B8A6",y:"#FFD23F",dark:"#0F1A1F",muted:"#6F7786",text:"#1A1A2E"};
 const _CD={p:"#5EEAD4",s:"#5EEAD4",g:"#34D399",y:"#FCD34D",dark:"#E2E8F0",muted:"#94A3B8",text:"#E2E8F0"};
 const C=new Proxy({},{get:(_,k)=>(darkMode?_CD:_CL)[k]??_CL[k]});
@@ -1151,7 +1161,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.31';
+const APP_VERSION='4.11.32';
 
 // ─── הודעות קוליות — כבויות ────────────────────────────────────────────────
 // הקלטה קולית היא הערוץ היחיד בין ילדים שאיש לא בודק: אין תמלול, אין סינון,
@@ -1501,7 +1511,7 @@ async function _saveMood(bookingId){
 // ─── DARK MODE ────────────────────────────────────────────────────────────────
 function toggleDarkMode(){
   darkMode=!darkMode;
-  localStorage.setItem('_dk',darkMode?'1':'0');
+  _lsSet('_dk',darkMode?'1':'0');
   document.body.classList.toggle('dark',darkMode);
   render();
   showFireToast(darkMode?'🌙 מצב לילה':'☀️ מצב יום');
@@ -1541,15 +1551,15 @@ function _obSteps(role){
 // איפוס המדריך מהפאנל: מוחק את שני המפתחות. כפתור שמוחק רק אחד מהם מדווח
 // "יאופס" ואז לא מאפס — וזה בדיוק מה שהיה קורה אחרי שהמפתח פוצל לפי תפקיד.
 function _obReset(){
-  ['teacher','student'].forEach(r=>{try{localStorage.removeItem(_obKey(r));}catch(e){}});
-  try{localStorage.removeItem(_OB_KEY_PREFIX);}catch(e){}
+  ['teacher','student'].forEach(r=>_lsRemove(_obKey(r)));
+  _lsRemove(_OB_KEY_PREFIX);
 }
 
 function showOnboarding(){
   const role=currentUserData?.role==='teacher'?'teacher':'student';
-  if(localStorage.getItem(_obKey(role)))return;
+  if(_lsGet(_obKey(role)))return;
   const steps=_obSteps(role);
-  const _done=()=>{localStorage.setItem(_obKey(role),'1');ov.remove();};
+  const _done=()=>{_lsSet(_obKey(role),'1');ov.remove();};
   let step=0;
   const ov=document.createElement('div');
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:999999;display:flex;align-items:center;justify-content:center;direction:rtl;backdrop-filter:blur(20px)';
@@ -3212,8 +3222,8 @@ function loadStories(){
 function openStoryViewer(teacherUid){
   const list=STORIES.filter(s=>s.uid===teacherUid).sort((a,b)=>a.createdAt-b.createdAt);
   if(!list.length)return;
-  const seen=JSON.parse(localStorage.getItem('_storySeen')||'{}');
-  seen[teacherUid]=Date.now();localStorage.setItem('_storySeen',JSON.stringify(seen));
+  const seen=JSON.parse(_lsGet('_storySeen')||'{}');
+  seen[teacherUid]=Date.now();_lsSet('_storySeen',JSON.stringify(seen));
   let idx=0,timer=null;
   const ov=document.createElement('div');
   ov.style.cssText='position:fixed;inset:0;background:#000;z-index:99999;direction:ltr';
@@ -9383,7 +9393,7 @@ function Home(){
         if(!currentUser)return '';
         const isTeacher=currentUserData?.role==='teacher';
         const hasPending=isTeacher&&MY_PENDING_STORIES.length>0;
-        const seen=JSON.parse(localStorage.getItem('_storySeen')||'{}');
+        const seen=JSON.parse(_lsGet('_storySeen')||'{}');
         const byTeacher={};
         STORIES.forEach(s=>{if(!byTeacher[s.uid]||s.createdAt>byTeacher[s.uid].createdAt)byTeacher[s.uid]=s;});
         const teachers=Object.values(byTeacher);
@@ -13888,7 +13898,7 @@ let deferredPrompt=null;
 window.addEventListener('beforeinstallprompt',e=>{
   e.preventDefault();
   deferredPrompt=e;
-  if(!localStorage.getItem('pwaDismissed')&&!isPWAInstalled()){
+  if(!_lsGet('pwaDismissed')&&!isPWAInstalled()){
     setTimeout(()=>showInstallBanner(),5000);
   }
 });
@@ -13937,7 +13947,7 @@ function showInstallBanner(){
 }
 
 function dismissPWA(){
-  localStorage.setItem('pwaDismissed','1');
+  _lsSet('pwaDismissed','1');
   document.getElementById('_pwaBanner')?.remove();
 }
 
