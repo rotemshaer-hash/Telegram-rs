@@ -504,8 +504,30 @@ body.dark .online-dot{border-color:#0D1117 !important}
 <div id="app"></div>
 <script>
 "use strict";
+// ─── SAFE STORAGE ─────────────────────────────────────────────────────────────
+// localStorage זורק (SecurityError) בגלישה פרטית, במכשיר שחסם אחסון, או
+// ב-WebView עם אחסון מושבת. השורה הראשונה של הסקריפט הזה קראה אותו בלי
+// try/catch — קריסה כאן קורית לפני שהאפליקציה בכלל מתחילה לרנדר, ולכן
+// window.addEventListener('error',...) שמוגדר מעל לא עוזר: הוא מדווח ל-DB,
+// וה-DB עדיין לא קיים בנקודה הזו. _lsGet/_lsSet הן נקודת הכניסה היחידה
+// ל-localStorage בקובץ הזה (SSOT) כדי שהכשל הזה לא יחזור במקום הבא שישתמש בו.
+function _lsGet(key,fallback=null){try{return localStorage.getItem(key);}catch(e){return fallback;}}
+function _lsSet(key,val){try{localStorage.setItem(key,val);}catch(e){}}
+function _lsRemove(key){try{localStorage.removeItem(key);}catch(e){}}
+// ─── AGE RANGE ────────────────────────────────────────────────────────────────
+// מקור אמת יחיד לטווח הגיל המותר לכל תפקיד. עד עכשיו היו חמש הגדרות נפרדות
+// בקוד (שני מסכי הרשמה ושני מסכי עריכת פרופיל, ועוד תווית input) — אחת מהן,
+// input הגיל בעריכת פרופיל מורה, אמרה 6-120 בזמן שכל מקום אחר אמר 14-18.
+// עריכת פרופיל (להבדיל מהרשמה) לא בדקה טווח גיל בכלל — מורה שאושר כבר יכול
+// היה לשמור כל גיל. database.rules.json אוכף את אותו טווח גם בשרת, כדי
+// שהבדיקה לא תהיה תלויה רק בקוד שרץ בדפדפן של המשתמש עצמו.
+const AGE_RANGE={student:{min:8,max:18},teacher:{min:14,max:18}};
+function _ageOk(age,role){
+  const r=role==='teacher'?AGE_RANGE.teacher:AGE_RANGE.student;
+  return Number.isInteger(age)&&age>=r.min&&age<=r.max;
+}
 // ─── DATA ─────────────────────────────────────────────────────────────────────
-let darkMode=localStorage.getItem('_dk')==='1';
+let darkMode=_lsGet('_dk')==='1';
 const _CL={p:"#14B8A6",s:"#14B8A6",g:"#14B8A6",y:"#FFD23F",dark:"#0F1A1F",muted:"#6F7786",text:"#1A1A2E"};
 const _CD={p:"#5EEAD4",s:"#5EEAD4",g:"#34D399",y:"#FCD34D",dark:"#E2E8F0",muted:"#94A3B8",text:"#E2E8F0"};
 const C=new Proxy({},{get:(_,k)=>(darkMode?_CD:_CL)[k]??_CL[k]});
@@ -1151,7 +1173,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.31';
+const APP_VERSION='4.11.35';
 
 // ─── הודעות קוליות — כבויות ────────────────────────────────────────────────
 // הקלטה קולית היא הערוץ היחיד בין ילדים שאיש לא בודק: אין תמלול, אין סינון,
@@ -1241,6 +1263,20 @@ function _myRefLink(){
   const code=currentUserData?.refCode||'';
   if(!code)return window.location.origin;
   return window.location.origin+'?ref='+code;
+}
+// שיתוף הקישור האישי — מקור אמת יחיד לנוסח ולהתנהגות. היה כתוב פעם אחת
+// בתוך onclick inline בטאב wallet; כרטיס "אין לך עדיין הזמנות" במסך הבית
+// צריך בדיוק אותה פעולה, ובלי הפונקציה הזו היו נוצרים שני נוסחים שעלולים
+// להתפצל זה מזה בפעם הבאה שמישהו יעדכן רק אחד מהם.
+//
+// ההודעה בכוונה לא מזכירה כסף (12.10.2026, בקשה מפורשת): ההטבה הכספית
+// עדיין קיימת ומוצגת בטאב wallet לפני השליחה — רק הנוסח שעובר הלאה
+// לתלמיד עצמו לא פותח בכסף.
+function shareMyReferralLink(){
+  const link=_myRefLink();
+  const text='הצטרף ל-Drushe דרך הלינק שלי! '+link;
+  if(navigator.share){navigator.share({title:'Drushe – פלטפורמת מורים',text,url:link}).catch(()=>{});}
+  else{window.open('https://wa.me/?text='+encodeURIComponent(text),'_blank');}
 }
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -1501,7 +1537,7 @@ async function _saveMood(bookingId){
 // ─── DARK MODE ────────────────────────────────────────────────────────────────
 function toggleDarkMode(){
   darkMode=!darkMode;
-  localStorage.setItem('_dk',darkMode?'1':'0');
+  _lsSet('_dk',darkMode?'1':'0');
   document.body.classList.toggle('dark',darkMode);
   render();
   showFireToast(darkMode?'🌙 מצב לילה':'☀️ מצב יום');
@@ -1541,15 +1577,15 @@ function _obSteps(role){
 // איפוס המדריך מהפאנל: מוחק את שני המפתחות. כפתור שמוחק רק אחד מהם מדווח
 // "יאופס" ואז לא מאפס — וזה בדיוק מה שהיה קורה אחרי שהמפתח פוצל לפי תפקיד.
 function _obReset(){
-  ['teacher','student'].forEach(r=>{try{localStorage.removeItem(_obKey(r));}catch(e){}});
-  try{localStorage.removeItem(_OB_KEY_PREFIX);}catch(e){}
+  ['teacher','student'].forEach(r=>_lsRemove(_obKey(r)));
+  _lsRemove(_OB_KEY_PREFIX);
 }
 
 function showOnboarding(){
   const role=currentUserData?.role==='teacher'?'teacher':'student';
-  if(localStorage.getItem(_obKey(role)))return;
+  if(_lsGet(_obKey(role)))return;
   const steps=_obSteps(role);
-  const _done=()=>{localStorage.setItem(_obKey(role),'1');ov.remove();};
+  const _done=()=>{_lsSet(_obKey(role),'1');ov.remove();};
   let step=0;
   const ov=document.createElement('div');
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:999999;display:flex;align-items:center;justify-content:center;direction:rtl;backdrop-filter:blur(20px)';
@@ -2223,7 +2259,7 @@ function Register(){
           <span style="font-size:11px;color:#64748B;margin-top:2px;display:block">אותיות אנגליות, מספרים וקו תחתון בלבד</span>
         </div>
         <div class="ing"><label>גיל</label>
-          <input id="regAge" class="inp" type="number" min="8" max="18" placeholder="גיל בין 8-18"
+          <input id="regAge" class="inp" type="number" min="${AGE_RANGE.student.min}" max="${AGE_RANGE.student.max}" placeholder="גיל בין ${AGE_RANGE.student.min}-${AGE_RANGE.student.max}"
             value="${(()=>{try{return sessionStorage.getItem('_rAge')||'';}catch(e){return '';}})()} "
             oninput="try{sessionStorage.setItem('_rAge',this.value);}catch(e){}"></div>
         <div class="ing"><label>מגדר</label>
@@ -2300,7 +2336,7 @@ async function quickRegister(){
   const rawUsername=usernameEl.value.trim().toLowerCase().replace(/[^a-z0-9_]/g,'');
   if(rawUsername.length<3){showFireToast('❌ שם משתמש חייב להכיל לפחות 3 תווים');return;}
   if(rawUsername.length>20){showFireToast('❌ שם משתמש ארוך מדי – עד 20 תווים');return;}
-  if(!age||!age.value||parseInt(age.value)<8||parseInt(age.value)>18){showFireToast('❌ גיל חייב להיות בין 8-18');return;}
+  if(!age||!_ageOk(parseInt(age.value),'student')){showFireToast(`❌ גיל חייב להיות בין ${AGE_RANGE.student.min}-${AGE_RANGE.student.max}`);return;}
   if(!pass||pass.value.length<6){showFireToast('❌ סיסמה לפחות 6 תווים');return;}
   if(!pass2||pass.value!==pass2.value){showFireToast('❌ הסיסמאות לא תואמות');return;}
   if(!kcbChecked('regTerms')){showFireToast('❌ נדרש אישור תנאי שימוש');return;}
@@ -2410,7 +2446,7 @@ function TeacherSetup(){
         <h3 style="font-weight:900;font-size:16px;margin:0 0 8px;color:#04778A;display:flex;align-items:center;gap:6px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><circle cx="8" cy="10" r="2"/><path d="M14 9h6M14 13h6M5 17h14"/></svg> אימות גיל וזהות המורה</h3>
         <p style="font-size:12px;color:#64748B;margin:0 0 14px;line-height:1.6">נדרש לאישור הפרופיל. המידע גלוי לצוות Drushe בלבד.</p>
         <div class="ing" style="margin-bottom:12px"><label>גיל (14–18)</label>
-          <input type="number" id="tAge" class="inp" placeholder="לדוגמה: 14" min="14" max="18">
+          <input type="number" id="tAge" class="inp" placeholder="לדוגמה: 14" min="${AGE_RANGE.teacher.min}" max="${AGE_RANGE.teacher.max}">
         </div>
         <div class="ing" style="margin-bottom:12px"><label>סוג מסמך מזהה</label>
           <select id="tIdType" class="inp">
@@ -2763,7 +2799,7 @@ async function saveTeacherProfile(){
   if(!_modeOnline&&!_modeFrontal){showFireToast('❌ בחר לפחות אופן הוראה אחד');return;}
   if(!kcbChecked('tAgeConfirm')){showFireToast('❌ יש לאשר שאתה/ת בין גיל 14 ל-18');return;}
   const _ageVal=parseInt(document.getElementById('tAge')?.value||0);
-  if(!_ageVal||_ageVal<14||_ageVal>18){showFireToast('❌ הכנס גיל תקין בין 14 ל-18');return;}
+  if(!_ageOk(_ageVal,'teacher')){showFireToast(`❌ הכנס גיל תקין בין ${AGE_RANGE.teacher.min} ל-${AGE_RANGE.teacher.max}`);return;}
   const _idTypeVal=document.getElementById('tIdType')?.value||'';
   if(!_idTypeVal){showFireToast('❌ בחר סוג מסמך לאימות זהות');return;}
   if(_idTypeVal!=='parent_confirm'&&!_idPhotoBase64){showFireToast('❌ יש לצלם או להעלות את מסמך הזיהוי');return;}
@@ -3187,6 +3223,10 @@ function Subscribe(){
 // טוען הזמנות של מורה (לתצוגה ב-Home)
 let teacherPendingBookings=[];
 let teacherAllBookings=[];
+// 0 הזמנות אמיתי מול "עוד לא נטען" הם שני מצבים שונים — בלעדי הדגל הזה
+// כרטיס "אין לך עדיין הזמנות" היה מהבהב לרגע גם למורה עם הזמנות, עד
+// שהטעינה האמיתית מסתיימת ומרנדרת מחדש.
+let teacherBookingsLoaded=false;
 let STORIES=[];
 let MY_PENDING_STORIES=[];
 
@@ -3212,8 +3252,8 @@ function loadStories(){
 function openStoryViewer(teacherUid){
   const list=STORIES.filter(s=>s.uid===teacherUid).sort((a,b)=>a.createdAt-b.createdAt);
   if(!list.length)return;
-  const seen=JSON.parse(localStorage.getItem('_storySeen')||'{}');
-  seen[teacherUid]=Date.now();localStorage.setItem('_storySeen',JSON.stringify(seen));
+  const seen=JSON.parse(_lsGet('_storySeen')||'{}');
+  seen[teacherUid]=Date.now();_lsSet('_storySeen',JSON.stringify(seen));
   let idx=0,timer=null;
   const ov=document.createElement('div');
   ov.style.cssText='position:fixed;inset:0;background:#000;z-index:99999;direction:ltr';
@@ -3393,6 +3433,7 @@ async function loadTeacherBookings(){
       teacherAllBookings.sort((a,b)=>b.createdAt-a.createdAt);
       teacherPendingBookings.sort((a,b)=>b.createdAt-a.createdAt);
     }
+    teacherBookingsLoaded=true;
   }catch(e){}
 }
 
@@ -4307,7 +4348,7 @@ async function deleteAllUserData(uid,role){
   // שמות הקבצים בסטוריז ובתיק העבודות נושאים חותמת זמן, ולכן אי אפשר לנחש
   // אותם — חייבים למנות את התיקייה. חוקי ה-Storage מתירים לבעלים (ולמנהל)
   // למנות את התיקיות שלו, וזה מכוסה בטסטים ב-tests/rules/storage.rules.test.js.
-  const STORAGE_USER_FOLDERS=['id-photos','stories','portfolio','communityMedia'];
+  const STORAGE_USER_FOLDERS=['id-photos','stories','portfolio','communityMedia','profilePhotos'];
   try{
     if(typeof storage!=='undefined'&&storage){
       for(const folder of STORAGE_USER_FOLDERS){
@@ -4430,6 +4471,14 @@ function _resizeFileForProfile(file, size){
   });
 }
 
+// תמונת פרופיל נשמרה כ-base64 ישירות בתוך users/$uid/photo ו-
+// teachers/$uid/photo — כלומר כל מי שמביא את כל צומת teachers (כל טעינה של
+// מסך הגילוי) מוריד את התמונה המלאה של כל מורה בפלטפורמה. ב-3,000 מורים
+// זה 120-200MB טקסט בכל כניסה, רק כדי להציג רשימה. התמונה עולה עכשיו ל-
+// Storage (כמו id-photos, stories ו-portfolio כבר עושים) ורק הקישור נשמר
+// ב-DB — אותו תיקון בדיוק, לאותה סיבה, פשוט על נתיב שעד היום לא עבר דרכה.
+// required:true בכוונה: אם ההעלאה נכשלת, עדיף שהמשתמש ינסה שוב מאשר
+// שהתמונה תיפול אחורה ל-base64 ונחזור בדיוק לבעיה שהתיקון הזה סוגר.
 async function uploadProfilePhoto(){
   if(!currentUser){showFireToast('❌ לא מחובר');return;}
   const input=document.getElementById('profilePhotoInput');
@@ -4438,12 +4487,13 @@ async function uploadProfilePhoto(){
   showFireToast('⏳ מעלה תמונה...');
   try{
     const dataUrl=await _resizeFileForProfile(file,400);
-    await db.ref('users/'+currentUser.uid+'/photo').set(dataUrl);
-    if(currentUserData)currentUserData.photo=dataUrl;
+    const url=await uploadBase64ToStorage(dataUrl,`profilePhotos/${currentUser.uid}/${Date.now()}`,{required:true});
+    await db.ref('users/'+currentUser.uid+'/photo').set(url);
+    if(currentUserData)currentUserData.photo=url;
     if(currentUserData?.role==='teacher'){
-      await db.ref('teachers/'+currentUser.uid+'/photo').set(dataUrl);
+      await db.ref('teachers/'+currentUser.uid+'/photo').set(url);
       const t=TEACHERS.find(x=>x.id===currentUser.uid);
-      if(t)t.photo=dataUrl;
+      if(t)t.photo=url;
     }
     showFireToast('✅ התמונה הועלתה!');
     render();
@@ -5361,19 +5411,44 @@ function calcCommission(gross){
   return{gross,commission:0,net:gross};
 }
 // ── מודל מנוי: רק מורים משלמים, תלמידים בחינם לגמרי ─────────────────────────
-const TRIAL_DAYS=30; // ימי ניסיון חינם למורה לפני חובת מנוי
+const TRIAL_DAYS=30; // ימי ניסיון חינם למורה, נספרים מההזמנה הראשונה שקיבל — לא מההרשמה
 // מחיר המנוי החודשי למורה, בשקלים. היה כתוב כמספר קשיח ב-12 מקומות — מסכי
 // הרשמה, מסך המנוי, מייל התזכורת, ההתראה, הפרופיל וגוף בקשת המנוי — כך
 // ששינוי מחיר חייב לפגוע בכולם בדיוק. הגדרה אחת, ו-validate.sh שומר עליה.
 const TEACHER_PLAN_PRICE=49;
+// מורה שעוד לא קיבל אף הזמנה לא "משתמש" בניסיון שלו — אין לו עדיין למי
+// ללמד, וזו בדיוק הבעיה שה-30 יום אמורים לפתור לו, לא לרוץ עליו בשקט.
+// בלי תקרה זה הופך למנוי חינם לצמיתות למורה שלא פעיל בכלל, ולכן
+// NO_BOOKING_GRACE_DAYS קיים: אחריו המורה נדרש להחליט (מנוי או פרישה)
+// גם בלי אף הזמנה. 90 יום נבחר כי זה פי שלושה מ-TRIAL_DAYS — מספיק זמן
+// אמיתי לגיוס תלמידים לפני שדורשים ממנו לשלם על כלום.
+const NO_BOOKING_GRACE_DAYS=90;
+// ההזמנה המוקדמת ביותר שהמורה קיבל אי-פעם (כל סטטוס — גם דחויה או בוטלה
+// מעידה שהייתה ביקוש אמיתי). 0 אם טרם נטען או אם אין אף הזמנה — שני
+// המצבים האלה מתנהגים אותו הדבר כאן: "עדיין אין נקודת התחלה לניסיון".
+function _teacherFirstBookingAt(){
+  if(!teacherAllBookings.length)return 0;
+  return Math.min(...teacherAllBookings.map(b=>b.createdAt||Infinity));
+}
 function isTeacherTrialExpired(){
   const ca=currentUserData?.createdAt||0;
-  return ca>0&&(Date.now()-ca)>TRIAL_DAYS*86400000;
+  if(!ca)return false;
+  const firstBooking=_teacherFirstBookingAt();
+  if(firstBooking>0)return (Date.now()-firstBooking)>TRIAL_DAYS*86400000;
+  return (Date.now()-ca)>NO_BOOKING_GRACE_DAYS*86400000;
 }
 function teacherTrialDaysLeft(){
   const ca=currentUserData?.createdAt||0;
   if(!ca)return TRIAL_DAYS;
-  return Math.max(0,Math.ceil(TRIAL_DAYS-(Date.now()-ca)/86400000));
+  const firstBooking=_teacherFirstBookingAt();
+  if(firstBooking>0)return Math.max(0,Math.ceil(TRIAL_DAYS-(Date.now()-firstBooking)/86400000));
+  return Math.max(0,Math.ceil(NO_BOOKING_GRACE_DAYS-(Date.now()-ca)/86400000));
+}
+// true כל עוד למורה אין אף הזמנה והוא בתוך תקופת החסד — המסך צריך לומר
+// לו שהשעון טרם התחיל, לא "נותרו X ימים" עם מספר שמחושב מתקופת חסד
+// שונה לגמרי מה-30 יום שמוצג לכל מורה אחר.
+function _teacherTrialNotYetStarted(){
+  return teacherBookingsLoaded&&_teacherFirstBookingAt()===0&&!isTeacherTrialExpired();
 }
 // ── מורים מייסדים ────────────────────────────────────────────────────────────
 // 500 המורים הראשונים פטורים ממנוי לתמיד. זה כלי גיוס: הוא נותן סיבה להצטרף
@@ -5410,6 +5485,17 @@ function foundingSlotsLeft(){
 function teacherNeedsSubscription(){
   if(isFoundingTeacher())return false;
   return currentUserData?.role==='teacher'&&isTeacherTrialExpired()&&!isActiveSubscription();
+}
+// כרטיס המנוי/ניסיון בטאב "אודות" של הפרופיל. היה ternary אחד ענק בתוך
+// ה-template של Profile() — הוצא לכאן כדי שאפשר יהיה להוסיף את מצב
+// "הניסיון עוד לא התחיל" בלי לערוך שורה בת 3500+ תווים בטעות.
+function _teacherSubscriptionBanner(){
+  if(isFoundingTeacher())return `<div style="background:linear-gradient(135deg,rgba(251,191,36,0.16),rgba(139,47,201,0.08));border:1.5px solid rgba(251,191,36,0.4);border-radius:16px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:10px"><div style="font-size:22px">🏆</div><div><div style="font-weight:800;font-size:14px;color:#B45309">מורה מייסד — חינם לתמיד</div><div style="font-size:11px;color:#64748B;margin-top:1px">אתה מ-${FOUNDING_TEACHER_LIMIT} המורים הראשונים ב-Drushe. אין ואף פעם לא יהיה מנוי.</div></div></div>`;
+  if(isActiveSubscription())return `<div style="background:linear-gradient(135deg,rgba(139,47,201,0.12),rgba(6,182,212,0.08));border-radius:16px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:10px"><div style="font-size:22px">💎</div><div><div style="font-weight:800;font-size:14px;color:#8B5CF6">מנוי פרימיום פעיל</div><div style="font-size:11px;color:#64748B;margin-top:1px">תוקף עד: ${new Date(currentUserData.subscription.expiresAt).toLocaleDateString('he-IL')}</div></div></div>`;
+  if(currentUserData?.subscription?.status==='pending')return `<div style="background:rgba(245,158,11,0.08);border-radius:16px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:10px;cursor:pointer" onclick="go('subscribe')"><div style="font-size:22px">⏳</div><div><div style="font-weight:800;font-size:14px;color:#D97706">מנוי ממתין לאישור</div><div style="font-size:11px;color:#64748B;margin-top:1px">הצוות מאמת את התשלום — לחץ לפרטים</div></div></div>`;
+  if(_teacherTrialNotYetStarted())return `<div style="background:linear-gradient(135deg,rgba(139,47,201,0.06),rgba(6,182,212,0.04));border:1.5px dashed rgba(139,47,201,0.25);border-radius:16px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:10px"><div style="font-size:22px">🎁</div><div><div style="font-weight:800;font-size:13px;color:#8B5CF6">הניסיון החינם עוד לא התחיל</div><div style="font-size:11px;color:#64748B;margin-top:1px">30 הימים נספרים מההזמנה הראשונה שתקבל — לא מהיום שנרשמת. אין מה לשלם עד אז.</div></div></div>`;
+  if(!isTeacherTrialExpired())return `<div style="background:linear-gradient(135deg,rgba(139,47,201,${teacherTrialDaysLeft()<=3?'0.12':'0.06'}),rgba(6,182,212,0.04));border:1.5px dashed rgba(139,47,201,${teacherTrialDaysLeft()<=3?'0.4':'0.25'});border-radius:16px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="go('subscribe')"><div style="display:flex;align-items:center;gap:10px"><div style="font-size:22px">${teacherTrialDaysLeft()<=3?'⏰':'🎁'}</div><div><div style="font-weight:800;font-size:13px;color:#8B5CF6">נותרו ${teacherTrialDaysLeft()} ימים לניסיון החינם</div><div style="font-size:11px;color:#64748B;margin-top:1px">לאחר מכן ₪${TEACHER_PLAN_PRICE}/חודש כדי להמשיך להופיע ולקבל תלמידים</div></div></div><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></div>`;
+  return `<div style="background:linear-gradient(135deg,rgba(139,47,201,0.06),rgba(6,182,212,0.04));border:1.5px dashed rgba(139,47,201,0.25);border-radius:16px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="go('subscribe')"><div style="display:flex;align-items:center;gap:10px"><div style="font-size:22px">💎</div><div><div style="font-weight:800;font-size:13px;color:#8B5CF6">הניסיון החינם הסתיים — ₪${TEACHER_PLAN_PRICE}/חודש</div><div style="font-size:11px;color:#64748B;margin-top:1px">כדי להמשיך להופיע ולקבל תלמידים</div></div></div><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></div>`;
 }
 // שולח מייל + התראה באפליקציה למורה כשנשארו לו 3 ימים או יום אחד לסיום הניסיון.
 // כל תזכורת נשלחת פעם אחת בלבד (מסומנת ב-DB), כדי לא להציף באימיילים חוזרים.
@@ -9383,7 +9469,7 @@ function Home(){
         if(!currentUser)return '';
         const isTeacher=currentUserData?.role==='teacher';
         const hasPending=isTeacher&&MY_PENDING_STORIES.length>0;
-        const seen=JSON.parse(localStorage.getItem('_storySeen')||'{}');
+        const seen=JSON.parse(_lsGet('_storySeen')||'{}');
         const byTeacher={};
         STORIES.forEach(s=>{if(!byTeacher[s.uid]||s.createdAt>byTeacher[s.uid].createdAt)byTeacher[s.uid]=s;});
         const teachers=Object.values(byTeacher);
@@ -9473,6 +9559,20 @@ function Home(){
             </div>
           </div>
         `).join('')}
+      </div>`:''}
+
+      ${currentUserData?.role==='teacher'&&!isAdmin()&&teacherBookingsLoaded&&!teacherAllBookings.length?`
+      <!-- Teacher: zero bookings ever — the actual point of friction, not a text-only approval message -->
+      <div style="background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);border-radius:24px;padding:18px;margin-bottom:18px;color:#fff;box-shadow:0 10px 30px rgba(20,184,166,0.3)">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+          <div style="width:32px;height:32px;display:flex;align-items:center;justify-content:center">${icon("users",28)}</div>
+          <div style="flex:1">
+            <div style="font-weight:900;font-size:16px">עדיין אין לך הזמנות</div>
+            <div style="font-size:12px;opacity:0.9">התחל מתלמידים שאתה כבר מכיר</div>
+          </div>
+        </div>
+        <p style="font-size:13px;line-height:1.6;opacity:0.95;margin:0 0 14px">שלח את הקישור האישי שלך לתלמידים שאתה כבר מלמד — כך הם ימצאו אותך ויזמינו שיעור דרך Drushe.</p>
+        <button onclick="kLog('referral_card_click',{from:'home_zero_bookings'});shareMyReferralLink()" style="width:100%;background:#fff;color:#0e7a72;border:none;border-radius:50px;padding:12px;font-weight:900;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">${icon("send",16)} שלח לתלמידים שלי</button>
       </div>`:''}
 
       ${currentUserData?.role==='teacher'&&!isAdmin()?(()=>{
@@ -10758,7 +10858,7 @@ function Profile(){
     </div>`;}
 
   if(tab==="about") content=`
-    ${!isTeacher?'':isFoundingTeacher()?`<div style="background:linear-gradient(135deg,rgba(251,191,36,0.16),rgba(139,47,201,0.08));border:1.5px solid rgba(251,191,36,0.4);border-radius:16px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:10px"><div style="font-size:22px">🏆</div><div><div style="font-weight:800;font-size:14px;color:#B45309">מורה מייסד — חינם לתמיד</div><div style="font-size:11px;color:#64748B;margin-top:1px">אתה מ-${FOUNDING_TEACHER_LIMIT} המורים הראשונים ב-Drushe. אין ואף פעם לא יהיה מנוי.</div></div></div>`:isActiveSubscription()?`<div style="background:linear-gradient(135deg,rgba(139,47,201,0.12),rgba(6,182,212,0.08));border-radius:16px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:10px"><div style="font-size:22px">💎</div><div><div style="font-weight:800;font-size:14px;color:#8B5CF6">מנוי פרימיום פעיל</div><div style="font-size:11px;color:#64748B;margin-top:1px">תוקף עד: ${new Date(currentUserData.subscription.expiresAt).toLocaleDateString('he-IL')}</div></div></div>`:currentUserData?.subscription?.status==='pending'?`<div style="background:rgba(245,158,11,0.08);border-radius:16px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:10px;cursor:pointer" onclick="go('subscribe')"><div style="font-size:22px">⏳</div><div><div style="font-weight:800;font-size:14px;color:#D97706">מנוי ממתין לאישור</div><div style="font-size:11px;color:#64748B;margin-top:1px">הצוות מאמת את התשלום — לחץ לפרטים</div></div></div>`:!isTeacherTrialExpired()?`<div style="background:linear-gradient(135deg,rgba(139,47,201,${teacherTrialDaysLeft()<=3?'0.12':'0.06'}),rgba(6,182,212,0.04));border:1.5px dashed rgba(139,47,201,${teacherTrialDaysLeft()<=3?'0.4':'0.25'});border-radius:16px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="go('subscribe')"><div style="display:flex;align-items:center;gap:10px"><div style="font-size:22px">${teacherTrialDaysLeft()<=3?'⏰':'🎁'}</div><div><div style="font-weight:800;font-size:13px;color:#8B5CF6">נותרו ${teacherTrialDaysLeft()} ימים לניסיון החינם</div><div style="font-size:11px;color:#64748B;margin-top:1px">לאחר מכן ₪${TEACHER_PLAN_PRICE}/חודש כדי להמשיך להופיע ולקבל תלמידים</div></div></div><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></div>`:`<div style="background:linear-gradient(135deg,rgba(139,47,201,0.06),rgba(6,182,212,0.04));border:1.5px dashed rgba(139,47,201,0.25);border-radius:16px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="go('subscribe')"><div style="display:flex;align-items:center;gap:10px"><div style="font-size:22px">💎</div><div><div style="font-weight:800;font-size:13px;color:#8B5CF6">הניסיון החינם הסתיים — ₪${TEACHER_PLAN_PRICE}/חודש</div><div style="font-size:11px;color:#64748B;margin-top:1px">כדי להמשיך להופיע ולקבל תלמידים</div></div></div><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></div>`}
+    ${!isTeacher?'':_teacherSubscriptionBanner()}
     <div class="card"><h4 style="margin:0 0 10px;font-weight:800">👋 קצת עליי</h4><p style="margin:0;font-size:14px;line-height:1.7">${currentUserData?.bio?escapeHtml(currentUserData.bio):'עדיין לא כתבת קצת על עצמך.'}</p></div>
     <div class="ref-card">
       <h4 style="margin:0 0 6px;font-weight:900;font-size:16px">${icon("gift",14)} הפנה חבר – קבל ₪15!</h4>
@@ -10768,7 +10868,7 @@ function Profile(){
       ${currentUserData?.refCode?`<div style="background:rgba(0,0,0,.2);border-radius:10px;padding:8px 12px;margin-bottom:10px;font-size:12px;font-family:monospace;word-break:break-all;direction:ltr;text-align:left;color:#E0FDF4">${_myRefLink()}</div>`:''}
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         ${currentUserData?.refCode?`<button onclick="(async()=>{try{await navigator.clipboard.writeText('${_myRefLink()}');showFireToast('📋 הלינק הועתק!');}catch(_){showFireToast('❌ לא ניתן להעתיק');}})();" style="background:rgba(255,255,255,.2);color:#fff;border-radius:50px;padding:9px 16px;font-weight:700;cursor:pointer;font-size:12px">📋 העתק לינק</button>`:''}
-        <button onclick="(()=>{const link='${_myRefLink()}';const text='הצטרף ל-Drushe דרך הלינק שלי ותקבל ₪5 קרדיט לשיעור הראשון! '+link;if(navigator.share){navigator.share({title:'Drushe – פלטפורמת מורים',text:text,url:link}).catch(()=>{});}else{window.open('https://wa.me/?text='+encodeURIComponent(text),'_blank');}})()" style="background:rgba(255,255,255,.2);color:#fff;border-radius:50px;padding:9px 16px;font-weight:700;cursor:pointer;font-size:12px">${icon("send",12)} שתף</button>
+        <button onclick="shareMyReferralLink()" style="background:rgba(255,255,255,.2);color:#fff;border-radius:50px;padding:9px 16px;font-weight:700;cursor:pointer;font-size:12px">${icon("send",12)} שתף</button>
       </div>
     </div>
     ${[["edit",'#14B8A6',"ערוך פרופיל",isTeacher?"showEditTeacherProfileDialog()":`showEditProfileDialog()`],["dollar",'#F59E0B',"ניהול תשלומים","showPaymentManagement()"],["award",'#8B5CF6',"ראה לידרבורד","go('leaderboard')"],["info",'#06B6D4',"הצג מדריך מחדש","_obReset();showFireToast('✅ המדריך יוצג בכניסה הבאה')"],["x-circle",'#E74C3C',"התנתקות","confirmLogout()"]].map(([ic,col,l,fn])=>`<div class="card-sm" style="display:flex;align-items:center;gap:13px;cursor:pointer" onclick="${fn}">${miniBadge(ic,col,32)}<span style="font-weight:700;font-size:15px;color:${l==="התנתקות"?"#E74C3C":"#1A1A2E"}">${l}</span><span style="margin-right:auto;color:#6F7786">←</span></div>`).join("")}`;
@@ -12270,7 +12370,7 @@ function showEditProfileDialog(){
       </div>
       <div style="margin-bottom:14px">
         <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:6px">🎂 גיל</label>
-        <input id="_epAge" class="inp" type="number" min="8" max="18" value="${d.age||''}" placeholder="גיל">
+        <input id="_epAge" class="inp" type="number" min="${AGE_RANGE.student.min}" max="${AGE_RANGE.student.max}" value="${d.age||''}" placeholder="גיל">
       </div>
       <div style="margin-bottom:14px">
         <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:6px">🌍 עיר</label>
@@ -12291,6 +12391,7 @@ async function saveProfileEdits(){
   const city=document.getElementById('_epCity')?.value.trim();
   const bio=document.getElementById('_epBio')?.value.trim();
   if(!name){showFireToast('❌ שם לא יכול להיות ריק');return;}
+  if(age&&!_ageOk(parseInt(age),'student')){showFireToast(`❌ גיל חייב להיות בין ${AGE_RANGE.student.min}-${AGE_RANGE.student.max}`);return;}
   try{
     const updates={};
     if(name)updates.name=name;
@@ -12400,7 +12501,7 @@ function showEditTeacherProfileDialog(){
         </div>
         <div style="margin-bottom:11px">
           <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">🎂 גיל</label>
-          <input id="_etAge" class="inp" type="number" min="6" max="120" value="${currentUserData?.age||''}" placeholder="גיל">
+          <input id="_etAge" class="inp" type="number" min="${AGE_RANGE.teacher.min}" max="${AGE_RANGE.teacher.max}" value="${currentUserData?.age||''}" placeholder="גיל">
         </div>
         <div style="margin-bottom:0">
           <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">${icon("file-text",14)} קצת עליי</label>
@@ -12772,6 +12873,7 @@ async function saveTeacherProfileEdits(){
   const customCats=window._etCustomCats||[];
   const allCats=[...cats,...customCats.map(c=>'custom:'+c)];
   if(!name){showFireToast('❌ שם לא יכול להיות ריק');return;}
+  if(age&&!_ageOk(age,'teacher')){showFireToast(`❌ גיל חייב להיות בין ${AGE_RANGE.teacher.min} ל-${AGE_RANGE.teacher.max}`);return;}
   if(price<10||price>500){showFireToast('❌ מחיר בין 10 ל-500');return;}
   if(!allCats.length){showFireToast('❌ חייב לפחות מקצוע אחד');return;}
   // קרא תיאורים ותגיות לכל מקצוע
@@ -13888,7 +13990,7 @@ let deferredPrompt=null;
 window.addEventListener('beforeinstallprompt',e=>{
   e.preventDefault();
   deferredPrompt=e;
-  if(!localStorage.getItem('pwaDismissed')&&!isPWAInstalled()){
+  if(!_lsGet('pwaDismissed')&&!isPWAInstalled()){
     setTimeout(()=>showInstallBanner(),5000);
   }
 });
@@ -13937,7 +14039,7 @@ function showInstallBanner(){
 }
 
 function dismissPWA(){
-  localStorage.setItem('pwaDismissed','1');
+  _lsSet('pwaDismissed','1');
   document.getElementById('_pwaBanner')?.remove();
 }
 

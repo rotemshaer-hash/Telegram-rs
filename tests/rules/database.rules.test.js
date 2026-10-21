@@ -126,6 +126,48 @@ describe('privacy: what a user must not reach', () => {
   });
 });
 
+// ── AGE RANGE ───────────────────────────────────────────────────────────────
+// Editing a profile never checked the age range at all — only the two
+// registration screens did, in the browser, which a verified teacher could
+// simply skip by calling the database directly. The server is the only place
+// this can actually be enforced: AGE_RANGE in index.html is a courtesy to the
+// user, not a guarantee. The rule reads the sibling `role` field (seeded in
+// beforeEach) to pick the right bound, the same sibling-lookup pattern used
+// elsewhere in this file (e.g. teacherId on a booking).
+describe('age: bounded by role, enforced on the server, not only the client', () => {
+  it('a student can set their age inside 8-18', async () => {
+    await assertSucceeds(set(ref(asStudent(), 'users/student-uid/age'), 15));
+  });
+
+  it('a student cannot set an age under 8', async () => {
+    await assertFails(set(ref(asStudent(), 'users/student-uid/age'), 7));
+  });
+
+  it('a student cannot set an age over 18', async () => {
+    await assertFails(set(ref(asStudent(), 'users/student-uid/age'), 19));
+  });
+
+  it('a teacher can set their age inside 14-18', async () => {
+    await assertSucceeds(set(ref(asTeacher(), 'users/teacher-uid/age'), 16));
+  });
+
+  it('a teacher cannot set an age under 14, even though 13 is a valid student age', async () => {
+    await assertFails(set(ref(asTeacher(), 'users/teacher-uid/age'), 13));
+  });
+
+  it('a teacher cannot set an age over 18', async () => {
+    await assertFails(set(ref(asTeacher(), 'users/teacher-uid/age'), 19));
+  });
+
+  it('age must be a number, not a numeric string', async () => {
+    await assertFails(set(ref(asStudent(), 'users/student-uid/age'), '15'));
+  });
+
+  it('the admin may still set an out-of-range age, for data corrections', async () => {
+    await assertSucceeds(set(ref(asAdmin(), 'users/student-uid/age'), 99));
+  });
+});
+
 // ── DESTRUCTION ────────────────────────────────────────────────────────────
 // A node-level ".write" grants the whole subtree. Where the intent is "anyone
 // may submit one", that accidentally also means "anyone may delete them all".

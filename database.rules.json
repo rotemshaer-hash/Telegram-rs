@@ -65,6 +65,9 @@
         "role": {
           ".validate": "auth.token.email == 'rotemshaer@gmail.com' || !data.exists()"
         },
+        "age": {
+          ".validate": "auth.token.email == 'rotemshaer@gmail.com' || (newData.isNumber() && (newData.parent().child('role').val() == 'teacher' ? (newData.val() >= 14 && newData.val() <= 18) : (newData.val() >= 8 && newData.val() <= 18)))"
+        },
         "verified": {
           ".validate": "auth.token.email == 'rotemshaer@gmail.com' || newData.val() == false"
         },
