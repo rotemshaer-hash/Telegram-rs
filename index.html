@@ -1173,7 +1173,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.34';
+const APP_VERSION='4.11.35';
 
 // ─── הודעות קוליות — כבויות ────────────────────────────────────────────────
 // הקלטה קולית היא הערוץ היחיד בין ילדים שאיש לא בודק: אין תמלול, אין סינון,
@@ -1268,9 +1268,13 @@ function _myRefLink(){
 // בתוך onclick inline בטאב wallet; כרטיס "אין לך עדיין הזמנות" במסך הבית
 // צריך בדיוק אותה פעולה, ובלי הפונקציה הזו היו נוצרים שני נוסחים שעלולים
 // להתפצל זה מזה בפעם הבאה שמישהו יעדכן רק אחד מהם.
+//
+// ההודעה בכוונה לא מזכירה כסף (12.10.2026, בקשה מפורשת): ההטבה הכספית
+// עדיין קיימת ומוצגת בטאב wallet לפני השליחה — רק הנוסח שעובר הלאה
+// לתלמיד עצמו לא פותח בכסף.
 function shareMyReferralLink(){
   const link=_myRefLink();
-  const text='הצטרף ל-Drushe דרך הלינק שלי ותקבל ₪5 קרדיט לשיעור הראשון! '+link;
+  const text='הצטרף ל-Drushe דרך הלינק שלי! '+link;
   if(navigator.share){navigator.share({title:'Drushe – פלטפורמת מורים',text,url:link}).catch(()=>{});}
   else{window.open('https://wa.me/?text='+encodeURIComponent(text),'_blank');}
 }
@@ -9567,7 +9571,7 @@ function Home(){
             <div style="font-size:12px;opacity:0.9">התחל מתלמידים שאתה כבר מכיר</div>
           </div>
         </div>
-        <p style="font-size:13px;line-height:1.6;opacity:0.95;margin:0 0 14px">שלח את הקישור האישי שלך לתלמידים שאתה כבר מלמד — הם מקבלים ₪5 קרדיט לשיעור הראשון, ואתה ₪15 כשהם מצטרפים.</p>
+        <p style="font-size:13px;line-height:1.6;opacity:0.95;margin:0 0 14px">שלח את הקישור האישי שלך לתלמידים שאתה כבר מלמד — כך הם ימצאו אותך ויזמינו שיעור דרך Drushe.</p>
         <button onclick="kLog('referral_card_click',{from:'home_zero_bookings'});shareMyReferralLink()" style="width:100%;background:#fff;color:#0e7a72;border:none;border-radius:50px;padding:12px;font-weight:900;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">${icon("send",16)} שלח לתלמידים שלי</button>
       </div>`:''}
 
