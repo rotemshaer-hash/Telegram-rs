@@ -12,8 +12,8 @@ export const config = {
   claudeModel: process.env.CLAUDE_MODEL?.trim() || 'claude-opus-5-5',
   authDir: process.env.AUTH_DIR?.trim() || './data/auth',
   groupsConfigPath: process.env.GROUPS_CONFIG_PATH?.trim() || './groups.config.json',
-  /** One group name per line. Preferred in production — the JSON file is gitignored
-   *  and won't exist on a server deployed straight from GitHub. */
+  /** Group names separated by "|". Preferred in production — the JSON file is
+   *  gitignored and won't exist on a server deployed straight from GitHub. */
   groupsEnv: process.env.GROUPS,
   port: Number(process.env.PORT) || 3000,
   summaryHour: 21,

@@ -3,12 +3,14 @@ import type { WASocket } from '@whiskeysockets/baileys';
 import { config } from './config.js';
 
 export function loadConfiguredGroupNames(): string[] {
-  // Preferred in production: a GROUPS env var, one group name per line — the
-  // JSON file below is gitignored (group names can be sensitive) so it won't
-  // exist on a server deployed straight from GitHub.
+  // Preferred in production: a GROUPS env var, group names separated by "|" —
+  // the JSON file below is gitignored (group names can be sensitive) so it
+  // won't exist on a server deployed straight from GitHub. "|" (not a
+  // newline) is used because some hosts' env-var storage (systemd
+  // EnvironmentFile, some dashboards) can't hold a multi-line value reliably.
   if (config.groupsEnv && config.groupsEnv.trim()) {
     return config.groupsEnv
-      .split('\n')
+      .split('|')
       .map((name) => name.trim())
       .filter((name) => name.length > 0);
   }
