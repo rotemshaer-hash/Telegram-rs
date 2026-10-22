@@ -132,7 +132,17 @@ async function start(callbacks: WhatsAppCallbacks): Promise<void> {
   });
 
   sock.ev.on('messages.upsert', ({ messages, type }) => {
-    if (type !== 'notify') return;
+    console.log(
+      'messages.upsert',
+      type,
+      messages.map((m) => ({
+        remoteJid: m.key.remoteJid,
+        fromMe: m.key.fromMe,
+        hasMessage: !!m.message,
+        selfJid,
+      })),
+    );
+    if (type !== 'notify' && type !== 'append') return;
     for (const msg of messages) {
       const remoteJid = msg.key.remoteJid;
       if (!remoteJid || msg.message?.protocolMessage) continue;
