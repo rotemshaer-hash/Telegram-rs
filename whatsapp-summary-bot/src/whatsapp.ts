@@ -141,6 +141,16 @@ async function start(callbacks: WhatsAppCallbacks): Promise<void> {
       if (selfJid && remoteJid === selfJid) {
         if (msg.key.fromMe) {
           const text = extractText(msg);
+          if (text) {
+            console.log(
+              'self-chat text:',
+              JSON.stringify(text),
+              'codepoints:',
+              Array.from(text)
+                .map((c) => c.codePointAt(0)!.toString(16))
+                .join(' '),
+            );
+          }
           if (text && text.trim() === config.manualTriggerPhrase) {
             callbacks.onManualTrigger();
           }
