@@ -205,5 +205,9 @@ export async function sendSelfMessage(text: string): Promise<void> {
   if (!currentSock || !selfJid) {
     throw new Error('WhatsApp is not connected — cannot send message');
   }
-  await currentSock.sendMessage(selfJid, { text });
+  // Prefer the "@lid" address — that's the form the self-chat actually uses
+  // for this account (see the connect-time "self identity" log).
+  const target = selfLid ?? selfJid;
+  console.log('sending self message to', target);
+  await currentSock.sendMessage(target, { text });
 }
