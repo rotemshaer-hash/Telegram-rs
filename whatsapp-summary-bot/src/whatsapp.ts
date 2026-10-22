@@ -71,6 +71,9 @@ async function start(callbacks: WhatsAppCallbacks): Promise<void> {
   sock.ev.on('creds.update', saveCreds);
 
   if (!state.creds.registered) {
+    // The pairing-code request fails with "Connection Closed" if sent before
+    // the socket's WebSocket handshake has finished — give it a moment first.
+    await new Promise((resolve) => setTimeout(resolve, 3000));
     try {
       const code = await sock.requestPairingCode(config.whatsappPhoneNumber);
       callbacks.onPairingCode(code);
