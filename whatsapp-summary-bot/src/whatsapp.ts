@@ -25,6 +25,9 @@ export interface WhatsAppCallbacks {
 
 let currentSock: WASocket | null = null;
 let selfJid: string | null = null;
+// WhatsApp now also addresses your own self-chat via a "@lid" identifier
+// instead of (or alongside) the phone-number JID — match either.
+let selfLid: string | null = null;
 let groupJidToName: Map<string, string> = new Map();
 
 function extractText(msg: WAMessage): string | null {
@@ -111,7 +114,9 @@ async function start(callbacks: WhatsAppCallbacks): Promise<void> {
     });
 
     if (connection === 'open') {
-      selfJid = jidNormalizedUser(sock.user!.id);
+      selfJid = jidNormalizedUser(sock.user!.jid ?? sock.user!.id);
+      selfLid = sock.user!.lid ? jidNormalizedUser(sock.user!.lid) : null;
+      console.log('self identity', { selfJid, selfLid, rawUser: sock.user });
       try {
         const { matched, missing } = await resolveGroups(sock);
         groupJidToName = matched;
@@ -148,7 +153,9 @@ async function start(callbacks: WhatsAppCallbacks): Promise<void> {
       if (!remoteJid || msg.message?.protocolMessage) continue;
 
       // Self-chat: only ever look for the manual "summarize now" trigger.
-      if (selfJid && remoteJid === selfJid) {
+      // WhatsApp may route it via the phone-number JID or the newer "@lid" form.
+      const isSelfChat = (selfJid && remoteJid === selfJid) || (selfLid && remoteJid === selfLid);
+      if (isSelfChat) {
         if (msg.key.fromMe) {
           const text = extractText(msg);
           if (text) {
