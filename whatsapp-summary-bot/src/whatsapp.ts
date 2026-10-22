@@ -59,6 +59,7 @@ async function start(callbacks: WhatsAppCallbacks): Promise<void> {
   const { state, saveCreds } = await useMultiFileAuthState(config.authDir);
   const { version } = await fetchLatestBaileysVersion();
 
+  console.log('creating socket, version', version);
   const sock = makeWASocket({
     auth: state,
     version,
@@ -73,17 +74,32 @@ async function start(callbacks: WhatsAppCallbacks): Promise<void> {
   if (!state.creds.registered) {
     // The pairing-code request fails with "Connection Closed" if sent before
     // the socket's WebSocket handshake has finished — give it a moment first.
+    console.log('waiting before requesting pairing code...');
     await new Promise((resolve) => setTimeout(resolve, 3000));
+    console.log('requesting pairing code now for', config.whatsappPhoneNumber);
     try {
       const code = await sock.requestPairingCode(config.whatsappPhoneNumber);
       callbacks.onPairingCode(code);
+      console.log('got pairing code', code);
     } catch (err) {
+      console.log('pairing code request failed:', err instanceof Error ? err.message : err);
       logger.error(err, 'failed to request pairing code');
     }
   }
 
   sock.ev.on('connection.update', async (update) => {
-    const { connection, lastDisconnect } = update;
+    const { connection, lastDisconnect, qr } = update;
+    console.log('connection.update', {
+      connection,
+      hasQr: !!qr,
+      lastDisconnect: lastDisconnect
+        ? {
+            message: (lastDisconnect.error as Error | undefined)?.message,
+            statusCode: (lastDisconnect.error as Boom | undefined)?.output?.statusCode,
+            payload: (lastDisconnect.error as Boom | undefined)?.output?.payload,
+          }
+        : undefined,
+    });
 
     if (connection === 'open') {
       selfJid = jidNormalizedUser(sock.user!.id);
