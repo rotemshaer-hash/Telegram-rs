@@ -72,18 +72,27 @@ async function start(callbacks: WhatsAppCallbacks): Promise<void> {
   sock.ev.on('creds.update', saveCreds);
 
   if (!state.creds.registered) {
-    // The pairing-code request fails with "Connection Closed" if sent before
-    // the socket's WebSocket handshake has finished — give it a moment first.
-    console.log('waiting before requesting pairing code...');
-    await new Promise((resolve) => setTimeout(resolve, 3000));
-    console.log('requesting pairing code now for', config.whatsappPhoneNumber);
-    try {
-      const code = await sock.requestPairingCode(config.whatsappPhoneNumber);
+    // The pairing-code request fails with "Connection Closed" if the socket's
+    // WebSocket handshake hasn't finished yet — how long that takes varies,
+    // so retry instead of trusting a single fixed delay.
+    const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    let code: string | undefined;
+    for (let attempt = 1; attempt <= 6 && !code; attempt++) {
+      await delay(2000);
+      try {
+        code = await sock.requestPairingCode(config.whatsappPhoneNumber);
+      } catch (err) {
+        console.log(
+          `pairing code attempt ${attempt} failed:`,
+          err instanceof Error ? err.message : err,
+        );
+      }
+    }
+    if (code) {
       callbacks.onPairingCode(code);
       console.log('got pairing code', code);
-    } catch (err) {
-      console.log('pairing code request failed:', err instanceof Error ? err.message : err);
-      logger.error(err, 'failed to request pairing code');
+    } else {
+      logger.error('failed to request pairing code after retries');
     }
   }
 
