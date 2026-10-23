@@ -151,23 +151,38 @@ jobs:
       # שעבדה הוא לא רק רעש: הוא שוחק את האמון בסימן, וביום שפריסה **באמת**
       # תיכשל איש לא יבחין.
       #
-      # המקור הקובע הוא Netlify: הפריסה שפורסמה חייבת להיות על הקומיט הזה
-      # ובמצב ready. אם כן — הפריסה הצליחה, גם אם ה-CLI התלונן, וזה מודפס
-      # במפורש כדי שלא ייעלם. אם לא — ה-job נכשל, וזה כישלון אמיתי.
+      # ב-23.10 קרה ההפך, מאותה סיבה בדיוק הפוכה: הפריסה הצליחה בפועל
+      # (אומת ידנית מול האתר החי) אבל השלב הזה עדיין האדים. ה-commit_ref
+      # על published_deploy מתמלא רק כש-Netlify עצמו בנה מ-git — לא
+      # כשה-CLI מעלה דיר קובצ'ים, שזו הפריסה היחידה שה-workflow הזה בכלל
+      # מריץ. השוואה לקומיט הייתה אם כן תנאי שהפריסה הזו לא יכולה לקיים
+      # לעולם, בלי קשר להצלחה האמיתית שלה.
+      #
+      # המקור הקובע נשאר Netlify, וההשוואה היא לזהות הפריסה ולא לקומיט:
+      # published_deploy חייב להיות אותה פריסה שה-API מדווח כהכי חדשה
+      # לאתר הזה כרגע — לא "קיימת פריסה כלשהי ב-ready" (זה גם אדום היה
+      # עובר בזמן שהאתר נשאר תקוע על פריסה ישנה).
       - name: Verify the live site is this commit
         run: |
-          SITE=$(curl -sS "https://api.netlify.com/api/v1/sites/${{ secrets.NETLIFY_SITE_ID }}" \
-            -H "Authorization: Bearer ${{ secrets.NETLIFY_AUTH_TOKEN }}")
-          echo "$SITE" | CLI_EXIT="${{ steps.netlify.outputs.cli_exit }}" SHA="$GITHUB_SHA" python3 -c "
+          curl -sS "https://api.netlify.com/api/v1/sites/${{ secrets.NETLIFY_SITE_ID }}" \
+            -H "Authorization: Bearer ${{ secrets.NETLIFY_AUTH_TOKEN }}" -o site.json
+          curl -sS "https://api.netlify.com/api/v1/sites/${{ secrets.NETLIFY_SITE_ID }}/deploys?per_page=5" \
+            -H "Authorization: Bearer ${{ secrets.NETLIFY_AUTH_TOKEN }}" -o recent_deploys.json
+          CLI_EXIT="${{ steps.netlify.outputs.cli_exit }}" python3 -c "
           import json,os,sys
-          pd=(json.load(sys.stdin) or {}).get('published_deploy') or {}
-          state,ref=pd.get('state'),pd.get('commit_ref')
-          sha,cli=os.environ['SHA'],os.environ['CLI_EXIT']
-          print(f'published deploy: state={state} commit={ref}')
-          if state!='ready' or ref!=sha:
-              print(f'::error title=הפריסה לא פורסמה::האתר החי אינו על {sha[:7]} (state={state}, commit={(ref or \"-\")[:7]})')
+          site=json.load(open('site.json'))
+          recent=json.load(open('recent_deploys.json')) or []
+          recent.sort(key=lambda d: d.get('created_at') or '', reverse=True)
+          latest=recent[0] if recent else {}
+          pd=site.get('published_deploy') or {}
+          state,published_id,latest_id=pd.get('state'),pd.get('id'),latest.get('id')
+          cli=os.environ['CLI_EXIT']
+          print(f'published deploy: state={state} id={published_id}')
+          print(f'most recent deploy on record: id={latest_id} state={latest.get(\"state\")}')
+          if state!='ready' or published_id!=latest_id:
+              print(f'::error title=הפריסה לא פורסמה::הפריסה שמתפרסמת ({published_id}) אינה הפריסה האחרונה שנוצרה ({latest_id}), או שאינה ready')
               sys.exit(1)
           if cli!='0':
-              print(f'::warning title=ה-CLI יצא עם {cli} אבל הפריסה פורסמה::האתר החי על {sha[:7]}. בדוק אם netlify-cli צריך עדכון נעיצה.')
-          print('✅ האתר החי הוא הקומיט הזה.')
+              print(f'::warning title=ה-CLI יצא עם {cli} אבל הפריסה פורסמה::בדוק אם netlify-cli צריך עדכון נעיצה.')
+          print('✅ האתר החי הוא הפריסה האחרונה שנוצרה.')
           "
