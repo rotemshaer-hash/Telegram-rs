@@ -1173,7 +1173,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.35';
+const APP_VERSION='4.11.36';
 
 // ─── הודעות קוליות — כבויות ────────────────────────────────────────────────
 // הקלטה קולית היא הערוץ היחיד בין ילדים שאיש לא בודק: אין תמלול, אין סינון,
@@ -1606,7 +1606,7 @@ function showOnboarding(){
           <button id="_obNext" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:16px;font-size:16px;font-weight:900;cursor:pointer">${step<steps.length-1?'הבא →':(role==='teacher'?'בוא נתחיל':'התחל !')}</button>
           ${step>0
             ?`<button id="_obBack" style="width:100%;background:none;border:none;color:#475569;padding:12px;font-size:14px;cursor:pointer;margin-top:6px">← חזור</button>`
-            :`<button id="_obSkip" style="width:100%;background:none;border:none;color:#64748B;padding:12px;font-size:14px;cursor:pointer;margin-top:6px">דלג</button>`}
+            :`<button id="_obSkip" style="width:100%;background:none;border:none;color:#64748B;padding:14px;font-size:14px;cursor:pointer;margin-top:6px">דלג</button>`}
         </div>
       </div>`;
     ov.querySelector('#_obNext').onclick=()=>{
@@ -1927,7 +1927,7 @@ function Splash(){
         <button class="btn bd" onclick="go('login')">${icon("key",14)} כבר רשום? התחבר</button>
         <button onclick="browseAsGuest()" style="background:none;border:none;color:#64748B;font-size:13px;font-weight:700;cursor:pointer;padding:6px">${icon("search",12)} עיין כאורח בלי להירשם</button>
       </div>
-      <p style="color:#64748B;font-size:11px;margin-top:24px">מיועד לילדים 8–18 בליווי הורים</p>
+      <p style="color:#64748B;font-size:11px;margin-top:24px">מיועד לילדים ${AGE_RANGE.student.min}–${AGE_RANGE.student.max} בליווי הורים</p>
       <p style="color:#6C7686;font-size:10px;margin-top:6px">v${APP_VERSION} · ${APP_BUILD}</p>
     </div>
   </div>`;
@@ -2286,7 +2286,7 @@ function Register(){
         <span style="font-size:13px;line-height:1.6;color:#0F1A1F">🌈 <strong>פתוח לקבוצות מעורבות</strong> — שיעורים עם ילדים ממגוון אוכלוסיות ורקעים</span>
       </div>
 
-      <div class="warn" style="margin-bottom:18px"><span>🛡</span><span>אפליקציה לגילאי 8-18. ההורים מקבלים התראות והגישה לכל פעילותך — <strong>ההורה/אפוטרופוס יכול להיכנס בכל עת עם שם המשתמש והסיסמה של החשבון</strong> ולצפות בכל הפעילות, כולל שיחות הצ'אט.</span></div>
+      <div class="warn" style="margin-bottom:18px"><span>🛡</span><span>אפליקציה לגילאי ${AGE_RANGE.student.min}-${AGE_RANGE.student.max}. ההורים מקבלים התראות והגישה לכל פעילותך — <strong>ההורה/אפוטרופוס יכול להיכנס בכל עת עם שם המשתמש והסיסמה של החשבון</strong> ולצפות בכל הפעילות, כולל שיחות הצ'אט.</span></div>
 
       <button id="_regBtn" class="btn bp" onclick="quickRegister()">✨ הצטרף עכשיו – חינם!</button>
 
@@ -2445,7 +2445,7 @@ function TeacherSetup(){
       <div class="card" style="margin-bottom:18px;background:linear-gradient(135deg,rgba(20,184,166,0.08),rgba(6,182,212,0.05))">
         <h3 style="font-weight:900;font-size:16px;margin:0 0 8px;color:#04778A;display:flex;align-items:center;gap:6px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><circle cx="8" cy="10" r="2"/><path d="M14 9h6M14 13h6M5 17h14"/></svg> אימות גיל וזהות המורה</h3>
         <p style="font-size:12px;color:#64748B;margin:0 0 14px;line-height:1.6">נדרש לאישור הפרופיל. המידע גלוי לצוות Drushe בלבד.</p>
-        <div class="ing" style="margin-bottom:12px"><label>גיל (14–18)</label>
+        <div class="ing" style="margin-bottom:12px"><label>גיל (${AGE_RANGE.teacher.min}–${AGE_RANGE.teacher.max})</label>
           <input type="number" id="tAge" class="inp" placeholder="לדוגמה: 14" min="${AGE_RANGE.teacher.min}" max="${AGE_RANGE.teacher.max}">
         </div>
         <div class="ing" style="margin-bottom:12px"><label>סוג מסמך מזהה</label>
@@ -9572,7 +9572,7 @@ function Home(){
           </div>
         </div>
         <p style="font-size:13px;line-height:1.6;opacity:0.95;margin:0 0 14px">שלח את הקישור האישי שלך לתלמידים שאתה כבר מלמד — כך הם ימצאו אותך ויזמינו שיעור דרך Drushe.</p>
-        <button onclick="kLog('referral_card_click',{from:'home_zero_bookings'});shareMyReferralLink()" style="width:100%;background:#fff;color:#0e7a72;border:none;border-radius:50px;padding:12px;font-weight:900;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">${icon("send",16)} שלח לתלמידים שלי</button>
+        <button onclick="kLog('referral_card_click',{from:'home_zero_bookings'});shareMyReferralLink()" style="width:100%;background:#fff;color:#0e7a72;border:none;border-radius:50px;padding:14px;font-weight:900;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">${icon("send",16)} שלח לתלמידים שלי</button>
       </div>`:''}
 
       ${currentUserData?.role==='teacher'&&!isAdmin()?(()=>{
@@ -9879,7 +9879,7 @@ function Discover(){
         <div style="font-size:44px;margin-bottom:14px">${discoverFeedFailed?'📡':'🎬'}</div>
         <p style="font-weight:800;font-size:16px;margin:0 0 6px">${discoverFeedFailed?'לא הצלחנו לטעון את הדרילס':'אין עדיין סרטונים להצגה'}</p>
         <p style="font-size:13px;color:rgba(255,255,255,.7);margin:0 0 18px">${discoverFeedFailed?'בדוק את החיבור לאינטרנט ונסה שוב':'מורים שיעלו סרטונים מאושרים יופיעו כאן'}</p>
-        ${discoverFeedFailed?`<button onclick="loadDiscoverFeed(true)" style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:13px 30px;font-weight:900;font-size:14px;cursor:pointer;font-family:inherit">נסה שוב</button>`:''}
+        ${discoverFeedFailed?`<button onclick="loadDiscoverFeed(true)" style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:14px 30px;font-weight:900;font-size:14px;cursor:pointer;font-family:inherit">נסה שוב</button>`:''}
       </div>
     </div>`;
   }

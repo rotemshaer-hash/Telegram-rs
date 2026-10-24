@@ -29,6 +29,9 @@
           }
         },
         "ageVerification": {
+          "age": {
+            ".validate": "auth.token.email == 'rotemshaer@gmail.com' || (newData.isNumber() && newData.val() >= 14 && newData.val() <= 18)"
+          },
           "status": {
             ".validate": "auth.token.email == 'rotemshaer@gmail.com' || newData.val() != 'verified'"
           },
