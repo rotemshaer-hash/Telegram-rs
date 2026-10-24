@@ -158,11 +158,16 @@ if(IS_STAGING){
 <noscript><link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&family=Rubik:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"></noscript>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
-html,body{height:100%;background:#ECFEFF;font-family:var(--font);overflow-x:hidden;overscroll-behavior:none;-webkit-overflow-scrolling:touch;letter-spacing:-0.02em}
+/* letter-spacing על רוב הרכיבים כאן (body, כותרות, כפתורים) היה שלילי —
+   שריד מתבנית שהתחילה באנגלית. עברית לא בנויה כמו לטינית (אין אותיות
+   גדולות, אין עולים גבוהים), וריווח שלילי דוחס אותה ופוגע בקריאות. הוסר
+   משלושת הכללים הגלובליים האלה; הערכים השליליים שעל הלוגו "Drushe"
+   עצמו (טקסט לטיני) נשארו בכוונה — inline וגוברים ממילא על הכלל הגלובלי. */
+html,body{height:100%;background:#ECFEFF;font-family:var(--font);overflow-x:hidden;overscroll-behavior:none;-webkit-overflow-scrolling:touch}
 ::-webkit-scrollbar{display:none}
 
-h1,h2,h3,h4{letter-spacing:-0.025em;font-family:var(--font)}
-.btn{letter-spacing:-0.01em;font-family:var(--font)}
+h1,h2,h3,h4{font-family:var(--font)}
+.btn{font-family:var(--font)}
 
 button{cursor:pointer;font-family:inherit;border:none;background:none}
 input,textarea,select{font-family:inherit;-webkit-appearance:none;appearance:none}
@@ -1173,7 +1178,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.36';
+const APP_VERSION='4.11.37';
 
 // ─── הודעות קוליות — כבויות ────────────────────────────────────────────────
 // הקלטה קולית היא הערוץ היחיד בין ילדים שאיש לא בודק: אין תמלול, אין סינון,
