@@ -318,6 +318,34 @@ describe('gatekeeping: a teacher cannot vouch for their own document', () => {
   });
 });
 
+// ── ageVerification/age: bounded in the same way as users/age ──────────────
+// The age a teacher submits here was checked on the client (AGE_RANGE) but
+// not on the server — a teacher could, by calling the database directly,
+// register with any age in this field while the client-visible users/age
+// (added the same day) was already bounded server-side. Same gap, same fix.
+describe('ageVerification/age: a teacher cannot submit an out-of-range age', () => {
+  it('14-18 is accepted, the range the client itself enforces', async () => {
+    await assertSucceeds(set(ref(asTeacher(), 'teachers/teacher-uid/ageVerification/age'), 14));
+    await assertSucceeds(set(ref(asTeacher(), 'teachers/teacher-uid/ageVerification/age'), 18));
+  });
+
+  it('13 is refused, even though it is a valid student age elsewhere', async () => {
+    await assertFails(set(ref(asTeacher(), 'teachers/teacher-uid/ageVerification/age'), 13));
+  });
+
+  it('19 is refused', async () => {
+    await assertFails(set(ref(asTeacher(), 'teachers/teacher-uid/ageVerification/age'), 19));
+  });
+
+  it('a numeric string is refused — it must be a number', async () => {
+    await assertFails(set(ref(asTeacher(), 'teachers/teacher-uid/ageVerification/age'), '16'));
+  });
+
+  it('the admin may still set an out-of-range age, for data corrections', async () => {
+    await assertSucceeds(set(ref(asAdmin(), 'teachers/teacher-uid/ageVerification/age'), 99));
+  });
+});
+
 // ── EXTERNAL REVIEW ────────────────────────────────────────────────────────
 //
 // An outside engineer reviewed the rules and found a third instance of the
