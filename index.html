@@ -1178,7 +1178,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.37';
+const APP_VERSION='4.11.38';
 
 // ─── הודעות קוליות — כבויות ────────────────────────────────────────────────
 // הקלטה קולית היא הערוץ היחיד בין ילדים שאיש לא בודק: אין תמלול, אין סינון,
@@ -2168,9 +2168,13 @@ function ParentReg(){
 }
 
 function validateIsraeliId(id){
-  if(!/^\d{9}$/.test(id))return false;
+  if(typeof id!=='string')return false;
+  const digits=id.trim();
+  if(!/^\d{1,9}$/.test(digits))return false;
+  const padded=digits.padStart(9,'0');
+  if(padded==='000000000')return false;
   let sum=0;
-  for(let i=0;i<9;i++){let d=parseInt(id[i])*(i%2===0?1:2);if(d>9)d-=9;sum+=d;}
+  for(let i=0;i<9;i++){let d=parseInt(padded[i])*(i%2===0?1:2);if(d>9)d-=9;sum+=d;}
   return sum%10===0;
 }
 
