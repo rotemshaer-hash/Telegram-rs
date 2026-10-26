@@ -1178,7 +1178,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.38';
+const APP_VERSION='4.11.39';
 
 // ─── הודעות קוליות — כבויות ────────────────────────────────────────────────
 // הקלטה קולית היא הערוץ היחיד בין ילדים שאיש לא בודק: אין תמלול, אין סינון,
@@ -5476,7 +5476,7 @@ let _teacherCountLoaded=false; // 0 לפני טעינה ו-0 באמת הם שנ�
 // מכוון ידני ולא נגזר אוטומטית: אין כאן ספירת תלמידים אמינה מצד הלקוח
 // (חוקי ה-DB לא מאפשרים לקרוא את כל המשתמשים), ועדיף דגל מפורש שמישהו
 // מכבה מאשר ניחוש שמשקר בשקט לאחד משני הכיוונים.
-const PLATFORM_HAS_STUDENTS=false;
+const PLATFORM_HAS_STUDENTS=true;
 
 function isFoundingTeacher(){
   return currentUserData?.foundingMember===true;
