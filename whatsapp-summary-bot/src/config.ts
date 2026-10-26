@@ -16,8 +16,8 @@ export const config = {
    *  gitignored and won't exist on a server deployed straight from GitHub. */
   groupsEnv: process.env.GROUPS,
   port: Number(process.env.PORT) || 3000,
-  summaryHour: 21,
-  summaryMinute: 0,
+  summaryHour: 7,
+  summaryMinute: 30,
   timezone: 'Asia/Jerusalem',
   manualTriggerPhrase: 'סכם עכשיו',
 };
