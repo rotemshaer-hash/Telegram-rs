@@ -1178,7 +1178,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.39';
+const APP_VERSION='4.11.41';
 
 // ─── הודעות קוליות — כבויות ────────────────────────────────────────────────
 // הקלטה קולית היא הערוץ היחיד בין ילדים שאיש לא בודק: אין תמלול, אין סינון,
@@ -3940,11 +3940,11 @@ function showNotificationsPanel(){
       else if(n.type==='employerInquiry')sub=(n.company||'')+(n.contact?' • '+n.contact:'')+(n.email?' • '+n.email:'');
       else sub=n.message||n.preview||(n.from?'מ-'+n.from:'');
       return `
-        <div onclick="markNotificationRead('${n.id}');document.querySelector('._notifPanel')?.remove();${n.type==='newMessage'&&n.fromUid?"S.chat={otherUid:'"+n.fromUid+"',otherName:'"+jsAttrEscape(n.from||'')+"'};go('chat')":n.type==='bookingApproved'?"go('messages')":n.type==='newBooking'?"adminTab='bookings';showAdminPanel()":n.type==='newTeacher'||n.type==='newReport'?"adminTab='teachers';showAdminPanel()":n.type==='newVideo'?"adminTab='videos';showAdminPanel()":n.type==='newStory'?"adminTab='stories';showAdminPanel()":n.type==='groupJoin'?"showTeacherGroupsPanel()":n.type==='groupApproved'||n.type==='groupRejected'?"S.comTab='groups';go('community')":n.type==='rateLesson'&&n.bookingId?"showRatingDialog('"+n.bookingId+"','"+n.teacherId+"','"+n.teacherName+"')":n.type==='lessonSummary'?"go('messages')":n.type==='briefProposal'?"S.comTab='briefs';go('community')":n.type==='briefAccepted'?"go('messages')":n.type==='newQuestion'?"_notifGoToQA('"+currentUser?.uid+"')":n.type==='questionAnswered'?"_notifGoToQA('"+n.teacherUid+"')":n.type==='trialReminder'?"go('subscribe')":""}" style="background:${n.read?'rgba(255,255,255,0.7)':'#fff'};border-right:4px solid ${col};border-radius:14px;padding:14px;margin-bottom:8px;cursor:pointer;display:flex;align-items:start;gap:12px;${!n.read?'box-shadow:0 4px 14px rgba(20,184,166,0.15)':''}">
+        <div onclick="markNotificationRead('${jsAttrEscape(n.id)}');document.querySelector('._notifPanel')?.remove();${n.type==='newMessage'&&n.fromUid?"S.chat={otherUid:'"+jsAttrEscape(n.fromUid)+"',otherName:'"+jsAttrEscape(n.from||'')+"'};go('chat')":n.type==='bookingApproved'?"go('messages')":n.type==='newBooking'?"adminTab='bookings';showAdminPanel()":n.type==='newTeacher'||n.type==='newReport'?"adminTab='teachers';showAdminPanel()":n.type==='newVideo'?"adminTab='videos';showAdminPanel()":n.type==='newStory'?"adminTab='stories';showAdminPanel()":n.type==='groupJoin'?"showTeacherGroupsPanel()":n.type==='groupApproved'||n.type==='groupRejected'?"S.comTab='groups';go('community')":n.type==='rateLesson'&&n.bookingId?"showRatingDialog('"+jsAttrEscape(n.bookingId)+"','"+jsAttrEscape(n.teacherId)+"','"+jsAttrEscape(n.teacherName)+"')":n.type==='lessonSummary'?"go('messages')":n.type==='briefProposal'?"S.comTab='briefs';go('community')":n.type==='briefAccepted'?"go('messages')":n.type==='newQuestion'?"_notifGoToQA('"+currentUser?.uid+"')":n.type==='questionAnswered'?"_notifGoToQA('"+jsAttrEscape(n.teacherUid)+"')":n.type==='trialReminder'?"go('subscribe')":""}" style="background:${n.read?'rgba(255,255,255,0.7)':'#fff'};border-right:4px solid ${col};border-radius:14px;padding:14px;margin-bottom:8px;cursor:pointer;display:flex;align-items:start;gap:12px;${!n.read?'box-shadow:0 4px 14px rgba(20,184,166,0.15)':''}">
           <div style="width:40px;height:40px;border-radius:12px;background:${col}20;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">${ico}</div>
           <div style="flex:1;min-width:0">
             <div style="font-weight:900;font-size:14px;color:#0F1A1F">${ttl}</div>
-            ${sub?`<div style="font-size:12px;color:#64748B;margin-top:3px">${sub}</div>`:''}
+            ${sub?`<div style="font-size:12px;color:#64748B;margin-top:3px">${escapeHtml(sub)}</div>`:''}
             <div style="font-size:10px;color:#6C7686;margin-top:4px">${agoTxt}</div>
           </div>
           ${!n.read?'<div style="width:8px;height:8px;border-radius:50%;background:#EF4444;flex-shrink:0;margin-top:6px"></div>':''}
@@ -5748,18 +5748,23 @@ async function loadAdminData(){
   try{
     // קרא users דרך REST API (עוקף קאש SDK) + adminAlerts במקביל
     const token=await firebase.auth().currentUser.getIdToken(false);
-    const [usersRes,alertsSnap,subAlertsSnap,msgsSnap]=await Promise.all([
+    const [usersRes,alertsSnap,subAlertsSnap,msgsSnap,blocksSnap]=await Promise.all([
       fetch('https://kidemy-83a17-default-rtdb.firebaseio.com/users.json?auth='+token,{cache:'no-store'}),
       db.ref('adminAlerts/students').get(),
       db.ref('adminAlerts/subscriptions').get(),
-      db.ref('contactMessages').get()
+      db.ref('contactMessages').get(),
+      db.ref('userBlocks').get()
     ]);
     const usersData=await usersRes.json();
     const freshUsers=[];
+    // blocked נגזר מ-userBlocks (כתיבה למנהל בלבד), לא מהשדה users/<uid>/blocked
+    // שהמשתמש עצמו יכול לכתוב או למחוק — userBlocks הוא ה-SSOT לחסימה.
+    const blockedUids=new Set();
+    if(blocksSnap.exists())blocksSnap.forEach(c=>{if(c.val()===true)blockedUids.add(c.key);});
     if(usersData&&typeof usersData==='object'&&!usersData.error)
       // uid מגיע אחרי הספרד בכוונה — המפתח האמיתי ב-DB הוא ה-SSOT, לא שדה uid
       // מיושן שאולי נשמר בתוך הרשומה עצמה בעבר.
-      Object.entries(usersData).forEach(([k,v])=>{if(v)freshUsers.push({...v,uid:k});});
+      Object.entries(usersData).forEach(([k,v])=>{if(v)freshUsers.push({...v,uid:k,blocked:blockedUids.has(k)});});
     adminAllUsers=freshUsers;
     // סנכרן adminAlertStudents מ-Firebase ישירות
     adminAlertStudents=[];
@@ -6111,7 +6116,7 @@ async function showFullRegistrationDetails(uid,role){
           ${row('אימייל הורה',fmt(u.parentEmail))}
           ${row('טלפון הורה',fmt(u.parentPhone))}
           ${row('ת.ז. הורה',fmt(u.parentId))}
-          ${u.parentIdPhoto?`<div style="margin-top:8px"><div style="font-size:10px;color:#04778A;font-weight:700;margin-bottom:4px">${icon("camera",14)} צילום ת.ז.</div><img src="${u.parentIdPhoto}" style="width:100%;max-height:140px;object-fit:cover;border-radius:8px;border:1.5px solid rgba(6,182,212,0.3)" alt="ת.ז. הורה"></div>`:''}
+          ${u.parentIdPhoto?`<div style="margin-top:8px"><div style="font-size:10px;color:#04778A;font-weight:700;margin-bottom:4px">${icon("camera",14)} צילום ת.ז.</div><img src="${escapeHtml(u.parentIdPhoto)}" style="width:100%;max-height:140px;object-fit:cover;border-radius:8px;border:1.5px solid rgba(6,182,212,0.3)" alt="ת.ז. הורה"></div>`:''}
         </div>`:''}
       </div>`;
     document.body.appendChild(ov);
@@ -6213,7 +6218,7 @@ async function adminRejectTeacher(uid){
 async function adminBlockUser(uid){
   if(!await _confirm('לחסום משתמש זה?',{confirmText:'חסום',cancelText:'ביטול',destructive:true}))return;
   try{
-    await db.ref('users/'+uid+'/blocked').set(true);
+    await db.ref('userBlocks/'+uid).set(true);
     showFireToast('🚫 המשתמש נחסם');
     await loadAdminData();renderAdminPanel();
   }catch(e){showFireToast('❌ '+e.message);}
@@ -6221,7 +6226,7 @@ async function adminBlockUser(uid){
 
 async function adminUnblockUser(uid){
   try{
-    await db.ref('users/'+uid+'/blocked').set(false);
+    await db.ref('userBlocks/'+uid).remove();
     showFireToast('✅ המשתמש שוחרר');
     await loadAdminData();renderAdminPanel();
   }catch(e){showFireToast('❌ '+e.message);}
@@ -8336,7 +8341,7 @@ function renderAdminTab(){
                 ${u.parentId?`<div style="font-size:11px;color:#64748B;margin-top:2px">🪪 ת"ז: ${escapeHtml(u.parentId)}</div>`:''}
                 <div style="font-size:11px;color:#64748B;direction:ltr;text-align:right;margin-top:2px">${icon("mail",14)} ${escapeHtml(u.parentEmail||'')}</div>
                 ${u.parentPhone?`<div style="font-size:11px;color:#64748B;direction:ltr;text-align:right">${icon("smartphone",14)} ${escapeHtml(u.parentPhone)}</div>`:''}
-                ${u.parentIdPhoto?`<div style="margin-top:8px"><div style="font-size:10px;color:#04778A;font-weight:700;margin-bottom:4px">${icon("camera",14)} צילום תז</div><img src="${u.parentIdPhoto}" onclick="this.style.maxHeight=this.style.maxHeight==='none'?'120px':'none'" style="width:100%;max-height:120px;object-fit:cover;border-radius:8px;cursor:zoom-in" alt="תז הורה"></div>`:'<div style="font-size:10px;color:#F59E0B;margin-top:4px">📸 ללא צילום תז</div>'}
+                ${u.parentIdPhoto?`<div style="margin-top:8px"><div style="font-size:10px;color:#04778A;font-weight:700;margin-bottom:4px">${icon("camera",14)} צילום תז</div><img src="${escapeHtml(u.parentIdPhoto)}" onclick="this.style.maxHeight=this.style.maxHeight==='none'?'120px':'none'" style="width:100%;max-height:120px;object-fit:cover;border-radius:8px;cursor:zoom-in" alt="תז הורה"></div>`:'<div style="font-size:10px;color:#F59E0B;margin-top:4px">📸 ללא צילום תז</div>'}
               </div>
             `:'<div style="font-size:11px;color:#EF4444;margin-top:4px;font-weight:700">⚠️ אין פרטי הורה</div>'}
             <div style="font-size:10px;color:#6C7686;margin-top:6px">נרשם: ${u.createdAt?new Date(u.createdAt).toLocaleDateString('he-IL'):''}</div>
@@ -8469,7 +8474,7 @@ function renderAdminTab(){
             <div style="font-size:10px;color:#CBD5E1;font-weight:700">${t.createdAt?new Date(t.createdAt).toLocaleDateString('he-IL'):''}</div>
           </div>
           ${t.ageVerification?.age?`<div style="padding:0 16px 4px;font-size:11px;color:#04778A;font-weight:700">🪪 גיל ${t.ageVerification.age} • ${t.ageVerification.idType==='id'?'ת.ז.':t.ageVerification.idType==='passport'?'דרכון':'אישור הורה'} • ${t.ageVerification.status==='verified'?'✅ מאומת':'⏳ ממתין לאימות גיל'}</div>`:'<div style="padding:0 16px 4px;font-size:11px;color:#EF4444;font-weight:700">⚠️ לא הוגשו פרטי גיל/זהות</div>'}
-          ${(t._idPhoto||t.ageVerification?.idPhoto)?`<div style="padding:0 16px 10px"><img src="${t._idPhoto||t.ageVerification.idPhoto}" style="width:100%;max-height:120px;object-fit:cover;border-radius:10px;border:1.5px solid rgba(20,184,166,0.3)" alt="מסמך זהות" onclick="this.style.maxHeight=this.style.maxHeight==='none'?'120px':'none'"></div>`:''}
+          ${(t._idPhoto||t.ageVerification?.idPhoto)?`<div style="padding:0 16px 10px"><img src="${escapeHtml(t._idPhoto||t.ageVerification.idPhoto)}" style="width:100%;max-height:120px;object-fit:cover;border-radius:10px;border:1.5px solid rgba(20,184,166,0.3)" alt="מסמך זהות" onclick="this.style.maxHeight=this.style.maxHeight==='none'?'120px':'none'"></div>`:''}
           ${t.desc?`<div style="padding:0 16px 10px;font-size:12px;color:#64748B;line-height:1.5">"${escapeHtml(t.desc.substring(0,120))}${t.desc.length>120?'...':''}"</div>`:''}
           ${t.ageVerification?.age&&t.ageVerification?.status!=='verified'?`<div style="padding:0 16px 10px"><button onclick="adminVerifyAge('${t.uid}')" style="width:100%;background:linear-gradient(135deg,#06B6D4,#14B8A6);border:none;color:#fff;border-radius:12px;padding:8px;font-weight:800;font-size:12px;cursor:pointer">🪪 אמת גיל וזהות</button></div>`:''}
           <div style="padding:0 16px 10px">
@@ -13339,7 +13344,7 @@ function showGroupDetail(groupId){
       <div style="background:rgba(245,158,11,0.08);border-radius:14px;padding:12px;text-align:center"><div style="font-size:20px">${icon("dollar",14)}</div><div style="font-weight:800;font-size:13px;margin-top:4px">₪${g.price} לילד</div><div style="font-size:11px;color:#64748B">לפגישה</div></div>
     </div>
     <div style="display:flex;align-items:center;gap:10px;padding:12px;background:rgba(100,116,139,0.06);border-radius:14px;margin-bottom:16px">
-      <div style="width:42px;height:42px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">${g.teacherPhoto?`<img src="${g.teacherPhoto}" style="width:100%;height:100%;object-fit:cover" alt="">`:catIcon(catObj,22)}</div>
+      <div style="width:42px;height:42px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">${g.teacherPhoto?`<img src="${escapeHtml(g.teacherPhoto)}" style="width:100%;height:100%;object-fit:cover" alt="">`:catIcon(catObj,22)}</div>
       <div><div style="font-weight:800;font-size:14px">${escapeHtml(g.teacherName||'')}</div><div style="font-size:12px;color:#64748B">מוביל הקבוצה</div></div>
     </div>
     ${g.isMixed?`<div style="background:rgba(20,184,166,0.06);border-radius:14px;padding:12px;margin-bottom:14px;display:flex;gap:10px;align-items:center"><span style="font-size:22px">🌈</span><div><div style="font-weight:800;font-size:13px">קבוצה מעורבת</div><div style="font-size:12px;color:#64748B">פתוח לילדים מכל רקע ואוכלוסייה. מצטרפים מקבלים תג קהילה מיוחד!</div></div></div>`:''}
@@ -14184,13 +14189,14 @@ auth&&auth.onAuthStateChanged(async user=>{
           go('login');return;
         }
       }catch(e2){}
-      // בדוק users/{uid}/blocked — עד כה adminBlockUser() כתב לשדה הזה אבל שום
-      // דבר לא בדק אותו: "חסימה" בפאנל הניהול לא עשתה בפועל שום דבר, המשתמש
-      // החסום המשיך להתחבר, לשלוח הודעות ולהזמין שיעורים כרגיל. בניגוד ל-
-      // bannedUsers (מחיקת חשבון סופית), זו חסימה הפיכה — לא מוחקים את ה-Auth,
-      // רק מנתקים, כדי ש-adminUnblockUser() יוכל לשחזר גישה.
+      // בדוק userBlocks/{uid} — עד כה adminBlockUser() כתב לשדה בתוך
+      // users/<uid> אבל שום דבר לא בדק אותו, ובנוסף המשתמש יכול היה לכתוב או
+      // למחוק אותו בעצמו (.validate לא רץ על מחיקה), כלומר לשחרר את עצמו מחסימה.
+      // userBlocks כתיב למנהל בלבד. בניגוד ל-bannedUsers (מחיקת חשבון סופית),
+      // זו חסימה הפיכה — לא מוחקים את ה-Auth, רק מנתקים, כדי ש-
+      // adminUnblockUser() יוכל לשחזר גישה.
       try{
-        const blockedSnap=await db.ref('users/'+user.uid+'/blocked').get();
+        const blockedSnap=await db.ref('userBlocks/'+user.uid).get();
         if(blockedSnap.exists()&&blockedSnap.val()===true){
           await auth.signOut().catch(()=>{});
           currentUser=null;currentUserData=null;

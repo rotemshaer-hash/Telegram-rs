@@ -963,3 +963,100 @@ describe('review stars stay between 1 and 5', () => {
     await assertSucceeds(set(ref(asStudent(), 'reviews/teacher-uid/b2'), review(4)));
   });
 });
+
+// ── CONTRACT: the real booking-creation write ──────────────────────────────
+// The seed above writes bookings with security rules DISABLED, and the owner's
+// email bypasses every rule, so neither manual testing nor the other tests
+// ever ran the write a real student performs. This one does: the exact
+// three-path atomic update from the booking screen (index.html, "כתיבה אטומית
+// לשלושת הנתיבים"), as the student, against a booking that does not exist yet.
+describe('contract: a student can create a booking', () => {
+  const newBooking = (id) => ({
+    studentId: STUDENT, teacherId: TEACHER,
+    studentName: 'Minor', price: 80, status: 'pending', createdAt: 5,
+  });
+  const threePathUpdate = (db, id) => update(ref(db), {
+    [`bookings/${id}`]: newBooking(id),
+    [`userBookings/${STUDENT}/${id}`]: newBooking(id),
+    [`teacherBookings/${TEACHER}/${id}`]: newBooking(id),
+  });
+
+  it('the real atomic three-path create, as the student, succeeds', async () => {
+    await assertSucceeds(threePathUpdate(asStudent(), 'bNew'));
+  });
+
+  it('a student still cannot create a booking naming someone else as the student', async () => {
+    await assertFails(update(ref(asStranger()), {
+      'bookings/bFake': newBooking('bFake'),
+      [`userBookings/${STUDENT}/bFake`]: newBooking('bFake'),
+      [`teacherBookings/${TEACHER}/bFake`]: newBooking('bFake'),
+    }));
+  });
+
+  it('a student still cannot write an approved status into the teacher’s copy', async () => {
+    await assertFails(update(ref(asStudent()), {
+      [`teacherBookings/${TEACHER}/b1/status`]: 'approved',
+    }));
+  });
+});
+
+// ── PRIVACY: admin blocks cannot be undone by the blocked user ─────────────
+// The block used to live at users/<uid>/blocked, which the user owns: they
+// could set it false, or delete it outright (.validate does not run on
+// deletes). It is now userBlocks/<uid>, writable by the admin only, and the
+// chat-send rule reads it.
+describe('privacy: an admin block holds', () => {
+  const sendMessage = (db, id) => set(ref(db, `messages/${STUDENT}_${TEACHER}/${id}`),
+    { from: STUDENT, text: 'hi', createdAt: 2 });
+
+  it('an unblocked student can send a message', async () => {
+    await assertSucceeds(sendMessage(asStudent(), 'm-ok'));
+  });
+
+  it('a blocked student cannot send a message', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await set(ref(ctx.database(), `userBlocks/${STUDENT}`), true);
+    });
+    await assertFails(sendMessage(asStudent(), 'm-blocked'));
+  });
+
+  it('a user cannot block or unblock themselves', async () => {
+    await assertFails(set(ref(asStudent(), `userBlocks/${STUDENT}`), true));
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await set(ref(ctx.database(), `userBlocks/${STUDENT}`), true);
+    });
+    await assertFails(remove(ref(asStudent(), `userBlocks/${STUDENT}`)));
+    await assertFails(set(ref(asStudent(), `userBlocks/${STUDENT}`), false));
+  });
+
+  it('a blocked user can read their own block (so login can sign them out)', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await set(ref(ctx.database(), `userBlocks/${STUDENT}`), true);
+    });
+    await assertSucceeds(get(ref(asStudent(), `userBlocks/${STUDENT}`)));
+    await assertFails(get(ref(asStranger(), `userBlocks/${STUDENT}`)));
+  });
+
+  it('the admin can block and unblock', async () => {
+    await assertSucceeds(set(ref(asAdmin(), `userBlocks/${STUDENT}`), true));
+    await assertSucceeds(remove(ref(asAdmin(), `userBlocks/${STUDENT}`)));
+  });
+});
+
+describe('contract: the teacher copy of a new booking cannot be forged', () => {
+  const copy = (over = {}) => ({
+    studentId: STUDENT, teacherId: TEACHER, price: 80, status: 'pending', createdAt: 5, ...over,
+  });
+
+  it('a student cannot create a teacher copy that is already approved', async () => {
+    await assertFails(set(ref(asStudent(), `teacherBookings/${TEACHER}/bX`), copy({ status: 'approved' })));
+  });
+
+  it('a student cannot file a booking under a teacher the booking does not name', async () => {
+    await assertFails(set(ref(asStudent(), `teacherBookings/${STRANGER}/bY`), copy()));
+  });
+
+  it('a student cannot create a teacher copy naming someone else as the student', async () => {
+    await assertFails(set(ref(asStudent(), `teacherBookings/${TEACHER}/bZ`), copy({ studentId: STRANGER })));
+  });
+});
