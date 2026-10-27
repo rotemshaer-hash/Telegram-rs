@@ -1060,3 +1060,31 @@ describe('contract: the teacher copy of a new booking cannot be forged', () => {
     await assertFails(set(ref(asStudent(), `teacherBookings/${TEACHER}/bZ`), copy({ studentId: STRANGER })));
   });
 });
+
+// ── PRIVACY: ID-photo fields cannot carry markup ───────────────────────────
+// parentIdPhoto and the teacher ID photo are owner-writable and were rendered
+// into <img src> on the admin screens. The screens now escape them; this is
+// the second layer, so a value that could break out of an attribute is refused
+// at write time rather than relying on every future renderer to remember.
+describe('privacy: ID-photo fields only accept a URL or an image data URL', () => {
+  const HOSTILE = ['x" onerror="window.__xss=1', 'https://a.b/x" onerror="1', "https://a.b/x' onerror='1",
+    'https://a.b/<script>', 'javascript:alert(1)', '/relative/path.png', 'data:text/html;base64,AAAA'];
+  const OK = ['https://firebasestorage.googleapis.com/v0/b/x/o/p?alt=media&token=abc',
+    'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ=='];
+
+  const targets = [
+    ['users parentIdPhoto', () => `users/${STUDENT}/parentIdPhoto`],
+    ['teacherVerification idPhoto', () => `teacherVerification/${TEACHER}/idPhoto`],
+    ['teachers ageVerification idPhoto', () => `teachers/${TEACHER}/ageVerification/idPhoto`],
+  ];
+  const owner = (p) => (p.includes(`/${TEACHER}/`) ? asTeacher() : asStudent());
+
+  for (const [label, pathOf] of targets) {
+    it(`${label}: a value that can break out of an attribute is refused`, async () => {
+      for (const v of HOSTILE) await assertFails(set(ref(owner(pathOf()), pathOf()), v));
+    });
+    it(`${label}: a real storage URL or image data URL is accepted`, async () => {
+      for (const v of OK) await assertSucceeds(set(ref(owner(pathOf()), pathOf()), v));
+    });
+  }
+});

@@ -43,6 +43,9 @@
           },
           "verifiedWithoutDoc": {
             ".validate": "auth.token.email == 'rotemshaer@gmail.com'"
+          },
+          "idPhoto": {
+            ".validate": "auth.token.email == 'rotemshaer@gmail.com' || (newData.isString() && (newData.val().beginsWith('https://') || newData.val().beginsWith('data:image/')) && !newData.val().contains('\"') && !newData.val().contains(\"'\") && !newData.val().contains('<') && !newData.val().contains('>'))"
           }
         }
       }
@@ -56,7 +59,10 @@
     "teacherVerification": {
       "$uid": {
         ".read": "auth != null && auth.uid == $uid",
-        ".write": "auth != null && auth.uid == $uid"
+        ".write": "auth != null && auth.uid == $uid",
+        "idPhoto": {
+          ".validate": "auth.token.email == 'rotemshaer@gmail.com' || (newData.isString() && (newData.val().beginsWith('https://') || newData.val().beginsWith('data:image/')) && !newData.val().contains('\"') && !newData.val().contains(\"'\") && !newData.val().contains('<') && !newData.val().contains('>'))"
+        }
       }
     },
 
@@ -91,6 +97,9 @@
         },
         "parentConsentAt": {
           ".validate": "auth.token.email == 'rotemshaer@gmail.com'"
+        },
+        "parentIdPhoto": {
+          ".validate": "auth.token.email == 'rotemshaer@gmail.com' || (newData.isString() && (newData.val().beginsWith('https://') || newData.val().beginsWith('data:image/')) && !newData.val().contains('\"') && !newData.val().contains(\"'\") && !newData.val().contains('<') && !newData.val().contains('>'))"
         }
       }
     },
