@@ -20,6 +20,7 @@ No duplicates. No inline magic numbers. Refer to the one definition everywhere.
 | Firebase project | `kidemy-83a17` — **intentionally still says "kidemy"**, do not rename | Real infra ID from before the Drushe rebrand; renaming it would require migrating to a new Firebase project, not a text edit — wrong project = data loss |
 | Dark header gradient | `linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%)` | Core visual identity — **never change** |
 | Commission model | `COMMISSION_RATE=0` — subscription only | Business model decision |
+| Lesson payments | The student and the teacher settle it between themselves. Drushe never collects, shows, requires or records a teacher's payment details, a payment method or a payment reference for a lesson. Drushe's only money is the teacher subscription (first 500 teachers free, then ₪49/month) | Business model (owner, 27.10.2026). A session once "protected" payment details the app should never have held |
 | Admin email | `ADMIN_EMAIL` constant — one definition | SSOT |
 | App version | `APP_VERSION` constant — one definition | SSOT |
 
