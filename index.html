@@ -1177,7 +1177,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.42';
+const APP_VERSION='4.11.43';
 
 // ─── הודעות קוליות — כבויות ────────────────────────────────────────────────
 // הקלטה קולית היא הערוץ היחיד בין ילדים שאיש לא בודק: אין תמלול, אין סינון,
@@ -1295,7 +1295,7 @@ let S={
   posts:[],parentBriefs:[],
   openPost:null, comFilter:"all", showCompose:false, newPostCat:"general", areaOnly:false, comPostType:'text',
   pTab:"videos", aTab:"story",
-  booked:false, bookStep:1, bookDayIdx:null, bookTime:null, bookType:"single", bookPay:null,
+  booked:false, bookStep:1, bookDayIdx:null, bookTime:null, bookType:"single",
   nearbyR:2,
   ratingT:null, ratingStars:0, ratingDone:false,
   videos:[],
@@ -1378,11 +1378,7 @@ function go(scr,extra={}){
   }
   if(scr==='booking'&&(extra.teacher||S.teacher)){
     const tid=(extra.teacher||S.teacher)?.id;
-    if(tid){
-      loadTeacherSchedule(tid);
-      // פרטי התשלום נטענים כאן ולא נשלפים מרשימת המורים — ראה teacherPrivate.
-      if(_teacherPrivateCache[tid]===undefined)loadTeacherPrivate(tid).then(()=>{if(S.screen==='booking')render();});
-    }
+    if(tid)loadTeacherSchedule(tid);
   }
   if(scr==='discover')loadDiscoverFeed();
   history.pushState({screen:scr,prev:S.prev},'');
@@ -1491,11 +1487,11 @@ function jsAttrEscape(s){
 function displayEmail(e){if(!e||e.endsWith('@kidemy.app'))return '';return e;}
 function safeUrl(u){if(!u)return '';return /^https?:\/\//i.test(String(u).trim())?String(u).trim():'';}
 
-// פרטים פרטיים של מורה — מייל, אמצעי תשלום וקישור מפגש — יושבים ב-
+// פרטים פרטיים של מורה — מייל, מייל להתראות וקישור מפגש — יושבים ב-
 // teacherPrivate/<uid> ולא ב-teachers/<uid>. ל-teachers יש ".read": "auth != null",
 // כלומר כל משתמש מחובר, כולל אורח אנונימי, יכול היה להוריד את המייל ואת מספרי
 // ה-Bit/PayBox של כל המורים. teacherPrivate קריא רק לבעלים, למנהל ולמשתמש
-// מאושר שאינו אורח (תלמיד חייב לראות איך משלמים לפני שהוא מזמין).
+// מאושר שאינו אורח (תלמיד מאושר קורא את הקישור למפגש ואת מייל ההתראות).
 // undefined = עוד לא נטען; {} = נטען ואין פרטים (או שהקריאה נדחתה).
 const _teacherPrivateCache={};
 async function loadTeacherPrivate(uid,force){
@@ -1506,17 +1502,18 @@ async function loadTeacherPrivate(uid,force){
   _teacherPrivateCache[uid]=v;
   return v;
 }
-// רשומות מורה שנשמרו לפני המעבר מחזיקות מייל/תשלום/קישור ב-teachers/<uid>.
+// רשומות מורה שנשמרו לפני המעבר מחזיקות מייל/קישור (ואמצעי תשלום) ב-teachers/<uid>.
 // בכניסה של המורה עצמו הם מועתקים ל-teacherPrivate ונמחקים מהצומת הציבורי.
 // קודם הכתיבה ל-teacherPrivate, ורק אחריה המחיקה — כשל באמצע לא מאבד נתונים.
 // ערך שכבר קיים ב-teacherPrivate גובר על הישן.
 async function _migrateLegacyTeacherPrivate(uid,t){
   const legacy={};
-  for(const k of ['payment','meetingLink','notificationEmail','email'])if(t?.[k])legacy[k]=t[k];
-  if(!Object.keys(legacy).length)return;
+  for(const k of ['meetingLink','notificationEmail','email'])if(t?.[k])legacy[k]=t[k];
+  // פרטי תשלום ישנים (payment) לא מועתקים — האפליקציה כבר לא אוספת אותם — רק נמחקים.
+  if(!Object.keys(legacy).length&&!t?.payment)return;
   try{
     const existing=await loadTeacherPrivate(uid,true);
-    await db.ref('teacherPrivate/'+uid).update({...legacy,...existing,updatedAt:Date.now()});
+    if(Object.keys(legacy).length)await db.ref('teacherPrivate/'+uid).update({...legacy,...existing,updatedAt:Date.now()});
     await db.ref('teachers/'+uid).update({payment:null,meetingLink:null,notificationEmail:null,email:null});
     await loadTeacherPrivate(uid,true);
   }catch(e){console.warn('[teacherPrivate migration]',e?.message||e);}
@@ -2579,24 +2576,6 @@ function TeacherSetup(){
         <p style="font-size:11px;color:#6C7686;margin:6px 0 0">${icon("alert-triangle",14)} ללא קישור, תלמידים לא יוכלו להצטרף לשיעור</p>
       </div>
 
-      <!-- פרטי תשלום לקבלת כספים משיעורים -->
-      <div class="card" style="margin-bottom:18px;background:linear-gradient(135deg,rgba(139,47,201,0.06),rgba(20,184,166,0.04))">
-        <h3 style="font-weight:900;font-size:16px;margin:0 0 6px;color:#8b2fc9">${icon("dollar",14)} פרטי תשלום לקבלת כספים משיעורים</h3>
-        <p style="color:#64748B;font-size:12px;margin:0 0 12px;line-height:1.6">תלמידים ישלמו <strong>ישירות אליך</strong> — Drushe לא מעורבת בכסף. הכנס לפחות אמצעי תשלום אחד כדי שתלמידים יוכלו לשלם לך.</p>
-        <div style="margin-bottom:10px">
-          <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">💜 מספר Bit</label>
-          <input id="tPayBit" class="inp" type="tel" placeholder="050-1234567">
-        </div>
-        <div style="margin-bottom:10px">
-          <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">🅿️ PayPal.me / אימייל PayPal</label>
-          <input id="tPayPaypal" class="inp" type="text" placeholder="paypal.me/yourname">
-        </div>
-        <div style="margin-bottom:0">
-          <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">🔵 מספר PayBox</label>
-          <input id="tPayPaybox" class="inp" type="tel" placeholder="050-1234567">
-        </div>
-      </div>
-
       <div class="warn" style="margin-bottom:14px"><span>🛡</span><span>הפרופיל יעבור אישור צוות הבטיחות תוך 24 שעות.</span></div>
 
       <!-- מייסדים / טריאל חינם — הדגשה מרכזית.
@@ -2846,10 +2825,6 @@ async function saveTeacherProfile(){
   const _idTypeVal=document.getElementById('tIdType')?.value||'';
   if(!_idTypeVal){showFireToast('❌ בחר סוג מסמך לאימות זהות');return;}
   if(_idTypeVal!=='parent_confirm'&&!_idPhotoBase64){showFireToast('❌ יש לצלם או להעלות את מסמך הזיהוי');return;}
-  const payBit=document.getElementById('tPayBit')?.value.trim()||'';
-  const payPaypal=document.getElementById('tPayPaypal')?.value.trim()||'';
-  const payPaybox=document.getElementById('tPayPaybox')?.value.trim()||'';
-  if(!payBit&&!payPaypal&&!payPaybox){showFireToast('❌ הכנס לפחות אמצעי תשלום אחד לקבלת כספים משיעורים');return;}
 
   try{
     showFireToast('⏳ שומר פרופיל...');
@@ -2858,11 +2833,11 @@ async function saveTeacherProfile(){
     if(_modeFrontal)modes.push('frontal');
 
     const mainCat=_selectedCats[0]||'custom';
-    // מייל, תשלום וקישור מפגש לא נכנסים ל-teachers/ (קריא לכל מחובר) — ראה
-    // _teacherPrivateCache. הם נכתבים ל-teacherPrivate/<uid> לפני הפרופיל, כדי
-    // שמורה שהפרופיל שלו נשמר לעולם לא יישאר בלי פרטי תשלום.
+    // מייל וקישור מפגש לא נכנסים ל-teachers/ (קריא לכל מחובר) — ראה
+    // _teacherPrivateCache. הם נכתבים ל-teacherPrivate/<uid> לפני הפרופיל.
+    // פרטי תשלום של שיעורים לא נאספים בכלל: Drushe לא מעורבת בכסף, והמורה
+    // והתלמיד מתאמים אותו ביניהם.
     const teacherPrivateData={
-      payment:{bit:payBit,paypal:payPaypal,paybox:payPaybox},
       email:currentUser.email,
       meetingLink:(document.getElementById('tMeetingLink')?.value.trim()||''),
       updatedAt:Date.now()
@@ -2990,7 +2965,9 @@ async function saveTeacherProfile(){
 }
 
 // ─── BOOKING SYSTEM (Firebase) ────────────────────────────────────────────────
-async function processPayment(payMethod,totalAmount){
+// בקשת שיעור. Drushe לא מעורבת בכסף של שיעורים — התלמיד והמורה מתאמים אותו
+// ביניהם — ולכן אין כאן אמצעי תשלום, קוד הפניה או סכום ששולם.
+async function requestBooking(totalAmount){
   if(!currentUser){
     showFireToast('❌ צריך להתחבר כדי להזמין שיעור');
     setTimeout(()=>go('login'),1200);return;
@@ -3040,12 +3017,7 @@ async function processPayment(payMethod,totalAmount){
       })(),
       time:S.bookTime,
       type:S.bookType||'single',
-      payMethod:payMethod,
       price:totalAmount,
-      payRef:genPayRef(bookingId),
-      grossAmount:totalAmount,
-      commission:0,
-      netToTeacher:totalAmount,
       status:'pending',
       jitsiRoom:jitsiRoom,
       jitsiUrl:_tpv.meetingLink||'',
@@ -3058,27 +3030,26 @@ async function processPayment(payMethod,totalAmount){
       ['userBookings/'+currentUser.uid+'/'+bookingId]: bookingData,
       ['teacherBookings/'+t.id+'/'+bookingId]: bookingData,
     });
-    // התראה למורה — התשלום הולך ישירות אליו, הוא זה שמאשר את ההזמנה
+    // התראה למורה — הוא זה שמאשר את ההזמנה
     notifyUser(t.id,'newBooking',{bookingId,day:bookingData.day||'',time:bookingData.time||'',amount:totalAmount,preview:'הזמנה חדשה ממתינה לאישורך'});
     try{
-      // מייל למורה — הזמנה חדשה, ממתינה לאישורו לאחר קבלת התשלום
+      // מייל למורה — הזמנה חדשה, ממתינה לאישורו
       const teacherEmail=_tpv.notificationEmail||_tpv.email||'';
       if(teacherEmail)await sendEmail(teacherEmail,
         `📅 הזמנה חדשה — ${bookingData.studentName||'תלמיד'} — Drushe`,
-        `שלום,\n\nיש לך הזמנה חדשה:\n\n👤 תלמיד: ${bookingData.studentName||''}\n📅 ${bookingData.day||''} בשעה ${bookingData.time||''}\n💰 לקבלתך (100%, ${payMethod}): ₪${totalAmount}\n\nלאחר שתקבל את התשלום, כנס לאפליקציה ואשר את ההזמנה:\nhttps://kidemy-app.netlify.app\n\n– צוות Drushe`
+        `שלום,\n\nיש לך הזמנה חדשה:\n\n👤 תלמיד: ${bookingData.studentName||''}\n📅 ${bookingData.day||''} בשעה ${bookingData.time||''}\n💰 מחיר השיעור: ₪${totalAmount}\n\nכנס לאפליקציה כדי לאשר את ההזמנה ולתאם עם התלמיד את פרטי השיעור והתשלום:\nhttps://kidemy-app.netlify.app\n\n– צוות Drushe`
       );
       // מייל להורה — ממתין לאישור המורה
       if(currentUserData?.parentEmail){
         sendEmail(currentUserData.parentEmail,
           `📚 ${currentUserData.name||bookingData.studentName} הזמין/ה שיעור — ממתין לאישור המורה`,
-          `שלום ${currentUserData.parentName||'הורה יקר'},\n\nילדך הזמין/ה שיעור ב-Drushe:\n👨‍🏫 מורה: ${t.name}\n📅 ${bookingData.day} בשעה ${bookingData.time}\n💰 סכום: ₪${totalAmount} (${payMethod})\n📌 קוד הפניה: ${bookingData.payRef}\n\n⏳ ההזמנה תאושר לאחר שהמורה יאשר קבלת התשלום.\n\n– צוות Drushe`
+          `שלום ${currentUserData.parentName||'הורה יקר'},\n\nילדך הזמין/ה שיעור ב-Drushe:\n👨‍🏫 מורה: ${t.name}\n📅 ${bookingData.day} בשעה ${bookingData.time}\n💰 מחיר השיעור: ₪${totalAmount}\n\n⏳ ההזמנה ממתינה לאישור המורה. את התשלום מתאמים ישירות מול המורה — Drushe לא מעורבת בכסף.\n\n– צוות Drushe`
         ).catch(()=>{});
       }
     }catch(e){}
     S.lastBookingId=bookingId;
-    S.lastPayRef=bookingData.payRef;
     S.bookStep=3;
-    kLog('booking_created',{teacher_id:t.id,teacher_cat:t.cat||'',price:totalAmount,method:payMethod,type:S.bookType||'single'});
+    kLog('booking_created',{teacher_id:t.id,teacher_cat:t.cat||'',price:totalAmount,type:S.bookType||'single'});
     showFireToast('🎉 מעולה! עשית צעד גדול — ההזמנה נשמרה ומחכה לאישור המורה');
     render();
   }catch(e){
@@ -5568,10 +5539,6 @@ async function checkTeacherTrialReminder(){
     await sendEmail(currentUser.email,subject,body);
     await db.ref('notifications/'+currentUser.uid).push({type:'trialReminder',read:false,createdAt:Date.now(),daysLeft}).catch(()=>{});
   }catch(e){console.warn('[trialReminder] failed:',e);}
-}
-function genPayRef(bookingId){
-  // קוד הפניה קצר ייחודי לכל הזמנה: DRU-XXXXX
-  return 'DRU-'+(bookingId||'').replace(/[^A-Za-z0-9]/g,'').toUpperCase().substring(0,5);
 }
 function isAdmin(){
   return currentUser&&ADMIN_EMAILS.includes(currentUser.email?.toLowerCase());
@@ -9606,7 +9573,7 @@ function Home(){
               <div>
                 <div style="font-weight:800;font-size:15px">${escapeHtml(b.studentName)}</div>
                 <div style="font-size:12px;opacity:0.85;margin-top:3px">📅 יום ${b.day} בשעה ${b.time}</div>
-                <div style="font-size:12px;opacity:0.85;margin-top:2px">${icon("dollar",14)} ₪${b.price} • ${b.payMethod}</div>
+                <div style="font-size:12px;opacity:0.85;margin-top:2px">${icon("dollar",14)} ₪${b.price}</div>
               </div>
             </div>
             <div style="display:flex;gap:8px">
@@ -10390,7 +10357,7 @@ function Booking(){
       <div style="display:flex;justify-content:space-between;font-size:13px"><span style="font-weight:700">${S.bookTime}</span><span style="color:${C.muted}">שעה</span></div>
     </div>`:''}
 
-    <button class="btn bs" ${!selDay||!S.bookTime?"disabled":"onclick='checkSubAndAdvance()'"}>${!selDay||!S.bookTime?"בחר תאריך ושעה":"המשך לתשלום →"}</button>`;
+    <button class="btn bs" ${!selDay||!S.bookTime?"disabled":"onclick='checkSubAndAdvance()'"}>${!selDay||!S.bookTime?"בחר תאריך ושעה":"המשך →"}</button>`;
 
   if(step===2) body=`
     <!-- הסבר מודל התשלום -->
@@ -10398,14 +10365,14 @@ function Booking(){
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
         <div style="width:40px;height:40px;border-radius:12px;background:rgba(20,184,166,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
         <div>
-          <div style="font-weight:900;font-size:16px;color:#14B8A6">תשלום ישיר למורה</div>
-          <div style="font-size:12px;color:#64748B;margin-top:2px">Drushe לא מעורבת בכסף — התשלום ישירות בינך לבין המורה</div>
+          <div style="font-weight:900;font-size:16px;color:#14B8A6">התשלום — בינך לבין המורה</div>
+          <div style="font-size:12px;color:#64748B;margin-top:2px">Drushe לא מעורבת בכסף של השיעור — את התשלום מתאמים ישירות עם המורה</div>
         </div>
       </div>
       <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-        <div style="background:rgba(20,184,166,0.1);border-radius:50px;padding:5px 12px;font-size:11px;font-weight:700;color:#14B8A6">1️⃣ אתה משלם למורה</div>
+        <div style="background:rgba(20,184,166,0.1);border-radius:50px;padding:5px 12px;font-size:11px;font-weight:700;color:#14B8A6">1️⃣ שולחים בקשה</div>
         <span style="color:#6C7686">→</span>
-        <div style="background:rgba(20,184,166,0.1);border-radius:50px;padding:5px 12px;font-size:11px;font-weight:700;color:#14B8A6">2️⃣ המורה מאשר קבלת תשלום</div>
+        <div style="background:rgba(20,184,166,0.1);border-radius:50px;padding:5px 12px;font-size:11px;font-weight:700;color:#14B8A6">2️⃣ המורה מאשר</div>
         <span style="color:#6C7686">→</span>
         <div style="background:rgba(16,185,129,0.1);border-radius:50px;padding:5px 12px;font-size:11px;font-weight:700;color:#10B981">3️⃣ השיעור מתקיים</div>
       </div>
@@ -10417,7 +10384,7 @@ function Booking(){
       <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:13px"><span style="font-weight:700">${escapeHtml(t.name||'')}</span><span style="color:${C.muted}">מורה</span></div>
       <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:13px"><span style="font-weight:700">${escapeHtml(selDay?.label||'')} ${escapeHtml(selDay?.num||'')} ${escapeHtml(selDay?.mon||'')} – ${escapeHtml(S.bookTime||'')}</span><span style="color:${C.muted}">מועד</span></div>
       <div style="height:1px;background:rgba(20,184,166,.15);margin:10px 0"></div>
-      <div style="display:flex;justify-content:space-between"><span style="font-weight:900;font-size:16px">לתשלום למורה</span><span style="font-weight:900;font-size:20px;color:#14B8A6">₪${price}</span></div>
+      <div style="display:flex;justify-content:space-between"><span style="font-weight:900;font-size:16px">מחיר השיעור</span><span style="font-weight:900;font-size:20px;color:#14B8A6">₪${price}</span></div>
     </div>
 
     ${(()=>{
@@ -10428,84 +10395,20 @@ function Booking(){
       if(subStatus==='pending')out+=`<div style="background:rgba(139,47,201,0.08);border-radius:14px;padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px"><div style="font-size:20px">⏳</div><div><div style="font-weight:800;font-size:13px;color:#8B5CF6">מנוי פרימיום ממתין לאישור</div><div style="font-size:11px;color:#64748B;margin-top:1px">הצוות מאמת את התשלום — בד"כ תוך 2–4 שעות</div></div></div>`;
       return out;
     })()}
-    ${(()=>{
-      if(_teacherPrivateCache[t.id]===undefined){
-        loadTeacherPrivate(t.id).then(()=>render());
-        return `<div style="text-align:center;padding:18px;color:#64748B;font-size:13px;margin-bottom:14px">טוען פרטי תשלום…</div>`;
-      }
-      const tp=_teacherPrivateCache[t.id].payment||{};
-      if(!tp.bit&&!tp.paypal&&!tp.paybox){
-        return `<div style="background:rgba(239,68,68,0.06);border-radius:16px;padding:18px;text-align:center;margin-bottom:14px">
-          <div style="font-size:32px;margin-bottom:8px">⚠️</div>
-          <div style="font-weight:800;font-size:14px;color:#EF4444;margin-bottom:6px">המורה טרם הגדיר/ה פרטי תשלום</div>
-          <div style="font-size:12px;color:#64748B;line-height:1.6">אי אפשר להשלים הזמנה כרגע. אפשר לשלוח למורה הודעה בצ'אט ולנסות שוב מאוחר יותר.</div>
-        </div>`;
-      }
-      const paypalUrl=tp.paypal?(tp.paypal.startsWith('http')?tp.paypal:tp.paypal.startsWith('paypal.me/')?'https://'+tp.paypal:'https://paypal.me/'+tp.paypal.replace(/^@/,'')):'';
-      let out=`<h3 style="font-weight:900;font-size:16px;margin:0 0 12px">בחר אמצעי תשלום:</h3>`;
-      if(tp.bit)out+=`
-      <div class="pay-m ${S.bookPay==='bit'?"on":""}" onclick="S.bookPay='bit';render()" style="border-color:${S.bookPay==='bit'?'#14B8A6':'rgba(20,184,166,.1)'};background:${S.bookPay==='bit'?'rgba(20,184,166,0.1)':'rgba(255,255,255,0.7)'}">
-        <div style="font-size:30px;width:48px;height:48px;border-radius:14px;background:rgba(20,184,166,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0">💜</div>
-        <div style="flex:1">
-          <div style="font-weight:800;font-size:15px;color:#14B8A6">Bit</div>
-          <div style="font-size:12px;color:${C.muted}">שלח ל: ${escapeHtml(tp.bit||'')} (${escapeHtml(t.name||'')})</div>
-        </div>
-        ${S.bookPay==='bit'?`<div style="margin-right:auto;width:24px;height:24px;border-radius:50%;background:#14B8A6;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px">✓</div>`:""}
-      </div>`;
-      if(tp.paypal)out+=`
-      <div class="pay-m ${S.bookPay==='paypal'?"on":""}" onclick="S.bookPay='paypal';render()" style="border-color:${S.bookPay==='paypal'?'#003087':'rgba(20,184,166,.1)'};background:${S.bookPay==='paypal'?'rgba(0,48,135,0.08)':'rgba(255,255,255,0.7)'}">
-        <div style="font-size:30px;width:48px;height:48px;border-radius:14px;background:rgba(0,48,135,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0">🅿️</div>
-        <div style="flex:1">
-          <div style="font-weight:800;font-size:15px;color:#003087">PayPal</div>
-          <div style="font-size:12px;color:${C.muted}">שלח ל: ${escapeHtml(tp.paypal||'')} (${escapeHtml(t.name||'')})</div>
-        </div>
-        ${S.bookPay==='paypal'?`<div style="margin-right:auto;width:24px;height:24px;border-radius:50%;background:#003087;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px">✓</div>`:""}
-      </div>`;
-      if(tp.paybox)out+=`
-      <div class="pay-m ${S.bookPay==='paybox'?"on":""}" onclick="S.bookPay='paybox';render()" style="border-color:${S.bookPay==='paybox'?'#0066CC':'rgba(20,184,166,.1)'};background:${S.bookPay==='paybox'?'rgba(0,102,204,0.08)':'rgba(255,255,255,0.7)'}">
-        <div style="font-size:30px;width:48px;height:48px;border-radius:14px;background:rgba(0,102,204,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0">🔵</div>
-        <div style="flex:1">
-          <div style="font-weight:800;font-size:15px;color:#0066CC">PayBox</div>
-          <div style="font-size:12px;color:${C.muted}">שלח ל: ${escapeHtml(tp.paybox||'')} (${escapeHtml(t.name||'')})</div>
-        </div>
-        ${S.bookPay==='paybox'?`<div style="margin-right:auto;width:24px;height:24px;border-radius:50%;background:#0066CC;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px">✓</div>`:""}
-      </div>`;
-      if(S.bookPay)out+=`
-      <div style="background:linear-gradient(135deg,rgba(20,184,166,0.1),rgba(6,182,212,0.08));border-radius:16px;padding:16px;margin-bottom:14px">
-        <h4 style="font-weight:900;font-size:14px;margin:0 0 10px;color:#14B8A6;display:flex;align-items:center;gap:6px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12" y2="18"/></svg>כיצד לשלם:</h4>
-        <div style="display:flex;flex-direction:column;gap:8px">
-          <div style="display:flex;gap:8px;align-items:center"><div style="width:24px;height:24px;border-radius:50%;background:#14B8A6;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;flex-shrink:0">1</div><span style="font-size:13px">${S.bookPay==='paypal'?'לחץ "פתח PayPal.me" למטה → ישלח לעמוד תשלום':'לחץ "העתק" למטה → פתח Bit/PayBox ושלם למספר'}</span></div>
-          <div style="display:flex;gap:8px;align-items:center"><div style="width:24px;height:24px;border-radius:50%;background:#06B6D4;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;flex-shrink:0">2</div><span style="font-size:13px">שלח <strong style="color:#14B8A6">₪${price}</strong> ישירות ל<strong>${escapeHtml(t.name||'')}</strong>: <strong style="direction:ltr;unicode-bidi:isolate">${escapeHtml((S.bookPay==='paypal'?tp.paypal:S.bookPay==='paybox'?tp.paybox:tp.bit)||'')}</strong></span></div>
-          <div style="display:flex;gap:8px;align-items:center"><div style="width:24px;height:24px;border-radius:50%;background:#10B981;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;flex-shrink:0">3</div><span style="font-size:13px">חזור ולחץ "אישור – שילמתי!" ←</span></div>
-        </div>
-        ${S.bookPay==='bit'?`<button onclick="navigator.clipboard?.writeText('${jsAttrEscape(tp.bit||'')}').then(()=>showFireToast('✅ מספר הועתק!')).catch(()=>{})" style="display:block;width:100%;margin-top:10px;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:12px;padding:11px;font-weight:800;font-size:13px;cursor:pointer;text-align:center">💜 העתק מספר Bit: ${escapeHtml(tp.bit||'')}</button>`:
-        S.bookPay==='paypal'?`<a href="${safeUrl(paypalUrl)||'#'}" target="_blank" rel="noopener noreferrer" style="display:block;width:100%;margin-top:10px;background:linear-gradient(135deg,#003087,#009CDE);border:none;color:#fff;border-radius:12px;padding:11px;font-weight:800;font-size:13px;cursor:pointer;text-align:center;text-decoration:none">🅿️ פתח PayPal לתשלום →</a>`:
-        `<button onclick="navigator.clipboard?.writeText('${jsAttrEscape(tp.paybox||'')}').then(()=>showFireToast('✅ מספר הועתק!')).catch(()=>{})" style="display:block;width:100%;margin-top:10px;background:linear-gradient(135deg,#0066CC,#0052A3);border:none;color:#fff;border-radius:12px;padding:11px;font-weight:800;font-size:13px;cursor:pointer;text-align:center">🔵 העתק מספר PayBox: ${escapeHtml(tp.paybox||'')}</button>`}
-      </div>`;
-      out+=`<button class="btn bg" ${!S.bookPay?"disabled":`onclick="processPayment('${S.bookPay||''}',${price})"`}>${!S.bookPay?"בחר אמצעי תשלום":"✅ אישור – שילמתי!"}</button>
-      <p style="text-align:center;font-size:11px;color:${C.muted};margin-top:10px">ההזמנה תאושר ע"י המורה לאחר קבלת התשלום</p>`;
-      return out;
-    })()}`;
+    <button class="btn bg" onclick="requestBooking(${price})">✅ שלח בקשת שיעור</button>
+    <p style="text-align:center;font-size:11px;color:${C.muted};margin-top:10px">ההזמנה תאושר ע"י המורה. את התשלום תתאמו ישירות ביניכם.</p>`;
 
   if(step===3){S.booked=true;body=`
     <div style="text-align:center;padding:10px 0">
       <div style="width:88px;height:88px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;margin:0 auto 14px"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
       <h3 style="font-weight:900;font-size:22px;margin-bottom:6px;color:#0F1A1F">ההזמנה נשלחה!</h3>
-      <p style="font-size:13px;color:#64748B;margin:0 0 18px;line-height:1.6">ממתינה לאישור המורה לאחר קבלת התשלום</p>
-
-      <!-- קוד הפניה -->
-      <div style="background:linear-gradient(135deg,#E0FDF4,#CCFBF1);border-radius:20px;padding:20px;margin-bottom:18px">
-        <div style="font-size:11px;color:#64748B;margin-bottom:6px;display:flex;align-items:center;gap:6px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>קוד הפניה שלך</div>
-        <div style="font-size:30px;font-weight:900;letter-spacing:3px;color:#14B8A6;font-family:monospace">${S.lastPayRef||''}</div>
-        <div style="font-size:11px;color:#64748B;margin-top:6px">שמור קוד זה — הוא מקשר את התשלום שלך להזמנה</div>
-        <button onclick="if(navigator.clipboard)navigator.clipboard.writeText('${S.lastPayRef||''}').then(()=>showFireToast('📋 הקוד הועתק!'))" style="margin-top:12px;background:rgba(20,184,166,0.15);color:#14B8A6;border-radius:50px;padding:7px 18px;font-size:12px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>העתק קוד</button>
-      </div>
+      <p style="font-size:13px;color:#64748B;margin:0 0 18px;line-height:1.6">ממתינה לאישור המורה</p>
 
       <!-- פרטי ההזמנה -->
       <div style="background:rgba(20,184,166,.06);border-radius:16px;padding:16px;margin-bottom:18px;text-align:right">
         <div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="font-weight:700">${escapeHtml(t.name||'')}</span><span style="color:${C.muted};font-size:13px">מורה</span></div>
         <div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="font-weight:700;font-size:13px">${escapeHtml(selDay?.label||'')} ${escapeHtml(selDay?.num||'')} ${escapeHtml(selDay?.mon||'')} בשעה ${escapeHtml(S.bookTime||'')}</span><span style="color:${C.muted};font-size:13px">מועד</span></div>
-        <div style="display:flex;justify-content:space-between"><span style="font-weight:700;color:var(--p)">₪${price}</span><span style="color:${C.muted};font-size:13px">סכום ששולם</span></div>
+        <div style="display:flex;justify-content:space-between"><span style="font-weight:700;color:var(--p)">₪${price}</span><span style="color:${C.muted};font-size:13px">מחיר השיעור</span></div>
       </div>
 
       <!-- שלבי תהליך -->
@@ -10513,13 +10416,13 @@ function Booking(){
         <div style="font-weight:800;font-size:12px;color:#D97706;margin-bottom:10px;display:flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>מה קורה עכשיו?</div>
         <div style="display:flex;flex-direction:column;gap:8px">
           <div style="display:flex;gap:10px;align-items:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg><span style="font-size:12px;color:#0F1A1F">ההזמנה נשמרה במערכת</span></div>
-          <div style="display:flex;gap:10px;align-items:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><span style="font-size:12px;color:#64748B">צוות Drushe מאמת את התשלום (עד 2 שעות)</span></div>
+          <div style="display:flex;gap:10px;align-items:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><span style="font-size:12px;color:#64748B">המורה יאשר ויתאם איתך את פרטי השיעור והתשלום</span></div>
           <div style="display:flex;gap:10px;align-items:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span style="font-size:12px;color:#64748B">המורה יאשר ויחכה לך</span></div>
         </div>
       </div>
 
       <div style="display:flex;gap:10px">
-        <button class="btn bp" style="flex:1;padding:14px" onclick="S.bookStep=1;S.bookDayIdx=null;S.bookTime=null;S.bookPay=null;go('home')">${icon("home",14)} חזור לבית</button>
+        <button class="btn bp" style="flex:1;padding:14px" onclick="S.bookStep=1;S.bookDayIdx=null;S.bookTime=null;go('home')">${icon("home",14)} חזור לבית</button>
         <button onclick="go('messages')" style="background:rgba(20,184,166,0.1);color:#14B8A6;border:none;border-radius:50px;padding:14px 18px;font-weight:800;cursor:pointer;font-size:13px">${icon("clipboard",14)} ההזמנות שלי</button>
       </div>
     </div>`;}
@@ -10624,7 +10527,7 @@ function Messages(){
                 <div>
                   <div style="font-weight:900;font-size:16px;color:#0F1A1F">${currentUserData?.role==='teacher'?b.studentName:b.teacherName}</div>
                   <div style="font-size:12px;color:#10B981;font-weight:700;margin-top:3px">📅 יום ${b.day} • ${icon("clock",14)} ${b.time}</div>
-                  <div style="font-size:11px;color:#64748B;margin-top:3px">${icon("dollar",14)} ₪${b.price} • ${b.payMethod}</div>
+                  <div style="font-size:11px;color:#64748B;margin-top:3px">${icon("dollar",14)} ₪${b.price}</div>
                 </div>
               </div>
               <span style="background:rgba(16,185,129,0.15);color:#059669;font-size:10px;font-weight:800;padding:4px 10px;border-radius:50px;flex-shrink:0">✓ מאושר</span>
@@ -11741,10 +11644,7 @@ async function _acceptBriefProposal(briefId,teacherUid){
       day:'לתיאום עם המורה',
       time:'לתיאום',
       type:'brief',
-      price,grossAmount:price,
-      commission:0,netToTeacher:price,
-      payMethod:'briefAccepted',
-      payRef:'BRIEF-'+briefId.substring(0,6).toUpperCase(),
+      price,
       status:'pending',
       briefId,briefChildName:brief.childName,
       createdAt:Date.now()
@@ -12117,7 +12017,7 @@ function About(){
     ${[
       {ic:'bar-chart',col:'#14B8A6',t:'דוח שבועי להורים',d:'דוח שבועי אוטומטי במייל על שיעורי הילד/ה ודירוגים, עם קישור צפייה אישי — בלי צורך בסיסמה.'},
       {ic:'chat',col:'#06B6D4',t:'צפייה בצ\'אטים',d:'כל ההתכתבויות בין ילדכם למורה גלויות לצפייה — פשוט היכנסו עם פרטי ההתחברות של הילד/ה.'},
-      {ic:'dollar',col:'#F59E0B',t:'שקיפות בתשלומים',d:'ההורה מקבל עדכון במייל על כל הזמנה ותשלום שמתבצע.'},
+      {ic:'dollar',col:'#F59E0B',t:'שקיפות בהזמנות',d:'ההורה מקבל עדכון במייל על כל הזמנה ושיעור שמתבצע. את התשלום על השיעור מתאמים ישירות מול המורה.'},
     ].map(s=>`
       <div class="card" style="display:flex;gap:12px;align-items:flex-start;margin-bottom:10px">
         <div style="flex-shrink:0">${miniBadge(s.ic,s.col,40)}</div>
@@ -12639,22 +12539,6 @@ function showEditTeacherProfileDialog(){
         <p style="font-size:12px;color:#64748B;margin:0 0 10px;line-height:1.6">תלמידים ישתמשו בקישור זה לכניסה לשיעור. יש להגדיר קישור פעיל כדי שתלמידים יוכלו להצטרף.</p>
         <input id="_etMeetingLink" class="inp" type="url" value="${(_tpv.meetingLink||'').replace(/"/g,'&quot;')}" placeholder="https://zoom.us/j/... או https://meet.google.com/...">
       </div>
-      <div style="background:rgba(139,47,201,0.04);border-radius:18px;padding:16px;margin-bottom:16px">
-        <h3 style="font-weight:900;font-size:15px;margin:0 0 6px;color:#8b2fc9">${icon("dollar",14)} פרטי תשלום לקבלת כספים משיעורים</h3>
-        <p style="font-size:12px;color:#64748B;margin:0 0 10px;line-height:1.6">תלמידים ישלמו ישירות אליך. הכנס לפחות אמצעי תשלום אחד.</p>
-        <div style="margin-bottom:10px">
-          <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">💜 מספר Bit</label>
-          <input id="_etPayBit" class="inp" type="tel" value="${(_tpv.payment?.bit||'').replace(/"/g,'&quot;')}" placeholder="050-1234567">
-        </div>
-        <div style="margin-bottom:10px">
-          <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">🅿️ PayPal.me / אימייל PayPal</label>
-          <input id="_etPayPaypal" class="inp" type="text" value="${(_tpv.payment?.paypal||'').replace(/"/g,'&quot;')}" placeholder="paypal.me/yourname">
-        </div>
-        <div style="margin-bottom:0">
-          <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">🔵 מספר PayBox</label>
-          <input id="_etPayPaybox" class="inp" type="tel" value="${(_tpv.payment?.paybox||'').replace(/"/g,'&quot;')}" placeholder="050-1234567">
-        </div>
-      </div>
       <div style="background:rgba(239,68,68,0.04);border-radius:18px;padding:16px;margin-bottom:16px">
         <h3 style="font-weight:900;font-size:15px;margin:0 0 6px;color:#EF4444">${icon("mail",14)} מייל להתראות</h3>
         <p style="font-size:12px;color:#64748B;margin:0 0 10px;line-height:1.6">כאן תקבל הודעות על הזמנות שיעור חדשות. <strong>חשוב:</strong> הכנס מייל אמיתי שלך (לא @kidemy.app).</p>
@@ -12932,10 +12816,6 @@ async function saveTeacherProfileEdits(){
   const facebook=document.getElementById('_etFacebook')?.value.trim()||'';
   const notificationEmail=document.getElementById('_etNotifEmail')?.value.trim()||'';
   const meetingLink=document.getElementById('_etMeetingLink')?.value.trim()||'';
-  const payBit=document.getElementById('_etPayBit')?.value.trim()||'';
-  const payPaypal=document.getElementById('_etPayPaypal')?.value.trim()||'';
-  const payPaybox=document.getElementById('_etPayPaybox')?.value.trim()||'';
-  if(!payBit&&!payPaypal&&!payPaybox){showFireToast('❌ הכנס לפחות אמצעי תשלום אחד לקבלת כספים משיעורים');return;}
   const cats=(window._etCats&&window._etCats.length)?window._etCats:(TEACHERS.find(x=>x.id===currentUser?.uid)?.cats||[]);
   const customCats=window._etCustomCats||[];
   const allCats=[...cats,...customCats.map(c=>'custom:'+c)];
@@ -12965,7 +12845,7 @@ async function saveTeacherProfileEdits(){
     const teacherUpdates={desc:firstDesc,price,city,cats:allCats,cat:allCats[0],customCats,name,instagram,tiktok,facebook,faq};
     // פרטים פרטיים נכתבים ל-teacherPrivate; null על ההעתקים הישנים ב-teachers/
     // מנקה רשומות שנשמרו לפני המעבר (החוקים כבר אוסרים לכתוב אותם שם).
-    const privateUpdates={notificationEmail,meetingLink,payment:{bit:payBit,paypal:payPaypal,paybox:payPaybox},updatedAt:Date.now()};
+    const privateUpdates={notificationEmail,meetingLink,updatedAt:Date.now()};
     await db.ref('teacherPrivate/'+currentUser.uid).update(privateUpdates);
     _teacherPrivateCache[currentUser.uid]={...(_teacherPrivateCache[currentUser.uid]||{}),...privateUpdates};
     await db.ref('teachers/'+currentUser.uid).update({...teacherUpdates,payment:null,meetingLink:null,notificationEmail:null,email:null});
@@ -14026,7 +13906,7 @@ function openWhatsApp(phone,message){
 
 // תבניות הודעות מוכנות
 const WA_TEMPLATES={
-  newBookingTeacher:(b)=>`שלום ${b.teacherName} 👋\n\nתלמיד חדש הזמין שיעור ב-Drushe:\n👤 ${b.studentName}\n📅 יום ${b.day} בשעה ${b.time}\n💰 ₪${b.price} (${b.payMethod})\n\nכנס לאפליקציה כדי לאשר:\n${window.location.origin}`,
+  newBookingTeacher:(b)=>`שלום ${b.teacherName} 👋\n\nתלמיד חדש הזמין שיעור ב-Drushe:\n👤 ${b.studentName}\n📅 יום ${b.day} בשעה ${b.time}\n💰 מחיר השיעור: ₪${b.price}\n\nכנס לאפליקציה כדי לאשר:\n${window.location.origin}`,
   bookingApproved:(b)=>`היי ${b.studentName} 🎉\n\nהשיעור שלך אושר!\n👨‍🏫 ${b.teacherName}\n📅 יום ${b.day} בשעה ${b.time}\n📹 שיעור אונליין${b.jitsiUrl?':\n'+b.jitsiUrl:' – הקישור יישלח על ידי המורה'}\n\nכנס לאפליקציה:\n${window.location.origin}`,
   bookingReminder:(b)=>`היי ${b.studentName} ⏰\n\nתזכורת: השיעור שלך עוד מעט!\n👨‍🏫 ${b.teacherName}\n📅 יום ${b.day} בשעה ${b.time}\n\nהצטרף לשיעור:\n${b.jitsiUrl||window.location.origin}`,
   parentNotify:(b,childName)=>`שלום! 👋\n\nהילד/ה ${childName} הזמין שיעור ב-Drushe:\n📚 ${b.teacherCat}\n👨‍🏫 ${b.teacherName}\n📅 יום ${b.day} בשעה ${b.time}\n💰 ₪${b.price}\n\nלצפייה ואישור:\n${window.location.origin}`,

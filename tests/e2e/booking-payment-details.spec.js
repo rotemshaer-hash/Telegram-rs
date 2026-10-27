@@ -1,17 +1,17 @@
 const { test, expect } = require('@playwright/test');
 
-// Found while verifying an external review (27.10.2026): the booking screen read
-// t.payment, but the teacher list loader never copies payment into TEACHERS, so
-// every student saw "the teacher has not set payment details — cannot complete
-// the booking" even for a teacher who had. The details now come from
-// teacherPrivate/<uid> (see loadTeacherPrivate), and these tests drive the REAL
-// loadRealTeachers + Booking() against a stubbed database that serves each node.
+// Product rule (owner, 27.10.2026): Drushe is not involved in the money of a
+// lesson — the student and the teacher settle it between themselves. Drushe's
+// only revenue is the teacher subscription. So the booking flow must not
+// collect, require, show or record lesson payment details.
+//
+// What it used to do: teacher registration and editing REQUIRED a Bit/PayPal/
+// PayBox number, the booking screen showed it and blocked the booking when it
+// was missing, and — because the list loader never copied it — every student
+// saw "the teacher has not set payment details" even when they had. These tests
+// drive the real loader, Booking() and requestBooking().
 
-const BIT = '050-1234567';
-
-// A chainable stand-in for db.ref(path)...get(): `nodes` maps a path to the
-// value it should hold, everything else is empty.
-function installDb(nodes) {
+function installDb(nodes, writes) {
   const empty = { exists: () => false, val: () => null, forEach: () => {} };
   const snapFor = (path) => {
     const v = nodes[path];
@@ -22,48 +22,58 @@ function installDb(nodes) {
   const mk = (path) => new Proxy({}, {
     get: (_, k) => {
       if (k === 'get' || k === 'once') return async () => snapFor(path);
+      if (k === 'push') return () => ({ key: 'bk1' });
+      if (k === 'update') return async (v) => { writes.push(v); };
       if (k === 'on' || k === 'off') return () => {};
       if (k === 'then') return undefined;
       return () => mk(path);
     },
   });
-  db = { ref: (p) => mk(p) };
-}
-
-async function bookingScreenText(page, { publicRecord, privateRecord }) {
-  await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(() => typeof loadRealTeachers === 'function');
-  return page.evaluate(async ({ publicRecord, privateRecord, installSrc }) => {
-    // eslint-disable-next-line no-new-func
-    new Function('nodes', installSrc)({ teachers: { teach1: publicRecord }, 'teacherPrivate/teach1': privateRecord });
-    await Promise.race([loadRealTeachers(), new Promise((r) => setTimeout(r, 3000))]);
-    currentUser = { uid: 'stu', email: 's@example.com', emailVerified: true };
-    currentUserData = { name: 'תלמיד', role: 'student', verified: true };
-    S.bookStep = 2; S.bookType = 'single';
-    go('booking', { teacher: TEACHERS[0] });
-    await new Promise((r) => setTimeout(r, 400));
-    return {
-      text: document.getElementById('app').innerText,
-      publicHasPrivate: ['payment', 'meetingLink', 'email'].some((k) => k in TEACHERS[0]),
-    };
-  }, { publicRecord, privateRecord, installSrc: `(${installDb.toString()})(nodes)` });
+  return { ref: (p) => mk(p || '') };
 }
 
 const PUBLIC = { name: 'מורה', verified: true, cat: 'chess', cats: ['chess'], price: 60 };
 
-test.describe('booking screen payment details', () => {
-  test('a student sees how to pay, loaded from teacherPrivate', async ({ page }) => {
-    const r = await bookingScreenText(page, {
-      publicRecord: PUBLIC,
-      privateRecord: { payment: { bit: BIT, paypal: '', paybox: '' }, email: 't@example.com' },
-    });
-    expect(r.text, 'the teacher’s Bit number should be shown').toContain(BIT);
-    expect(r.text).not.toContain('טרם הגדיר');
-    expect(r.publicHasPrivate, 'the public list must not carry private fields').toBe(false);
+
+test.describe('booking: no lesson payment handling', () => {
+  async function run(page, privateRecord) {
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => typeof loadRealTeachers === 'function' && typeof requestBooking === 'function');
+    return page.evaluate(async ({ privateRecord, publicRecord, installSrc }) => {
+      window.__writes = [];
+      // eslint-disable-next-line no-new-func
+      db = new Function('nodes', 'writes', `return (${installSrc})(nodes, writes)`)(
+        { teachers: { teach1: publicRecord }, 'teacherPrivate/teach1': privateRecord }, window.__writes);
+      await Promise.race([loadRealTeachers(), new Promise((r) => setTimeout(r, 3000))]);
+      currentUser = { uid: 'stu', email: 's@example.com', emailVerified: true };
+      currentUserData = { name: 'תלמיד', role: 'student', verified: true };
+      sendEmail = async () => {}; notifyUser = () => {};
+      S.bookStep = 2; S.bookType = 'single'; S.bookDayIdx = 1; S.bookTime = '10:00';
+      go('booking', { teacher: TEACHERS[0] });
+      await new Promise((r) => setTimeout(r, 300));
+      const screen = document.getElementById('app').innerText;
+      S.teacher = TEACHERS[0];
+      await requestBooking(60);
+      return { screen, written: window.__writes[0] || null };
+    }, { privateRecord, publicRecord: PUBLIC, installSrc: installDb.toString() });
+  }
+
+  test('step 2 offers a plain request — no payment methods, no "payment details missing" block', async ({ page }) => {
+    const r = await run(page, { email: 't@example.com' });
+    expect(r.screen).toContain('שלח בקשת שיעור');
+    expect(r.screen).not.toContain('טרם הגדיר');
+    expect(r.screen).not.toContain('אמצעי תשלום');
+    expect(r.screen).not.toContain('שילמתי');
   });
 
-  test('a teacher with no payment details still gets the honest warning', async ({ page }) => {
-    const r = await bookingScreenText(page, { publicRecord: PUBLIC, privateRecord: { email: 't@example.com' } });
-    expect(r.text).toContain('טרם הגדיר');
+  test('the booking written has no payment method, reference code or commission fields', async ({ page }) => {
+    const r = await run(page, { email: 't@example.com' });
+    expect(r.written, 'the three-path booking write should have happened').not.toBeNull();
+    const booking = r.written['bookings/bk1'];
+    expect(booking.status).toBe('pending');
+    expect(booking.price).toBe(60);
+    for (const k of ['payMethod', 'payRef', 'grossAmount', 'commission', 'netToTeacher']) {
+      expect(booking, `${k} must not be recorded`).not.toHaveProperty(k);
+    }
   });
 });

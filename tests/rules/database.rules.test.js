@@ -1089,13 +1089,15 @@ describe('privacy: ID-photo fields only accept a URL or an image data URL', () =
   }
 });
 
-// ── PRIVACY: a teacher's email, payment details and meeting link ───────────
+// ── PRIVACY: a teacher's email and meeting link ───────────────────────────
 // They used to sit in teachers/<uid>, which any signed-in user — an anonymous
 // guest included — can read, and loadRealTeachers pulls the whole node. They
 // now live in teacherPrivate/<uid>: readable by the teacher, the admin and an
-// approved non-guest user (a student has to see how to pay before booking).
+// approved non-guest user (the booking copies the meeting link). Lesson payment
+// details are no longer collected at all — Drushe is not involved in that money
+// — and the public node still refuses a `payment` field so none creeps back.
 describe('privacy: teacherPrivate', () => {
-  const PRIV = { payment: { bit: '050-1234567' }, email: 't@example.com', meetingLink: 'https://zoom.us/j/1' };
+  const PRIV = { email: 't@example.com', notificationEmail: 'n@example.com', meetingLink: 'https://zoom.us/j/1' };
   const seedPrivate = () => testEnv.withSecurityRulesDisabled(async (ctx) => {
     await set(ref(ctx.database(), `teacherPrivate/${TEACHER}`), PRIV);
   });
@@ -1111,7 +1113,7 @@ describe('privacy: teacherPrivate', () => {
     await assertSucceeds(get(ref(asTeacher(), `teacherPrivate/${TEACHER}`)));
   });
 
-  it('an approved student can read them (needed to pay before booking)', async () => {
+  it('an approved student can read them (the booking copies the meeting link)', async () => {
     await seedPrivate();
     await assertSucceeds(get(ref(asStudent(), `teacherPrivate/${TEACHER}`)));
   });
