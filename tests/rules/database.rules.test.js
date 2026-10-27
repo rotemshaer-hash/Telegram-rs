@@ -999,3 +999,46 @@ describe('contract: a student can create a booking', () => {
     }));
   });
 });
+
+// ── PRIVACY: admin blocks cannot be undone by the blocked user ─────────────
+// The block used to live at users/<uid>/blocked, which the user owns: they
+// could set it false, or delete it outright (.validate does not run on
+// deletes). It is now userBlocks/<uid>, writable by the admin only, and the
+// chat-send rule reads it.
+describe('privacy: an admin block holds', () => {
+  const sendMessage = (db, id) => set(ref(db, `messages/${STUDENT}_${TEACHER}/${id}`),
+    { from: STUDENT, text: 'hi', createdAt: 2 });
+
+  it('an unblocked student can send a message', async () => {
+    await assertSucceeds(sendMessage(asStudent(), 'm-ok'));
+  });
+
+  it('a blocked student cannot send a message', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await set(ref(ctx.database(), `userBlocks/${STUDENT}`), true);
+    });
+    await assertFails(sendMessage(asStudent(), 'm-blocked'));
+  });
+
+  it('a user cannot block or unblock themselves', async () => {
+    await assertFails(set(ref(asStudent(), `userBlocks/${STUDENT}`), true));
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await set(ref(ctx.database(), `userBlocks/${STUDENT}`), true);
+    });
+    await assertFails(remove(ref(asStudent(), `userBlocks/${STUDENT}`)));
+    await assertFails(set(ref(asStudent(), `userBlocks/${STUDENT}`), false));
+  });
+
+  it('a blocked user can read their own block (so login can sign them out)', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await set(ref(ctx.database(), `userBlocks/${STUDENT}`), true);
+    });
+    await assertSucceeds(get(ref(asStudent(), `userBlocks/${STUDENT}`)));
+    await assertFails(get(ref(asStranger(), `userBlocks/${STUDENT}`)));
+  });
+
+  it('the admin can block and unblock', async () => {
+    await assertSucceeds(set(ref(asAdmin(), `userBlocks/${STUDENT}`), true));
+    await assertSucceeds(remove(ref(asAdmin(), `userBlocks/${STUDENT}`)));
+  });
+});

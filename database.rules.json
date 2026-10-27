@@ -150,7 +150,7 @@
         ".read": "auth != null && ($chatId.beginsWith(auth.uid + '_') || $chatId.endsWith('_' + auth.uid) || auth.token.email == 'rotemshaer@gmail.com')",
         ".write": "auth != null && !newData.exists() && ($chatId.beginsWith(auth.uid + '_') || $chatId.endsWith('_' + auth.uid))",
         "$msgId": {
-          ".write": "auth != null && ($chatId.beginsWith(auth.uid + '_') || $chatId.endsWith('_' + auth.uid)) && root.child('users').child(auth.uid).child('blocked').val() != true && (!data.exists() && newData.child('from').val() == auth.uid && newData.child('text').isString() && newData.child('createdAt').isNumber())",
+          ".write": "auth != null && ($chatId.beginsWith(auth.uid + '_') || $chatId.endsWith('_' + auth.uid)) && !root.child('userBlocks').child(auth.uid).exists() && (!data.exists() && newData.child('from').val() == auth.uid && newData.child('text').isString() && newData.child('createdAt').isNumber())",
           "audioData": { ".validate": false },
           "type": { ".validate": "newData.val() != 'audio'" }
         }
@@ -226,6 +226,13 @@
     "bannedUsers": {
       ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'",
       ".write": "auth != null && auth.token.email == 'rotemshaer@gmail.com'"
+    },
+    "userBlocks": {
+      "$uid": {
+        ".read": "auth != null && (auth.uid == $uid || auth.token.email == 'rotemshaer@gmail.com')",
+        ".write": "auth != null && auth.token.email == 'rotemshaer@gmail.com'"
+      },
+      ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'"
     },
     "forceSignout": {
       "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth.uid == $uid || auth.token.email == 'rotemshaer@gmail.com'" }
