@@ -42,14 +42,14 @@ Bit/PayPal/PayBox, מסך ההזמנה היה "שלם קודם" וחסם הזמ�
 ## תשתית
 - **Deploy Firebase Rules של #167 נכשל** ("Unexpected error", תחביר תקין, כל ההרצות
   הקודמות הצליחו). נפרס מחדש בכל מיזוג ל-main; אם נכשל שוב — הרצה מחדש ידנית בעמוד
-  ההרצה (לסשן הזה אין 403→ אי אפשר להריץ workflows).
+  ההרצה (הסשן לא יכול להריץ workflows: 403).
 - אימות מקומי של דפדפן עובד: `env -u HTTPS_PROXY ... npx playwright test -c <config>`
   עם `executablePath:'/opt/pw-browsers/chromium'` (ב-scratchpad). ה-emulator של חוקי
   Firebase **לא** רץ כאן (הורדת jar חסומה) — רק ב-CI.
 - `netlify/lib/allowed-origins.js` הוא מקור יחיד לרשימת CORS של הפונקציות (נוסף drushe.com).
 
 ## דומיין
-נקנה **drushe.com** (Namecheap, ₪~40/שנה). עדיין לא מחובר ל-Netlify (ERR_TIMED_OUT).
+נקנה **drushe.com** (Namecheap, כ-$11–15 לשנה). עדיין לא מחובר ל-Netlify (ERR_TIMED_OUT).
 סדר: מיזוג #168 → Netlify "Add a domain" + Netlify DNS (4 nameservers ב-Namecheap) →
 הוספה ל-Firebase Authorized domains → אימות HTTPS. **שים לב:** דומיין ראשי גורם ל-Netlify
 להפנות את kidemy-app.netlify.app אליו, והעטיפה האנדרואידית טוענת משם (`server.url`).
