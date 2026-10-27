@@ -1042,3 +1042,21 @@ describe('privacy: an admin block holds', () => {
     await assertSucceeds(remove(ref(asAdmin(), `userBlocks/${STUDENT}`)));
   });
 });
+
+describe('contract: the teacher copy of a new booking cannot be forged', () => {
+  const copy = (over = {}) => ({
+    studentId: STUDENT, teacherId: TEACHER, price: 80, status: 'pending', createdAt: 5, ...over,
+  });
+
+  it('a student cannot create a teacher copy that is already approved', async () => {
+    await assertFails(set(ref(asStudent(), `teacherBookings/${TEACHER}/bX`), copy({ status: 'approved' })));
+  });
+
+  it('a student cannot file a booking under a teacher the booking does not name', async () => {
+    await assertFails(set(ref(asStudent(), `teacherBookings/${STRANGER}/bY`), copy()));
+  });
+
+  it('a student cannot create a teacher copy naming someone else as the student', async () => {
+    await assertFails(set(ref(asStudent(), `teacherBookings/${TEACHER}/bZ`), copy({ studentId: STRANGER })));
+  });
+});
