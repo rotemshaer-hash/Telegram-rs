@@ -971,9 +971,17 @@ describe('review stars stay between 1 and 5', () => {
 // three-path atomic update from the booking screen (index.html, "כתיבה אטומית
 // לשלושת הנתיבים"), as the student, against a booking that does not exist yet.
 describe('contract: a student can create a booking', () => {
+  // The exact field set requestBooking() writes (captured from the real
+  // function in a browser), so a rule that rejects any one real field fails here.
   const newBooking = (id) => ({
-    studentId: STUDENT, teacherId: TEACHER,
-    studentName: 'Minor', price: 80, status: 'pending', createdAt: 5,
+    id, studentId: STUDENT, teacherId: TEACHER,
+    studentName: 'Minor', studentEmail: 'minor@example.com',
+    parentEmail: 'parent@example.com', parentName: 'Parent',
+    teacherName: 'Teach', teacherCat: 'chess',
+    day: "ב' 3 נוב", dayIndex: 1, lessonTimestamp: 1893456000000, time: '10:00', type: 'single',
+    price: 80, status: 'pending',
+    jitsiRoom: 'Drushe-' + id, jitsiUrl: 'https://zoom.us/j/1', meetingPlatform: 'Zoom',
+    createdAt: 5,
   });
   const threePathUpdate = (db, id) => update(ref(db), {
     [`bookings/${id}`]: newBooking(id),
