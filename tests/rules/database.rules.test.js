@@ -963,3 +963,39 @@ describe('review stars stay between 1 and 5', () => {
     await assertSucceeds(set(ref(asStudent(), 'reviews/teacher-uid/b2'), review(4)));
   });
 });
+
+// ── CONTRACT: the real booking-creation write ──────────────────────────────
+// The seed above writes bookings with security rules DISABLED, and the owner's
+// email bypasses every rule, so neither manual testing nor the other tests
+// ever ran the write a real student performs. This one does: the exact
+// three-path atomic update from the booking screen (index.html, "כתיבה אטומית
+// לשלושת הנתיבים"), as the student, against a booking that does not exist yet.
+describe('contract: a student can create a booking', () => {
+  const newBooking = (id) => ({
+    studentId: STUDENT, teacherId: TEACHER,
+    studentName: 'Minor', price: 80, status: 'pending', createdAt: 5,
+  });
+  const threePathUpdate = (db, id) => update(ref(db), {
+    [`bookings/${id}`]: newBooking(id),
+    [`userBookings/${STUDENT}/${id}`]: newBooking(id),
+    [`teacherBookings/${TEACHER}/${id}`]: newBooking(id),
+  });
+
+  it('the real atomic three-path create, as the student, succeeds', async () => {
+    await assertSucceeds(threePathUpdate(asStudent(), 'bNew'));
+  });
+
+  it('a student still cannot create a booking naming someone else as the student', async () => {
+    await assertFails(update(ref(asStranger()), {
+      'bookings/bFake': newBooking('bFake'),
+      [`userBookings/${STUDENT}/bFake`]: newBooking('bFake'),
+      [`teacherBookings/${TEACHER}/bFake`]: newBooking('bFake'),
+    }));
+  });
+
+  it('a student still cannot write an approved status into the teacher’s copy', async () => {
+    await assertFails(update(ref(asStudent()), {
+      [`teacherBookings/${TEACHER}/b1/status`]: 'approved',
+    }));
+  });
+});
