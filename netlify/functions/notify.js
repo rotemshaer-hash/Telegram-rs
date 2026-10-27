@@ -18,6 +18,7 @@
 // כזהות בפיד — וזה החלק שאסור שיהיה ניתן לזיוף.
 
 const { admin, initAdmin } = require('../lib/firebase-admin-init');
+const ALLOWED_ORIGINS = require('../lib/allowed-origins');
 
 const ADMIN_EMAIL = 'rotemshaer@gmail.com';
 
@@ -176,11 +177,6 @@ function buildNotification(type, fromUid, senderName, ctx, isAdminCaller) {
 }
 
 exports.handler = async (event) => {
-  const ALLOWED_ORIGINS = [
-    'https://kidemy-app.netlify.app',
-    'capacitor://localhost',
-    'http://localhost',
-  ];
   const origin = event.headers.origin || event.headers.Origin || '';
   const headers = {
     'Content-Type': 'application/json',

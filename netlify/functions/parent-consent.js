@@ -20,6 +20,7 @@
 const crypto = require('crypto');
 const { admin, initAdmin } = require('../lib/firebase-admin-init');
 const { sendViaEmailJS } = require('../lib/emailjs');
+const ALLOWED_ORIGINS = require('../lib/allowed-origins');
 
 const TOKEN_RE = /^[a-f0-9]{64}$/;
 const PARENT_CONSENT_DAYS = 14;
@@ -54,11 +55,6 @@ exports.handler = async (event) => {
   // הקריאה עוד לפני שהיא יוצאת, וזה היה נראה כאילו האישור פשוט לא עובד.
   //
   // הרשימה סגורה בכוונה ולא '*': הפונקציה הזו משחררת חשבונות של קטינים.
-  const ALLOWED_ORIGINS = [
-    'https://kidemy-app.netlify.app',
-    'capacitor://localhost',
-    'http://localhost',
-  ];
   const origin = event.headers.origin || event.headers.Origin || '';
   const headers = {
     'Content-Type': 'application/json',
