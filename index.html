@@ -1032,7 +1032,6 @@ async function loadRealTeachers(){
             col:catObj.col,
             badge:t.verified?'מורה מוסמך':'',
             ageVerified:t.ageVerification?.status==='verified',
-            meetingLink:t.meetingLink||'',
             online:t.online!==false,
             group:t.group||false,
             desc:t.desc||'',
@@ -1178,7 +1177,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.41';
+const APP_VERSION='4.11.42';
 
 // ─── הודעות קוליות — כבויות ────────────────────────────────────────────────
 // הקלטה קולית היא הערוץ היחיד בין ילדים שאיש לא בודק: אין תמלול, אין סינון,
@@ -1379,7 +1378,11 @@ function go(scr,extra={}){
   }
   if(scr==='booking'&&(extra.teacher||S.teacher)){
     const tid=(extra.teacher||S.teacher)?.id;
-    if(tid)loadTeacherSchedule(tid);
+    if(tid){
+      loadTeacherSchedule(tid);
+      // פרטי התשלום נטענים כאן ולא נשלפים מרשימת המורים — ראה teacherPrivate.
+      if(_teacherPrivateCache[tid]===undefined)loadTeacherPrivate(tid).then(()=>{if(S.screen==='booking')render();});
+    }
   }
   if(scr==='discover')loadDiscoverFeed();
   history.pushState({screen:scr,prev:S.prev},'');
@@ -1487,6 +1490,37 @@ function jsAttrEscape(s){
 }
 function displayEmail(e){if(!e||e.endsWith('@kidemy.app'))return '';return e;}
 function safeUrl(u){if(!u)return '';return /^https?:\/\//i.test(String(u).trim())?String(u).trim():'';}
+
+// פרטים פרטיים של מורה — מייל, אמצעי תשלום וקישור מפגש — יושבים ב-
+// teacherPrivate/<uid> ולא ב-teachers/<uid>. ל-teachers יש ".read": "auth != null",
+// כלומר כל משתמש מחובר, כולל אורח אנונימי, יכול היה להוריד את המייל ואת מספרי
+// ה-Bit/PayBox של כל המורים. teacherPrivate קריא רק לבעלים, למנהל ולמשתמש
+// מאושר שאינו אורח (תלמיד חייב לראות איך משלמים לפני שהוא מזמין).
+// undefined = עוד לא נטען; {} = נטען ואין פרטים (או שהקריאה נדחתה).
+const _teacherPrivateCache={};
+async function loadTeacherPrivate(uid,force){
+  if(!uid)return {};
+  if(!force&&_teacherPrivateCache[uid]!==undefined)return _teacherPrivateCache[uid];
+  let v={};
+  try{v=(await db.ref('teacherPrivate/'+uid).get()).val()||{};}catch(e){console.warn('[teacherPrivate]',e?.message||e);}
+  _teacherPrivateCache[uid]=v;
+  return v;
+}
+// רשומות מורה שנשמרו לפני המעבר מחזיקות מייל/תשלום/קישור ב-teachers/<uid>.
+// בכניסה של המורה עצמו הם מועתקים ל-teacherPrivate ונמחקים מהצומת הציבורי.
+// קודם הכתיבה ל-teacherPrivate, ורק אחריה המחיקה — כשל באמצע לא מאבד נתונים.
+// ערך שכבר קיים ב-teacherPrivate גובר על הישן.
+async function _migrateLegacyTeacherPrivate(uid,t){
+  const legacy={};
+  for(const k of ['payment','meetingLink','notificationEmail','email'])if(t?.[k])legacy[k]=t[k];
+  if(!Object.keys(legacy).length)return;
+  try{
+    const existing=await loadTeacherPrivate(uid,true);
+    await db.ref('teacherPrivate/'+uid).update({...legacy,...existing,updatedAt:Date.now()});
+    await db.ref('teachers/'+uid).update({payment:null,meetingLink:null,notificationEmail:null,email:null});
+    await loadTeacherPrivate(uid,true);
+  }catch(e){console.warn('[teacherPrivate migration]',e?.message||e);}
+}
 
 // ─── AVATAR ───────────────────────────────────────────────────────────────────
 function avatarHtml(photo,name,size=52,radius='16px'){
@@ -2824,11 +2858,18 @@ async function saveTeacherProfile(){
     if(_modeFrontal)modes.push('frontal');
 
     const mainCat=_selectedCats[0]||'custom';
-    const teacherData={
+    // מייל, תשלום וקישור מפגש לא נכנסים ל-teachers/ (קריא לכל מחובר) — ראה
+    // _teacherPrivateCache. הם נכתבים ל-teacherPrivate/<uid> לפני הפרופיל, כדי
+    // שמורה שהפרופיל שלו נשמר לעולם לא יישאר בלי פרטי תשלום.
+    const teacherPrivateData={
       payment:{bit:payBit,paypal:payPaypal,paybox:payPaybox},
+      email:currentUser.email,
+      meetingLink:(document.getElementById('tMeetingLink')?.value.trim()||''),
+      updatedAt:Date.now()
+    };
+    const teacherData={
       uid:currentUser.uid,
       name:currentUserData?.name||currentUser.email.split('@')[0],
-      email:currentUser.email,
       cat:mainCat,
       cats:allCats,
       customCats:_customCats,
@@ -2836,7 +2877,6 @@ async function saveTeacherProfile(){
       city:city.value.trim(),
       price:parseInt(price.value),
       desc:desc.value.trim(),
-      meetingLink:(document.getElementById('tMeetingLink')?.value.trim()||''),
       mode:modes,
       freeTrial:_freeTrialSetup,
       whyTeach:document.getElementById('tWhyTeach')?.value.trim()||null,
@@ -2893,6 +2933,8 @@ async function saveTeacherProfile(){
       }
     }
 
+    await db.ref('teacherPrivate/'+currentUser.uid).set(teacherPrivateData);
+    _teacherPrivateCache[currentUser.uid]=teacherPrivateData;
     await db.ref('teachers/'+currentUser.uid).set(teacherData);
 
     // תמונת המסמך נשמרת בצומת נפרד שקריא רק לבעלים ולמנהל.
@@ -2939,7 +2981,7 @@ async function saveTeacherProfile(){
     if(currentUserData)currentUserData.role='teacher';
     // שלח התראה למנהל לצורך אימות גיל בלבד (מורה כבר פעיל)
     notifyAdmin({type:'newTeacher',from:teacherData.name,teacherId:currentUser.uid,teacherCat:mainCat,teacherEmail:currentUser.email,customCats:_customCats}).catch(()=>{});
-    sendAdminEmail('🎓 מורה חדש נרשם – עובר בדיקה',`שם: ${teacherData.name}\nמייל: ${teacherData.email}\nקטגוריה: ${mainCat}\nעיר: ${teacherData.city}\n\nכנס לפאנל מנהל:\nhttps://kidemy-app.netlify.app`);
+    sendAdminEmail('🎓 מורה חדש נרשם – עובר בדיקה',`שם: ${teacherData.name}\nמייל: ${currentUser.email}\nקטגוריה: ${mainCat}\nעיר: ${teacherData.city}\n\nכנס לפאנל מנהל:\nhttps://kidemy-app.netlify.app`);
     _idPhotoBase64=null;
     showFireToast('🌟 ברוך הבא! הפרופיל שלך נשמר — תלמידים יוכלו לראות אותך בקרוב');
     await loadRealTeachers();
@@ -2970,6 +3012,8 @@ async function processPayment(payMethod,totalAmount){
     const bookingRef=db.ref('bookings').push();
     const bookingId=bookingRef.key;
     const jitsiRoom='Drushe-'+bookingId.replace(/[^a-zA-Z0-9]/g,'');
+    // מייל וקישור מפגש של המורה — ראה teacherPrivate. נטענים לפני בניית ההזמנה.
+    const _tpv=await loadTeacherPrivate(t.id);
     const bookingData={
       id:bookingId,
       studentId:currentUser.uid,
@@ -3004,8 +3048,8 @@ async function processPayment(payMethod,totalAmount){
       netToTeacher:totalAmount,
       status:'pending',
       jitsiRoom:jitsiRoom,
-      jitsiUrl:t.meetingLink||'',
-      meetingPlatform:getMeetingLabel(t.meetingLink||''),
+      jitsiUrl:_tpv.meetingLink||'',
+      meetingPlatform:getMeetingLabel(_tpv.meetingLink||''),
       createdAt:Date.now()
     };
     // כתיבה אטומית לשלושת הנתיבים — אם אחד נכשל, הכל נכשל
@@ -3018,8 +3062,7 @@ async function processPayment(payMethod,totalAmount){
     notifyUser(t.id,'newBooking',{bookingId,day:bookingData.day||'',time:bookingData.time||'',amount:totalAmount,preview:'הזמנה חדשה ממתינה לאישורך'});
     try{
       // מייל למורה — הזמנה חדשה, ממתינה לאישורו לאחר קבלת התשלום
-      const teacherSnap=await db.ref('teachers/'+t.id).get();
-      const teacherEmail=teacherSnap.val()?.email||'';
+      const teacherEmail=_tpv.notificationEmail||_tpv.email||'';
       if(teacherEmail)await sendEmail(teacherEmail,
         `📅 הזמנה חדשה — ${bookingData.studentName||'תלמיד'} — Drushe`,
         `שלום,\n\nיש לך הזמנה חדשה:\n\n👤 תלמיד: ${bookingData.studentName||''}\n📅 ${bookingData.day||''} בשעה ${bookingData.time||''}\n💰 לקבלתך (100%, ${payMethod}): ₪${totalAmount}\n\nלאחר שתקבל את התשלום, כנס לאפליקציה ואשר את ההזמנה:\nhttps://kidemy-app.netlify.app\n\n– צוות Drushe`
@@ -10386,7 +10429,11 @@ function Booking(){
       return out;
     })()}
     ${(()=>{
-      const tp=t.payment||{};
+      if(_teacherPrivateCache[t.id]===undefined){
+        loadTeacherPrivate(t.id).then(()=>render());
+        return `<div style="text-align:center;padding:18px;color:#64748B;font-size:13px;margin-bottom:14px">טוען פרטי תשלום…</div>`;
+      }
+      const tp=_teacherPrivateCache[t.id].payment||{};
       if(!tp.bit&&!tp.paypal&&!tp.paybox){
         return `<div style="background:rgba(239,68,68,0.06);border-radius:16px;padding:18px;text-align:center;margin-bottom:14px">
           <div style="font-size:32px;margin-bottom:8px">⚠️</div>
@@ -12488,6 +12535,12 @@ function showPaymentManagement(){
 
 function showEditTeacherProfileDialog(){
   if(!currentUser){showFireToast('❌ לא מחובר');return;}
+  // מייל, תשלום וקישור מפגש לא נמצאים ברשימת המורים הציבורית — ראה teacherPrivate.
+  if(_teacherPrivateCache[currentUser.uid]===undefined){
+    loadTeacherPrivate(currentUser.uid).then(showEditTeacherProfileDialog);
+    return;
+  }
+  const _tpv=_teacherPrivateCache[currentUser.uid];
   // _idPhotoBase64 משותף עם מסך ההקמה. איפוס בפתיחה מונע העלאה של בחירה
   // שנשארה ממסך אחר — שהיא בדיוק סוג הטעות שקשה לשחזר ומדאיגה במיוחד
   // כשהקובץ הוא מסמך מזהה.
@@ -12563,7 +12616,7 @@ function showEditTeacherProfileDialog(){
       </div>
       <div style="margin-bottom:14px">
         <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:6px">${icon("video",14)} קישור שיעור (Zoom / Google Meet)</label>
-        <input id="_etMeetingLink" class="inp" type="url" value="${(t.meetingLink||'').replace(/"/g,'&quot;')}" placeholder="https://zoom.us/j/... או https://meet.google.com/...">
+        <input id="_etMeetingLink" class="inp" type="url" value="${(_tpv.meetingLink||'').replace(/"/g,'&quot;')}" placeholder="https://zoom.us/j/... או https://meet.google.com/...">
         <p style="font-size:10px;color:#6C7686;margin:4px 0 0">${icon("alert-triangle",14)} ללא קישור, תלמידים לא יוכלו להצטרף לשיעור</p>
       </div>
       <div style="background:rgba(20,184,166,0.04);border-radius:18px;padding:16px;margin-bottom:16px">
@@ -12584,28 +12637,28 @@ function showEditTeacherProfileDialog(){
       <div style="background:rgba(6,182,212,0.04);border-radius:18px;padding:16px;margin-bottom:16px">
         <h3 style="font-weight:900;font-size:15px;margin:0 0 6px;color:#04778A">${icon("video",14)} קישור שיעור אישי (Zoom / Google Meet)</h3>
         <p style="font-size:12px;color:#64748B;margin:0 0 10px;line-height:1.6">תלמידים ישתמשו בקישור זה לכניסה לשיעור. יש להגדיר קישור פעיל כדי שתלמידים יוכלו להצטרף.</p>
-        <input id="_etMeetingLink" class="inp" type="url" value="${(t.meetingLink||'').replace(/"/g,'&quot;')}" placeholder="https://zoom.us/j/... או https://meet.google.com/...">
+        <input id="_etMeetingLink" class="inp" type="url" value="${(_tpv.meetingLink||'').replace(/"/g,'&quot;')}" placeholder="https://zoom.us/j/... או https://meet.google.com/...">
       </div>
       <div style="background:rgba(139,47,201,0.04);border-radius:18px;padding:16px;margin-bottom:16px">
         <h3 style="font-weight:900;font-size:15px;margin:0 0 6px;color:#8b2fc9">${icon("dollar",14)} פרטי תשלום לקבלת כספים משיעורים</h3>
         <p style="font-size:12px;color:#64748B;margin:0 0 10px;line-height:1.6">תלמידים ישלמו ישירות אליך. הכנס לפחות אמצעי תשלום אחד.</p>
         <div style="margin-bottom:10px">
           <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">💜 מספר Bit</label>
-          <input id="_etPayBit" class="inp" type="tel" value="${(t.payment?.bit||'').replace(/"/g,'&quot;')}" placeholder="050-1234567">
+          <input id="_etPayBit" class="inp" type="tel" value="${(_tpv.payment?.bit||'').replace(/"/g,'&quot;')}" placeholder="050-1234567">
         </div>
         <div style="margin-bottom:10px">
           <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">🅿️ PayPal.me / אימייל PayPal</label>
-          <input id="_etPayPaypal" class="inp" type="text" value="${(t.payment?.paypal||'').replace(/"/g,'&quot;')}" placeholder="paypal.me/yourname">
+          <input id="_etPayPaypal" class="inp" type="text" value="${(_tpv.payment?.paypal||'').replace(/"/g,'&quot;')}" placeholder="paypal.me/yourname">
         </div>
         <div style="margin-bottom:0">
           <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">🔵 מספר PayBox</label>
-          <input id="_etPayPaybox" class="inp" type="tel" value="${(t.payment?.paybox||'').replace(/"/g,'&quot;')}" placeholder="050-1234567">
+          <input id="_etPayPaybox" class="inp" type="tel" value="${(_tpv.payment?.paybox||'').replace(/"/g,'&quot;')}" placeholder="050-1234567">
         </div>
       </div>
       <div style="background:rgba(239,68,68,0.04);border-radius:18px;padding:16px;margin-bottom:16px">
         <h3 style="font-weight:900;font-size:15px;margin:0 0 6px;color:#EF4444">${icon("mail",14)} מייל להתראות</h3>
         <p style="font-size:12px;color:#64748B;margin:0 0 10px;line-height:1.6">כאן תקבל הודעות על הזמנות שיעור חדשות. <strong>חשוב:</strong> הכנס מייל אמיתי שלך (לא @kidemy.app).</p>
-        <input id="_etNotifEmail" class="inp" type="email" value="${(t.notificationEmail||'').replace(/"/g,'&quot;')}" placeholder="המייל האמיתי שלך למשל: name@gmail.com">
+        <input id="_etNotifEmail" class="inp" type="email" value="${(_tpv.notificationEmail||'').replace(/"/g,'&quot;')}" placeholder="המייל האמיתי שלך למשל: name@gmail.com">
       </div>
 
       <!-- שאלות נפוצות (FAQ) -->
@@ -12909,8 +12962,13 @@ async function saveTeacherProfileEdits(){
     await db.ref('users/'+currentUser.uid).update(userUpdates);
     if(currentUserData)Object.assign(currentUserData,userUpdates);
     const faq=(window._etFaq||[]).filter(x=>x&&x.q&&x.a).slice(0,5);
-    const teacherUpdates={desc:firstDesc,price,city,cats:allCats,cat:allCats[0],customCats,name,instagram,tiktok,facebook,notificationEmail,meetingLink,faq,payment:{bit:payBit,paypal:payPaypal,paybox:payPaybox}};
-    await db.ref('teachers/'+currentUser.uid).update(teacherUpdates);
+    const teacherUpdates={desc:firstDesc,price,city,cats:allCats,cat:allCats[0],customCats,name,instagram,tiktok,facebook,faq};
+    // פרטים פרטיים נכתבים ל-teacherPrivate; null על ההעתקים הישנים ב-teachers/
+    // מנקה רשומות שנשמרו לפני המעבר (החוקים כבר אוסרים לכתוב אותם שם).
+    const privateUpdates={notificationEmail,meetingLink,payment:{bit:payBit,paypal:payPaypal,paybox:payPaybox},updatedAt:Date.now()};
+    await db.ref('teacherPrivate/'+currentUser.uid).update(privateUpdates);
+    _teacherPrivateCache[currentUser.uid]={...(_teacherPrivateCache[currentUser.uid]||{}),...privateUpdates};
+    await db.ref('teachers/'+currentUser.uid).update({...teacherUpdates,payment:null,meetingLink:null,notificationEmail:null,email:null});
     await db.ref('teachers/'+currentUser.uid+'/catProfiles').update(catProfileUpdates);
     for(const cc of customCats){
       await db.ref('pendingCategories').push({teacherId:currentUser.uid,teacherName:name,category:cc,createdAt:Date.now(),status:'pending'}).catch(()=>{});
@@ -14289,6 +14347,7 @@ auth&&auth.onAuthStateChanged(async user=>{
             if(!isAdmin()){S._loggingIn=false;S._registering=false;go('teacherSetup');return;}
           } else {
             const tData=tSnap.val();
+            await _migrateLegacyTeacherPrivate(user.uid,tData);
             if(!tData.verified&&!isAdmin()){
               S.pendingTeacherData=tData;
               S._loggingIn=false;S._registering=false;go('teacherPending');return;

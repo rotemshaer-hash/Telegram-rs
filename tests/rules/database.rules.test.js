@@ -1088,3 +1088,67 @@ describe('privacy: ID-photo fields only accept a URL or an image data URL', () =
     });
   }
 });
+
+// ── PRIVACY: a teacher's email, payment details and meeting link ───────────
+// They used to sit in teachers/<uid>, which any signed-in user — an anonymous
+// guest included — can read, and loadRealTeachers pulls the whole node. They
+// now live in teacherPrivate/<uid>: readable by the teacher, the admin and an
+// approved non-guest user (a student has to see how to pay before booking).
+describe('privacy: teacherPrivate', () => {
+  const PRIV = { payment: { bit: '050-1234567' }, email: 't@example.com', meetingLink: 'https://zoom.us/j/1' };
+  const seedPrivate = () => testEnv.withSecurityRulesDisabled(async (ctx) => {
+    await set(ref(ctx.database(), `teacherPrivate/${TEACHER}`), PRIV);
+  });
+  const asAnonymousButApproved = async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await set(ref(ctx.database(), 'users/anon-uid'), { role: 'student', verified: true });
+    });
+    return testEnv.authenticatedContext('anon-uid', { firebase: { sign_in_provider: 'anonymous' } }).database();
+  };
+
+  it('the teacher can write and read their own private details', async () => {
+    await assertSucceeds(set(ref(asTeacher(), `teacherPrivate/${TEACHER}`), PRIV));
+    await assertSucceeds(get(ref(asTeacher(), `teacherPrivate/${TEACHER}`)));
+  });
+
+  it('an approved student can read them (needed to pay before booking)', async () => {
+    await seedPrivate();
+    await assertSucceeds(get(ref(asStudent(), `teacherPrivate/${TEACHER}`)));
+  });
+
+  it('an anonymous guest cannot read them, even with an approved user record', async () => {
+    await seedPrivate();
+    await assertFails(get(ref(await asAnonymousButApproved(), `teacherPrivate/${TEACHER}`)));
+  });
+
+  it('a signed-in user with no approved record cannot read them', async () => {
+    await seedPrivate();
+    await assertFails(get(ref(asStranger(), `teacherPrivate/${TEACHER}`)));
+    await assertFails(get(ref(asGuest(), `teacherPrivate/${TEACHER}`)));
+  });
+
+  it('the whole collection cannot be listed', async () => {
+    await seedPrivate();
+    await assertFails(get(ref(asStudent(), 'teacherPrivate')));
+  });
+
+  it('nobody but the teacher (and admin) can write them', async () => {
+    await assertFails(set(ref(asStudent(), `teacherPrivate/${TEACHER}`), PRIV));
+    await assertFails(set(ref(asStranger(), `teacherPrivate/${TEACHER}/payment`), { bit: 'x' }));
+    await assertSucceeds(set(ref(asAdmin(), `teacherPrivate/${TEACHER}`), PRIV));
+  });
+
+  it('the public teachers node refuses the private fields', async () => {
+    for (const [k, v] of [['payment', { bit: '050' }], ['email', 'a@b.c'], ['meetingLink', 'https://z.us'], ['notificationEmail', 'a@b.c']]) {
+      await assertFails(set(ref(asTeacher(), `teachers/${TEACHER}/${k}`), v));
+    }
+  });
+
+  it('the public teachers node still takes ordinary profile fields, and the old copies can be deleted', async () => {
+    await assertSucceeds(update(ref(asTeacher(), `teachers/${TEACHER}`), { desc: 'new text', price: 70 }));
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await set(ref(ctx.database(), `teachers/${TEACHER}/payment`), { bit: 'legacy' });
+    });
+    await assertSucceeds(update(ref(asTeacher(), `teachers/${TEACHER}`), { payment: null, email: null, meetingLink: null, notificationEmail: null }));
+  });
+});
