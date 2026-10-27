@@ -971,9 +971,17 @@ describe('review stars stay between 1 and 5', () => {
 // three-path atomic update from the booking screen (index.html, "כתיבה אטומית
 // לשלושת הנתיבים"), as the student, against a booking that does not exist yet.
 describe('contract: a student can create a booking', () => {
+  // The exact field set requestBooking() writes (captured from the real
+  // function in a browser), so a rule that rejects any one real field fails here.
   const newBooking = (id) => ({
-    studentId: STUDENT, teacherId: TEACHER,
-    studentName: 'Minor', price: 80, status: 'pending', createdAt: 5,
+    id, studentId: STUDENT, teacherId: TEACHER,
+    studentName: 'Minor', studentEmail: 'minor@example.com',
+    parentEmail: 'parent@example.com', parentName: 'Parent',
+    teacherName: 'Teach', teacherCat: 'chess',
+    day: "ב' 3 נוב", dayIndex: 1, lessonTimestamp: 1893456000000, time: '10:00', type: 'single',
+    price: 80, status: 'pending',
+    jitsiRoom: 'Drushe-' + id, jitsiUrl: 'https://zoom.us/j/1', meetingPlatform: 'Zoom',
+    createdAt: 5,
   });
   const threePathUpdate = (db, id) => update(ref(db), {
     [`bookings/${id}`]: newBooking(id),
@@ -1058,5 +1066,137 @@ describe('contract: the teacher copy of a new booking cannot be forged', () => {
 
   it('a student cannot create a teacher copy naming someone else as the student', async () => {
     await assertFails(set(ref(asStudent(), `teacherBookings/${TEACHER}/bZ`), copy({ studentId: STRANGER })));
+  });
+});
+
+// ── PRIVACY: ID-photo fields cannot carry markup ───────────────────────────
+// parentIdPhoto and the teacher ID photo are owner-writable and were rendered
+// into <img src> on the admin screens. The screens now escape them; this is
+// the second layer, so a value that could break out of an attribute is refused
+// at write time rather than relying on every future renderer to remember.
+describe('privacy: ID-photo fields only accept a URL or an image data URL', () => {
+  const HOSTILE = ['x" onerror="window.__xss=1', 'https://a.b/x" onerror="1', "https://a.b/x' onerror='1",
+    'https://a.b/<script>', 'javascript:alert(1)', '/relative/path.png', 'data:text/html;base64,AAAA'];
+  const OK = ['https://firebasestorage.googleapis.com/v0/b/x/o/p?alt=media&token=abc',
+    'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ=='];
+
+  const targets = [
+    ['users parentIdPhoto', () => `users/${STUDENT}/parentIdPhoto`],
+    ['teacherVerification idPhoto', () => `teacherVerification/${TEACHER}/idPhoto`],
+    ['teachers ageVerification idPhoto', () => `teachers/${TEACHER}/ageVerification/idPhoto`],
+  ];
+  const owner = (p) => (p.includes(`/${TEACHER}/`) ? asTeacher() : asStudent());
+
+  for (const [label, pathOf] of targets) {
+    it(`${label}: a value that can break out of an attribute is refused`, async () => {
+      for (const v of HOSTILE) await assertFails(set(ref(owner(pathOf()), pathOf()), v));
+    });
+    it(`${label}: a real storage URL or image data URL is accepted`, async () => {
+      for (const v of OK) await assertSucceeds(set(ref(owner(pathOf()), pathOf()), v));
+    });
+  }
+});
+
+// ── PRIVACY: a teacher's email and meeting link ───────────────────────────
+// They used to sit in teachers/<uid>, which any signed-in user — an anonymous
+// guest included — can read, and loadRealTeachers pulls the whole node. They
+// now live in teacherPrivate/<uid>: readable by the teacher, the admin and an
+// approved non-guest user (the booking copies the meeting link). Lesson payment
+// details are no longer collected at all — Drushe is not involved in that money
+// — and the public node still refuses a `payment` field so none creeps back.
+describe('privacy: teacherPrivate', () => {
+  const PRIV = { email: 't@example.com', notificationEmail: 'n@example.com', meetingLink: 'https://zoom.us/j/1' };
+  const seedPrivate = () => testEnv.withSecurityRulesDisabled(async (ctx) => {
+    await set(ref(ctx.database(), `teacherPrivate/${TEACHER}`), PRIV);
+  });
+  const asAnonymousButApproved = async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await set(ref(ctx.database(), 'users/anon-uid'), { role: 'student', verified: true });
+    });
+    return testEnv.authenticatedContext('anon-uid', { firebase: { sign_in_provider: 'anonymous' } }).database();
+  };
+
+  it('the teacher can write and read their own private details', async () => {
+    await assertSucceeds(set(ref(asTeacher(), `teacherPrivate/${TEACHER}`), PRIV));
+    await assertSucceeds(get(ref(asTeacher(), `teacherPrivate/${TEACHER}`)));
+  });
+
+  it('an approved student can read them (the booking copies the meeting link)', async () => {
+    await seedPrivate();
+    await assertSucceeds(get(ref(asStudent(), `teacherPrivate/${TEACHER}`)));
+  });
+
+  it('an anonymous guest cannot read them, even with an approved user record', async () => {
+    await seedPrivate();
+    await assertFails(get(ref(await asAnonymousButApproved(), `teacherPrivate/${TEACHER}`)));
+  });
+
+  it('a signed-in user with no approved record cannot read them', async () => {
+    await seedPrivate();
+    await assertFails(get(ref(asStranger(), `teacherPrivate/${TEACHER}`)));
+    await assertFails(get(ref(asGuest(), `teacherPrivate/${TEACHER}`)));
+  });
+
+  it('the whole collection cannot be listed', async () => {
+    await seedPrivate();
+    await assertFails(get(ref(asStudent(), 'teacherPrivate')));
+  });
+
+  it('nobody but the teacher (and admin) can write them', async () => {
+    await assertFails(set(ref(asStudent(), `teacherPrivate/${TEACHER}`), PRIV));
+    await assertFails(set(ref(asStranger(), `teacherPrivate/${TEACHER}/payment`), { bit: 'x' }));
+    await assertSucceeds(set(ref(asAdmin(), `teacherPrivate/${TEACHER}`), PRIV));
+  });
+
+  it('the public teachers node refuses the private fields', async () => {
+    for (const [k, v] of [['payment', { bit: '050' }], ['email', 'a@b.c'], ['meetingLink', 'https://z.us'], ['notificationEmail', 'a@b.c']]) {
+      await assertFails(set(ref(asTeacher(), `teachers/${TEACHER}/${k}`), v));
+    }
+  });
+
+  it('the public teachers node still takes ordinary profile fields, and the old copies can be deleted', async () => {
+    await assertSucceeds(update(ref(asTeacher(), `teachers/${TEACHER}`), { desc: 'new text', price: 70 }));
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await set(ref(ctx.database(), `teachers/${TEACHER}/payment`), { bit: 'legacy' });
+    });
+    await assertSucceeds(update(ref(asTeacher(), `teachers/${TEACHER}`), { payment: null, email: null, meetingLink: null, notificationEmail: null }));
+  });
+});
+
+// ── CONTRACT: the real teacher registration and profile-edit writes ────────
+// Field sets captured from saveTeacherProfile() and saveTeacherProfileEdits()
+// running in a browser, so a rule that rejects a field the app really writes
+// fails here — the booking bug survived exactly because the tests wrote
+// smaller, friendlier objects than the app does.
+describe('contract: teacher registration and profile edit pass the rules', () => {
+  const registration = () => ({
+    uid: TEACHER, name: 'Teach', cat: 'chess', cats: ['chess'], customCats: [],
+    area: 'מרכז', city: 'תל אביב', price: 60, desc: 'תיאור', mode: ['online'],
+    freeTrial: false, whyTeach: null, proudOf: null, typicalLesson: null,
+    rating: 0, reviews: 0, lessons: 0, online: true, group: false,
+    verified: false, active: false, createdAt: 5,
+    ageVerification: { age: 16, idType: 'parent_confirm', status: 'pending', submittedAt: 5 },
+  });
+
+  it('registration: private details, then the public record, as the teacher', async () => {
+    await assertSucceeds(set(ref(asTeacher(), `teacherPrivate/${TEACHER}`),
+      { email: 't@example.com', meetingLink: 'https://zoom.us/j/55', updatedAt: 5 }));
+    await assertSucceeds(set(ref(asTeacher(), `teachers/${TEACHER}`), registration()));
+  });
+
+  it('registration: a public record that still carries an email or meeting link is refused', async () => {
+    await assertFails(set(ref(asTeacher(), `teachers/${TEACHER}`), { ...registration(), email: 't@example.com' }));
+    await assertFails(set(ref(asTeacher(), `teachers/${TEACHER}`), { ...registration(), meetingLink: 'https://zoom.us/j/55' }));
+  });
+
+  it('profile edit: the private update, the public update with the old copies cleared, and the subject profiles', async () => {
+    await assertSucceeds(update(ref(asTeacher(), `teacherPrivate/${TEACHER}`),
+      { notificationEmail: 'n@example.com', meetingLink: 'https://zoom.us/j/9', updatedAt: 6 }));
+    await assertSucceeds(update(ref(asTeacher(), `teachers/${TEACHER}`), {
+      desc: 'תיאור חדש', price: 70, cats: ['chess'], cat: 'chess', customCats: [], name: 'Teach',
+      instagram: '', tiktok: '', facebook: '', faq: [],
+      payment: null, meetingLink: null, notificationEmail: null, email: null,
+    }));
+    await assertSucceeds(update(ref(asTeacher(), `teachers/${TEACHER}/catProfiles`), { chess: { desc: 'x', tags: [] } }));
   });
 });

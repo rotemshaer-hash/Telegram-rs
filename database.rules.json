@@ -23,6 +23,18 @@
         "lessons": {
           ".validate": "auth.token.email == 'rotemshaer@gmail.com' || newData.val() == 0 || newData.val() == data.val()"
         },
+        "payment": {
+          ".validate": false
+        },
+        "email": {
+          ".validate": false
+        },
+        "meetingLink": {
+          ".validate": false
+        },
+        "notificationEmail": {
+          ".validate": false
+        },
         "completedLessons": {
           "$bookingId": {
             ".validate": "newData.val() == true && root.child('bookings').child($bookingId).child('teacherId').val() == $teacherUid && root.child('bookings').child($bookingId).child('status').val() == 'completed'"
@@ -43,6 +55,9 @@
           },
           "verifiedWithoutDoc": {
             ".validate": "auth.token.email == 'rotemshaer@gmail.com'"
+          },
+          "idPhoto": {
+            ".validate": "auth.token.email == 'rotemshaer@gmail.com' || (newData.isString() && (newData.val().beginsWith('https://') || newData.val().beginsWith('data:image/')) && !newData.val().contains('\"') && !newData.val().contains(\"'\") && !newData.val().contains('<') && !newData.val().contains('>'))"
           }
         }
       }
@@ -56,7 +71,10 @@
     "teacherVerification": {
       "$uid": {
         ".read": "auth != null && auth.uid == $uid",
-        ".write": "auth != null && auth.uid == $uid"
+        ".write": "auth != null && auth.uid == $uid",
+        "idPhoto": {
+          ".validate": "auth.token.email == 'rotemshaer@gmail.com' || (newData.isString() && (newData.val().beginsWith('https://') || newData.val().beginsWith('data:image/')) && !newData.val().contains('\"') && !newData.val().contains(\"'\") && !newData.val().contains('<') && !newData.val().contains('>'))"
+        }
       }
     },
 
@@ -91,6 +109,9 @@
         },
         "parentConsentAt": {
           ".validate": "auth.token.email == 'rotemshaer@gmail.com'"
+        },
+        "parentIdPhoto": {
+          ".validate": "auth.token.email == 'rotemshaer@gmail.com' || (newData.isString() && (newData.val().beginsWith('https://') || newData.val().beginsWith('data:image/')) && !newData.val().contains('\"') && !newData.val().contains(\"'\") && !newData.val().contains('<') && !newData.val().contains('>'))"
         }
       }
     },
@@ -233,6 +254,12 @@
         ".write": "auth != null && auth.token.email == 'rotemshaer@gmail.com'"
       },
       ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'"
+    },
+    "teacherPrivate": {
+      "$uid": {
+        ".read": "auth != null && (auth.uid == $uid || auth.token.email == 'rotemshaer@gmail.com' || (auth.token.firebase.sign_in_provider != 'anonymous' && root.child('users').child(auth.uid).child('verified').val() == true))",
+        ".write": "auth != null && (auth.uid == $uid || auth.token.email == 'rotemshaer@gmail.com')"
+      }
     },
     "forceSignout": {
       "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth.uid == $uid || auth.token.email == 'rotemshaer@gmail.com'" }

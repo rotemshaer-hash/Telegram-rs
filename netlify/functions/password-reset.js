@@ -19,6 +19,7 @@
 
 const { admin, initAdmin } = require('../lib/firebase-admin-init');
 const { sendViaEmailJS } = require('../lib/emailjs');
+const ALLOWED_ORIGINS = require('../lib/allowed-origins');
 
 const FAKE_DOMAIN = '@kidemy.app';
 const USERNAME_RE = /^[a-z0-9_]{3,20}$/;
@@ -40,11 +41,6 @@ async function withinRateLimit(db, ip) {
 }
 
 exports.handler = async (event) => {
-  const ALLOWED_ORIGINS = [
-    'https://kidemy-app.netlify.app',
-    'capacitor://localhost',
-    'http://localhost',
-  ];
   const origin = event.headers.origin || event.headers.Origin || '';
   const headers = {
     'Content-Type': 'application/json',

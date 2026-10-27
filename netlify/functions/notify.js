@@ -18,6 +18,7 @@
 // כזהות בפיד — וזה החלק שאסור שיהיה ניתן לזיוף.
 
 const { admin, initAdmin } = require('../lib/firebase-admin-init');
+const ALLOWED_ORIGINS = require('../lib/allowed-origins');
 
 const ADMIN_EMAIL = 'rotemshaer@gmail.com';
 
@@ -95,12 +96,22 @@ async function verifyRelationship(db, { type, fromUid, toUid, ctx }) {
     if (!ctx.groupId) return 'groupId is required';
     const group = (await db.ref('groups/' + ctx.groupId).get()).val();
     if (!group) return 'group not found';
+    // הכותרת מוצגת לנמען, ולכן היא נלקחת מהקבוצה עצמה ולא מהבקשה — בעל קבוצה
+    // לא יכול להשתמש בה כדי להעביר טקסט לאדם אחר.
+    ctx.groupTitle = typeof group.title === 'string' ? group.title : '';
     if (type === 'groupJoin') {
-      // המצטרף מתריע לבעל הקבוצה, ולא לאף אחד אחר.
+      // המצטרף מתריע לבעל הקבוצה, ולא לאף אחד אחר — ורק אם באמת ביקש להצטרף.
       if (toUid !== group.teacherId) return 'that group belongs to someone else';
-    } else if (fromUid !== group.teacherId) {
-      // אישור/דחייה — רק בעל הקבוצה.
-      return 'only the group owner may approve or reject';
+      if (!(await db.ref('groupMembers/' + ctx.groupId + '/' + fromUid).get()).exists()) {
+        return 'you have not asked to join that group';
+      }
+    } else {
+      // אישור/דחייה — רק בעל הקבוצה, ורק למי שביקש להצטרף ושהסטטוס שלו כבר
+      // עודכן בהתאם. בלי זה בעל קבוצה יכול לשלוח "התקבלת/נדחית" לכל משתמש.
+      if (fromUid !== group.teacherId) return 'only the group owner may approve or reject';
+      const member = (await db.ref('groupMembers/' + ctx.groupId + '/' + toUid).get()).val();
+      const wanted = type === 'groupApproved' ? 'approved' : 'rejected';
+      if (!member || member.status !== wanted) return 'that user has no ' + wanted + ' request in that group';
     }
     return null;
   }
@@ -166,11 +177,6 @@ function buildNotification(type, fromUid, senderName, ctx, isAdminCaller) {
 }
 
 exports.handler = async (event) => {
-  const ALLOWED_ORIGINS = [
-    'https://kidemy-app.netlify.app',
-    'capacitor://localhost',
-    'http://localhost',
-  ];
   const origin = event.headers.origin || event.headers.Origin || '';
   const headers = {
     'Content-Type': 'application/json',
