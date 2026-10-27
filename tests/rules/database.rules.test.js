@@ -1162,3 +1162,41 @@ describe('privacy: teacherPrivate', () => {
     await assertSucceeds(update(ref(asTeacher(), `teachers/${TEACHER}`), { payment: null, email: null, meetingLink: null, notificationEmail: null }));
   });
 });
+
+// ── CONTRACT: the real teacher registration and profile-edit writes ────────
+// Field sets captured from saveTeacherProfile() and saveTeacherProfileEdits()
+// running in a browser, so a rule that rejects a field the app really writes
+// fails here — the booking bug survived exactly because the tests wrote
+// smaller, friendlier objects than the app does.
+describe('contract: teacher registration and profile edit pass the rules', () => {
+  const registration = () => ({
+    uid: TEACHER, name: 'Teach', cat: 'chess', cats: ['chess'], customCats: [],
+    area: 'מרכז', city: 'תל אביב', price: 60, desc: 'תיאור', mode: ['online'],
+    freeTrial: false, whyTeach: null, proudOf: null, typicalLesson: null,
+    rating: 0, reviews: 0, lessons: 0, online: true, group: false,
+    verified: false, active: false, createdAt: 5,
+    ageVerification: { age: 16, idType: 'parent_confirm', status: 'pending', submittedAt: 5 },
+  });
+
+  it('registration: private details, then the public record, as the teacher', async () => {
+    await assertSucceeds(set(ref(asTeacher(), `teacherPrivate/${TEACHER}`),
+      { email: 't@example.com', meetingLink: 'https://zoom.us/j/55', updatedAt: 5 }));
+    await assertSucceeds(set(ref(asTeacher(), `teachers/${TEACHER}`), registration()));
+  });
+
+  it('registration: a public record that still carries an email or meeting link is refused', async () => {
+    await assertFails(set(ref(asTeacher(), `teachers/${TEACHER}`), { ...registration(), email: 't@example.com' }));
+    await assertFails(set(ref(asTeacher(), `teachers/${TEACHER}`), { ...registration(), meetingLink: 'https://zoom.us/j/55' }));
+  });
+
+  it('profile edit: the private update, the public update with the old copies cleared, and the subject profiles', async () => {
+    await assertSucceeds(update(ref(asTeacher(), `teacherPrivate/${TEACHER}`),
+      { notificationEmail: 'n@example.com', meetingLink: 'https://zoom.us/j/9', updatedAt: 6 }));
+    await assertSucceeds(update(ref(asTeacher(), `teachers/${TEACHER}`), {
+      desc: 'תיאור חדש', price: 70, cats: ['chess'], cat: 'chess', customCats: [], name: 'Teach',
+      instagram: '', tiktok: '', facebook: '', faq: [],
+      payment: null, meetingLink: null, notificationEmail: null, email: null,
+    }));
+    await assertSucceeds(update(ref(asTeacher(), `teachers/${TEACHER}/catProfiles`), { chess: { desc: 'x', tags: [] } }));
+  });
+});
