@@ -21,6 +21,7 @@ const crypto = require('crypto');
 const { admin, initAdmin } = require('../lib/firebase-admin-init');
 const { sendViaEmailJS } = require('../lib/emailjs');
 const ALLOWED_ORIGINS = require('../lib/allowed-origins');
+const { FAKE_DOMAIN } = require('../lib/internal-email');
 
 const TOKEN_RE = /^[a-f0-9]{64}$/;
 const PARENT_CONSENT_DAYS = 14;
@@ -96,22 +97,35 @@ exports.handler = async (event) => {
       return { statusCode: 401, headers, body: JSON.stringify({ error: 'idToken is required' }) };
     }
     let uid;
+    let ownEmail;
     try {
       initAdmin();
-      uid = (await admin.auth().verifyIdToken(body.idToken)).uid;
+      const decoded = await admin.auth().verifyIdToken(body.idToken);
+      uid = decoded.uid;
+      ownEmail = String(decoded.email || '').trim().toLowerCase();
     } catch {
       return { statusCode: 401, headers, body: JSON.stringify({ error: 'invalid or expired session' }) };
     }
-    const parentEmail = String(body.parentEmail || '').trim();
     const studentName = String(body.studentName || '').trim().slice(0, 100);
-    if (!EMAIL_RE.test(parentEmail)) {
-      return { statusCode: 400, headers, body: JSON.stringify({ error: 'invalid parentEmail' }) };
-    }
 
     try {
       const db = admin.database();
       if (!(await withinRateLimit(db, 'parentConsentCreateRateLimit', uid, CREATE_RATE_LIMIT_MAX, CREATE_RATE_LIMIT_WINDOW_MS))) {
         return { statusCode: 429, headers, body: JSON.stringify({ error: 'Too many requests' }) };
+      }
+
+      // מייל ההורה נלקח מהרשומה של המשתמש, לא מגוף הבקשה. הרשומה היא מה שהמנהל
+      // רואה ומאשר מולו; כשהכתובת הגיעה מהבקשה אפשר היה לשלוח את קישור ההסכמה
+      // לכתובת אחרת מזו שמוצגת לו, והתיעוד "ההורה אישר" היה נשמר על כתובת
+      // שאיש לא ראה. כתובת הילד עצמו נדחית מאותה סיבה: ההסכמה אינה ממלאת את
+      // תפקידה אם הילד הוא זה שקורא את המייל.
+      const parentEmail = String((await db.ref('users/' + uid + '/parentEmail').get()).val() || '').trim();
+      if (
+        !EMAIL_RE.test(parentEmail) ||
+        parentEmail.toLowerCase().endsWith(FAKE_DOMAIN) ||
+        parentEmail.toLowerCase() === ownEmail
+      ) {
+        return { statusCode: 400, headers, body: JSON.stringify({ error: 'invalid parentEmail' }) };
       }
 
       const newToken = crypto.randomBytes(32).toString('hex');

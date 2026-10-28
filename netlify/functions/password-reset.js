@@ -20,8 +20,8 @@
 const { admin, initAdmin } = require('../lib/firebase-admin-init');
 const { sendViaEmailJS } = require('../lib/emailjs');
 const ALLOWED_ORIGINS = require('../lib/allowed-origins');
+const { FAKE_DOMAIN } = require('../lib/internal-email');
 
-const FAKE_DOMAIN = '@kidemy.app';
 const USERNAME_RE = /^[a-z0-9_]{3,20}$/;
 
 const RATE_LIMIT_MAX = 5;
