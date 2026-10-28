@@ -66,6 +66,37 @@ Bit/PayPal/PayBox, מסך ההזמנה היה "שלם קודם" וחסם הזמ�
   Firebase **לא** רץ כאן (הורדת jar חסומה) — רק ב-CI.
 - `netlify/lib/allowed-origins.js` הוא מקור יחיד לרשימת CORS של הפונקציות (נוסף drushe.com).
 
+## דוח QA של 28.10.2026 (ענף, טרם מוזג) — מה נסגר ומה פתוח
+**נסגר בענף:** XSS מאוחסן אצל מורה. תלמיד כותב ל-`teacherBookings/<מורה>/<id>` שדות שהמורה
+מציג (day, time, price, שמות, מזהה בתוך handler, תווית הפלטפורמה). כל המקומות במסכי ההזמנה
+עוברים עכשיו ב-`escapeHtml`/`jsAttrEscape`, ובחוקים יש `.validate` (בלי `<>"` ` ` ` ואורך עד 300,
+`id` שווה למפתח, `price` ו-`dayIndex`/`lessonTimestamp`/`createdAt` מספרים). בדיקות: 12 בדיקות
+חוקים + e2e `teacher-booking-xss.spec.js` (נכשלות על הקוד הישן). ⚠️ regex עם backslash במחלקה
+נדחה על ידי האמולטור — האמולטור כן רץ מקומית אם מריצים בלי פרוקסי:
+`env -u HTTPS_PROXY -u HTTP_PROXY NO_PROXY=localhost,127.0.0.1 npx firebase emulators:exec --only database --project demo-drushe "node --test tests/rules/database.rules.test.js"`.
+
+**פתוח, לפי חשיבות:**
+1. **פרטי קשר של קטין והורה** (`studentEmail`, `parentEmail`, `parentName`) נכתבים לרשומת
+   ההזמנה והמורה קורא אותם (`index.html` סביב `bookingData`). להוציא מהמטען ולהעביר את מייל
+   "השיעור הושלם" להורה (`index.html` ~5118) לפונקציית שרת.
+2. מיילי "שיעור אושר/נדחה" להורה לא נשלחים: הלקוח של המורה קורא `users/<תלמיד>` והחוק חוסם.
+3. `approveBooking` בודק `currentUserData.jitsiUrl` (שדה שאיש לא כותב) ולכן תמיד מזהיר; והקישור
+   נעתק להזמנה רק בזמן הבקשה.
+4. `teacherPrivate/$uid/.read` פתוח לכל משתמש מאושר; לצמצם לצד עם הזמנה מאושרת מול המורה.
+5. חסימת משתמש: מאזין בזמן אמת עדיין על `users/<uid>/blocked`; `userBlocks` נאכף רק בצ'אט;
+   אין הגירה מהשדה הישן.
+6. `notify.js`: `questionAnswered`, `newQuestion`, `briefAccepted`, `briefProposal` לא מאמתים מול
+   הרשומה האמיתית.
+7. כרטיס ההפניה בפרופיל מבטיח "₪15 קרדיט" שאין לו מימוש (כתיבה ל-`userCredits/<מפנה>` נדחית).
+8. מורה שנרשם עם מייל ההורה שלו: השרת דוחה (כתובת הורה = כתובת ההתחברות) ואין קישור הסכמה;
+   הלקוח מציג "מייל נשלח" גם כשהשרת דחה.
+9. `users/<uid>/parentEmail` ניתן לשינוי אחרי ההסכמה; המנהל רואה את הנוכחי.
+10. שער ההורה (`verified`) לא נאכף בחוקי `messages`/`bookings`.
+11. XSS רחב יותר באותה משפחה: `g.day/g.time/g.price` (קבוצות), `t.price`, `p.price` ועוד
+    ממלאים HTML בלי escape; יש לבדוק גם איזה חוק מאמת אותם.
+12. נגישות במסך ההזמנה: כפתורי ימים 36px, שעות בלי role/tabindex, עיגול לבן ב-~10440 (נשבר
+    כלל "בלי משטח לבן").
+
 ## דומיין
 נקנה **drushe.com** (Namecheap, כ-$11–15 לשנה). עדיין לא מחובר ל-Netlify (ERR_TIMED_OUT).
 סדר: מיזוג #168 → Netlify "Add a domain" + Netlify DNS (4 nameservers ב-Namecheap) →

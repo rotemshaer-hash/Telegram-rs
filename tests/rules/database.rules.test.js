@@ -1069,6 +1069,53 @@ describe('contract: the teacher copy of a new booking cannot be forged', () => {
   });
 });
 
+// ── PRIVACY: the teacher's copy of a booking cannot carry markup ───────────
+// The teacher home screen renders the fields a STUDENT writes into
+// teacherBookings (day, time, price, names, the booking id inside inline
+// handlers). The screens now escape them; this is the second layer, so a value
+// that could break out of an attribute or open a tag is refused at write time.
+// QA review 28.10.2026: a student wrote day:'<img src=x onerror=...>' and it ran
+// in the teacher's page, a minor's, with their chats open.
+describe('privacy: a student cannot put markup into the teacher copy of a booking', () => {
+  const copy = (id, over = {}) => ({
+    id, studentId: STUDENT, teacherId: TEACHER,
+    studentName: 'Minor', studentEmail: 'minor@example.com',
+    parentEmail: 'parent@example.com', parentName: 'Parent',
+    teacherName: 'Teach', teacherCat: 'chess',
+    day: "ב' 3 נוב", dayIndex: 1, lessonTimestamp: 1893456000000, time: '10:00', type: 'single',
+    price: 80, status: 'pending',
+    jitsiRoom: 'Drushe-' + id, jitsiUrl: 'https://zoom.us/j/1', meetingPlatform: 'Zoom',
+    createdAt: 5, ...over,
+  });
+  const write = (id, over) => set(ref(asStudent(), `teacherBookings/${TEACHER}/${id}`), copy(id, over));
+
+  it('the real field set, with a Hebrew apostrophe in the date and a name, still passes', async () => {
+    await assertSucceeds(write('cOk', { studentName: "ג'ו" }));
+  });
+
+  for (const field of ['day', 'time', 'studentName', 'studentEmail', 'parentName', 'teacherName', 'teacherCat', 'meetingPlatform']) {
+    it(`${field} cannot carry a tag`, async () => {
+      await assertFails(write('cX', { [field]: '<img src=x onerror=window.__xss=1>' }));
+    });
+  }
+
+  it('a double quote cannot break out of an attribute', async () => {
+    await assertFails(write('cQ', { day: 'x" onmouseover="window.__xss=1' }));
+  });
+
+  it('the id inside the record must equal the booking key', async () => {
+    await assertFails(write('cId', { id: "x');window.__xss=1;('" }));
+  });
+
+  it('price must be a number', async () => {
+    await assertFails(write('cP', { price: '<b>1</b>' }));
+  });
+
+  it('timestamps must be numbers', async () => {
+    await assertFails(write('cT', { lessonTimestamp: '<b>1</b>' }));
+  });
+});
+
 // ── PRIVACY: ID-photo fields cannot carry markup ───────────────────────────
 // parentIdPhoto and the teacher ID photo are owner-writable and were rendered
 // into <img src> on the admin screens. The screens now escape them; this is
