@@ -117,12 +117,32 @@
     },
     "bookings": {
       "$id": {
+        ".validate": "$id.matches(/^[-A-Za-z0-9_]{1,40}$/)",
         ".read": "auth != null && (auth.uid == data.child('studentId').val() || auth.uid == data.child('teacherId').val() || auth.token.email == 'rotemshaer@gmail.com')",
         ".write": "auth != null && (auth.uid == data.child('studentId').val() || auth.uid == newData.child('studentId').val() || auth.uid == data.child('teacherId').val() || auth.uid == newData.child('teacherId').val() || auth.token.email == 'rotemshaer@gmail.com')",
         "studentId": { ".validate": "auth.token.email == 'rotemshaer@gmail.com' || !data.exists() || newData.val() == data.val()" },
         "teacherId": { ".validate": "auth.token.email == 'rotemshaer@gmail.com' || !data.exists() || newData.val() == data.val()" },
-        "price": { ".validate": "auth.token.email == 'rotemshaer@gmail.com' || !data.exists() || newData.val() == data.val()" },
+        "price": { ".validate": "newData.isNumber() && (auth.token.email == 'rotemshaer@gmail.com' || !data.exists() || newData.val() == data.val())" },
         "createdAt": { ".validate": "auth.token.email == 'rotemshaer@gmail.com' || !data.exists() || newData.val() == data.val()" },
+        "studentName": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>`]/)" },
+        "parentName": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>`]/)" },
+        "teacherName": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>`]/)" },
+        "from": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>`]/)" },
+        "studentEmail": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>\"`']/)" },
+        "parentEmail": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>\"`']/)" },
+        "teacherCat": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>\"`']/)" },
+        "day": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>`]/)" },
+        "type": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>\"`']/)" },
+        "jitsiRoom": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>\"`']/)" },
+        "meetingPlatform": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>\"`']/)" },
+        "subject": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>\"`']/)" },
+        "category": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>\"`']/)" },
+        "bookingId": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>\"`']/)" },
+        "time": { ".validate": "newData.isString() && (newData.val().matches(/^[0-9]{1,2}:[0-9]{2}$/) || newData.val() == 'לתיאום')" },
+        "jitsiUrl": { ".validate": "newData.isString() && newData.val().length <= 600 && !newData.val().matches(/[<>\"`']/) && (newData.val() == '' || newData.val().beginsWith('https://') || newData.val().beginsWith('http://'))" },
+        "id": { ".validate": "newData.isString() && newData.val() == $id" },
+        "dayIndex": { ".validate": "newData.isNumber()" },
+        "lessonTimestamp": { ".validate": "newData.isNumber()" },
         "status": {
           ".validate": "auth.token.email == 'rotemshaer@gmail.com' || newData.val() == data.val() || (!data.exists() && newData.val() == 'pending') || (data.val() == 'pending' && (((newData.val() == 'approved' || newData.val() == 'rejected') && auth.uid == data.parent().child('teacherId').val()) || (newData.val() == 'cancelled' && (auth.uid == data.parent().child('studentId').val() || auth.uid == data.parent().child('teacherId').val())))) || (data.val() == 'approved' && ((newData.val() == 'completed' && auth.uid == data.parent().child('teacherId').val()) || (newData.val() == 'cancelled' && (auth.uid == data.parent().child('studentId').val() || auth.uid == data.parent().child('teacherId').val()))))"
         }
@@ -133,13 +153,34 @@
         ".read": "auth != null && auth.uid == $uid",
         ".write": "auth != null && auth.uid == $uid",
         "$bookingId": {
+          ".validate": "$bookingId.matches(/^[-A-Za-z0-9_]{1,40}$/)",
           ".write": "auth != null && (auth.uid == $uid || root.child('bookings').child($bookingId).child('studentId').val() == auth.uid || (!data.exists() && newData.child('studentId').val() == auth.uid && newData.child('teacherId').val() == $uid && newData.child('status').val() == 'pending') || auth.token.email == 'rotemshaer@gmail.com')",
           "status": {
             ".validate": "auth.uid == $uid || auth.token.email == 'rotemshaer@gmail.com' || newData.val() == 'cancelled' || (!data.exists() && newData.val() == 'pending' && newData.parent().child('studentId').val() == auth.uid)"
           },
           "studentId": { ".validate": "auth.token.email == 'rotemshaer@gmail.com' || !data.exists() || newData.val() == data.val()" },
           "teacherId": { ".validate": "auth.token.email == 'rotemshaer@gmail.com' || !data.exists() || newData.val() == data.val()" },
-          "price": { ".validate": "auth.token.email == 'rotemshaer@gmail.com' || !data.exists() || newData.val() == data.val()" }
+          "studentName": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>`]/)" },
+          "parentName": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>`]/)" },
+          "teacherName": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>`]/)" },
+          "from": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>`]/)" },
+          "studentEmail": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>\"`']/)" },
+          "parentEmail": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>\"`']/)" },
+          "teacherCat": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>\"`']/)" },
+          "day": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>`]/)" },
+          "type": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>\"`']/)" },
+          "jitsiRoom": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>\"`']/)" },
+          "meetingPlatform": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>\"`']/)" },
+          "subject": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>\"`']/)" },
+          "category": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>\"`']/)" },
+          "bookingId": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>\"`']/)" },
+          "time": { ".validate": "newData.isString() && (newData.val().matches(/^[0-9]{1,2}:[0-9]{2}$/) || newData.val() == 'לתיאום')" },
+          "jitsiUrl": { ".validate": "newData.isString() && newData.val().length <= 600 && !newData.val().matches(/[<>\"`']/) && (newData.val() == '' || newData.val().beginsWith('https://') || newData.val().beginsWith('http://'))" },
+          "id": { ".validate": "newData.isString() && newData.val() == $bookingId" },
+          "dayIndex": { ".validate": "newData.isNumber()" },
+          "lessonTimestamp": { ".validate": "newData.isNumber()" },
+          "createdAt": { ".validate": "newData.isNumber()" },
+          "price": { ".validate": "newData.isNumber() && (auth.token.email == 'rotemshaer@gmail.com' || !data.exists() || newData.val() == data.val())" }
         }
       }
     },
@@ -147,13 +188,34 @@
       "$uid": {
         ".read": "auth != null && auth.uid == $uid",
         "$bookingId": {
+          ".validate": "$bookingId.matches(/^[-A-Za-z0-9_]{1,40}$/)",
           ".write": "auth != null && (auth.uid == $uid || root.child('bookings').child($bookingId).child('teacherId').val() == auth.uid || auth.token.email == 'rotemshaer@gmail.com')",
           "status": {
             ".validate": "auth.uid != $uid || newData.val() == 'pending' || newData.val() == 'awaitingPayment' || newData.val() == 'cancelled'"
           },
           "studentId": { ".validate": "auth.token.email == 'rotemshaer@gmail.com' || !data.exists() || newData.val() == data.val()" },
           "teacherId": { ".validate": "auth.token.email == 'rotemshaer@gmail.com' || !data.exists() || newData.val() == data.val()" },
-          "price": { ".validate": "auth.token.email == 'rotemshaer@gmail.com' || !data.exists() || newData.val() == data.val()" }
+          "studentName": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>`]/)" },
+          "parentName": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>`]/)" },
+          "teacherName": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>`]/)" },
+          "from": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>`]/)" },
+          "studentEmail": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>\"`']/)" },
+          "parentEmail": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>\"`']/)" },
+          "teacherCat": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>\"`']/)" },
+          "day": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>`]/)" },
+          "type": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>\"`']/)" },
+          "jitsiRoom": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>\"`']/)" },
+          "meetingPlatform": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>\"`']/)" },
+          "subject": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>\"`']/)" },
+          "category": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>\"`']/)" },
+          "bookingId": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>\"`']/)" },
+          "time": { ".validate": "newData.isString() && (newData.val().matches(/^[0-9]{1,2}:[0-9]{2}$/) || newData.val() == 'לתיאום')" },
+          "jitsiUrl": { ".validate": "newData.isString() && newData.val().length <= 600 && !newData.val().matches(/[<>\"`']/) && (newData.val() == '' || newData.val().beginsWith('https://') || newData.val().beginsWith('http://'))" },
+          "id": { ".validate": "newData.isString() && newData.val() == $bookingId" },
+          "dayIndex": { ".validate": "newData.isNumber()" },
+          "lessonTimestamp": { ".validate": "newData.isNumber()" },
+          "createdAt": { ".validate": "newData.isNumber()" },
+          "price": { ".validate": "newData.isNumber() && (auth.token.email == 'rotemshaer@gmail.com' || !data.exists() || newData.val() == data.val())" }
         }
       }
     },
