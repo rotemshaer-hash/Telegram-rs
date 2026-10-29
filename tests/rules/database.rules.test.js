@@ -1093,6 +1093,10 @@ describe('privacy: a student cannot put markup into the teacher copy of a bookin
     await assertSucceeds(write('cOk', { studentName: "ג'ו" }));
   });
 
+  it('a name with Hebrew double quotes (ד"ר) is a legitimate name and passes', async () => {
+    await assertSucceeds(write('cDr', { teacherName: 'ד"ר דנה', parentName: 'משפחת "כהן"' }));
+  });
+
   for (const field of ['day', 'time', 'studentName', 'studentEmail', 'parentName', 'teacherName', 'teacherCat', 'meetingPlatform']) {
     it(`${field} cannot carry a tag`, async () => {
       await assertFails(write('cX', { [field]: '<img src=x onerror=window.__xss=1>' }));

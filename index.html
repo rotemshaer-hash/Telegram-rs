@@ -1256,8 +1256,12 @@ async function _loadUserCredit(){
   try{
     const snap=await db.ref('userCredits/'+currentUser.uid).get();
     _userCredit=snap.val()||0;
-    _userCreditLoaded=true;
-  }catch(_){}
+  }catch(_){
+    // נכשל (אופליין/רשת חלשה): היתרה נשארת 0 ולא מנסים שוב בכל render —
+    // המסך שמבקש אותה קורא render() בסיום, וניסיון חוזר היה לולאה אינסופית.
+    _userCredit=0;
+  }
+  _userCreditLoaded=true;
 }
 function _genRefCode(name,uid){
   const ascii=(name||'').replace(/[^a-zA-Z0-9]/g,'').slice(0,4)||'kid';
@@ -3053,7 +3057,7 @@ async function requestBooking(totalAmount){
     showFireToast('🎉 מעולה! עשית צעד גדול — ההזמנה נשמרה ומחכה לאישור המורה');
     render();
   }catch(e){
-    showFireToast('❌ שגיאה: '+e.message);
+    showFireToast(e&&e.code==='PERMISSION_DENIED'?'❌ אי אפשר לשלוח את הבקשה כרגע. נסה שוב, ואם זה חוזר — פנה לתמיכה.':'❌ שגיאה: '+e.message);
   }
 }
 
