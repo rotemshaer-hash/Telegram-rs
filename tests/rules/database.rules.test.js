@@ -1103,8 +1103,39 @@ describe('privacy: a student cannot put markup into the teacher copy of a bookin
     });
   }
 
-  it('a double quote cannot break out of an attribute', async () => {
-    await assertFails(write('cQ', { day: 'x" onmouseover="window.__xss=1' }));
+  it('a quote or apostrophe cannot break out of the meeting link', async () => {
+    await assertFails(write('cQ', { jitsiUrl: 'https://a.b/x" onmouseover="window.__xss=1' }));
+    await assertFails(write('cA', { jitsiUrl: "https://a.b/x');window.__xss=1;('" }));
+  });
+
+  it('the meeting link must be https (or empty), not javascript:', async () => {
+    await assertFails(write('cJ', { jitsiUrl: 'javascript:window.__xss=1' }));
+    await assertSucceeds(write('cJ2', { jitsiUrl: '' }));
+  });
+
+  it('an http link and a long https link are fine (Teams links are long)', async () => {
+    await assertSucceeds(write('cH', { jitsiUrl: 'http://meet.example.org/room' }));
+    await assertSucceeds(write('cL', { jitsiUrl: 'https://teams.example.com/l/meetup-join/' + 'a'.repeat(400) }));
+  });
+
+  it('a brief booking (the time is "לתיאום", to be agreed) still passes', async () => {
+    await assertSucceeds(write('cBr', { time: 'לתיאום', type: 'brief' }));
+  });
+
+  it('time must look like a time', async () => {
+    await assertFails(write('cTm', { time: "10:00');window.__xss=1;('" }));
+    await assertFails(write('cTm2', { time: '&quot;+(window.__xss=1)+&quot;' }));
+  });
+
+  it('the booking key must be a plain push-id, because the screens put it in inline handlers', async () => {
+    await assertFails(set(ref(asStudent(), `teacherBookings/${TEACHER}/${"x');alert(1);('"}`), copy('x')));
+    await assertFails(set(ref(asStudent(), `teacherBookings/${TEACHER}/x y`), copy('x y')));
+  });
+
+  it('fields outside the list (subject, category, from, bookingId) cannot carry markup either', async () => {
+    for (const f of ['subject', 'category', 'from', 'bookingId']) {
+      await assertFails(write('cO' + f, { [f]: '<img src=x onerror=window.__xss=1>' }));
+    }
   });
 
   it('the id inside the record must equal the booking key', async () => {
@@ -1117,6 +1148,28 @@ describe('privacy: a student cannot put markup into the teacher copy of a bookin
 
   it('timestamps must be numbers', async () => {
     await assertFails(write('cT', { lessonTimestamp: '<b>1</b>' }));
+  });
+});
+
+describe('privacy: bookings/ and userBookings/ carry the same field checks as the teacher copy', () => {
+  const hostile = (id) => ({
+    id, studentId: STUDENT, teacherId: TEACHER, studentName: 'Minor', status: 'pending', price: 80,
+    day: "ב' 3 נוב", time: '10:00', createdAt: 5, teacherName: '<img src=x onerror=window.__xss=1>',
+  });
+
+  it('bookings/<id> refuses a tag in a name', async () => {
+    await assertFails(set(ref(asStudent(), 'bookings/bH1'), hostile('bH1')));
+  });
+
+  it('userBookings/<student>/<id> refuses a tag written by the teacher of the booking', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await set(ref(ctx.database(), 'bookings/bH2'), { studentId: STUDENT, teacherId: TEACHER, status: 'pending', price: 80, createdAt: 5 });
+    });
+    await assertFails(set(ref(asTeacher(), `userBookings/${STUDENT}/bH2`), hostile('bH2')));
+  });
+
+  it('the legitimate real payload still passes on both', async () => {
+    await assertSucceeds(set(ref(asStudent(), 'bookings/bH3'), { ...hostile('bH3'), teacherName: 'Teach' }));
   });
 });
 

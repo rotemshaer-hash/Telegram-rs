@@ -36,4 +36,54 @@ test.describe('teacher screens: hostile booking fields stay text', () => {
     expect(r.seen, 'no screen may have run script from a booking field').toEqual({ home: 0, messages: 0, lessons: 0, bookings: 0 });
     expect(r.html).not.toContain('<img src=x onerror');
   });
+
+  // QA security review 29.10.2026: the inline handlers built their arguments with
+  // JSON.stringify(x).replace(/"/g,'&quot;'), which left & alone, so a value that
+  // CONTAINS the text &quot; was decoded by the browser into a real quote and broke
+  // out of the JS string; and several handlers put the booking key, studentId or
+  // another field between single quotes unescaped. Clicking is what runs those, so
+  // this test clicks every button on each teacher screen.
+  test('no handler runs script from a student-written booking, even after a click', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => typeof Messages === 'function' && typeof go === 'function');
+    const r = await page.evaluate(async () => {
+      window.__xss = 0;
+      const ENT = '&quot;+(window.__xss=11)+&quot;';
+      const KEY = "x');window.__xss=13;('";
+      currentUser = { uid: 'teach1', email: 't@example.com', emailVerified: true };
+      currentUserData = { name: 'מורה', role: 'teacher', verified: true };
+      TEACHERS.length = 0;
+      TEACHERS.push({ id: 'teach1', name: 'מורה', cat: 'chess', cats: ['chess'], price: 60 });
+      const hostile = (id, status) => ({
+        id, bookingId: id, studentId: KEY, teacherId: 'teach1', studentName: '");window.__xss=21;("', teacherName: 'מורה',
+        day: ENT, time: ENT, price: 60, status, createdAt: Date.now(), dayIndex: 1,
+        jitsiUrl: ENT, jitsiRoom: ENT, meetingPlatform: ENT, from: '<img src=x onerror="window.__xss=16">',
+      });
+      const list = [hostile(KEY, 'pending'), hostile(KEY + '1', 'approved'), hostile(KEY + '2', 'completed'), hostile(KEY + '3', 'rejected')];
+      teacherPendingBookings = list.filter((b) => b.status === 'pending');
+      teacherAllBookings = list;
+      studentBookings = list;
+      teacherBookingsLoaded = true;
+      for (const step of [
+        () => { S.pTab = 'bookings'; go('profile'); },
+        () => go('messages'),
+        () => go('weeklySchedule'),
+      ]) {
+        try { step(); } catch (_e) { /* screen may not exist in this build */ }
+        await new Promise((res) => setTimeout(res, 400));
+        // two passes: the first opens dialogs (WhatsApp message built from the booking),
+        // the second clicks the buttons those dialogs just rendered
+        for (let pass = 0; pass < 2; pass++) {
+          for (const el of Array.from(document.querySelectorAll('[onclick]'))) {
+            try { el.click(); } catch (_e) { /* handler may throw on fake data */ }
+          }
+          await new Promise((res) => setTimeout(res, 200));
+        }
+      }
+      try { showPaymentManagement(); } catch (_e) { /* optional */ }
+      await new Promise((res) => setTimeout(res, 300));
+      return window.__xss;
+    });
+    expect(r, 'no handler or screen may have run script').toBe(0);
+  });
 });

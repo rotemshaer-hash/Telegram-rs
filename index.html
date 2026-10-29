@@ -1253,8 +1253,10 @@ let _userCredit=0;
 let _userCreditLoaded=false;
 async function _loadUserCredit(){
   if(_userCreditLoaded||!currentUser)return;
+  const uid=currentUser.uid;
   try{
-    const snap=await db.ref('userCredits/'+currentUser.uid).get();
+    const snap=await db.ref('userCredits/'+uid).get();
+    if(currentUser?.uid!==uid)return; // התחבר משתמש אחר בינתיים — התשובה אינה שלו
     _userCredit=snap.val()||0;
   }catch(_){
     // נכשל (אופליין/רשת חלשה): היתרה נשארת 0 ולא מנסים שוב בכל render —
@@ -5067,7 +5069,7 @@ function _showLessonSummaryDialog(enc){
     <div style="display:flex;gap:8px;margin-bottom:20px">
       ${[1,2,3,4,5].map(r=>`<button type="button" onclick="document.querySelectorAll('._lsStar').forEach(s=>{s.style.background='rgba(20,184,166,0.08)';s.style.color='#64748B'});this.style.background='#14B8A6';this.style.color='#fff';window._lsRating=${r}" class="_lsStar" style="flex:1;background:rgba(20,184,166,0.08);border:none;border-radius:12px;padding:10px 4px;font-size:15px;cursor:pointer;color:#64748B;font-weight:900;transition:all .15s">${r}★</button>`).join('')}
     </div>
-    <button onclick="_saveLessonSummary('${b.id}','${enc}')" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:15px;font-size:16px;font-weight:900;cursor:pointer;margin-bottom:10px">${icon("save",14)} שמור סיכום</button>
+    <button onclick="_saveLessonSummary('${jsAttrEscape(b.id)}','${enc}')" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:15px;font-size:16px;font-weight:900;cursor:pointer;margin-bottom:10px">${icon("save",14)} שמור סיכום</button>
     <button onclick="document.getElementById('_lsDialog').remove()" style="width:100%;background:none;border:none;color:#64748B;padding:10px;font-size:14px;cursor:pointer;font-weight:700">ביטול</button>
   </div>`;
   document.body.appendChild(d);
@@ -9171,12 +9173,12 @@ async function showMyStudents(){
                 <div style="font-weight:800;font-size:14px;color:#0F1A1F">${escapeHtml(s.name)}</div>
                 ${s.email?`<div style="font-size:11px;color:#64748B;margin-top:2px">${escapeHtml(s.email)}</div>`:''}
                 <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">
-                  ${s.lastSubject?`<span style="background:#14B8A620;color:#14B8A6;border-radius:50px;padding:2px 8px;font-size:11px;font-weight:700">${s.lastSubject}</span>`:''}
+                  ${s.lastSubject?`<span style="background:#14B8A620;color:#14B8A6;border-radius:50px;padding:2px 8px;font-size:11px;font-weight:700">${escapeHtml(s.lastSubject)}</span>`:''}
                   <span style="background:#F1F5F9;color:#64748B;border-radius:50px;padding:2px 8px;font-size:11px">${statusLabel[s.status]||s.status}</span>
                   <span style="background:#F1F5F9;color:#64748B;border-radius:50px;padding:2px 8px;font-size:11px">${s.count} הזמנות</span>
                 </div>
               </div>
-              ${s.lastDate?`<div style="font-size:11px;color:#64748B;text-align:center;flex-shrink:0">${s.lastDate}</div>`:''}
+              ${s.lastDate?`<div style="font-size:11px;color:#64748B;text-align:center;flex-shrink:0">${escapeHtml(s.lastDate)}</div>`:''}
             </div>
           `).join('')}
         </div>
@@ -9583,7 +9585,7 @@ function Home(){
             <div style="display:flex;gap:8px">
               <button onclick="approveBooking('${jsAttrEscape(b.id)}')" style="flex:1;background:#10B981;border:none;color:#fff;border-radius:50px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">${icon("check-circle",14)} אשר</button>
               <button onclick="rejectBooking('${jsAttrEscape(b.id)}')" style="flex:1;background:rgba(231,76,60,0.9);border:none;color:#fff;border-radius:50px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">${icon("x-circle",14)} דחה</button>
-              <button onclick='showWhatsAppDialog("",WA_TEMPLATES.bookingApproved(${JSON.stringify(b).replace(/"/g,"&quot;").replace(/'/g,"&apos;")}),"שלח אישור")' style="background:linear-gradient(135deg,#25D366,#128C7E);border:none;color:#fff;border-radius:50px;padding:10px 14px;font-weight:800;font-size:13px;cursor:pointer">${icon("smartphone",14)}</button>
+              <button onclick='showWhatsAppDialog("",WA_TEMPLATES.bookingApproved(${escapeHtml(JSON.stringify(b))}),"שלח אישור")' style="background:linear-gradient(135deg,#25D366,#128C7E);border:none;color:#fff;border-radius:50px;padding:10px 14px;font-weight:800;font-size:13px;cursor:pointer">${icon("smartphone",14)}</button>
             </div>
           </div>
         `).join('')}
@@ -10112,7 +10114,7 @@ function Teacher(){
         const platLabel=v.platform==='youtube'?'YouTube':v.platform==='instagram'?'Instagram':v.platform==='tiktok'?'TikTok':'וידאו';
         const catObj=v.cat?CATS.find(c=>c.id===v.cat):null;
         const _vUrl=safeUrl(v.url||'');
-        return `<div style="border-radius:18px;overflow:hidden;margin-bottom:14px;box-shadow:0 4px 18px rgba(0,0,0,0.10);cursor:pointer;background:#fff" onclick="${_vUrl?`window.open(${JSON.stringify(_vUrl).replace(/"/g,'&quot;')},'_blank')`:''}">
+        return `<div style="border-radius:18px;overflow:hidden;margin-bottom:14px;box-shadow:0 4px 18px rgba(0,0,0,0.10);cursor:pointer;background:#fff" onclick="${_vUrl?`window.open(${escapeHtml(JSON.stringify(_vUrl))},'_blank')`:''}">
           <div style="aspect-ratio:16/9;background:${thumb?'url('+thumb+') center/cover no-repeat,':''} linear-gradient(135deg,#14B8A6,#06B6D4);position:relative">
             <div style="position:absolute;inset:0;background:linear-gradient(to bottom,transparent 40%,rgba(0,0,0,0.55));display:flex;align-items:center;justify-content:center">
               <div style="background:rgba(255,255,255,0.22);backdrop-filter:blur(6px);border:2px solid rgba(255,255,255,0.6);width:58px;height:58px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:0 6px 20px rgba(0,0,0,0.3)">▶️</div>
@@ -10470,7 +10472,7 @@ function Messages(){
             <div style="font-weight:900;font-size:15px;color:#0F1A1F;margin:2px 0">${escapeHtml((isTeacherRole?next.studentName:next.teacherName)||'')}</div>
             <div style="font-size:12px;color:#64748B">📅 יום ${escapeHtml(next.day)} • ${icon("clock",14)} ${escapeHtml(next.time)}</div>
           </div>
-          <button onclick="joinJitsi(${JSON.stringify(next.jitsiUrl||'').replace(/"/g,'&quot;')},${JSON.stringify(next.jitsiRoom||'').replace(/"/g,'&quot;')},${JSON.stringify({teacherName:next.teacherName||'',day:next.day||'',time:next.time||''}).replace(/"/g,'&quot;')})" style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:12px;padding:10px 14px;font-weight:800;font-size:12px;cursor:pointer;white-space:nowrap">📹 כנס ${escapeHtml(next.meetingPlatform||getMeetingLabel(next.jitsiUrl||''))}</button>
+          <button onclick="joinJitsi(${escapeHtml(JSON.stringify(next.jitsiUrl||''))},${escapeHtml(JSON.stringify(next.jitsiRoom||''))},${escapeHtml(JSON.stringify({teacherName:next.teacherName||'',day:next.day||'',time:next.time||''}))})" style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:12px;padding:10px 14px;font-weight:800;font-size:12px;cursor:pointer;white-space:nowrap">📹 כנס ${escapeHtml(next.meetingPlatform||getMeetingLabel(next.jitsiUrl||''))}</button>
         </div>
       `})():''}
 
@@ -10534,18 +10536,18 @@ function Messages(){
               </div>
               <span style="background:rgba(16,185,129,0.15);color:#059669;font-size:10px;font-weight:800;padding:4px 10px;border-radius:50px;flex-shrink:0">✓ מאושר</span>
             </div>
-            <button onclick="joinJitsi(${JSON.stringify(b.jitsiUrl||'').replace(/"/g,'&quot;')},${JSON.stringify(b.jitsiRoom||'').replace(/"/g,'&quot;')},${JSON.stringify({teacherName:b.teacherName||'',day:b.day||'',time:b.time||''}).replace(/"/g,'&quot;')})" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:14px;padding:12px;font-weight:800;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:8px">
+            <button onclick="joinJitsi(${escapeHtml(JSON.stringify(b.jitsiUrl||''))},${escapeHtml(JSON.stringify(b.jitsiRoom||''))},${escapeHtml(JSON.stringify({teacherName:b.teacherName||'',day:b.day||'',time:b.time||''}))})" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:14px;padding:12px;font-weight:800;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:8px">
               📹 הצטרף לשיעור (${escapeHtml(b.meetingPlatform||getMeetingLabel(b.jitsiUrl||''))})
             </button>
             <div style="display:flex;gap:8px;margin-bottom:0">
               <button onclick="S.chat={otherUid:'${jsAttrEscape(currentUserData?.role==='teacher'?b.studentId:b.teacherId)}',otherName:'${jsAttrEscape((currentUserData?.role==='teacher'?b.studentName:b.teacherName)||'')}'};go('chat')" style="flex:1;background:rgba(6,182,212,0.1);color:#04778A;border-radius:14px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">${icon("chat",14)} צ'אט</button>
-              <button onclick='showWhatsAppDialog("",WA_TEMPLATES.bookingReminder(${JSON.stringify(b).replace(/"/g,"&quot;").replace(/'/g,"&apos;")}),"שלח תזכורת")' style="background:linear-gradient(135deg,#25D366,#128C7E);border:none;color:#fff;border-radius:14px;padding:10px 12px;font-weight:800;font-size:13px;cursor:pointer">${icon("smartphone",14)}</button>
+              <button onclick='showWhatsAppDialog("",WA_TEMPLATES.bookingReminder(${escapeHtml(JSON.stringify(b))}),"שלח תזכורת")' style="background:linear-gradient(135deg,#25D366,#128C7E);border:none;color:#fff;border-radius:14px;padding:10px 12px;font-weight:800;font-size:13px;cursor:pointer">${icon("smartphone",14)}</button>
               ${isTeacherRole&&b.status==='approved'?`<button onclick="cancelBookingAsTeacher('${jsAttrEscape(b.id||b.bookingId||'')}')" title="בטל שיעור" style="background:rgba(245,158,11,0.1);color:#D97706;border-radius:14px;padding:10px 12px;font-weight:800;font-size:13px;cursor:pointer;flex-shrink:0">🚫</button>`:''}
               ${isTeacherRole&&b.status!=='completed'?`<button onclick="completeLesson('${jsAttrEscape(b.id)}')" style="flex:1;background:rgba(20,184,166,0.1);color:#14B8A6;border-radius:14px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">${icon("check-circle",14)} סיים ודרג</button>`:
               !isTeacherRole&&b.status==='completed'&&!b.studentRating?`<button onclick="showRatingDialog('${jsAttrEscape(b.id||b.bookingId||'')}','${jsAttrEscape(b.teacherId||'')}','${jsAttrEscape(b.teacherName||'')}')" style="flex:1;background:rgba(251,191,36,0.1);color:#D97706;border-radius:14px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">${icon("star",14)} דרג שיעור</button>`:''}
               ${isTeacherRole?`<button onclick="deleteBooking('${jsAttrEscape(b.id||b.bookingId||'')}')" title="מחק הזמנה" style="background:rgba(239,68,68,0.1);color:#EF4444;border-radius:14px;padding:10px 12px;font-weight:800;font-size:13px;cursor:pointer;flex-shrink:0"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>`:
               (b.status==='approved'||b.status==='completed')?`<button onclick="S.chat={otherUid:'${jsAttrEscape(b.teacherId)}',otherName:'${jsAttrEscape(b.teacherName||'')}'}; go('chat')" style="background:rgba(6,182,212,0.1);color:#04778A;border-radius:14px;padding:10px 12px;font-weight:800;font-size:12px;cursor:pointer;flex-shrink:0">צור קשר</button>`:
-              `<button onclick="deleteStudentBooking('${b.bookingId||b.id||''}')" title="מחק הזמנה" style="background:rgba(239,68,68,0.1);color:#EF4444;border-radius:14px;padding:10px 12px;font-weight:800;font-size:13px;cursor:pointer;flex-shrink:0"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>`}
+              `<button onclick="deleteStudentBooking('${jsAttrEscape(b.bookingId||b.id||'')}')" title="מחק הזמנה" style="background:rgba(239,68,68,0.1);color:#EF4444;border-radius:14px;padding:10px 12px;font-weight:800;font-size:13px;cursor:pointer;flex-shrink:0"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>`}
             </div>
             ${b.status==='approved'?`<button onclick="cancelApprovedBooking('${jsAttrEscape(b.id)}')" style="width:100%;margin-top:8px;background:rgba(239,68,68,0.07);color:#EF4444;border-radius:14px;padding:9px;font-weight:700;font-size:12px;cursor:pointer">🚫 בטל שיעור</button>`:''}
           </div>
@@ -10630,7 +10632,7 @@ function Chat(){
       <div style="width:42px;height:42px;border-radius:14px;display:flex;align-items:center;justify-content:center;background:rgba(20,184,166,0.15)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
       <div><div style="font-weight:800;font-size:15px">${escapeHtml(c.otherName||c.name||'משתמש')}</div><span style="font-size:11px;padding:3px 9px;background:rgba(16,185,129,0.15);color:#10B981;border-radius:50px;font-weight:700">פעיל</span></div>
       <div style="margin-right:auto;display:flex;gap:8px">
-        <button onclick="showReportDialog('chatUser','${c.otherUid}','${jsAttrEscape(c.otherName||'')}')" title="דווח על משתמש זה" style="background:rgba(231,76,60,0.1);border:none;color:#E74C3C;cursor:pointer;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></button>
+        <button onclick="showReportDialog('chatUser','${jsAttrEscape(c.otherUid)}','${jsAttrEscape(c.otherName||'')}')" title="דווח על משתמש זה" style="background:rgba(231,76,60,0.1);border:none;color:#E74C3C;cursor:pointer;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></button>
       </div>
     </div>
     <div style="background:#FFF8E1;padding:7px 14px;display:flex;gap:7px;align-items:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#856404" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg><span style="font-size:11px;color:#856404;font-weight:600">ההורים יכולים לצפות בשיחה זו</span></div>
@@ -10657,9 +10659,9 @@ function Chat(){
     </div>
     <div class="chat-bar">
       ${_isRecording?`<span id="_voiceTimer" style="font-size:12px;color:#EF4444;font-weight:800;flex-shrink:0">🔴 0s</span>`:''}
-      <input id="chatInputBox" placeholder="כתוב הודעה..." ${_isRecording?'disabled':''} onkeydown="if(event.key==='Enter')sendChatMessage('${c.otherUid}','${jsAttrEscape(c.otherName||'')}')">
-      ${!VOICE_ENABLED?'':`<button id="_micBtn" onclick="startVoiceRecording('${c.otherUid}','${jsAttrEscape(c.otherName||'')}');render()" style="background:${_isRecording?'#EF4444':'rgba(20,184,166,0.1)'};border:${_isRecording?'none':'1.5px solid rgba(20,184,166,0.3)'};border-radius:50%;width:44px;height:44px;color:${_isRecording?'#fff':'#14B8A6'};cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center">${_isRecording?'<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>':'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>'}</button>`}
-      <button onclick="sendChatMessage('${c.otherUid}','${jsAttrEscape(c.otherName||'')}')" style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;border-radius:50%;width:44px;height:44px;font-size:20px;color:#fff;cursor:pointer;flex-shrink:0;box-shadow:var(--gp)">↑</button>
+      <input id="chatInputBox" placeholder="כתוב הודעה..." ${_isRecording?'disabled':''} onkeydown="if(event.key==='Enter')sendChatMessage('${jsAttrEscape(c.otherUid)}','${jsAttrEscape(c.otherName||'')}')">
+      ${!VOICE_ENABLED?'':`<button id="_micBtn" onclick="startVoiceRecording('${jsAttrEscape(c.otherUid)}','${jsAttrEscape(c.otherName||'')}');render()" style="background:${_isRecording?'#EF4444':'rgba(20,184,166,0.1)'};border:${_isRecording?'none':'1.5px solid rgba(20,184,166,0.3)'};border-radius:50%;width:44px;height:44px;color:${_isRecording?'#fff':'#14B8A6'};cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center">${_isRecording?'<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>':'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>'}</button>`}
+      <button onclick="sendChatMessage('${jsAttrEscape(c.otherUid)}','${jsAttrEscape(c.otherName||'')}')" style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;border-radius:50%;width:44px;height:44px;font-size:20px;color:#fff;cursor:pointer;flex-shrink:0;box-shadow:var(--gp)">↑</button>
     </div>
   </div>`;
 }
@@ -10830,7 +10832,7 @@ function Profile(){
       <h4 style="margin:0 0 6px;font-weight:900;font-size:16px">${icon("gift",14)} הפנה חבר – קבל ₪15!</h4>
       <p style="margin:0 0 10px;font-size:13px;opacity:.9;line-height:1.6">על כל חבר שנרשם דרך הלינק האישי שלך תקבל <strong>₪15 קרדיט</strong> לחשבונך, והחבר יקבל <strong>₪5 קרדיט</strong> לשיעור הראשון.</p>
       ${isTeacher?`<div style="background:transparent;border:1.5px dashed rgba(255,255,255,.35);border-radius:12px;padding:10px 12px;margin-bottom:10px"><div style="font-size:13px;font-weight:800;margin-bottom:2px">🎓 בונוס למורים</div><div style="font-size:12px;opacity:.9;line-height:1.5">מורה נוסף שהצטרף דרך הלינק שלך והפך למנוי בתשלום? תקבל/י <strong>חודש נוסף בחינם</strong> על המנוי שלך!</div></div>`:''}
-      ${(()=>{if(!_userCreditLoaded){_loadUserCredit().then(()=>render());return '';}return _userCredit>0?`<div style="background:transparent;border-radius:10px;padding:8px 12px;margin-bottom:10px;font-size:13px;font-weight:800;box-shadow:none">💰 יתרת קרדיט: ₪${_userCredit}</div>`:'';})()}
+      ${(()=>{if(!currentUser)return '';if(!_userCreditLoaded){_loadUserCredit().then(()=>render());return '';}return _userCredit>0?`<div style="background:transparent;border-radius:10px;padding:8px 12px;margin-bottom:10px;font-size:13px;font-weight:800;box-shadow:none">💰 יתרת קרדיט: ₪${_userCredit}</div>`:'';})()}
       ${currentUserData?.refCode?`<div style="background:rgba(0,0,0,.2);border-radius:10px;padding:8px 12px;margin-bottom:10px;font-size:12px;font-family:monospace;word-break:break-all;direction:ltr;text-align:left;color:#E0FDF4">${_myRefLink()}</div>`:''}
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         ${currentUserData?.refCode?`<button onclick="(async()=>{try{await navigator.clipboard.writeText('${_myRefLink()}');showFireToast('📋 הלינק הועתק!');}catch(_){showFireToast('❌ לא ניתן להעתיק');}})();" style="background:rgba(255,255,255,.2);color:#fff;border-radius:50px;padding:9px 16px;font-weight:700;cursor:pointer;font-size:12px">📋 העתק לינק</button>`:''}
@@ -10870,7 +10872,7 @@ function Profile(){
             ${status==='pending'?`<div style="display:flex;gap:8px">
               <button onclick="rejectBooking('${jsAttrEscape(b.id||b.bookingId||'')}')" style="flex:1;background:rgba(239,68,68,0.1);color:#EF4444;border-radius:12px;padding:9px;font-weight:800;font-size:12px;cursor:pointer">✗ דחה</button>
               <button onclick="approveBooking('${jsAttrEscape(b.id||b.bookingId||'')}')" style="flex:1;background:linear-gradient(135deg,#10B981,#14B8A6);border:none;color:#fff;border-radius:12px;padding:9px;font-weight:800;font-size:12px;cursor:pointer">✓ אשר</button>
-            </div>`:status==='approved'?`<button onclick="S.chat={otherUid:'${b.studentId||''}',otherName:'${jsAttrEscape(b.studentName||'תלמיד')}'};go('chat')" style="width:100%;background:rgba(6,182,212,0.1);color:#04778A;border-radius:12px;padding:9px;font-weight:800;font-size:12px;cursor:pointer">${icon("chat",14)} שלח הודעה</button>`:`<button onclick="deleteBooking('${b.id||b.bookingId||''}')" style="width:100%;background:rgba(148,163,184,0.1);color:#6C7686;border-radius:12px;padding:9px;font-weight:800;font-size:12px;cursor:pointer">${icon("trash",14)} מחק מהרשימה</button>`}
+            </div>`:status==='approved'?`<button onclick="S.chat={otherUid:'${jsAttrEscape(b.studentId||'')}',otherName:'${jsAttrEscape(b.studentName||'תלמיד')}'};go('chat')" style="width:100%;background:rgba(6,182,212,0.1);color:#04778A;border-radius:12px;padding:9px;font-weight:800;font-size:12px;cursor:pointer">${icon("chat",14)} שלח הודעה</button>`:`<button onclick="deleteBooking('${jsAttrEscape(b.id||b.bookingId||'')}')" style="width:100%;background:rgba(148,163,184,0.1);color:#6C7686;border-radius:12px;padding:9px;font-weight:800;font-size:12px;cursor:pointer">${icon("trash",14)} מחק מהרשימה</button>`}
           </div>`).join('')}
       </div>`;
     }).join('');
@@ -12419,7 +12421,7 @@ function showPaymentManagement(){
             return `<div style="background:rgba(248,250,252,1);border-radius:16px;padding:14px 16px;display:flex;align-items:center;gap:12px">
               <div style="width:44px;height:44px;border-radius:14px;background:${statusColor}18;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">${icon("calendar",14)}</div>
               <div style="flex:1;min-width:0">
-                <div style="font-weight:800;font-size:14px;color:#0F1A1F;margin-bottom:2px">${otherName}</div>
+                <div style="font-weight:800;font-size:14px;color:#0F1A1F;margin-bottom:2px">${escapeHtml(otherName||'')}</div>
                 <div style="font-size:12px;color:#64748B">${escapeHtml(b.day||'')} ${escapeHtml(b.time||'')} ${escapeHtml(b.subject||b.cat||'')}</div>
               </div>
               <div style="text-align:left;flex-shrink:0">
@@ -12466,7 +12468,7 @@ function showEditTeacherProfileDialog(){
         <h3 style="font-weight:900;font-size:15px;margin:0 0 12px;color:#14B8A6">${icon("user",14)} פרטים אישיים</h3>
         <div style="margin-bottom:11px">
           <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">🙋 שם מלא</label>
-          <input id="_etName" class="inp" value="${(currentUserData?.name||'').replace(/"/g,'&quot;')}" placeholder="שם מלא">
+          <input id="_etName" class="inp" value="${escapeHtml(currentUserData?.name||'')}" placeholder="שם מלא">
         </div>
         <div style="margin-bottom:11px">
           <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">🎂 גיל</label>
@@ -12498,7 +12500,7 @@ function showEditTeacherProfileDialog(){
             <button type="button" onclick="addEtCustomCat()" style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:12px;padding:10px 14px;font-weight:800;cursor:pointer;white-space:nowrap">הוסף</button>
           </div>
           <div id="_etCustomList" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">
-            ${window._etCustomCats.map(cc=>`<span style="background:rgba(20,184,166,0.1);border-radius:50px;padding:5px 12px;font-size:12px;font-weight:700;color:#14B8A6;display:inline-flex;align-items:center;gap:6px">✨ ${escapeHtml(cc)} <span onclick="removeEtCustomCat(${JSON.stringify(cc)},this)" style="color:#EF4444;font-weight:900;cursor:pointer">✕</span></span>`).join('')}
+            ${window._etCustomCats.map(cc=>`<span style="background:rgba(20,184,166,0.1);border-radius:50px;padding:5px 12px;font-size:12px;font-weight:700;color:#14B8A6;display:inline-flex;align-items:center;gap:6px">✨ ${escapeHtml(cc)} <span onclick="removeEtCustomCat(${escapeHtml(JSON.stringify(cc))},this)" style="color:#EF4444;font-weight:900;cursor:pointer">✕</span></span>`).join('')}
           </div>
         </div>
       </div>
@@ -12518,33 +12520,33 @@ function showEditTeacherProfileDialog(){
       </div>
       <div style="margin-bottom:14px">
         <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:6px">${icon("video",14)} קישור שיעור (Zoom / Google Meet)</label>
-        <input id="_etMeetingLink" class="inp" type="url" value="${(_tpv.meetingLink||'').replace(/"/g,'&quot;')}" placeholder="https://zoom.us/j/... או https://meet.google.com/...">
+        <input id="_etMeetingLink" class="inp" type="url" value="${escapeHtml(_tpv.meetingLink||'')}" placeholder="https://zoom.us/j/... או https://meet.google.com/...">
         <p style="font-size:10px;color:#6C7686;margin:4px 0 0">${icon("alert-triangle",14)} ללא קישור, תלמידים לא יוכלו להצטרף לשיעור</p>
       </div>
       <div style="background:rgba(20,184,166,0.04);border-radius:18px;padding:16px;margin-bottom:16px">
         <h3 style="font-weight:900;font-size:15px;margin:0 0 12px;color:#14B8A6">${icon("smartphone",14)} רשתות חברתיות</h3>
         <div style="margin-bottom:11px">
           <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">${icon("camera",14)} Instagram</label>
-          <input id="_etInsta" class="inp" value="${(t.instagram||'').replace(/"/g,'&quot;')}" placeholder="https://instagram.com/...">
+          <input id="_etInsta" class="inp" value="${escapeHtml(t.instagram||'')}" placeholder="https://instagram.com/...">
         </div>
         <div style="margin-bottom:11px">
           <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">🎵 TikTok</label>
-          <input id="_etTiktok" class="inp" value="${(t.tiktok||'').replace(/"/g,'&quot;')}" placeholder="https://tiktok.com/@...">
+          <input id="_etTiktok" class="inp" value="${escapeHtml(t.tiktok||'')}" placeholder="https://tiktok.com/@...">
         </div>
         <div style="margin-bottom:0">
           <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">👍 Facebook</label>
-          <input id="_etFacebook" class="inp" value="${(t.facebook||'').replace(/"/g,'&quot;')}" placeholder="https://facebook.com/...">
+          <input id="_etFacebook" class="inp" value="${escapeHtml(t.facebook||'')}" placeholder="https://facebook.com/...">
         </div>
       </div>
       <div style="background:rgba(6,182,212,0.04);border-radius:18px;padding:16px;margin-bottom:16px">
         <h3 style="font-weight:900;font-size:15px;margin:0 0 6px;color:#04778A">${icon("video",14)} קישור שיעור אישי (Zoom / Google Meet)</h3>
         <p style="font-size:12px;color:#64748B;margin:0 0 10px;line-height:1.6">תלמידים ישתמשו בקישור זה לכניסה לשיעור. יש להגדיר קישור פעיל כדי שתלמידים יוכלו להצטרף.</p>
-        <input id="_etMeetingLink" class="inp" type="url" value="${(_tpv.meetingLink||'').replace(/"/g,'&quot;')}" placeholder="https://zoom.us/j/... או https://meet.google.com/...">
+        <input id="_etMeetingLink" class="inp" type="url" value="${escapeHtml(_tpv.meetingLink||'')}" placeholder="https://zoom.us/j/... או https://meet.google.com/...">
       </div>
       <div style="background:rgba(239,68,68,0.04);border-radius:18px;padding:16px;margin-bottom:16px">
         <h3 style="font-weight:900;font-size:15px;margin:0 0 6px;color:#EF4444">${icon("mail",14)} מייל להתראות</h3>
         <p style="font-size:12px;color:#64748B;margin:0 0 10px;line-height:1.6">כאן תקבל הודעות על הזמנות שיעור חדשות. <strong>חשוב:</strong> הכנס מייל אמיתי שלך (לא @kidemy.app).</p>
-        <input id="_etNotifEmail" class="inp" type="email" value="${(_tpv.notificationEmail||'').replace(/"/g,'&quot;')}" placeholder="המייל האמיתי שלך למשל: name@gmail.com">
+        <input id="_etNotifEmail" class="inp" type="email" value="${escapeHtml(_tpv.notificationEmail||'')}" placeholder="המייל האמיתי שלך למשל: name@gmail.com">
       </div>
 
       <!-- שאלות נפוצות (FAQ) -->
@@ -12581,7 +12583,7 @@ function showEditTeacherProfileDialog(){
         <div style="margin-bottom:12px">
           <div style="font-size:11px;color:#6C7686;font-weight:700;margin-bottom:7px">הצעות לשאלות:</div>
           <div style="display:flex;flex-wrap:wrap;gap:6px">
-            ${["לאיזה גיל מתאים?","כמה עולה שיעור?","האם יש שיעור ניסיון?","מה משך השיעור?","האם מלמד בזום?"].map(q=>`<button type="button" onclick="_etFaqChip(${JSON.stringify(q)})" style="background:rgba(20,184,166,0.08);border-radius:50px;padding:6px 13px;font-size:12px;font-weight:700;color:#14B8A6;cursor:pointer">${q}</button>`).join('')}
+            ${["לאיזה גיל מתאים?","כמה עולה שיעור?","האם יש שיעור ניסיון?","מה משך השיעור?","האם מלמד בזום?"].map(q=>`<button type="button" onclick="_etFaqChip(${escapeHtml(JSON.stringify(q))})" style="background:rgba(20,184,166,0.08);border-radius:50px;padding:6px 13px;font-size:12px;font-weight:700;color:#14B8A6;cursor:pointer">${q}</button>`).join('')}
           </div>
         </div>
         <!-- טופס הוספה -->
@@ -12668,7 +12670,7 @@ function addEtCustomCat(){
   if(container){
     const tag=document.createElement('span');
     tag.style.cssText='background:rgba(20,184,166,0.1);border-radius:50px;padding:5px 12px;font-size:12px;font-weight:700;color:#14B8A6;display:inline-flex;align-items:center;gap:6px';
-    tag.innerHTML=`✨ ${escapeHtml(val)} <span onclick="removeEtCustomCat(${JSON.stringify(val)},this)" style="color:#EF4444;font-weight:900;cursor:pointer">✕</span>`;
+    tag.innerHTML=`✨ ${escapeHtml(val)} <span onclick="removeEtCustomCat(${escapeHtml(JSON.stringify(val))},this)" style="color:#EF4444;font-weight:900;cursor:pointer">✕</span>`;
     container.appendChild(tag);
   }
 }
@@ -13495,8 +13497,8 @@ function WeeklySchedule(){
               ${b.status==='approved'?`
               <div style="display:flex;gap:8px">
                 <button onclick="joinJitsi('${jsAttrEscape(b.jitsiUrl||'')}','${jsAttrEscape(b.jitsiRoom||'')}',{})" style="flex:2;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:12px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">${icon("video",14)} הצטרף לשיעור</button>
-                <button onclick="S.chat={otherUid:'${isTeacher?(b.studentId||''):(b.teacherId||'')}',otherName:'${jsAttrEscape((isTeacher?b.studentName:b.teacherName)||'')}'}; go('chat')" style="flex:1;background:rgba(6,182,212,0.15);color:#04778A;border-radius:12px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">${icon("chat",14)}</button>
-                ${isTeacher?`<button onclick="completeLesson('${b.id||''}')" style="flex:1;background:rgba(20,184,166,0.15);color:#14B8A6;border-radius:12px;padding:10px;font-weight:800;font-size:12px;cursor:pointer">${icon("check-circle",14)} סיים</button>`:''}
+                <button onclick="S.chat={otherUid:'${jsAttrEscape(isTeacher?(b.studentId||''):(b.teacherId||''))}',otherName:'${jsAttrEscape((isTeacher?b.studentName:b.teacherName)||'')}'}; go('chat')" style="flex:1;background:rgba(6,182,212,0.15);color:#04778A;border-radius:12px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">${icon("chat",14)}</button>
+                ${isTeacher?`<button onclick="completeLesson('${jsAttrEscape(b.id||'')}')" style="flex:1;background:rgba(20,184,166,0.15);color:#14B8A6;border-radius:12px;padding:10px;font-weight:800;font-size:12px;cursor:pointer">${icon("check-circle",14)} סיים</button>`:''}
               </div>${isTeacher&&b.lessonTimestamp?`
               <a href="${googleCalendarLink(b,isTeacher)}" target="_blank" rel="noopener" style="margin-top:8px;display:flex;align-items:center;justify-content:center;gap:6px;background:rgba(139,47,201,0.1);color:#8b2fc9;border-radius:12px;padding:9px;font-weight:800;font-size:12px;text-decoration:none">${icon("calendar",14)} הוסף ליומן Google</a>`:''}`:''}
             </div>
@@ -13932,7 +13934,7 @@ function showWhatsAppDialog(phone,message,title='שלח דרך WhatsApp'){
       ${phone?`<div style="margin-bottom:14px"><label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:6px">${icon("smartphone",14)} שולח אל:</label><div style="background:rgba(20,184,166,0.06);border-radius:12px;padding:10px;font-weight:700;color:#14B8A6;direction:ltr;text-align:left">${phone}</div></div>`:`<div style="margin-bottom:14px"><label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:6px">${icon("smartphone",14)} מספר טלפון</label><input id="_waPhone" type="tel" placeholder="050-1234567" style="width:100%;background:rgba(20,184,166,0.06);border:1.5px solid rgba(20,184,166,0.25);border-radius:12px;padding:12px;font-size:14px;font-family:inherit;direction:ltr;outline:none;box-sizing:border-box"></div>`}
       <div style="display:flex;gap:10px">
         <button onclick="this.closest('div[style*=fixed]').remove()" style="flex:1;background:rgba(100,116,139,0.1);border:none;border-radius:50px;padding:13px;font-size:13px;font-weight:700;color:#64748B;cursor:pointer">ביטול</button>
-        <button onclick="const p=${JSON.stringify(phone||'')}||document.getElementById('_waPhone')?.value;if(!p){showFireToast('❌ הכנס מספר');return;}openWhatsApp(p,${JSON.stringify(message)});this.closest('div[style*=fixed]').remove()" style="flex:2;background:linear-gradient(135deg,#25D366,#128C7E);border:none;color:#fff;border-radius:50px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 4px 14px rgba(37,211,102,0.4);display:flex;align-items:center;justify-content:center;gap:6px">${icon("smartphone",14)} פתח WhatsApp</button>
+        <button onclick="const p=${escapeHtml(JSON.stringify(phone||''))}||document.getElementById('_waPhone')?.value;if(!p){showFireToast('❌ הכנס מספר');return;}openWhatsApp(p,${escapeHtml(JSON.stringify(message))});this.closest('div[style*=fixed]').remove()" style="flex:2;background:linear-gradient(135deg,#25D366,#128C7E);border:none;color:#fff;border-radius:50px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 4px 14px rgba(37,211,102,0.4);display:flex;align-items:center;justify-content:center;gap:6px">${icon("smartphone",14)} פתח WhatsApp</button>
       </div>
     </div>`;
   document.body.appendChild(ov);
