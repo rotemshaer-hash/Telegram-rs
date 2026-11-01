@@ -110,7 +110,11 @@ exports.handler = async (event) => {
       const priv = (await db.ref('teacherPrivate/' + b.teacherId).get()).val() || {};
       to = String(priv.notificationEmail || priv.email || '').trim();
     } else {
-      stu = (await db.ref('users/' + b.studentId).get()).val() || {};
+      // שלושה שדות בלבד — לא כל הרשומה (ברשומות ישנות יש בה תמונות base64)
+      const [parentEmail, parentName, name] = await Promise.all(
+        ['parentEmail', 'parentName', 'name'].map(async (k) => (await db.ref('users/' + b.studentId + '/' + k).get()).val())
+      );
+      stu = { parentEmail, parentName, name };
       to = String(stu.parentEmail || '').trim();
     }
     if (!EMAIL_RE.test(to) || to.toLowerCase().endsWith(FAKE_DOMAIN)) return reply(200, { ok: true, sent: false });

@@ -293,9 +293,11 @@
       "$errorId": { ".write": "auth != null && !data.exists()" }
     },
     "parentTokens": {
+      ".indexOn": ["uid"],
       "$token": { ".read": "data.child('expiresAt').isNumber() && data.child('expiresAt').val() > now", ".write": "auth.token.email == 'rotemshaer@gmail.com'" }
     },
     "parentConsent": {
+      ".indexOn": ["uid"],
       "$token": {
         ".write": "auth.token.email == 'rotemshaer@gmail.com'"
       }
@@ -482,7 +484,7 @@
     "pendingCategories": { ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'", "$suggestionId": { ".write": "auth != null && ((!data.exists() && newData.exists()) || auth.token.email == 'rotemshaer@gmail.com')" } },
     "stories": {
       ".read": "auth != null",
-      ".indexOn": ["status"],
+      ".indexOn": ["status", "uid"],
       "$storyId": {
         ".write": "auth != null && (!data.exists() && newData.child('uid').val() == auth.uid || data.child('uid').val() == auth.uid || auth.token.email == 'rotemshaer@gmail.com')",
         "status": {

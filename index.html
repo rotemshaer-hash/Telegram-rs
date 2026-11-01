@@ -1179,7 +1179,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.49';
+const APP_VERSION='4.11.50';
 
 // ─── הודעות קוליות — כבויות ────────────────────────────────────────────────
 // הקלטה קולית היא הערוץ היחיד בין ילדים שאיש לא בודק: אין תמלול, אין סינון,
@@ -4388,11 +4388,11 @@ async function deleteAllUserData(uid,role){
   // הלקוח לא רשאי לכתוב אליהם ולכן גם לא למחוק. רץ לפני שההזדהות נמחקת.
   try{
     const idToken=await currentUser.getIdToken();
-    const res=await fetch(API_BASE+'/api/account-cleanup',{
+    const res=await withTimeout(fetch(API_BASE+'/api/account-cleanup',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify(uid===currentUser.uid?{idToken}:{idToken,uid})
-    });
+    }),15000,'account-cleanup');
     if(!res.ok)scanFailures.push('server-cleanup');
   }catch(_e){scanFailures.push('server-cleanup');}
 

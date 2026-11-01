@@ -123,7 +123,11 @@ exports.handler = async (event) => {
         return { statusCode: 429, headers, body: JSON.stringify({ error: 'Too many requests' }) };
       }
 
-      const userRec = (await db.ref('users/' + uid).get()).val() || {};
+      // רק השדות שנחוצים — לא כל הרשומה (ברשומות ישנות יש בה תמונות base64)
+      const [parentConsentAt, userParentEmail, userName] = await Promise.all(
+        ['parentConsentAt', 'parentEmail', 'name'].map(async (k) => (await db.ref('users/' + uid + '/' + k).get()).val())
+      );
+      const userRec = { parentConsentAt, parentEmail: userParentEmail, name: userName };
 
       // הורה שכבר אישר לא מקבל עוד מייל ולא נפתחת בקשה חדשה
       if (userRec.parentConsentAt) {

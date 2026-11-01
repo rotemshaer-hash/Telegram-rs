@@ -45,7 +45,9 @@ beforeEach(() => {
   sent = [];
   data = {
     'bookings/b1': { teacherId: TEACHER, studentId: STUDENT, status: 'approved', teacherName: 'Teach', day: "ב' 3 נוב", time: '10:00', jitsiUrl: 'https://zoom.us/j/1', studentName: 'Kid' },
-    [`users/${STUDENT}`]: { name: 'Kid', parentEmail: 'mom@example.org', parentName: 'Mom' },
+    [`users/${STUDENT}/name`]: 'Kid',
+    [`users/${STUDENT}/parentEmail`]: 'mom@example.org',
+    [`users/${STUDENT}/parentName`]: 'Mom',
     [`teacherSummaries/${TEACHER}/b1`]: { topic: 'Fractions', notes: 'Good', homework: 'p. 4' },
   };
 });
@@ -87,7 +89,7 @@ describe('lesson-mail', () => {
   });
 
   it('sends nothing when there is no real parent address', async () => {
-    data[`users/${STUDENT}`].parentEmail = 'kid@kidemy.app';
+    data[`users/${STUDENT}/parentEmail`] = 'kid@kidemy.app';
     const r = await call(TEACHER, { bookingId: 'b1', event: 'approved' });
     assert.equal(r.status, 200);
     assert.equal(r.body.sent, false);
