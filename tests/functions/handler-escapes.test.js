@@ -15,6 +15,7 @@ describe('inline handler escapes', () => {
     ['a double-quoted JS string in a single-quoted attribute', `<button onclick='f("\${x}")'>`],
     ['an id inside a template nested in a handler expression', '<b onclick="${ok?`S.r=\'${t.id}\';render()`:`go(1)`}">'],
     ['an id in the middle of a string', `<b onclick="f('a-\${x}-b')">`],
+    ['escapeHtml inside a JS string (the browser decodes &#39; back to a quote)', `<b onclick="f('\${escapeHtml(name)}')">`],
   ];
   for (const [name, html] of caught) {
     it('catches ' + name, () => assert.equal(scan(html).length > 0, true, html));

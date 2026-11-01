@@ -50,7 +50,25 @@ beforeEach(() => {
     [`groupMembers/g1/${JOINER}`]: { status: 'approved', name: 'Joiner' },
     [`users/${OWNER}/name`]: 'Owner',
     [`users/${JOINER}/name`]: 'Joiner',
+    [`users/${OWNER}/verified`]: true,
+    [`users/${JOINER}/verified`]: true,
   };
+});
+
+describe('only an approved, unblocked account can notify another user', () => {
+  it('an unverified sender is refused', async () => {
+    delete data[`users/${OWNER}/verified`];
+    const r = await call(OWNER, { toUid: JOINER, type: 'groupApproved', ctx: { groupId: 'g1' } });
+    assert.equal(r.status, 403);
+    assert.equal(pushed.length, 0);
+  });
+
+  it('a blocked sender is refused', async () => {
+    data[`userBlocks/${OWNER}`] = { at: 1 };
+    const r = await call(OWNER, { toUid: JOINER, type: 'groupApproved', ctx: { groupId: 'g1' } });
+    assert.equal(r.status, 403);
+    assert.equal(pushed.length, 0);
+  });
 });
 
 describe('group notifications', () => {
@@ -101,5 +119,42 @@ describe('group notifications', () => {
   it('a join request cannot be aimed at someone other than the owner', async () => {
     const r = await call(JOINER, { toUid: STRANGER, type: 'groupJoin', ctx: { groupId: 'g1' } });
     assert.equal(r.status, 403);
+  });
+});
+
+// QA 29.10.2026: question and brief notifications only checked WHO the sender was,
+// not that the question or proposal they point at exists — any teacher could tell
+// any child "your question was answered".
+describe('question and brief notifications point at something real', () => {
+  const TEACH = OWNER;
+  beforeEach(() => {
+    data['teachers/' + TEACH] = { name: 'T' };
+    data[`teacherQA/${TEACH}/q1`] = { askerUid: JOINER, question: 'why?', answer: 'because' };
+    data[`teacherQA/${TEACH}/q2`] = { askerUid: JOINER, question: 'unanswered?', answer: null };
+    data['parentBriefs/br1'] = { parentUid: JOINER };
+    data[`briefProposals/br1/${TEACH}`] = { price: 50 };
+  });
+
+  it('the teacher can tell the asker an answered question was answered', async () => {
+    const r = await call(TEACH, { toUid: JOINER, type: 'questionAnswered', ctx: { teacherUid: TEACH, qaId: 'q1' } });
+    assert.equal(r.status, 200);
+  });
+
+  it('but not a user who did not ask it, nor a question that has no answer', async () => {
+    assert.equal((await call(TEACH, { toUid: STRANGER, type: 'questionAnswered', ctx: { teacherUid: TEACH, qaId: 'q1' } })).status, 403);
+    assert.equal((await call(TEACH, { toUid: JOINER, type: 'questionAnswered', ctx: { teacherUid: TEACH, qaId: 'q2' } })).status, 403);
+    assert.equal((await call(TEACH, { toUid: JOINER, type: 'questionAnswered', ctx: { teacherUid: TEACH } })).status, 403);
+  });
+
+  it('a new-question notice must be about the sender’s own question', async () => {
+    assert.equal((await call(JOINER, { toUid: TEACH, type: 'newQuestion', ctx: { teacherUid: TEACH, qaId: 'q1' } })).status, 200);
+    assert.equal((await call(STRANGER, { toUid: TEACH, type: 'newQuestion', ctx: { teacherUid: TEACH, qaId: 'q1' } })).status, 403);
+  });
+
+  it('a proposal notice needs a submitted proposal, and an acceptance needs the teacher to have one', async () => {
+    assert.equal((await call(TEACH, { toUid: JOINER, type: 'briefProposal', ctx: { briefId: 'br1' } })).status, 200);
+    assert.equal((await call(STRANGER, { toUid: JOINER, type: 'briefProposal', ctx: { briefId: 'br1' } })).status, 403);
+    assert.equal((await call(JOINER, { toUid: TEACH, type: 'briefAccepted', ctx: { briefId: 'br1' } })).status, 200);
+    assert.equal((await call(JOINER, { toUid: STRANGER, type: 'briefAccepted', ctx: { briefId: 'br1' } })).status, 403);
   });
 });

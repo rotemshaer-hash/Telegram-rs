@@ -465,6 +465,193 @@ describe('parentConsent: only the server (admin SDK) may write it', () => {
   });
 });
 
+// ── GATES THE APP ONLY ENFORCED ON THE SCREEN ──────────────────────────────
+// The "unverified student cannot contact anyone" promise to parents, and the admin
+// block, were checked by the client only; a request made straight to the database
+// (or by an anonymous guest, who has no users/<uid> at all) skipped both. QA review
+// 29.10.2026. Every write that REACHES ANOTHER USER now needs a verified, unblocked
+// writer; a user's own data and the admin are unchanged.
+describe('gates: only a verified, unblocked user reaches another user', () => {
+  const copy = (id, over = {}) => ({
+    id, studentId: STRANGER, teacherId: TEACHER, studentName: 'X', teacherName: 'Teach',
+    day: "ב' 3 נוב", time: '10:00', price: 80, status: 'pending', createdAt: 5, ...over,
+  });
+  const anon = () => testEnv.authenticatedContext('guest-uid', { firebase: { sign_in_provider: 'anonymous' } }).database();
+  const block = (uid) => testEnv.withSecurityRulesDisabled(async (ctx) => { await set(ref(ctx.database(), `userBlocks/${uid}`), true); });
+
+  it('an unverified user (no verified record) cannot book, message, open a chat or post', async () => {
+    await assertFails(update(ref(asStranger()), {
+      'bookings/gB': copy('gB'), [`teacherBookings/${TEACHER}/gB`]: copy('gB'),
+    }));
+    await assertFails(set(ref(asStranger(), `messages/${STRANGER}_${TEACHER}/m1`), { from: STRANGER, text: 'hi', createdAt: 1 }));
+    await assertFails(set(ref(asStranger(), `userChats/${TEACHER}/${STRANGER}`), { otherUid: STRANGER, lastMessage: 'hi' }));
+    await assertFails(set(ref(asStranger(), 'communityPosts/gP1'), { authUid: STRANGER, author: 'x', createdAt: 1, text: 'hi' }));
+  });
+
+  it('an anonymous guest cannot book or message either', async () => {
+    await assertFails(set(ref(anon(), 'bookings/gB2'), copy('gB2', { studentId: 'guest-uid' })));
+    await assertFails(set(ref(anon(), `messages/guest-uid_${TEACHER}/m1`), { from: 'guest-uid', text: 'hi', createdAt: 1 }));
+  });
+
+  it('a verified student who is blocked can no longer reach anyone', async () => {
+    await block(STUDENT);
+    await assertFails(update(ref(asStudent()), {
+      'bookings/gB3': copy('gB3', { studentId: STUDENT }), [`teacherBookings/${TEACHER}/gB3`]: copy('gB3', { studentId: STUDENT }),
+    }));
+    await assertFails(set(ref(asStudent(), `userChats/${TEACHER}/${STUDENT}`), { otherUid: STUDENT, lastMessage: 'hi' }));
+    await assertFails(set(ref(asStudent(), 'communityPosts/gP2'), { authUid: STUDENT, author: 'x', createdAt: 1, text: 'hi' }));
+  });
+
+  it('a verified, unblocked student still can (the normal path is untouched)', async () => {
+    await assertSucceeds(set(ref(asStudent(), `userChats/${TEACHER}/${STUDENT}`), { otherUid: STUDENT, lastMessage: 'hi' }));
+    await assertSucceeds(set(ref(asStudent(), 'communityPosts/gP3'), { authUid: STUDENT, author: 'x', createdAt: 1, text: 'hi' }));
+  });
+
+  it('the admin is not gated', async () => {
+    await assertSucceeds(set(ref(asAdmin(), 'bookings/gB4'), copy('gB4', { studentId: STUDENT })));
+  });
+});
+
+// ── GROUPS, POSTS, Q&A AND BRIEFS FOLLOW THE SAME GATE ─────────────────────
+// 1.11.2026: a guest could create a group, join others to it, post, ask questions and
+// send a brief proposal — each of which reaches another user (and the group's location
+// text was rendered unescaped on every home screen).
+describe('gates: groups, posts, questions and briefs need a verified, unblocked user', () => {
+  const anon = () => testEnv.authenticatedContext('guest-uid', { firebase: { sign_in_provider: 'anonymous' } }).database();
+  const group = (over = {}) => ({ teacherId: TEACHER, title: 'Chess', desc: 'fun', location: 'Tel Aviv', day: 'ב', time: '17:00', status: 'open', ...over });
+
+  it('a verified teacher creates a group; an unverified user or a guest cannot', async () => {
+    await assertSucceeds(set(ref(asTeacher(), 'groups/gg1'), group()));
+    await assertFails(set(ref(asStranger(), 'groups/gg2'), group({ teacherId: STRANGER })));
+    await assertFails(set(ref(anon(), 'groups/gg3'), group({ teacherId: 'guest-uid' })));
+  });
+
+  it('a blocked teacher cannot create a group', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => { await set(ref(ctx.database(), `userBlocks/${TEACHER}`), true); });
+    await assertFails(set(ref(asTeacher(), 'groups/gg4'), group()));
+  });
+
+  it('group text may not carry markup', async () => {
+    await assertFails(set(ref(asTeacher(), 'groups/gg5'), group({ location: '<img src=x onerror=alert(1)>' })));
+    await assertFails(set(ref(asTeacher(), 'groups/gg6'), group({ title: '<b>x</b>' })));
+    await assertSucceeds(set(ref(asTeacher(), 'groups/gg7'), group({ title: 'ד"ר שחמט' })));
+  });
+
+  it('only a verified user can ask to join, and only the group owner can write another user’s membership', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => { await set(ref(ctx.database(), 'groups/gm1'), group()); });
+    await assertSucceeds(set(ref(asStudent(), `groupMembers/gm1/${STUDENT}`), { status: 'pending', name: 'Minor' }));
+    await assertFails(set(ref(asStranger(), `groupMembers/gm1/${STRANGER}`), { status: 'pending', name: 'X' }));
+    await assertFails(set(ref(anon(), 'groupMembers/gm1/guest-uid'), { status: 'pending', name: 'G' }));
+    await assertSucceeds(set(ref(asTeacher(), `groupMembers/gm1/${STUDENT}/status`), 'approved'));
+  });
+
+  it('an unverified user cannot post, ask a teacher or open a brief; a verified one can', async () => {
+    await assertFails(set(ref(asStranger(), 'posts/p1'), { authUid: STRANGER, text: 'hi' }));
+    await assertSucceeds(set(ref(asStudent(), 'posts/p2'), { authUid: STUDENT, text: 'hi' }));
+    await assertFails(set(ref(asStranger(), `teacherQA/${TEACHER}/q1`), { askerUid: STRANGER, question: 'hi' }));
+    await assertSucceeds(set(ref(asStudent(), `teacherQA/${TEACHER}/q2`), { askerUid: STUDENT, question: 'hi' }));
+    await assertFails(set(ref(asStranger(), 'parentBriefs/b1'), { parentUid: STRANGER, title: 'x' }));
+    await assertSucceeds(set(ref(asStudent(), 'parentBriefs/b2'), { parentUid: STUDENT, title: 'x' }));
+  });
+
+  it('a teacher proposal on a brief needs a verified, unblocked teacher', async () => {
+    await assertSucceeds(set(ref(asTeacher(), `briefProposals/b2/${TEACHER}`), { price: 50 }));
+    await assertFails(set(ref(asStranger(), `briefProposals/b2/${STRANGER}`), { price: 50 }));
+  });
+});
+
+// ── A TEACHER CANNOT WRITE INTO A CHILD'S BOOKING LIST ────────────────────
+// userBookings/<student>/<id> was writable by the teacher named on bookings/<id>
+// with no check on the content, and bookings/<id> could be CREATED by a teacher
+// naming any child. Together: an adult makes a "booking" that is already approved,
+// with their own meeting link, in a child's list — and the child's app opens a chat
+// with them. A teacher may now only move an existing booking along (status,
+// cancelledAt) and may not create one naming a child.
+describe('a teacher cannot inject or rewrite a booking in a child’s list', () => {
+  it('cannot create a booking naming a child as the student', async () => {
+    await assertFails(set(ref(asTeacher(), 'bookings/inj1'), {
+      id: 'inj1', studentId: STUDENT, teacherId: TEACHER, status: 'pending', price: 1, createdAt: 1,
+    }));
+  });
+
+  it('cannot create an entry in the child’s userBookings, even for a real booking of theirs', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await set(ref(ctx.database(), 'bookings/newOne'), { studentId: STUDENT, teacherId: TEACHER, status: 'pending', price: 1, createdAt: 1 });
+    });
+    await assertFails(set(ref(asTeacher(), `userBookings/${STUDENT}/newOne`), {
+      id: 'newOne', studentId: STUDENT, teacherId: TEACHER, status: 'approved', price: 1, createdAt: 1,
+    }));
+  });
+
+  it('cannot rewrite the day, time or any other field of an existing entry, or add one', async () => {
+    await assertFails(update(ref(asTeacher(), `userBookings/${STUDENT}/b1`), { day: 'something else' }));
+    await assertFails(update(ref(asTeacher(), `userBookings/${STUDENT}/b1`), { time: '03:00' }));
+    await assertFails(update(ref(asTeacher(), `userBookings/${STUDENT}/b1`), { addedField: 'x' }));
+  });
+
+  it('may set their meeting link when approving, but only as a plain http(s) link', async () => {
+    await assertSucceeds(update(ref(asTeacher(), `userBookings/${STUDENT}/b1`), { status: 'approved', jitsiUrl: 'https://zoom.us/j/9', meetingPlatform: 'Zoom' }));
+    await assertFails(update(ref(asTeacher(), `userBookings/${STUDENT}/b1`), { jitsiUrl: 'javascript:alert(1)' }));
+  });
+
+  it('can still move an existing booking along: approve, complete, cancel (with its timestamp)', async () => {
+    await assertSucceeds(update(ref(asTeacher(), `userBookings/${STUDENT}/b1`), { status: 'approved' }));
+    await assertSucceeds(update(ref(asTeacher(), `userBookings/${STUDENT}/b1`), { status: 'cancelled', cancelledAt: 9 }));
+  });
+
+  it('cannot set the child’s copy back to pending', async () => {
+    await assertFails(update(ref(asTeacher(), `userBookings/${STUDENT}/b1`), { status: 'pending' }));
+  });
+
+  it('the child still writes their own list', async () => {
+    await assertSucceeds(update(ref(asStudent(), `userBookings/${STUDENT}/b1`), { status: 'cancelled', cancelledAt: 9 }));
+  });
+});
+
+describe('parent portal tokens expire on the server, not only on the page', () => {
+  it('a live token is readable by anyone who holds it, signed in or not', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await set(ref(ctx.database(), 'parentTokens/live'), { studentId: STUDENT, studentName: 'Minor', expiresAt: Date.now() + 60000 });
+    });
+    await assertSucceeds(get(ref(asGuest(), 'parentTokens/live')));
+    await assertSucceeds(get(ref(asStranger(), 'parentTokens/live')));
+  });
+
+  it('an expired token, or one with no expiry, is not readable', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await set(ref(ctx.database(), 'parentTokens/old'), { studentId: STUDENT, studentName: 'Minor', expiresAt: Date.now() - 1000 });
+      await set(ref(ctx.database(), 'parentTokens/noexp'), { studentId: STUDENT, studentName: 'Minor' });
+    });
+    await assertFails(get(ref(asGuest(), 'parentTokens/old')));
+    await assertFails(get(ref(asGuest(), 'parentTokens/noexp')));
+  });
+
+  it('the list of tokens cannot be read', async () => {
+    await assertFails(get(ref(asStranger(), 'parentTokens')));
+  });
+});
+
+describe('parent consent: what the child cannot forge or read', () => {
+  it('the child cannot write the server-only consent flags on their own record', async () => {
+    for (const [k, v] of [['parentConsentAt', Date.now()], ['parentConsentEmail', 'me@example.org'], ['parentConsentSameDevice', false]]) {
+      await assertFails(set(ref(asStudent(), `users/${STUDENT}/${k}`), v));
+    }
+  });
+
+  it('the child cannot read the consent log (it holds the parent’s address and device)', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await set(ref(ctx.database(), `parentConsentLog/${STUDENT}/e1`), { ip: '1.1.1.1', parentEmail: 'p@example.org' });
+    });
+    await assertFails(get(ref(asStudent(), `parentConsentLog/${STUDENT}`)));
+    await assertSucceeds(get(ref(asAdmin(), `parentConsentLog/${STUDENT}`)));
+  });
+
+  it('the child cannot read or write the address the server stored', async () => {
+    await assertFails(set(ref(asStudent(), `parentContact/${STUDENT}`), { email: 'me@example.org' }));
+    await assertFails(get(ref(asStudent(), `parentContact/${STUDENT}`)));
+  });
+});
+
 // ── BOOKING: immutable fields ────────────────────────────────────────────
 //
 // The review found that either party to a booking could rewrite it after
@@ -975,8 +1162,7 @@ describe('contract: a student can create a booking', () => {
   // function in a browser), so a rule that rejects any one real field fails here.
   const newBooking = (id) => ({
     id, studentId: STUDENT, teacherId: TEACHER,
-    studentName: 'Minor', studentEmail: 'minor@example.com',
-    parentEmail: 'parent@example.com', parentName: 'Parent',
+    studentName: 'Minor',
     teacherName: 'Teach', teacherCat: 'chess',
     day: "ב' 3 נוב", dayIndex: 1, lessonTimestamp: 1893456000000, time: '10:00', type: 'single',
     price: 80, status: 'pending',
@@ -1079,8 +1265,7 @@ describe('contract: the teacher copy of a new booking cannot be forged', () => {
 describe('privacy: a student cannot put markup into the teacher copy of a booking', () => {
   const copy = (id, over = {}) => ({
     id, studentId: STUDENT, teacherId: TEACHER,
-    studentName: 'Minor', studentEmail: 'minor@example.com',
-    parentEmail: 'parent@example.com', parentName: 'Parent',
+    studentName: 'Minor',
     teacherName: 'Teach', teacherCat: 'chess',
     day: "ב' 3 נוב", dayIndex: 1, lessonTimestamp: 1893456000000, time: '10:00', type: 'single',
     price: 80, status: 'pending',
@@ -1094,10 +1279,10 @@ describe('privacy: a student cannot put markup into the teacher copy of a bookin
   });
 
   it('a name with Hebrew double quotes (ד"ר) is a legitimate name and passes', async () => {
-    await assertSucceeds(write('cDr', { teacherName: 'ד"ר דנה', parentName: 'משפחת "כהן"' }));
+    await assertSucceeds(write('cDr', { teacherName: 'ד"ר דנה', studentName: 'ג\'ו "הגדול"' }));
   });
 
-  for (const field of ['day', 'time', 'studentName', 'studentEmail', 'parentName', 'teacherName', 'teacherCat', 'meetingPlatform']) {
+  for (const field of ['day', 'time', 'studentName', 'teacherName', 'teacherCat', 'meetingPlatform']) {
     it(`${field} cannot carry a tag`, async () => {
       await assertFails(write('cX', { [field]: '<img src=x onerror=window.__xss=1>' }));
     });
@@ -1125,6 +1310,12 @@ describe('privacy: a student cannot put markup into the teacher copy of a bookin
   it('time must look like a time', async () => {
     await assertFails(write('cTm', { time: "10:00');window.__xss=1;('" }));
     await assertFails(write('cTm2', { time: '&quot;+(window.__xss=1)+&quot;' }));
+  });
+
+  it('the child’s and parent’s contact details are not part of a booking any more (the teacher reads it)', async () => {
+    for (const f of ['studentEmail', 'parentEmail', 'parentName']) {
+      await assertFails(write('cC' + f, { [f]: 'someone@example.org' }));
+    }
   });
 
   it('the booking key must be a plain push-id, because the screens put it in inline handlers', async () => {
@@ -1204,8 +1395,9 @@ describe('privacy: ID-photo fields only accept a URL or an image data URL', () =
 // ── PRIVACY: a teacher's email and meeting link ───────────────────────────
 // They used to sit in teachers/<uid>, which any signed-in user — an anonymous
 // guest included — can read, and loadRealTeachers pulls the whole node. They
-// now live in teacherPrivate/<uid>: readable by the teacher, the admin and an
-// approved non-guest user (the booking copies the meeting link). Lesson payment
+// now live in teacherPrivate/<uid>: readable by the teacher and the admin only
+// (the server reads it to mail the teacher; the teacher adds the meeting link
+// when approving). Lesson payment
 // details are no longer collected at all — Drushe is not involved in that money
 // — and the public node still refuses a `payment` field so none creeps back.
 describe('privacy: teacherPrivate', () => {
@@ -1225,9 +1417,23 @@ describe('privacy: teacherPrivate', () => {
     await assertSucceeds(get(ref(asTeacher(), `teacherPrivate/${TEACHER}`)));
   });
 
-  it('an approved student can read them (the booking copies the meeting link)', async () => {
+  it('an approved student can NOT read them: the server mails the teacher, and the teacher adds the link at approval', async () => {
     await seedPrivate();
-    await assertSucceeds(get(ref(asStudent(), `teacherPrivate/${TEACHER}`)));
+    await assertFails(get(ref(asStudent(), `teacherPrivate/${TEACHER}`)));
+    await assertFails(get(ref(asStudent(), `teacherPrivate/${TEACHER}/email`)));
+  });
+
+  it('another teacher cannot read them either', async () => {
+    await seedPrivate();
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await set(ref(ctx.database(), 'users/teacher2-uid'), { role: 'teacher', verified: true });
+    });
+    await assertFails(get(ref(testEnv.authenticatedContext('teacher2-uid', { email: 't2@example.com' }).database(), `teacherPrivate/${TEACHER}`)));
+  });
+
+  it('the admin reads them', async () => {
+    await seedPrivate();
+    await assertSucceeds(get(ref(asAdmin(), `teacherPrivate/${TEACHER}`)));
   });
 
   it('an anonymous guest cannot read them, even with an approved user record', async () => {

@@ -35,6 +35,7 @@ const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 // יצירת בקשת הסכמה: עד 5 ניסיונות לשעה לכל uid. מספיק להרשמה שנכשלה וניסיון
 // חוזר, נמוך מדי כדי לאפשר הצפת תיבת ההורה במיילים.
 const CREATE_RATE_LIMIT_MAX = 5;
+const CREATE_IP_RATE_LIMIT_MAX = 15;
 const CREATE_RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
 
 async function withinRateLimit(db, path, ip, max, windowMs) {
@@ -103,29 +104,60 @@ exports.handler = async (event) => {
       const decoded = await admin.auth().verifyIdToken(body.idToken);
       uid = decoded.uid;
       ownEmail = String(decoded.email || '').trim().toLowerCase();
+      // אורח אנונימי מקבל uid חדש בכל כניסה ולכן גם מכסת קצב חדשה: דרכו אפשר היה
+      // להפוך את הפונקציה לממסר מיילים לכל כתובת. הרשמה אמיתית אינה אנונימית.
+      if (decoded.firebase && decoded.firebase.sign_in_provider === 'anonymous') {
+        return { statusCode: 403, headers, body: JSON.stringify({ error: 'guests cannot request consent' }) };
+      }
     } catch {
       return { statusCode: 401, headers, body: JSON.stringify({ error: 'invalid or expired session' }) };
     }
-    const studentName = String(body.studentName || '').trim().slice(0, 100);
 
     try {
       const db = admin.database();
       if (!(await withinRateLimit(db, 'parentConsentCreateRateLimit', uid, CREATE_RATE_LIMIT_MAX, CREATE_RATE_LIMIT_WINDOW_MS))) {
         return { statusCode: 429, headers, body: JSON.stringify({ error: 'Too many requests' }) };
       }
+      // גם לפי כתובת רשת: חשבונות חדשים אינם מאפסים את המכסה הזו
+      if (!(await withinRateLimit(db, 'parentConsentCreateIpRateLimit', ip, CREATE_IP_RATE_LIMIT_MAX, CREATE_RATE_LIMIT_WINDOW_MS))) {
+        return { statusCode: 429, headers, body: JSON.stringify({ error: 'Too many requests' }) };
+      }
 
-      // מייל ההורה נלקח מהרשומה של המשתמש, לא מגוף הבקשה. הרשומה היא מה שהמנהל
-      // רואה ומאשר מולו; כשהכתובת הגיעה מהבקשה אפשר היה לשלוח את קישור ההסכמה
-      // לכתובת אחרת מזו שמוצגת לו, והתיעוד "ההורה אישר" היה נשמר על כתובת
-      // שאיש לא ראה. כתובת הילד עצמו נדחית מאותה סיבה: ההסכמה אינה ממלאת את
-      // תפקידה אם הילד הוא זה שקורא את המייל.
-      const parentEmail = String((await db.ref('users/' + uid + '/parentEmail').get()).val() || '').trim();
+      // רק השדות שנחוצים — לא כל הרשומה (ברשומות ישנות יש בה תמונות base64)
+      const [parentConsentAt, userParentEmail, userName] = await Promise.all(
+        ['parentConsentAt', 'parentEmail', 'name'].map(async (k) => (await db.ref('users/' + uid + '/' + k).get()).val())
+      );
+      const userRec = { parentConsentAt, parentEmail: userParentEmail, name: userName };
+
+      // הורה שכבר אישר לא מקבל עוד מייל ולא נפתחת בקשה חדשה
+      if (userRec.parentConsentAt) {
+        return { statusCode: 200, headers, body: JSON.stringify({ ok: true, alreadyApproved: true }) };
+      }
+
+      // הכתובת נקבעת פעם אחת, בשרת: parentContact/<uid> נכתב רק כאן. הילד יכול
+      // לערוך את users/<uid>/parentEmail בכל רגע (אין חוק שמונע), ואם הכתובת
+      // נקראה משם בכל פעם הוא היה מחליף אותה בתיבה שלו ושולח לעצמו קישור. המנהל
+      // רואה את הכתובת הזו מול מי שבפועל אישר (users/<uid>/parentConsentEmail).
+      // כתובת הילד עצמו נדחית: ההסכמה אינה ממלאת את תפקידה אם הילד קורא את המייל.
+      const stored = (await db.ref('parentContact/' + uid).get()).val();
+      const parentEmail = String((stored && stored.email) || userRec.parentEmail || '').trim();
       if (
         !EMAIL_RE.test(parentEmail) ||
         parentEmail.toLowerCase().endsWith(FAKE_DOMAIN) ||
         parentEmail.toLowerCase() === ownEmail
       ) {
         return { statusCode: 400, headers, body: JSON.stringify({ error: 'invalid parentEmail' }) };
+      }
+      if (!stored) await db.ref('parentContact/' + uid).set({ email: parentEmail, setAt: Date.now() });
+
+      // השם בנושא ובגוף המייל נלקח מהרשומה, לא מהבקשה: שם חופשי מהבקשה הופך
+      // את המייל, שיוצא מזהות Drushe, לטקסט שהתוקף בוחר.
+      const studentName = String(userRec.name || '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, 100);
+
+      // טוקן קודם שעדיין פתוח מבוטל: בקשה אחת פעילה לכל ילד
+      const prev = (await db.ref('parentConsentByUid/' + uid).get()).val();
+      if (prev && TOKEN_RE.test(String(prev))) {
+        await db.ref('parentConsent/' + prev + '/expiresAt').set(0).catch(() => {});
       }
 
       const newToken = crypto.randomBytes(32).toString('hex');
@@ -136,7 +168,11 @@ exports.handler = async (event) => {
         status: 'pending',
         createdAt: Date.now(),
         expiresAt: Date.now() + PARENT_CONSENT_DAYS * 24 * 3600 * 1000,
+        // להשוואה בעת האישור: אם הקישור נפתח מאותו מכשיר ואותה רשת, המנהל מקבל אזהרה
+        createdIp: ip || null,
+        createdUserAgent: String(event.headers['user-agent'] || '').slice(0, 300),
       });
+      await db.ref('parentConsentByUid/' + uid).set(newToken);
 
       const link = ALLOWED_ORIGINS[0] + '/?consent=' + newToken;
       try {
@@ -242,6 +278,16 @@ exports.handler = async (event) => {
     // דגל על רשומת המשתמש — כדי שפאנל הניהול יוכל להראות "הורה אישר" בלי
     // לקרוא את parentConsentLog, ו-approveStudent יוכל לבדוק אותו לפני אישור.
     await db.ref('users/' + uid + '/parentConsentAt').set(admin.database.ServerValue.TIMESTAMP);
+
+    // מה שהמנהל רואה ליד "הורה אישר": מאיזו כתובת באמת אישרו, ואם הקישור נפתח מאותו
+    // מכשיר ומאותה רשת שממנה נוצרה הבקשה (כלומר כנראה הילד עצמו). זו אזהרה למנהל,
+    // לא חסימה: הורה שיושב ליד הילד באותו WiFi הוא מקרה לגיטימי.
+    const sameDevice = !!(rec.createdIp && rec.createdIp === ip &&
+      rec.createdUserAgent && rec.createdUserAgent === String(event.headers['user-agent'] || '').slice(0, 300));
+    await db.ref('users/' + uid).update({
+      parentConsentEmail: rec.parentEmail || '',
+      parentConsentSameDevice: sameDevice,
+    });
 
     // ההתראה היא למנהל — הוא זה שצריך לפעול עכשיו. הילד לא מקבל "אושרת",
     // כי הוא עוד לא אושר.

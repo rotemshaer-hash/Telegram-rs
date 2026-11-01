@@ -27,6 +27,16 @@
   status = 200
 
 [[redirects]]
+  from = "/api/lesson-mail"
+  to = "/.netlify/functions/lesson-mail"
+  status = 200
+
+[[redirects]]
+  from = "/api/account-cleanup"
+  to = "/.netlify/functions/account-cleanup"
+  status = 200
+
+[[redirects]]
   from = "/api/notify"
   to = "/.netlify/functions/notify"
   status = 200
