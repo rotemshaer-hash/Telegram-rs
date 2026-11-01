@@ -1177,7 +1177,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.45';
+const APP_VERSION='4.11.46';
 
 // ─── הודעות קוליות — כבויות ────────────────────────────────────────────────
 // הקלטה קולית היא הערוץ היחיד בין ילדים שאיש לא בודק: אין תמלול, אין סינון,
@@ -3001,9 +3001,6 @@ async function requestBooking(totalAmount){
       id:bookingId,
       studentId:currentUser.uid,
       studentName:currentUserData?.name||currentUser.email.split('@')[0],
-      studentEmail:currentUser.email,
-      parentEmail:currentUserData?.parentEmail||'',
-      parentName:currentUserData?.parentName||'',
       teacherId:t.id,
       teacherName:t.name,
       teacherCat:t.cat,
@@ -3527,12 +3524,8 @@ async function approveBooking(bookingId){
     });
     // התראה לתלמיד
     await notifyUser(b.studentId,'bookingApproved',{bookingId,day:b.day,time:b.time});
-    // מייל להורה
-    db.ref('users/'+b.studentId).get().then(stuSnap=>{
-      const stu=stuSnap.val()||{};
-      if(stu.parentEmail)sendEmail(stu.parentEmail,`✅ שיעור אושר – ${stu.name||b.studentName||''}`,
-        `שלום ${stu.parentName||'הורה יקר'} 👋\n\nהשיעור של ${stu.name||b.studentName||''} אושר!\n\n👨‍🏫 מורה: ${b.teacherName||''}\n📅 יום: ${b.day||''}\n🕐 שעה: ${b.time||''}\n${b.jitsiUrl?'🔗 קישור לשיעור: '+b.jitsiUrl:''}\n\nניתן לעקוב באפליקציה:\nhttps://kidemy-app.netlify.app\n\n– צוות Drushe 💙`).catch(()=>{});
-    }).catch(()=>{});
+    // מייל להורה — מהשרת, לפי הכתובת ברשומת התלמיד
+    parentLessonMail(bookingId,'approved');
     // יצירת ערך שיחה בשני הצדדים כדי שהמורה יקבל הודעות מהתלמיד ב-realtime
     const _convInit={otherUid:b.studentId,otherName:b.studentName||'תלמיד',lastMessage:`שיעור אושר ✅ ${b.day||''} ${b.time||''}`,lastTime:Date.now(),unread:false};
     db.ref('userChats/'+currentUser.uid+'/'+b.studentId).set(_convInit).catch(()=>{});
@@ -3592,12 +3585,8 @@ async function rejectBooking(bookingId){
       ['teacherBookings/'+b.teacherId+'/'+bookingId+'/status']:'rejected',
     });
     await notifyUser(b.studentId,'bookingRejected',{bookingId,day:b.day,time:b.time});
-    // מייל להורה
-    db.ref('users/'+b.studentId).get().then(stuSnap=>{
-      const stu=stuSnap.val()||{};
-      if(stu.parentEmail)sendEmail(stu.parentEmail,`❌ שיעור נדחה – ${stu.name||b.studentName||''}`,
-        `שלום ${stu.parentName||'הורה יקר'} 👋\n\nלצערנו, השיעור של ${stu.name||b.studentName||''} נדחה ע"י המורה.\n\n👨‍🏫 מורה: ${b.teacherName||''}\n📅 יום: ${b.day||''}\n🕐 שעה: ${b.time||''}\n\nניתן להזמין שיעור אחר באפליקציה:\nhttps://kidemy-app.netlify.app\n\n– צוות Drushe 💙`).catch(()=>{});
-    }).catch(()=>{});
+    // מייל להורה — מהשרת, לפי הכתובת ברשומת התלמיד
+    parentLessonMail(bookingId,'rejected');
     showFireToast('🚫 ההזמנה נדחתה');
     await loadTeacherBookings();
     render();
@@ -5118,13 +5107,8 @@ async function _saveLessonSummary(bookingId,enc){
     // התראה לתלמיד — סיכום + בקשת דירוג
     notifyUser(b.studentId,'lessonSummary',{bookingId,preview:'סיכום שיעור: '+topic});
     notifyUser(b.studentId,'rateLesson',{bookingId,teacherId:tid,teacherName:summary.teacherName,preview:'איך היה השיעור עם '+summary.teacherName+'?'});
-    // מייל להורה על סיום שיעור — פרטי ההורה כבר על ההזמנה עצמה (b), אין צורך בקריאה נוספת
-    try{
-      if(b.parentEmail){
-        const _emailBody=`שלום ${b.parentName||'הורה יקר'} 👋\n\nהשיעור של ${b.studentName||''} הסתיים בהצלחה! 🎓\n\n👨‍🏫 מורה: ${b.teacherName||''}\n📅 תאריך: ${b.day||''}\n📚 נושא: ${topic}${summary.notes?'\n💬 הערות: '+summary.notes:''}${summary.homework?'\n\n📎 שיעורי בית:\n'+summary.homework:''}\n\n💡 תזכורת: תוכלו להתחבר בכל עת עם שם המשתמש והסיסמה של ${b.studentName||'הילד/ה'} כדי לראות את כל ההיסטוריה, השיחות וההזמנות.\n\n– צוות Drushe 💙`;
-        sendEmail(b.parentEmail,`✅ שיעור הושלם – ${b.studentName||''} | Drushe`,_emailBody).catch(()=>{});
-      }
-    }catch(e2){console.warn('[lesson-complete] parent email failed:',e2);}
+    // מייל להורה על סיום שיעור — מהשרת; הוא קורא את הסיכום שנשמר זה עתה
+    parentLessonMail(bookingId,'completed');
     document.getElementById('_lsDialog')?.remove();
     showFireToast('🎓 כל הכבוד! עוד שיעור הושלם בהצלחה — הסיכום נשלח לתלמיד ולהורה');
     await loadTeacherBookings();
@@ -5242,6 +5226,22 @@ async function notifyUser(toUid,type,ctx={}){
     });
     if(!res.ok)console.warn('[notifyUser]',type,res.status);
   }catch(e){console.warn('[notifyUser]',type,e);}
+}
+
+// מייל להורה על שיעור (approved / rejected / completed). נשלח מהשרת: הכתובת של
+// ההורה לא יוצאת מהמסד ולא נכתבת על ההזמנה, והמורה לא מקבל אותה. כמו notifyUser,
+// לא זורקת לעולם — מייל הוא תוצר לוואי של הפעולה ואסור שכישלון שלו יפיל אותה.
+async function parentLessonMail(bookingId,event){
+  try{
+    if(!currentUser||!bookingId)return;
+    const idToken=await currentUser.getIdToken();
+    const res=await fetch(API_BASE+'/api/lesson-mail',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({idToken,bookingId,event})
+    });
+    if(!res.ok)console.warn('[parentLessonMail]',event,res.status);
+  }catch(e){console.warn('[parentLessonMail]',event,e);}
 }
 
 async function notifyAdmin(notif){
@@ -9140,7 +9140,7 @@ async function showMyStudents(){
         byStudent[b.studentId]={
           id:b.studentId,
           name:b.studentName||'תלמיד',
-          email:b.studentEmail||'',
+          email:'',
           lastSubject:b.subject||b.category||'',
           lastDate:b.day||'',
           status:b.status||'pending',
@@ -11639,8 +11639,6 @@ async function _acceptBriefProposal(briefId,teacherUid){
       id:bookingId,
       studentId:currentUser.uid,
       studentName:currentUserData?.name||currentUser.email.split('@')[0],
-      studentEmail:currentUser.email||'',
-      parentEmail:currentUserData?.parentEmail||'',
       parentName:currentUserData?.parentName||'',
       teacherId:teacherUid,
       teacherName:proposal.teacherName,

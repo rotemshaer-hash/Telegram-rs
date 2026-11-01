@@ -975,8 +975,7 @@ describe('contract: a student can create a booking', () => {
   // function in a browser), so a rule that rejects any one real field fails here.
   const newBooking = (id) => ({
     id, studentId: STUDENT, teacherId: TEACHER,
-    studentName: 'Minor', studentEmail: 'minor@example.com',
-    parentEmail: 'parent@example.com', parentName: 'Parent',
+    studentName: 'Minor',
     teacherName: 'Teach', teacherCat: 'chess',
     day: "ב' 3 נוב", dayIndex: 1, lessonTimestamp: 1893456000000, time: '10:00', type: 'single',
     price: 80, status: 'pending',
@@ -1079,8 +1078,7 @@ describe('contract: the teacher copy of a new booking cannot be forged', () => {
 describe('privacy: a student cannot put markup into the teacher copy of a booking', () => {
   const copy = (id, over = {}) => ({
     id, studentId: STUDENT, teacherId: TEACHER,
-    studentName: 'Minor', studentEmail: 'minor@example.com',
-    parentEmail: 'parent@example.com', parentName: 'Parent',
+    studentName: 'Minor',
     teacherName: 'Teach', teacherCat: 'chess',
     day: "ב' 3 נוב", dayIndex: 1, lessonTimestamp: 1893456000000, time: '10:00', type: 'single',
     price: 80, status: 'pending',
@@ -1094,10 +1092,10 @@ describe('privacy: a student cannot put markup into the teacher copy of a bookin
   });
 
   it('a name with Hebrew double quotes (ד"ר) is a legitimate name and passes', async () => {
-    await assertSucceeds(write('cDr', { teacherName: 'ד"ר דנה', parentName: 'משפחת "כהן"' }));
+    await assertSucceeds(write('cDr', { teacherName: 'ד"ר דנה', studentName: 'ג\'ו "הגדול"' }));
   });
 
-  for (const field of ['day', 'time', 'studentName', 'studentEmail', 'parentName', 'teacherName', 'teacherCat', 'meetingPlatform']) {
+  for (const field of ['day', 'time', 'studentName', 'teacherName', 'teacherCat', 'meetingPlatform']) {
     it(`${field} cannot carry a tag`, async () => {
       await assertFails(write('cX', { [field]: '<img src=x onerror=window.__xss=1>' }));
     });
@@ -1125,6 +1123,12 @@ describe('privacy: a student cannot put markup into the teacher copy of a bookin
   it('time must look like a time', async () => {
     await assertFails(write('cTm', { time: "10:00');window.__xss=1;('" }));
     await assertFails(write('cTm2', { time: '&quot;+(window.__xss=1)+&quot;' }));
+  });
+
+  it('the child’s and parent’s contact details are not part of a booking any more (the teacher reads it)', async () => {
+    for (const f of ['studentEmail', 'parentEmail', 'parentName']) {
+      await assertFails(write('cC' + f, { [f]: 'someone@example.org' }));
+    }
   });
 
   it('the booking key must be a plain push-id, because the screens put it in inline handlers', async () => {

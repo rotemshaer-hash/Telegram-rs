@@ -78,6 +78,20 @@ test.describe('booking: no lesson payment handling', () => {
     }
   });
 
+  // QA 29.10.2026: the teacher reads the booking record, and it carried the child's
+  // email and the parent's email and name — details the teacher has no use for. The
+  // parent is now mailed from the server (netlify/functions/lesson-mail.js).
+  test('the booking written has no email or parent details of the child', async ({ page }) => {
+    const r = await run(page, { email: 't@example.com' });
+    const booking = r.written['teacherBookings/teach1/bk1'];
+    expect(booking, 'the teacher copy must have been written').toBeTruthy();
+    for (const k of ['studentEmail', 'parentEmail', 'parentName']) {
+      for (const path of Object.keys(r.written)) {
+        expect(r.written[path], k + ' must not be on ' + path).not.toHaveProperty(k);
+      }
+    }
+  });
+
   // Owner decision 28.10.2026: the "you have N credit, it will be deducted after
   // the team approves" banner implied Drushe handles lesson money. The referral
   // card on the profile still shows the balance; the booking screen does not.
