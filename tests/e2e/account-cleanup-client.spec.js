@@ -24,17 +24,34 @@ test('self-deletion asks the server to clean up, with the session only', async (
   const r = await run(page, true);
   const call = r.calls.find((c) => c.url.includes('/api/account-cleanup'));
   expect(call).toBeTruthy();
-  expect(call.body).toEqual({ idToken: 'tok' });
+  expect(call.body).toEqual({ idToken: 'tok', chatPartners: [], groupIds: [] });
   expect(r.res.failedPaths).not.toContain('server-cleanup');
 });
 
 test('an admin deleting another account names it', async ({ page }) => {
   const r = await run(page, true, 'someone-else');
   const call = r.calls.find((c) => c.url.includes('/api/account-cleanup'));
-  expect(call.body).toEqual({ idToken: 'tok', uid: 'someone-else' });
+  expect(call.body).toEqual({ idToken: 'tok', uid: 'someone-else', chatPartners: [], groupIds: [] });
 });
 
 test('when the server cleanup fails the deletion reports it, so the login is not deleted', async ({ page }) => {
   const r = await run(page, false);
   expect(r.res.failedPaths).toContain('server-cleanup');
+});
+
+test('the conversation partners and group ids go to the server, and the client no longer deletes messages', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof deleteAllUserData === 'function');
+  const r = await page.evaluate(async () => {
+    const calls = []; const removed = [];
+    window.fetch = async (url, init) => { calls.push(JSON.parse((init && init.body) || '{}')); return { ok: true }; };
+    const snap = (keys) => ({ exists: () => keys.length > 0, val: () => null, forEach: (cb) => keys.forEach((k) => cb({ key: k, val: () => ({}) })) });
+    db = { ref: (p) => ({ get: async () => (p === 'userChats/me' ? snap(['u2', 'u3']) : p === 'userGroups/me' ? snap(['g1']) : snap([])), remove: async () => { removed.push(p); } }) };
+    currentUser = { uid: 'me', getIdToken: async () => 'tok' };
+    await deleteAllUserData('me', 'student');
+    return { body: calls[0], removed };
+  });
+  expect(r.body.chatPartners).toEqual(['u2', 'u3']);
+  expect(r.body.groupIds).toEqual(['g1']);
+  expect(r.removed.some((p) => p.startsWith('messages/'))).toBe(false);
 });

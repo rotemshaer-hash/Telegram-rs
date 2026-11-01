@@ -192,6 +192,8 @@ input,textarea,select{font-family:inherit;-webkit-appearance:none;appearance:non
   --gp:0 0 32px rgba(20,184,166,0.45);
   --gs:0 0 32px rgba(6,182,212,0.45);
   --gg:0 0 32px rgba(16,185,129,0.45);
+  /* פעולות אשר/דחה: כהים מספיק לטקסט לבן (≥4.5:1) */
+  --ok:#047857;--no:#B91C1C;
   --grad-main:linear-gradient(135deg,#14B8A6,#06B6D4);
   --grad-soft:linear-gradient(135deg,#5EEAD4 0%,#67E8F9 50%,#C4B5FD 100%);
   --grad-dark:linear-gradient(145deg,#1A0B2E 0%,#0F2A3D 50%,#134E4A 100%);
@@ -313,6 +315,7 @@ input,textarea,select{font-family:inherit;-webkit-appearance:none;appearance:non
 
 /* SLIDER */
 .slider{width:100%;-webkit-appearance:none;height:6px;border-radius:3px;background:rgba(20,184,166,.15);outline:none}
+.act-btn{min-height:44px;flex:1;border:none;border-radius:50px;padding:10px;font-weight:800;font-size:13px;cursor:pointer;color:#fff;display:inline-flex;align-items:center;justify-content:center;gap:4px}.act-ok{background:var(--ok)}.act-no{background:var(--no)}
 .slider::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,#14B8A6,#06B6D4);cursor:pointer;box-shadow:0 2px 8px rgba(20,184,166,.4)}
 
 /* ROLE CARD */
@@ -336,6 +339,8 @@ input,textarea,select{font-family:inherit;-webkit-appearance:none;appearance:non
 .slot.taken{background:#F5F5F5;color:#CCC;cursor:not-allowed;border-color:transparent}
 /* יעד מגע של 44px לכפתורי החזרה בכותרות (padding שונה בכל מסך, ולכן כלל אחד) */
 button[onclick*="back()"]{min-height:44px;min-width:44px}
+/* יעד מגע של 44px לכל כפתור במסך (בדיקת נגישות 1.11.2026: ‏'העתק לינק', 'שתף', 'יציאה' ועוד היו 31–36px) */
+.screen button{min-height:44px}
 .day-btn{min-width:52px;min-height:72px;flex:1;padding:10px 4px;border:none;cursor:pointer;border-radius:14px;font-weight:700;font-size:13px;background:rgba(20,184,166,.05);color:var(--muted);transition:all .2s;text-align:center}
 .day-btn.on{background:linear-gradient(135deg,#14B8A6,#06B6D4);color:#fff;box-shadow:var(--gs)}
 
@@ -703,7 +708,8 @@ const _SVGP={
   trash:`<polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>`,
   edit:`<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4z"/>`,
   save:`<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>`,
-  dollar:`<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>`,
+  // סימן השקל (₪). נקרא קודם dollar — מחירי Drushe הם בשקלים, וה-$ ליד מחיר בשקלים נראה כמו מטבע אחר
+  shekel:`<path d="M6 20V7a3 3 0 0 1 3-3h4a3 3 0 0 1 3 3v6"/><path d="M18 4v13a3 3 0 0 1-3 3h-4a3 3 0 0 1-3-3v-6"/>`,
   mail:`<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>`,
   pin:`<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>`,
   calendar:`<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>`,
@@ -1179,7 +1185,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.51';
+const APP_VERSION='4.11.52';
 
 // ─── הודעות קוליות — כבויות ────────────────────────────────────────────────
 // הקלטה קולית היא הערוץ היחיד בין ילדים שאיש לא בודק: אין תמלול, אין סינון,
@@ -2377,7 +2383,7 @@ async function quickRegister(){
   if(rawUsername.length<3){showFireToast('❌ שם משתמש חייב להכיל לפחות 3 תווים');return;}
   if(rawUsername.length>20){showFireToast('❌ שם משתמש ארוך מדי – עד 20 תווים');return;}
   const _regRole=_selectedRole==='teacher'?'teacher':'student';
-  if(!age||!_ageOk(parseInt(age.value),_regRole)){showFireToast(`❌ גיל ${_regRole==='teacher'?'מורה':'תלמיד'} חייב להיות בין ${AGE_RANGE[_regRole].min} ל-${AGE_RANGE[_regRole].max}`);return;}
+  if(!age||!_ageOk(parseInt(age.value),_regRole)){showFireToast(`❌ ${_regRole==='teacher'?'מורים':'תלמידים'} ב-Drushe הם בני ${AGE_RANGE[_regRole].min} עד ${AGE_RANGE[_regRole].max}. אם הגיל שלך שונה — בקש מההורה לפנות אלינו.`);return;}
   if(!pass||pass.value.length<6){showFireToast('❌ סיסמה לפחות 6 תווים');return;}
   if(!pass2||pass.value!==pass2.value){showFireToast('❌ הסיסמאות לא תואמות');return;}
   if(!kcbChecked('regTerms')){showFireToast('❌ נדרש אישור תנאי שימוש');return;}
@@ -2465,7 +2471,7 @@ function TeacherSetup(){
 
       <!-- מחיר -->
       <div class="card" style="margin-bottom:18px">
-        <h3 style="font-weight:900;font-size:16px;margin:0 0 6px;color:#14B8A6">${icon("dollar",14)} כמה תגבה לשיעור?</h3>
+        <h3 style="font-weight:900;font-size:16px;margin:0 0 6px;color:#14B8A6">${icon("shekel",14)} כמה תגבה לשיעור?</h3>
         <p style="color:#64748B;font-size:12px;margin:0 0 14px">מחיר ממוצע: ₪35–₪60. אתה קובע!</p>
         <div style="text-align:center;margin-bottom:10px">
           <div style="font-size:40px;font-weight:900;color:#14B8A6">₪<span id="priceDisplay">40</span></div>
@@ -2619,7 +2625,7 @@ function TeacherSetup(){
 
       <!-- הסבר מודל תשלום -->
       <div style="background:linear-gradient(135deg,rgba(20,184,166,0.1),rgba(6,182,212,0.08));border-radius:18px;padding:18px;margin-bottom:14px">
-        <h4 style="font-weight:900;font-size:15px;margin:0 0 12px;color:#14B8A6">${icon("dollar",14)} איך עובד התשלום?</h4>
+        <h4 style="font-weight:900;font-size:15px;margin:0 0 12px;color:#14B8A6">${icon("shekel",14)} איך עובד התשלום?</h4>
         <div style="background:rgba(139,47,201,0.08);border-radius:12px;padding:10px 12px;margin-bottom:12px;display:flex;gap:8px;align-items:center">
           <span style="font-size:18px">🤝</span>
           <span style="font-size:12px;color:#7C3AED;line-height:1.6"><strong>Drushe היא פלטפורמת תיווך בלבד</strong> — אנחנו מחברים בינך לבין תלמידים, אבל לא מעורבים בכסף שעובר ביניכם.</span>
@@ -2641,7 +2647,7 @@ function TeacherSetup(){
       ${foundingSlotsLeft()>0?'':`
       <div style="background:transparent;border:1.5px dashed rgba(139,47,201,0.35);border-radius:16px;padding:14px;margin-bottom:14px;text-align:center">
         <p style="margin:0 0 10px;font-size:12px;color:#64748B;line-height:1.6">לא חובה בכלל בזמן הניסיון החינם — אבל אם אתה כבר בטוח, אפשר להפעיל את המנוי כבר עכשיו:</p>
-        <button type="button" onclick="go('subscribe')" style="background:rgba(139,47,201,0.08);color:#7C3AED;border-radius:50px;padding:10px 20px;font-weight:800;font-size:13px;cursor:pointer">${icon("dollar",14)} הכנס אמצעי תשלום כבר עכשיו (לא חובה)</button>
+        <button type="button" onclick="go('subscribe')" style="background:rgba(139,47,201,0.08);color:#7C3AED;border-radius:50px;padding:10px 20px;font-weight:800;font-size:13px;cursor:pointer">${icon("shekel",14)} הכנס אמצעי תשלום כבר עכשיו (לא חובה)</button>
       </div>`}
 
       <div id="tAgeConfirm" class="kcb-row light" data-checked="false" onclick="kcbToggle(this)" style="margin-bottom:14px">
@@ -3045,6 +3051,7 @@ async function requestBooking(totalAmount){
         ).catch(()=>{});
       }
     }catch(e){}
+    markChatStarter(t.id); // בקשת שיעור היא פתיחת קשר — כך המורה יכול לענות ולאשר בשיחה
     S.lastBookingId=bookingId;
     S.bookStep=3;
     kLog('booking_created',{teacher_id:t.id,teacher_cat:t.cat||'',price:totalAmount,type:S.bookType||'single'});
@@ -4085,7 +4092,7 @@ function showFiltersPanel(){
         <h3 style="font-weight:900;font-size:20px;margin:0;color:#0F1A1F">${icon("target",14)} פילטרים מתקדמים</h3>
       </div>
 
-      <h4 style="font-weight:800;font-size:14px;margin:0 0 10px;color:#14B8A6">${icon("dollar",14)} טווח מחירים</h4>
+      <h4 style="font-weight:800;font-size:14px;margin:0 0 10px;color:#14B8A6">${icon("shekel",14)} טווח מחירים</h4>
       <div style="display:flex;gap:8px;margin-bottom:8px">
         ${[[20,40,'₪20-40'],[40,70,'₪40-70'],[70,120,'₪70-120'],[120,200,'₪120+']].map(([min,max,lbl])=>`
           <button onclick="activeFilters.minPrice=${min};activeFilters.maxPrice=${max};render();this.closest('._filtPanel').parentElement.remove();showFiltersPanel()" style="flex:1;background:${f.minPrice===min&&f.maxPrice===max?'linear-gradient(135deg,#14B8A6,#06B6D4)':'rgba(20,184,166,0.08)'};color:${f.minPrice===min&&f.maxPrice===max?'#fff':'#14B8A6'};border:1.5px solid ${f.minPrice===min&&f.maxPrice===max?'transparent':'rgba(20,184,166,0.2)'};border-radius:14px;padding:10px 6px;font-size:11px;font-weight:800;cursor:pointer">${lbl}</button>
@@ -4291,18 +4298,22 @@ async function deleteAllUserData(uid,role){
   // והעותקים — שנושאים שם של קטין ומייל של ההורה — נשארים במסד. הן מדווחות
   // עכשיו דרך אותו failedPaths שכבר עוצר את מחיקת ההזדהות.
   const scanFailures=[];
+  let scanFailuresEarly=false;
   const isTeacher=role==='teacher';
 
   // הודעות פרטיות: תלוי בקריאת userChats לפני שהוא נמחק, אז חייב לרוץ ראשון
+  // חוקי הנתונים אוסרים על משתתף למחוק הודעות (ראיה לא נמחקת בידי מי שדווח עליו), ולכן מחיקת השיחות
+  // והחברות בקבוצות עוברת ל-account-cleanup בשרת. כאן רק אוספים את הרשימות לפני שנמחקות.
   let chatDeleteFailed=0;
+  const chatPartners=[],groupIds=[];
   try{
     const ucSnap=await db.ref('userChats/'+uid).get();
-    if(ucSnap.exists()){
-      const chatDels=[];
-      ucSnap.forEach(child=>{chatDels.push(db.ref('messages/'+getChatId(uid,child.key)).remove());});
-      chatDeleteFailed=(await Promise.allSettled(chatDels)).filter(r=>r.status==='rejected').length;
-    }
+    if(ucSnap.exists())ucSnap.forEach(child=>{chatPartners.push(child.key);});
   }catch(_e){chatDeleteFailed++;}
+  try{
+    const ugSnap=await db.ref('userGroups/'+uid).get();
+    if(ugSnap.exists())ugSnap.forEach(child=>{groupIds.push(child.key);});
+  }catch(_e){scanFailuresEarly=true;}
 
   // פוסטים בקהילה שהמשתמש כתב.
   // שם השדה הוא authUid ולא uid — קוד המחיקה חיפש uid, שלא קיים באף פוסט,
@@ -4425,9 +4436,10 @@ async function deleteAllUserData(uid,role){
     const res=await withTimeout(fetch(API_BASE+'/api/account-cleanup',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(uid===currentUser.uid?{idToken}:{idToken,uid})
+      body:JSON.stringify(uid===currentUser.uid?{idToken,chatPartners,groupIds}:{idToken,uid,chatPartners,groupIds})
     }),15000,'account-cleanup');
     if(!res.ok)scanFailures.push('server-cleanup');
+    if(scanFailuresEarly)scanFailures.push('userGroups');
   }catch(_e){scanFailures.push('server-cleanup');}
 
   return {failedPaths:failedPaths.concat(scanFailures),chatDeleteFailed};
@@ -4748,6 +4760,13 @@ function stopVoiceRecording(otherUid,otherName){
   if(_voiceRecorder&&_isRecording){try{_voiceRecorder.stop();}catch(e){_isRecording=false;clearInterval(_voiceTimer);render();}}
 }
 
+// מורה כותב רק במקום שהילד פתח (חוקי messages/userChats). הילד רושם את עצמו כפותח בשליחה הראשונה
+// ובהזמנת שיעור; למורה אין חוק כתיבה לשם, ולכן הקריאה היא no-op אצלו.
+async function markChatStarter(otherUid){
+  if(!currentUser||!otherUid||currentUserData?.role==='teacher')return;
+  try{await db.ref('chatStarters/'+currentUser.uid+'/'+otherUid).set(true);}catch(_e){}
+}
+
 async function _sendVoiceMessage(blob,otherUid,otherName){
   if(!currentUser)return;
   showFireToast('⏳ שולח הקלטה...');
@@ -4849,6 +4868,7 @@ async function sendChatMessage(otherUid,otherName){
   inp.focus();
   const chatId=getChatId(currentUser.uid,otherUid);
   try{
+    await markChatStarter(otherUid);
     await db.ref('messages/'+chatId).push({
       from:currentUser.uid,
       fromName:currentUserData?.name||currentUser.email.split('@')[0],
@@ -5327,7 +5347,8 @@ async function notifyAdmin(notif){
 // ארבעה חלקים, וכולם SSOT אחד: חומרה נגזרת מהסיבה, יעד הזמן נגזר מהחומרה,
 // חריגה נגזרת מהיעד, וההסלמה נגזרת מספירת הדיווחים על אותו יעד.
 const REPORT_SLA_MS={critical:2*3600000,high:12*3600000,medium:48*3600000,low:7*24*3600000};
-const REPORT_SLA_LABEL={critical:'שעתיים',high:'12 שעות',medium:'48 שעות',low:'7 ימים'};
+// מה שהמשתמש רואה כהבטחה. יעדי המדידה הפנימיים (REPORT_SLA_MS) נשארים, אבל לילד לא מבטיחים מספר שעות שאדם אחד לא יכול לקיים
+const REPORT_SLA_LABEL={critical:'בעדיפות עליונה',high:'בהקדם, בדרך כלל תוך יום',medium:'תוך כמה ימים',low:'תוך שבוע'};
 const REPORT_SEVERITY_META={
   critical:{label:'קריטי',color:'#DC2626'},
   high:{label:'גבוה',color:'#EA580C'},
@@ -5397,6 +5418,12 @@ async function flagForSafetyReview({targetType,targetId,targetName,reasonLabel,d
       targetType,targetId,targetName,
       reason:'auto',reasonLabel,description,
       reporterName:'🤖 זוהה אוטומטית',reporterEmail:''
+    }).then(async ({severity})=>{
+      // דגל קריטי/גבוה לא ממתין שהמנהל יפתח את התור: אותה התראה ואותו מייל כמו דיווח ידני
+      if(severity==='critical'||severity==='high'){
+        await notifyAdmin({type:'newReport',from:'🤖 זוהה אוטומטית',targetName,targetType,reasonLabel,description:description||'',severity});
+        sendAdminEmail(`🚩 דגל אוטומטי ${REPORT_SEVERITY_META[severity].label} על ${targetName||targetType}`,`${reasonLabel||''}\n\nלטיפול: פאנל ניהול ← דיווחים`).catch(()=>{});
+      }
     });
   }catch(e){console.warn('[flagForSafetyReview]',e);}
 }
@@ -5450,6 +5477,19 @@ async function notifyParentsOfNewConversation(chatId,otherUid){
 // כותב אותו ל-DB עם ה-admin SDK, ושולח אותו ישירות לתיבת ההורה. הלקוח כאן
 // לא מקבל ולא רואה את הטוקן בשום שלב.
 const PARENT_CONSENT_DAYS=14;
+
+// הילד ממתין והמייל לא הגיע להורה: שולחים שוב. השרת קובע את הכתובת (נעולה אחרי הפעם הראשונה), מבטל את
+// הקישור הקודם ומגביל קצב — הלקוח רק מבקש.
+async function resendParentConsent(){
+  if(!currentUser)return;
+  try{
+    showFireToast('⏳ שולח...');
+    await _createParentConsent(currentUser,currentUserData?.name||'',currentUserData?.parentEmail||'');
+    showFireToast('✅ הקישור נשלח שוב למייל ההורה');
+  }catch(e){
+    showFireToast(/429|too many/i.test(e.message)?'⏳ נשלחו כבר כמה קישורים — נסה שוב בעוד שעה':'❌ לא הצלחנו לשלוח. נסה שוב מאוחר יותר');
+  }
+}
 
 async function _createParentConsent(user,studentName,parentEmail){
   const idToken=await user.getIdToken();
@@ -7269,6 +7309,26 @@ async function deleteMyVideo(videoId){
 }
 
 // ─── מערכת דיווחים 🚨 ────────────────────────────────────────────────────
+// חסימה אישית: הילד חוסם מי שמטריד אותו, בלי לחכות למנהל. userBlocks (חסימת חשבון) נשאר למנהל בלבד;
+// זו רשימה פרטית — החוקים אוסרים על החסום לכתוב לחוסם (הודעות ותיבת שיחות).
+async function blockUserForMe(uid,name){
+  if(!currentUser||!uid)return;
+  if(!await _confirm(`לחסום את ${name||'המשתמש'}?\nהוא לא יוכל יותר לכתוב לך.`,{confirmText:'חסום',cancelText:'ביטול',destructive:true}))return;
+  try{
+    await db.ref('userBlockedUsers/'+currentUser.uid+'/'+uid).set(true);
+    db.ref('userChats/'+currentUser.uid+'/'+uid).remove().catch(()=>{});
+    document.querySelector('._repDlg')?.parentElement?.remove();
+    showFireToast('🚫 חסמת את '+(name||'המשתמש'));
+    if(S.screen==='chat'){stopChatListener();go('messages');}
+  }catch(e){showFireToast('❌ '+e.message);}
+}
+
+// כפתור דיווח/חסימה על תוכן של משתמש אחר (פוסט, שאלה, "דרוש", קבוצה) — לא מוצג על תוכן של המשתמש עצמו
+function reportBtnHtml(type,uid,name){
+  if(!uid||uid===currentUser?.uid)return '';
+  return `<button onclick="event.stopPropagation();showReportDialog('${jsAttrEscape(type)}','${jsAttrEscape(uid)}','${jsAttrEscape(name||'')}')" aria-label="דווח או חסום" title="דווח או חסום" style="background:none;border:none;color:#64748B;font-size:15px;cursor:pointer;min-width:44px;min-height:44px;padding:0">🚨</button>`;
+}
+
 function showReportDialog(targetType,targetId,targetName){
   if(!currentUser){showFireToast('❌ צריך להתחבר');return;}
   const reasons=[
@@ -7282,12 +7342,13 @@ function showReportDialog(targetType,targetId,targetName){
   const ov=document.createElement('div');
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px);padding:20px;direction:rtl';
   ov.innerHTML=`
-    <div class="_repDlg" style="background:#fff;border-radius:24px;padding:24px;width:100%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,0.3);max-height:85vh;overflow-y:auto">
+    <div class="_repDlg" style="background:linear-gradient(165deg,#ECFEFF 0%,#F0F9FF 50%,#EEF2FF 100%);border-radius:24px;padding:24px;width:100%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,0.3);max-height:85vh;overflow-y:auto">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
         <button onclick="this.closest('._repDlg').parentElement.remove()" style="background:rgba(231,76,60,0.1);border:none;color:#E74C3C;font-size:18px;cursor:pointer;border-radius:50%;width:32px;height:32px">✕</button>
-        <h3 style="font-weight:900;font-size:18px;margin:0;color:#0F1A1F">🚨 דיווח על ${targetName||'משתמש'}</h3>
+        <h3 style="font-weight:900;font-size:18px;margin:0;color:#0F1A1F">🚨 דיווח על ${escapeHtml(targetName||'משתמש')}</h3>
       </div>
-      <p style="color:#64748B;font-size:13px;margin:0 0 16px;line-height:1.6">הדיווח שלך נשלח למנהל ויטופל בהקדם.</p>
+      <p style="color:#64748B;font-size:13px;margin:0 0 16px;line-height:1.6">הדיווח שלך נשלח למנהל ויטופל בהקדם. אפשר גם לחסום אותו אצלך — הוא לא יוכל יותר לכתוב לך.</p>
+      ${/^(chatUser|teacher|user|student|post|group|question|brief)$/.test(targetType)&&targetId&&targetId!==currentUser.uid?`<button onclick="blockUserForMe('${jsAttrEscape(targetId)}','${jsAttrEscape(targetName||'')}')" style="width:100%;min-height:44px;background:rgba(15,26,31,0.06);border:1.5px solid rgba(15,26,31,0.15);border-radius:14px;padding:11px;font-size:13px;font-weight:800;color:#0F1A1F;cursor:pointer;margin-bottom:14px">🚫 חסום אותו אצלי</button>`:''}
       <div style="margin-bottom:14px">
         ${reasons.map(r=>`
           <button data-r="${r.id}" data-l="${r.label}" class="_repR" style="width:100%;background:rgba(231,76,60,0.04);border-radius:14px;padding:13px;font-size:13px;font-weight:700;color:#0F1A1F;cursor:pointer;margin-bottom:7px;text-align:right;display:flex;align-items:center;gap:10px;font-family:inherit">
@@ -8591,7 +8652,7 @@ function renderAdminTab(){
       html+=pending.map(b=>`
         <div style="background:rgba(245,158,11,0.05);border-radius:18px;padding:14px;margin-bottom:10px">
           <div style="font-weight:900;font-size:15px;color:#0F1A1F">${icon("user",14)} ${escapeHtml(b.studentName||'תלמיד')}</div>
-          <div style="font-size:12px;color:#14B8A6;font-weight:700;margin:4px 0">📅 יום ${escapeHtml(b.day||'?')} בשעה ${escapeHtml(b.time||'?')} • ${icon("dollar",14)} ₪${escapeHtml(String(b.price??'?'))}</div>
+          <div style="font-size:12px;color:#14B8A6;font-weight:700;margin:4px 0">📅 יום ${escapeHtml(b.day||'?')} בשעה ${escapeHtml(b.time||'?')} • ${icon("shekel",14)} ₪${escapeHtml(String(b.price??'?'))}</div>
           <div style="font-size:11px;color:#64748B">מורה: ${escapeHtml(b.teacherName||'?')} • ${new Date(b.createdAt||0).toLocaleDateString('he-IL')}</div>
           <div style="display:flex;gap:8px;margin-top:10px">
             <button onclick="adminApproveBooking('${jsAttrEscape(b.teacherId)}','${jsAttrEscape(b.id)}')" style="flex:2;background:#10B981;border:none;color:#fff;border-radius:50px;padding:10px;font-weight:800;font-size:12px;cursor:pointer">${icon("check-circle",14)} אשר</button>
@@ -9637,12 +9698,12 @@ function Home(){
               <div>
                 <div style="font-weight:800;font-size:15px">${escapeHtml(b.studentName)}</div>
                 <div style="font-size:12px;opacity:0.85;margin-top:3px">📅 יום ${escapeHtml(b.day)} בשעה ${escapeHtml(b.time)}</div>
-                <div style="font-size:12px;opacity:0.85;margin-top:2px">${icon("dollar",14)} ₪${escapeHtml(String(b.price??0))}</div>
+                <div style="font-size:12px;opacity:0.85;margin-top:2px">${icon("shekel",14)} ₪${escapeHtml(String(b.price??0))}</div>
               </div>
             </div>
             <div style="display:flex;gap:8px">
-              <button onclick="approveBooking('${jsAttrEscape(b.id)}')" style="min-height:44px;flex:1;background:#10B981;border:none;color:#fff;border-radius:50px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">${icon("check-circle",14)} אשר</button>
-              <button onclick="rejectBooking('${jsAttrEscape(b.id)}')" style="min-height:44px;flex:1;background:rgba(231,76,60,0.9);border:none;color:#fff;border-radius:50px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">${icon("x-circle",14)} דחה</button>
+              <button class="act-btn act-ok" aria-label="אשר בקשה של ${escapeHtml(b.studentName||'תלמיד')}" onclick="approveBooking('${jsAttrEscape(b.id)}')">${icon("check-circle",14)} אשר</button>
+              <button class="act-btn act-no" aria-label="דחה בקשה של ${escapeHtml(b.studentName||'תלמיד')}" onclick="rejectBooking('${jsAttrEscape(b.id)}')">${icon("x-circle",14)} דחה</button>
               <button onclick='showWhatsAppDialog("",WA_TEMPLATES.bookingApproved(${escapeHtml(JSON.stringify(b))}),"שלח אישור")' style="background:linear-gradient(135deg,#25D366,#128C7E);border:none;color:#fff;border-radius:50px;padding:10px 14px;font-weight:800;font-size:13px;cursor:pointer">${icon("smartphone",14)}</button>
             </div>
           </div>
@@ -10228,7 +10289,7 @@ function Teacher(){
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
           <div style="display:flex;align-items:center;gap:8px">
             <div style="width:30px;height:30px;border-radius:50%;background:rgba(20,184,166,0.15);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:#14B8A6">${escapeHtml((qa.askerName||'?').charAt(0))}</div>
-            <span style="font-weight:800;font-size:13px;color:#14B8A6">${escapeHtml(qa.askerName||'משתמש')}</span>
+            <span style="font-weight:800;font-size:13px;color:#14B8A6">${escapeHtml(qa.askerName||'משתמש')}</span>${reportBtnHtml('question',qa.askerUid,qa.askerName)}
             ${_isOwn?`<button onclick="deleteQA('${jsAttrEscape(t.id)}','${jsAttrEscape(qa.id)}')" style="background:none;border:none;color:#CBD5E1;font-size:15px;cursor:pointer;padding:0 4px;line-height:1;font-weight:700" title="מחק שאלה">&#x2715;</button>`:''}
           </div>
           <span style="font-size:11px;color:#6C7686">לפני ${_qaAgo(qa.askedAt||0)}</span>
@@ -10597,7 +10658,7 @@ function Messages(){
                 <div>
                   <div style="font-weight:900;font-size:16px;color:#0F1A1F">${escapeHtml((currentUserData?.role==='teacher'?b.studentName:b.teacherName)||'')}</div>
                   <div style="font-size:12px;color:#10B981;font-weight:700;margin-top:3px">📅 יום ${escapeHtml(b.day)} • ${icon("clock",14)} ${escapeHtml(b.time)}</div>
-                  <div style="font-size:11px;color:#64748B;margin-top:3px">${icon("dollar",14)} ₪${escapeHtml(String(b.price??0))}</div>
+                  <div style="font-size:11px;color:#64748B;margin-top:3px">${icon("shekel",14)} ₪${escapeHtml(String(b.price??0))}</div>
                 </div>
               </div>
               <span style="background:rgba(16,185,129,0.15);color:#059669;font-size:10px;font-weight:800;padding:4px 10px;border-radius:50px;flex-shrink:0">✓ מאושר</span>
@@ -10633,8 +10694,8 @@ function Messages(){
               <span style="background:rgba(245,158,11,0.15);color:#D97706;font-size:10px;font-weight:800;padding:4px 10px;border-radius:50px">⏳ ממתין</span>
             </div>
             ${isTeacherRole?`<div style="display:flex;gap:8px;margin-top:12px">
-              <button onclick="rejectBooking('${jsAttrEscape(b.id)}')" style="min-height:44px;flex:1;background:rgba(239,68,68,0.1);color:#EF4444;border:none;border-radius:12px;padding:9px;font-weight:800;font-size:12px;cursor:pointer">דחה</button>
-              <button onclick="approveBooking('${jsAttrEscape(b.id)}')" style="min-height:44px;flex:1;background:linear-gradient(135deg,#10B981,#14B8A6);color:#fff;border:none;border-radius:12px;padding:9px;font-weight:800;font-size:12px;cursor:pointer">אשר</button>
+              <button class="act-btn act-ok" aria-label="אשר בקשה של ${escapeHtml(b.studentName||'תלמיד')}" onclick="approveBooking('${jsAttrEscape(b.id)}')">✓ אשר</button>
+              <button class="act-btn act-no" aria-label="דחה בקשה של ${escapeHtml(b.studentName||'תלמיד')}" onclick="rejectBooking('${jsAttrEscape(b.id)}')">✗ דחה</button>
             </div>`:''}
           </div>
         `).join('')}
@@ -10784,7 +10845,7 @@ function Profile(){
         const list=_sb[status]||[];if(!list.length)return '';
         const cfg={approved:['#10B981','✅ שיעורים קרובים'],pending:['#F59E0B','⏳ ממתינים לאישור'],completed:['#04778A','🎓 שיעורים שהושלמו'],rejected:['#EF4444','✗ שיעורים שנדחו']};
         const[col,label]=cfg[status];
-        return `<div style="margin-bottom:14px"><h4 style="font-size:13px;font-weight:800;color:${col};margin:0 0 8px">${label} (${list.length})</h4>${list.map(b=>`<div style="background:transparent;border-radius:18px;padding:14px 16px;margin-bottom:8px;box-shadow:none;border-right:4px solid ${col}"><div style="display:flex;justify-content:space-between;align-items:center"><div style="display:flex;gap:8px">${status==='approved'?`<button onclick="S.chat={otherUid:'${jsAttrEscape(b.teacherId||'')}',otherName:'${jsAttrEscape(b.teacherName||'')}'}; go('chat')" style="background:rgba(6,182,212,0.1);color:#04778A;border-radius:50px;padding:7px 13px;font-size:11px;font-weight:800;cursor:pointer">${icon("chat",14)}</button>`:''} ${status==='completed'?`<button onclick="S.ratingT='${jsAttrEscape(b.teacherId||'')}';S.ratingDone=false;S.ratingStars=0;render()" style="background:rgba(251,191,36,0.1);color:#B45309;border-radius:50px;padding:7px 13px;font-size:11px;font-weight:800;cursor:pointer">${icon("star",14)} דרג</button>`:''}</div><div style="text-align:right"><div style="font-weight:900;font-size:14px;color:#0F1A1F">${escapeHtml(b.teacherName||'מורה')}</div><div style="font-size:12px;color:#64748B">📅 ${escapeHtml(b.day||'')} • ${icon("clock",14)} ${escapeHtml(b.time||'')}</div><div style="font-size:12px;color:#64748B">${icon("dollar",14)} ₪${escapeHtml(String(b.price??0))}</div></div></div></div>`).join('')}</div>`;
+        return `<div style="margin-bottom:14px"><h4 style="font-size:13px;font-weight:800;color:${col};margin:0 0 8px">${label} (${list.length})</h4>${list.map(b=>`<div style="background:transparent;border-radius:18px;padding:14px 16px;margin-bottom:8px;box-shadow:none;border-right:4px solid ${col}"><div style="display:flex;justify-content:space-between;align-items:center"><div style="display:flex;gap:8px">${status==='approved'?`<button onclick="S.chat={otherUid:'${jsAttrEscape(b.teacherId||'')}',otherName:'${jsAttrEscape(b.teacherName||'')}'}; go('chat')" style="background:rgba(6,182,212,0.1);color:#04778A;border-radius:50px;padding:7px 13px;font-size:11px;font-weight:800;cursor:pointer">${icon("chat",14)}</button>`:''} ${status==='completed'?`<button onclick="S.ratingT='${jsAttrEscape(b.teacherId||'')}';S.ratingDone=false;S.ratingStars=0;render()" style="background:rgba(251,191,36,0.1);color:#B45309;border-radius:50px;padding:7px 13px;font-size:11px;font-weight:800;cursor:pointer">${icon("star",14)} דרג</button>`:''}</div><div style="text-align:right"><div style="font-weight:900;font-size:14px;color:#0F1A1F">${escapeHtml(b.teacherName||'מורה')}</div><div style="font-size:12px;color:#64748B">📅 ${escapeHtml(b.day||'')} • ${icon("clock",14)} ${escapeHtml(b.time||'')}</div><div style="font-size:12px;color:#64748B">${icon("shekel",14)} ₪${escapeHtml(String(b.price??0))}</div></div></div></div>`).join('')}</div>`;
       }).join('');
     }
   }
@@ -10865,7 +10926,7 @@ function Profile(){
       </div>
     </div>
     <button onclick="shareTeacher(TEACHERS.find(x=>x.id==='${jsAttrEscape(myUid)}'))" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;border-radius:16px;padding:13px;font-weight:900;font-size:14px;color:#fff;cursor:pointer;margin-bottom:14px">${icon("send",14)} שתף פרופיל שלי — קבל יותר הזמנות</button>
-    ${done.length===0?`<div style="background:transparent;border-radius:18px;padding:28px;text-align:center;box-shadow:none"><div style="margin-bottom:10px">${miniBadge('dollar','#14B8A6',72)}</div><p style="color:#64748B;font-size:13px;margin:0">עוד אין הכנסות. כשתשלים שיעורים הם יופיעו כאן.</p></div>`:`
+    ${done.length===0?`<div style="background:transparent;border-radius:18px;padding:28px;text-align:center;box-shadow:none"><div style="margin-bottom:10px">${miniBadge('shekel','#14B8A6',72)}</div><p style="color:#64748B;font-size:13px;margin:0">עוד אין הכנסות. כשתשלים שיעורים הם יופיעו כאן.</p></div>`:`
     <h4 style="font-size:14px;font-weight:800;margin:0 0 10px;color:#0F1A1F">שיעורים אחרונים שהושלמו</h4>
     ${done.slice(0,15).map(b=>`
       <div style="background:transparent;border-radius:16px;padding:13px 15px;margin-bottom:8px;box-shadow:none;display:flex;align-items:center;justify-content:space-between">
@@ -10935,12 +10996,12 @@ function Profile(){
               <div style="text-align:right">
                 <div style="font-weight:900;font-size:15px;color:#0F1A1F">${escapeHtml(b.studentName||'תלמיד')}</div>
                 <div style="font-size:12px;color:#64748B;margin-top:2px">📅 ${escapeHtml(b.day||'')} • ${icon("clock",14)} ${escapeHtml(b.time||'')}</div>
-                <div style="font-size:12px;color:#64748B">${icon("dollar",14)} ₪${escapeHtml(String(b.price??0))}</div>
+                <div style="font-size:12px;color:#64748B">${icon("shekel",14)} ₪${escapeHtml(String(b.price??0))}</div>
               </div>
             </div>
             ${status==='pending'?`<div style="display:flex;gap:8px">
-              <button onclick="rejectBooking('${jsAttrEscape(b.id||b.bookingId||'')}')" style="min-height:44px;flex:1;background:rgba(239,68,68,0.1);color:#EF4444;border-radius:12px;padding:9px;font-weight:800;font-size:12px;cursor:pointer">✗ דחה</button>
-              <button onclick="approveBooking('${jsAttrEscape(b.id||b.bookingId||'')}')" style="min-height:44px;flex:1;background:linear-gradient(135deg,#10B981,#14B8A6);border:none;color:#fff;border-radius:12px;padding:9px;font-weight:800;font-size:12px;cursor:pointer">✓ אשר</button>
+              <button class="act-btn act-ok" aria-label="אשר בקשה של ${escapeHtml(b.studentName||'תלמיד')}" onclick="approveBooking('${jsAttrEscape(b.id||b.bookingId||'')}')">✓ אשר</button>
+              <button class="act-btn act-no" aria-label="דחה בקשה של ${escapeHtml(b.studentName||'תלמיד')}" onclick="rejectBooking('${jsAttrEscape(b.id||b.bookingId||'')}')">✗ דחה</button>
             </div>`:status==='approved'?`<button onclick="S.chat={otherUid:'${jsAttrEscape(b.studentId||'')}',otherName:'${jsAttrEscape(b.studentName||'תלמיד')}'};go('chat')" style="width:100%;background:rgba(6,182,212,0.1);color:#04778A;border-radius:12px;padding:9px;font-weight:800;font-size:12px;cursor:pointer">${icon("chat",14)} שלח הודעה</button>`:`<button onclick="deleteBooking('${jsAttrEscape(b.id||b.bookingId||'')}')" style="width:100%;background:rgba(148,163,184,0.1);color:#6C7686;border-radius:12px;padding:9px;font-weight:800;font-size:12px;cursor:pointer">${icon("trash",14)} מחק מהרשימה</button>`}
           </div>`).join('')}
       </div>`;
@@ -11205,7 +11266,7 @@ function Community(){
       <div style="padding:15px 15px 11px;display:flex;gap:11px;align-items:center">
         <div style="width:46px;height:46px;border-radius:42% 58% 63% 37%/45% 40% 60% 55%;flex-shrink:0;background:linear-gradient(135deg,${safeColor(p.col)},${safeColor(p.col)}99);display:flex;align-items:center;justify-content:center;font-size:22px;overflow:hidden;box-shadow:0 3px 10px ${safeColor(p.col)}55">${p.photo?`<img src="${escapeHtml(p.photo)}" style="width:100%;height:100%;object-fit:cover" alt="">`:p.av||'😊'}</div>
         <div style="flex:1">
-          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="font-weight:800;font-size:15px">${escapeHtml(p.author||'משתמש')}</span>${isMine?'<span style="background:rgba(20,184,166,0.15);color:#14B8A6;font-size:9px;font-weight:800;padding:2px 6px;border-radius:50px">אני</span>':''}${p.status==='pending'?'<span style="background:rgba(245,158,11,0.15);color:#F59E0B;font-size:9px;font-weight:800;padding:2px 6px;border-radius:50px">⏳ בבדיקה</span>':''}</div>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="font-weight:800;font-size:15px">${escapeHtml(p.author||'משתמש')}</span>${isMine?'<span style="background:rgba(20,184,166,0.15);color:#14B8A6;font-size:9px;font-weight:800;padding:2px 6px;border-radius:50px">אני</span>':''}${p.status==='pending'?'<span style="background:rgba(245,158,11,0.15);color:#F59E0B;font-size:9px;font-weight:800;padding:2px 6px;border-radius:50px">⏳ בבדיקה</span>':''}${reportBtnHtml('post',p.authUid,p.author)}</div>
           <div style="font-size:11px;color:${safeColor(p.col)};font-weight:700">${escapeHtml(p.role||'')}${p.area?' • 📍 '+escapeHtml(p.area):''}</div>
         </div>
         <div style="text-align:left">
@@ -11282,7 +11343,7 @@ function Community(){
           <div>
             <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
               <span style="font-weight:900;font-size:15px">${escapeHtml(b.parentName||'הורה')}</span>
-              ${isMine?'<span style="background:rgba(20,184,166,0.15);color:#14B8A6;font-size:9px;font-weight:800;padding:2px 6px;border-radius:50px">שלי</span>':''}
+              ${isMine?'<span style="background:rgba(20,184,166,0.15);color:#14B8A6;font-size:9px;font-weight:800;padding:2px 6px;border-radius:50px">שלי</span>':reportBtnHtml('brief',b.parentUid,b.parentName)}
             </div>
             <div style="font-size:11px;color:#64748B">${agoTxt}</div>
           </div>
@@ -11290,7 +11351,7 @@ function Community(){
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:9px">
           <span style="background:${cat.col}15;color:${cat.col};font-size:11px;font-weight:700;padding:3px 10px;border-radius:50px">${cat.lbl}</span>
-          <span style="background:rgba(16,185,129,0.12);color:#059669;font-size:11px;font-weight:800;padding:3px 10px;border-radius:50px">${icon('dollar',10,'#059669')} ₪${Number(b.budget)||0} לשיעור</span>
+          <span style="background:rgba(16,185,129,0.12);color:#059669;font-size:11px;font-weight:800;padding:3px 10px;border-radius:50px">${icon('shekel',10,'#059669')} ₪${Number(b.budget)||0} לשיעור</span>
           <span style="background:rgba(20,184,166,0.1);color:#14B8A6;font-size:11px;font-weight:700;padding:3px 10px;border-radius:50px">${icon('user',10,'#14B8A6')} ${escapeHtml(b.childName)}</span>
         </div>
         <p style="margin:0 0 12px;font-size:13px;color:#334155;line-height:1.6">${escapeHtml((b.description||'').substring(0,160))}${(b.description||'').length>160?'...':''}</p>
@@ -11564,7 +11625,7 @@ function showPostBriefDialog(){
     </select>
     <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">${icon('file-text',14)} תאר את הצורך</label>
     <textarea id="_pbDesc" rows="3" placeholder="ספר על הצרכים של הילד/ה — רמה, מטרות, זמינות מועדפת..." class="inp" style="margin-bottom:12px;resize:none"></textarea>
-    <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">${icon('dollar',14)} תקציב לשיעור (&#x20AA;)</label>
+    <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">${icon('shekel',14)} תקציב לשיעור (&#x20AA;)</label>
     <input id="_pbBudget" type="number" min="0" placeholder="לדוגמה: 80" class="inp" style="margin-bottom:20px">
     <button onclick="_saveParentBrief()" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:14px;font-weight:900;font-size:15px;cursor:pointer;box-shadow:0 6px 20px rgba(20,184,166,0.3);display:flex;align-items:center;justify-content:center;gap:8px">${icon('send',16,'#fff')} פרסם דרוש</button>
   </div>`;
@@ -11616,9 +11677,9 @@ function showBriefProposalDialog(briefId){
     <div style="background:rgba(20,184,166,0.06);border-radius:14px;padding:14px;margin-bottom:16px">
       <div style="font-size:12px;color:#64748B;margin-bottom:4px">${catObj.em} ${catObj.lbl} • ילד/ה: <strong>${escapeHtml(brief.childName)}</strong></div>
       <div style="font-size:13px;font-weight:700;line-height:1.6;margin-bottom:6px">${escapeHtml((brief.description||'').substring(0,120))}${(brief.description||'').length>120?'...':''}</div>
-      <div style="font-size:13px;color:#10B981;font-weight:800">${icon('dollar',13,'#10B981')} תקציב הורה: &#x20AA;${Number(brief.budget)||0} לשיעור</div>
+      <div style="font-size:13px;color:#10B981;font-weight:800">${icon('shekel',13,'#10B981')} תקציב הורה: &#x20AA;${Number(brief.budget)||0} לשיעור</div>
     </div>
-    <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">${icon('dollar',14)} המחיר שלי לשיעור (&#x20AA;)</label>
+    <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">${icon('shekel',14)} המחיר שלי לשיעור (&#x20AA;)</label>
     <input id="_bpPrice" type="number" min="0" value="${Number(brief.budget)||0}" class="inp" style="margin-bottom:12px">
     <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">${icon('chat',14)} הודעה להורה</label>
     <textarea id="_bpMsg" rows="4" placeholder="ספר/י על ניסיונך, כיצד תוכל/י לעזור לילד/ה ומה כולל השיעור..." class="inp" style="margin-bottom:20px;resize:none"></textarea>
@@ -11727,6 +11788,7 @@ async function _acceptBriefProposal(briefId,teacherUid){
       ['parentBriefs/'+briefId+'/acceptedTeacher']:teacherUid,
       ['parentBriefs/'+briefId+'/bookingId']:bookingId
     });
+    markChatStarter(teacherUid);
     await notifyUser(teacherUid,'briefAccepted',{briefId,bookingId,childName:brief.childName,price});
     const bIdx=(S.parentBriefs||[]).findIndex(b=>b.id===briefId);
     if(bIdx>=0)S.parentBriefs.splice(bIdx,1);
@@ -12029,7 +12091,7 @@ function About(){
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px">
-      ${[["dollar","#14B8A6","חיסכון להורים","חוגים ושיעורים במחיר שפוי"],["award","#F59E0B","ילדים מלמדים","כישרון ילדים מגיע לכל ילד"],["users","#8B5CF6","קהילה תומכת","לומדים ומלמדים יחד"],["dollar","#EC4899","עצמאות כלכלית","הילד המורה מרוויח ולומד לנהל"]].map(([ic,col,t,d])=>`<div class="card" style="text-align:center;padding:16px;box-shadow:0 2px 10px rgba(0,0,0,.05)"><div style="margin-bottom:10px">${miniBadge(ic,col,48)}</div><div style="font-weight:800;font-size:13px">${t}</div><div style="font-size:11px;color:${C.muted};margin-top:4px;line-height:1.4">${d}</div></div>`).join("")}
+      ${[["shekel","#14B8A6","חיסכון להורים","חוגים ושיעורים במחיר שפוי"],["award","#F59E0B","ילדים מלמדים","כישרון ילדים מגיע לכל ילד"],["users","#8B5CF6","קהילה תומכת","לומדים ומלמדים יחד"],["shekel","#EC4899","עצמאות כלכלית","הילד המורה מרוויח ולומד לנהל"]].map(([ic,col,t,d])=>`<div class="card" style="text-align:center;padding:16px;box-shadow:0 2px 10px rgba(0,0,0,.05)"><div style="margin-bottom:10px">${miniBadge(ic,col,48)}</div><div style="font-weight:800;font-size:13px">${t}</div><div style="font-size:11px;color:${C.muted};margin-top:4px;line-height:1.4">${d}</div></div>`).join("")}
     </div>
 
     <div style="background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);border-radius:var(--radius);padding:22px;text-align:center;box-shadow:var(--gp);margin-bottom:18px">
@@ -12087,7 +12149,7 @@ function About(){
     ${[
       {ic:'bar-chart',col:'#14B8A6',t:'דוח שבועי להורים',d:'דוח שבועי אוטומטי במייל על שיעורי הילד/ה ודירוגים, עם קישור צפייה אישי — בלי צורך בסיסמה.'},
       {ic:'chat',col:'#06B6D4',t:'צפייה בצ\'אטים',d:'כל ההתכתבויות בין ילדכם למורה גלויות לצפייה — פשוט היכנסו עם פרטי ההתחברות של הילד/ה.'},
-      {ic:'dollar',col:'#F59E0B',t:'שקיפות בהזמנות',d:'ההורה מקבל עדכון במייל על כל הזמנה ושיעור שמתבצע. את התשלום על השיעור מתאמים ישירות מול המורה.'},
+      {ic:'shekel',col:'#F59E0B',t:'שקיפות בהזמנות',d:'ההורה מקבל עדכון במייל על כל הזמנה ושיעור שמתבצע. את התשלום על השיעור מתאמים ישירות מול המורה.'},
     ].map(s=>`
       <div class="card" style="display:flex;gap:12px;align-items:flex-start;margin-bottom:10px">
         <div style="flex-shrink:0">${miniBadge(s.ic,s.col,40)}</div>
@@ -12114,7 +12176,7 @@ function About(){
 
   if(tab==="values") content=`
     <p style="color:${C.muted};font-size:14px;margin:0 0 16px;line-height:1.7">5 עקרונות שמנחים כל החלטה שאנחנו מקבלים:</p>
-    ${[["shield",'#14B8A6',"בטיחות מעל הכל","אימות ת.ז., נוכחות הורים וניטור שיחות בכל שלב."],["dollar",'#F59E0B',"נגישות כלכלית","ילד מכל שכבה יוכל ללמוד. מחירים שנקבעים על ידי הילדים."],["star",'#EC4899',"העצמת ילדים","מורה צעיר רוכש ביטחון, ניסיון ניהולי, והכנסה אמיתית."],["users",'#8B5CF6',"קהילה בטוחה","פורום מנוהל, מסונן, עם הורים שותפים בכל שלב."],["bar-chart",'#06B6D4',"איכות ושקיפות","דירוגים הדדיים, תגים, ביקורות אמיתיות לכל מורה."]].map(([ic,col,t,d])=>`<div class="card" style="display:flex;gap:14px;align-items:flex-start"><div style="flex-shrink:0">${miniBadge(ic,col,50)}</div><div><h4 style="margin:0 0 5px;font-weight:900;font-size:15px">${t}</h4><p style="margin:0;font-size:13px;color:${C.muted};line-height:1.6">${d}</p></div></div>`).join("")}`;
+    ${[["shield",'#14B8A6',"בטיחות מעל הכל","אימות ת.ז., נוכחות הורים וניטור שיחות בכל שלב."],["shekel",'#F59E0B',"נגישות כלכלית","ילד מכל שכבה יוכל ללמוד. מחירים שנקבעים על ידי הילדים."],["star",'#EC4899',"העצמת ילדים","מורה צעיר רוכש ביטחון, ניסיון ניהולי, והכנסה אמיתית."],["users",'#8B5CF6',"קהילה בטוחה","פורום מנוהל, מסונן, עם הורים שותפים בכל שלב."],["bar-chart",'#06B6D4',"איכות ושקיפות","דירוגים הדדיים, תגים, ביקורות אמיתיות לכל מורה."]].map(([ic,col,t,d])=>`<div class="card" style="display:flex;gap:14px;align-items:flex-start"><div style="flex-shrink:0">${miniBadge(ic,col,50)}</div><div><h4 style="margin:0 0 5px;font-weight:900;font-size:15px">${t}</h4><p style="margin:0;font-size:13px;color:${C.muted};line-height:1.6">${d}</p></div></div>`).join("")}`;
 
   if(tab==="roadmap"){
     const steps=[{e:icon("info",22),t:"הרעיון נולד",d:"הבנו שחוגים יקרים ושכישרון ילדים יכול לשנות את זה.",yr:"2025",done:true},{e:icon("edit",22),t:"בניית הפרוטוטייפ",d:"פיתוח הפלטפורמה: הרשמה בטוחה, מורים, קהילה, לידרבורד.",yr:"2025",done:true},{e:icon("zap",22),t:"פיילוט ב-5 ערים",d:"השקה עם 50 מורים ו-200 תלמידים.",yr:"2026",done:false},{e:icon("target",22),t:"10,000 משתמשים",d:"קהילה צומחת של ילדים שמלמדים ולומדים ברחבי הארץ.",yr:"2026",done:false},{e:icon("broadcast",22),t:"הרחבה לחו\"ל",d:"השקה לעולם הדובר עברית ואחר כך שפות נוספות.",yr:"2027",done:false}];
@@ -12238,7 +12300,7 @@ function TeacherPending(){
 
         <div style="padding:16px">
           <div style="display:flex;gap:14px;align-items:center;margin-bottom:16px">
-            <div style="width:52px;height:52px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0">${catIcon(cat,26)}</div>
+            <div style="width:52px;height:52px;border-radius:50%;background:rgba(20,184,166,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0">${catIcon(cat,26)}</div>
             <div>
               <h3 style="color:#0F1A1F;font-weight:900;font-size:17px;margin:0 0 4px">${name}</h3>
               <p style="color:#14B8A6;font-size:13px;font-weight:700;margin:0">${cat.lbl} • ${escapeHtml(t.city||'')}</p>
@@ -12247,7 +12309,7 @@ function TeacherPending(){
 
           <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
             <div style="display:flex;align-items:center;gap:8px">
-              <span style="font-size:16px">${icon("dollar",14)}</span>
+              <span style="font-size:16px">${icon("shekel",14)}</span>
               <span style="color:#475569;font-size:13px">₪${escapeHtml(String(t.price||0))} לשיעור</span>
             </div>
             <div style="display:flex;align-items:center;gap:8px">
@@ -12256,7 +12318,7 @@ function TeacherPending(){
             </div>
             ${t.mode?`<div style="display:flex;align-items:center;gap:8px">
               <span style="display:flex;align-items:center">${icon("smartphone",16)}</span>
-              <span style="color:#475569;font-size:13px">${t.mode}</span>
+              <span style="color:#475569;font-size:13px">${escapeHtml((Array.isArray(t.mode)?t.mode:[t.mode]).map(m=>m==='online'?'אונליין':m==='frontal'?'פרונטלי':m).join(' + '))}</span>
             </div>`:''}
           </div>
 
@@ -12272,7 +12334,7 @@ function TeacherPending(){
           `:`
           <div style="background:rgba(245,158,11,0.08);border-radius:14px;padding:14px;margin-bottom:14px">
             <p style="color:#B45309;font-size:13px;font-weight:700;margin:0 0 6px;text-align:right;display:flex;align-items:center;justify-content:flex-end;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#B45309" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> ממתין לאישור המנהל</p>
-            <p style="color:#64748B;font-size:12px;margin:0;line-height:1.6;text-align:right">הפרופיל שלך נשלח לבדיקה. תוך 24 שעות תקבל אישור ותוכל להתחיל ללמד!</p>
+            <p style="color:#64748B;font-size:12px;margin:0;line-height:1.6;text-align:right">הפרופיל שלך נשלח לבדיקה. בדרך כלל תוך יום-יומיים תקבל אישור ותוכל להתחיל ללמד!</p>
           </div>
 
           <div style="background:rgba(20,184,166,0.08);border-radius:14px;padding:14px;margin-bottom:16px">
@@ -12280,7 +12342,7 @@ function TeacherPending(){
             <div style="display:flex;flex-direction:column;gap:8px">
               <div style="display:flex;gap:8px;align-items:center">
                 <div style="width:22px;height:22px;border-radius:50%;background:#14B8A6;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;flex-shrink:0">1</div>
-                <span style="color:#475569;font-size:12px">המנהל בודק את הפרופיל שלך</span>
+                <span style="color:#475569;font-size:12px">המנהל בודק את הפרופיל שלך — והוא גם מחכה לאישור ההורה שלך (קישור נשלח למייל של ההורה)</span>
               </div>
               <div style="display:flex;gap:8px;align-items:center">
                 <div style="width:22px;height:22px;border-radius:50%;background:#06B6D4;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;flex-shrink:0">2</div>
@@ -12291,6 +12353,7 @@ function TeacherPending(){
                 <span style="color:#475569;font-size:12px">הפרופיל מופיע לתלמידים!</span>
               </div>
             </div>
+            ${currentUserData?.parentConsentAt?'<p style="color:#047857;font-size:12px;font-weight:800;margin:12px 0 0">✅ ההורה אישר. נשאר רק אישור הצוות.</p>':`<button onclick="resendParentConsent()" style="margin-top:12px;width:100%;min-height:44px;background:var(--grad-main);border:none;color:#fff;border-radius:50px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">📨 ההורה לא קיבל? שלח שוב את הקישור</button>`}
           </div>
           `}
 
@@ -12334,9 +12397,9 @@ function StudentPending(){
         </div>
         <div style="padding:18px">
           <div style="display:flex;gap:14px;align-items:center;margin-bottom:18px">
-            <div style="width:52px;height:52px;border-radius:50%;background:#fff;flex-shrink:0"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+            <div style="width:52px;height:52px;border-radius:50%;background:rgba(20,184,166,0.12);flex-shrink:0"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
             <div>
-              <h3 style="color:#0F1A1F;font-weight:900;font-size:17px;margin:0 0 4px">${name}</h3>
+              <h3 style="color:#0F1A1F;font-weight:900;font-size:17px;margin:0 0 4px">${escapeHtml(name)}</h3>
               <p style="color:#04778A;font-size:13px;font-weight:700;margin:0">תלמיד • גיל ${currentUserData?.age||'?'}</p>
             </div>
           </div>
@@ -12366,12 +12429,13 @@ function StudentPending(){
                 <span style="color:#475569;font-size:12px">לאחר אישור — גישה מלאה לאפליקציה!</span>
               </div>
             </div>
+            ${currentUserData?.parentConsentAt?'<p style="color:#047857;font-size:12px;font-weight:800;margin:12px 0 0">✅ ההורה אישר. נשאר רק אישור הצוות.</p>':`<button onclick="resendParentConsent()" style="margin-top:12px;width:100%;min-height:44px;background:var(--grad-main);border:none;color:#fff;border-radius:50px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">📨 ההורה לא קיבל? שלח שוב את הקישור</button>`}
           </div>
           `}
           ${parentName&&!rejected?`<div style="background:rgba(20,184,166,0.08);border-radius:12px;padding:10px 14px;margin-bottom:14px">
             <div style="font-size:11px;color:#14B8A6;font-weight:800;margin-bottom:4px">👨‍👩‍👧 הורה אחראי</div>
-            <div style="color:#0F1A1F;font-size:13px;font-weight:700">${parentName}</div>
-            ${parentPhone?`<div style="color:#64748B;font-size:12px;direction:ltr;text-align:right">${icon("smartphone",14)} ${parentPhone}</div>`:''}
+            <div style="color:#0F1A1F;font-size:13px;font-weight:700">${escapeHtml(parentName)}</div>
+            ${parentPhone?`<div style="color:#64748B;font-size:12px;direction:ltr;text-align:right">${icon("smartphone",14)} ${escapeHtml(parentPhone)}</div>`:''}
           </div>`:''}
           <button onclick="auth.signOut().then(()=>go('login'))" style="width:100%;background:#F1F5F9;border:1px solid #E2E8F0;color:#64748B;border-radius:50px;padding:12px;font-size:13px;font-weight:700;cursor:pointer">← התנתק</button>
           <button onclick="deleteMyAccount()" style="margin-top:8px;width:100%;background:rgba(239,68,68,0.08);color:#EF4444;border-radius:50px;padding:11px;font-size:12px;font-weight:700;cursor:pointer">${icon("trash",14)} מחק חשבון</button>
@@ -12578,7 +12642,7 @@ function showEditTeacherProfileDialog(){
       </div>
 
       <div style="margin-bottom:14px">
-        <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:6px">${icon("dollar",14)} מחיר לשיעור (₪)</label>
+        <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:6px">${icon("shekel",14)} מחיר לשיעור (₪)</label>
         <input id="_etPrice" class="inp" type="number" min="10" max="500" value="${escapeHtml(String(t.price||60))}" placeholder="מחיר לשיעור">
       </div>
       <div style="margin-bottom:14px">
@@ -12973,7 +13037,7 @@ function showEditSubjectDialog(catId){
       <input id="_esTags" value="${escapeHtml((cp.tags||[]).join(', '))}" style="width:100%;background:rgba(20,184,166,0.06);border:1.5px solid rgba(20,184,166,0.25);border-radius:12px;padding:11px;font-size:13px;font-family:inherit;direction:rtl;outline:none;box-sizing:border-box;margin-bottom:12px">
       <div style="display:flex;gap:10px;margin-bottom:16px">
         <div style="flex:1">
-          <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">${icon("dollar",14)} מחיר לשעה (₪)</label>
+          <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">${icon("shekel",14)} מחיר לשעה (₪)</label>
           <input id="_esPrice" type="number" value="${escapeHtml(String(t.price||80))}" style="width:100%;background:rgba(16,185,129,0.06);border:1.5px solid rgba(16,185,129,0.25);border-radius:12px;padding:11px;font-size:13px;outline:none;box-sizing:border-box">
         </div>
         <div style="flex:1">
@@ -13288,7 +13352,7 @@ function showCreateGroupDialog(){
         <select id="_cgMax" style="width:100%;background:rgba(20,184,166,0.06);border:1.5px solid rgba(20,184,166,0.25);border-radius:12px;padding:11px;font-size:13px;font-family:inherit;direction:rtl;outline:none;box-sizing:border-box">
           ${[3,4,5,6,8,10,12].map(n=>`<option value="${n}">${n} ילדים</option>`).join('')}
         </select></div>
-      <div style="flex:1"><label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">${icon("dollar",14)} מחיר לילד (₪)</label>
+      <div style="flex:1"><label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">${icon("shekel",14)} מחיר לילד (₪)</label>
         <input id="_cgPrice" type="number" value="25" min="0" style="width:100%;background:rgba(16,185,129,0.06);border:1.5px solid rgba(16,185,129,0.25);border-radius:12px;padding:11px;font-size:13px;outline:none;box-sizing:border-box"></div>
     </div>
     <label onclick="document.getElementById('_cgMixed').click()" style="display:flex;align-items:center;gap:12px;padding:14px;background:rgba(20,184,166,0.06);border-radius:16px;cursor:pointer;margin-bottom:18px">
@@ -13351,11 +13415,11 @@ function showGroupDetail(groupId){
       <div style="background:rgba(20,184,166,0.08);border-radius:14px;padding:12px;text-align:center"><div style="font-size:20px">📅</div><div style="font-weight:800;font-size:13px;margin-top:4px">${escapeHtml(g.day)}</div><div style="font-size:11px;color:#64748B">שעה ${escapeHtml(g.time)}</div></div>
       <div style="background:rgba(20,184,166,0.08);border-radius:14px;padding:12px;text-align:center"><div style="font-size:20px">${icon("pin",14)}</div><div style="font-weight:800;font-size:13px;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(g.location||'')}</div><div style="font-size:11px;color:#64748B">מיקום</div></div>
       <div style="background:rgba(16,185,129,0.08);border-radius:14px;padding:12px;text-align:center"><div style="font-size:20px">${icon("users",14)}</div><div style="font-weight:800;font-size:13px;margin-top:4px">${Number(g.membersCount)||0}/${Number(g.maxStudents)||0}</div><div style="font-size:11px;color:${spotsLeft>0?'#10B981':'#EF4444'}">${spotsLeft>0?spotsLeft+' מקומות פנויים':'מלא'}</div></div>
-      <div style="background:rgba(245,158,11,0.08);border-radius:14px;padding:12px;text-align:center"><div style="font-size:20px">${icon("dollar",14)}</div><div style="font-weight:800;font-size:13px;margin-top:4px">₪${escapeHtml(String(g.price))} לילד</div><div style="font-size:11px;color:#64748B">לפגישה</div></div>
+      <div style="background:rgba(245,158,11,0.08);border-radius:14px;padding:12px;text-align:center"><div style="font-size:20px">${icon("shekel",14)}</div><div style="font-weight:800;font-size:13px;margin-top:4px">₪${escapeHtml(String(g.price))} לילד</div><div style="font-size:11px;color:#64748B">לפגישה</div></div>
     </div>
     <div style="display:flex;align-items:center;gap:10px;padding:12px;background:rgba(100,116,139,0.06);border-radius:14px;margin-bottom:16px">
       <div style="width:42px;height:42px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">${g.teacherPhoto?`<img src="${escapeHtml(g.teacherPhoto)}" style="width:100%;height:100%;object-fit:cover" alt="">`:catIcon(catObj,22)}</div>
-      <div><div style="font-weight:800;font-size:14px">${escapeHtml(g.teacherName||'')}</div><div style="font-size:12px;color:#64748B">מוביל הקבוצה</div></div>
+      <div><div style="font-weight:800;font-size:14px">${escapeHtml(g.teacherName||'')}</div><div style="font-size:12px;color:#64748B">מוביל הקבוצה</div></div>${reportBtnHtml('group',g.teacherId,g.teacherName)}
     </div>
     ${g.isMixed?`<div style="background:rgba(20,184,166,0.06);border-radius:14px;padding:12px;margin-bottom:14px;display:flex;gap:10px;align-items:center"><span style="font-size:22px">🌈</span><div><div style="font-weight:800;font-size:13px">קבוצה מעורבת</div><div style="font-size:12px;color:#64748B">פתוח לילדים מכל רקע ואוכלוסייה. מצטרפים מקבלים תג קהילה מיוחד!</div></div></div>`:''}
     ${isOwner
@@ -13460,7 +13524,7 @@ async function showTeacherGroupsPanel(){
         </div>
         <span style="font-size:11px;font-weight:800;padding:4px 10px;border-radius:50px;background:${g.status==='open'?'rgba(16,185,129,0.12)':'rgba(239,68,68,0.1)'};color:${g.status==='open'?'#10B981':'#EF4444'}">${g.status==='open'?'פעיל':'מלא'}</span>
       </div>
-      <div style="font-size:12px;color:#64748B;margin-bottom:8px">${icon("users",14)} ${Number(g.membersCount)||0}/${Number(g.maxStudents)||0} • ${icon("dollar",14)} ₪${escapeHtml(String(g.price))} לילד${g.isMixed?' • 🌈 מעורבת':''}</div>
+      <div style="font-size:12px;color:#64748B;margin-bottom:8px">${icon("users",14)} ${Number(g.membersCount)||0}/${Number(g.maxStudents)||0} • ${icon("shekel",14)} ₪${escapeHtml(String(g.price))} לילד${g.isMixed?' • 🌈 מעורבת':''}</div>
       ${members.length===0?'<p style="text-align:center;color:#6C7686;font-size:12px;padding:6px 0">אין נרשמים עדיין</p>':members.map(m=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:#fff;border-radius:10px;margin-bottom:5px">
         <span style="font-weight:700;font-size:13px">${escapeHtml(m.name)}</span>
         ${m.status==='pending'?`<div style="display:flex;gap:5px"><button onclick="_approveGroupMember('${jsAttrEscape(g.id)}','${jsAttrEscape(m.uid)}',this.parentElement)" style="background:rgba(16,185,129,0.12);border:none;color:#10B981;border-radius:50px;padding:5px 11px;font-size:11px;font-weight:800;cursor:pointer">✓ אשר</button><button onclick="_rejectGroupMember('${jsAttrEscape(g.id)}','${jsAttrEscape(m.uid)}',this.parentElement)" style="background:rgba(239,68,68,0.1);border:none;color:#EF4444;border-radius:50px;padding:5px 11px;font-size:11px;font-weight:800;cursor:pointer">✗ דחה</button></div>`:`<span style="font-size:11px;font-weight:800;padding:4px 10px;border-radius:50px;background:${m.status==='approved'?'rgba(16,185,129,0.12)':'rgba(239,68,68,0.1)'};color:${m.status==='approved'?'#10B981':'#EF4444'}">${m.status==='approved'?'✓ מאושר':'✗ נדחה'}</span>`}
@@ -13615,13 +13679,15 @@ async function _loadConsentInfo(token){
     }
     const nm=escapeHtml(data.studentName||'ילדך');
     el.innerHTML=`
-      <div style="background:#fff;border-radius:20px;padding:22px 18px;text-align:right;box-shadow:0 6px 24px rgba(15,26,31,.07)">
+      <div style="background:linear-gradient(165deg,#ECFEFF 0%,#F0F9FF 50%,#EEF2FF 100%);border-radius:20px;padding:22px 18px;text-align:right;box-shadow:0 6px 24px rgba(15,26,31,.07)">
         <p style="font-size:15px;color:#0F1A1F;margin:0 0 14px;line-height:1.7"><b>${nm}</b> נרשם/ה ל-Drushe וממתין/ה לאישורך.</p>
         <div style="background:rgba(20,184,166,.07);border-radius:14px;padding:14px;margin-bottom:14px">
           <p style="font-size:13px;color:#334155;margin:0 0 8px;font-weight:800">באישור זה אתם מאשרים ש:</p>
           <ul style="margin:0;padding-right:18px;font-size:13px;color:#475569;line-height:1.9">
             <li>אתם ההורה או האפוטרופוס של ${nm}</li>
-            <li>אתם מאשרים לו/לה להשתמש ב-Drushe וליצור קשר עם מורים דרך האפליקציה</li>
+            ${data.role==='teacher'
+              ?`<li>אתם מאשרים לו/לה ללמד ילדים אחרים ב-Drushe — בפיקוח הורים, בלי תשלום דרך האפליקציה, ובשיחות שנשמרות לבדיקת הצוות</li>`
+              :`<li>אתם מאשרים לו/לה להשתמש ב-Drushe וליצור קשר עם מורים דרך האפליקציה</li>`}
             <li>קראתם את <a href="/privacy.html" target="_blank" style="color:#0e7a72">מדיניות הפרטיות</a> ואת <a href="/terms.html" target="_blank" style="color:#0e7a72">תנאי השימוש</a></li>
           </ul>
         </div>

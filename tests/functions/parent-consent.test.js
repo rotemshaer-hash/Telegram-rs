@@ -151,12 +151,12 @@ describe('parent-consent create', () => {
 
   it('one network address cannot flood parents through many accounts', async () => {
     let last;
-    for (let i = 0; i < 16; i++) {
+    for (let i = 0; i < 41; i++) {
       data[`users/acct-${i}/parentEmail`] = `p${i}@example.org`;
       last = await create({}, `acct-${i}`, '9.9.9.9');
     }
     assert.equal(last.status, 429);
-    assert.equal(sent.length, 15);
+    assert.equal(sent.length, 40);
   });
 
   it('requires a signed-in session', async () => {

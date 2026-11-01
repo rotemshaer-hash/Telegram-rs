@@ -560,6 +560,97 @@ describe('gates: groups, posts, questions and briefs need a verified, unblocked 
   });
 });
 
+// ── A CONVERSATION NEEDS A REASON, A CHILD CAN BLOCK, EVIDENCE STAYS ──────
+// 1.11.2026 (child-safety review): any verified teacher could open a chat with any child
+// uid they had seen, and any participant could delete the whole conversation after a report.
+describe('conversations: a teacher may only write where the child started, a child can block, chats are not deletable', () => {
+  const chat = (a, b) => [a, b].sort().join('_');
+  const msg = (from) => ({ from, text: 'hi', createdAt: 1 });
+  const starter = (uid, other) => testEnv.withSecurityRulesDisabled(async (ctx) => { await set(ref(ctx.database(), `chatStarters/${uid}/${other}`), true); });
+
+  it('a teacher cannot open a conversation with a child who has not contacted them', async () => {
+    await assertFails(set(ref(asTeacher(), `messages/${chat(STUDENT, TEACHER)}/m1`), msg(TEACHER)));
+    await assertFails(set(ref(asTeacher(), `userChats/${STUDENT}/${TEACHER}`), { otherUid: TEACHER, lastMessage: 'hi' }));
+  });
+
+  it('once the child started the conversation the teacher can answer', async () => {
+    await assertSucceeds(set(ref(asStudent(), `chatStarters/${STUDENT}/${TEACHER}`), true));
+    await assertSucceeds(set(ref(asTeacher(), `messages/${chat(STUDENT, TEACHER)}/m2`), msg(TEACHER)));
+    await assertSucceeds(set(ref(asTeacher(), `userChats/${STUDENT}/${TEACHER}`), { otherUid: TEACHER, lastMessage: 'hi' }));
+  });
+
+  it('only the child writes their own starter, and a teacher cannot mark themselves as a starter', async () => {
+    await assertFails(set(ref(asTeacher(), `chatStarters/${STUDENT}/${TEACHER}`), true));
+    await assertFails(set(ref(asTeacher(), `chatStarters/${TEACHER}/${STUDENT}`), true));
+    await assertFails(set(ref(asStranger(), `chatStarters/${STRANGER}/${TEACHER}`), true));
+  });
+
+  it('a child writes to a teacher without needing anything', async () => {
+    await assertSucceeds(set(ref(asStudent(), `messages/${chat(STUDENT, TEACHER)}/m3`), msg(STUDENT)));
+  });
+
+  it('a child who blocked the teacher receives nothing from them, even where a starter exists', async () => {
+    await starter(STUDENT, TEACHER);
+    await assertSucceeds(set(ref(asStudent(), `userBlockedUsers/${STUDENT}/${TEACHER}`), true));
+    await assertFails(set(ref(asTeacher(), `messages/${chat(STUDENT, TEACHER)}/m4`), msg(TEACHER)));
+    await assertFails(set(ref(asTeacher(), `userChats/${STUDENT}/${TEACHER}`), { otherUid: TEACHER, lastMessage: 'hi' }));
+    await assertFails(set(ref(asTeacher(), `userBlockedUsers/${STUDENT}/${TEACHER}`), null));
+    await assertFails(set(ref(asStranger(), `userBlockedUsers/${STUDENT}/${STRANGER}`), true));
+  });
+
+  it('the block list is private to its owner', async () => {
+    await assertSucceeds(set(ref(asStudent(), `userBlockedUsers/${STUDENT}/${TEACHER}`), true));
+    await assertFails(get(ref(asTeacher(), `userBlockedUsers/${STUDENT}`)));
+    await assertSucceeds(get(ref(asStudent(), `userBlockedUsers/${STUDENT}`)));
+  });
+
+  it('no participant can delete a conversation or a message', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => { await set(ref(ctx.database(), `messages/${chat(STUDENT, TEACHER)}/keep`), msg(TEACHER)); });
+    await assertFails(set(ref(asTeacher(), `messages/${chat(STUDENT, TEACHER)}`), null));
+    await assertFails(set(ref(asStudent(), `messages/${chat(STUDENT, TEACHER)}`), null));
+    await assertFails(set(ref(asTeacher(), `messages/${chat(STUDENT, TEACHER)}/keep`), null));
+  });
+
+  it('the admin can still write into any conversation', async () => {
+    await assertSucceeds(set(ref(asAdmin(), `messages/${chat(STUDENT, 'admin-uid')}/a1`), msg('admin-uid')));
+  });
+});
+
+// A child's name sits in groupMembers / parentBriefs / briefProposals: an anonymous guest or an
+// unapproved account must not be able to read them (1.11.2026).
+describe('children’s names in groups and briefs are readable only by verified users', () => {
+  const anon = () => testEnv.authenticatedContext('guest-uid', { firebase: { sign_in_provider: 'anonymous' } }).database();
+  beforeEach(async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await set(ref(ctx.database(), `groupMembers/g1/${STUDENT}`), { name: 'Minor', status: 'approved' });
+      await set(ref(ctx.database(), 'parentBriefs/b1'), { parentUid: STUDENT, childName: 'Minor', status: 'open' });
+      await set(ref(ctx.database(), `briefProposals/b1/${TEACHER}`), { price: 5 });
+    });
+  });
+  it('a verified user can read them', async () => {
+    await assertSucceeds(get(ref(asStudent(), 'groupMembers/g1')));
+    await assertSucceeds(get(ref(asTeacher(), 'parentBriefs')));
+    await assertSucceeds(get(ref(asTeacher(), 'briefProposals/b1')));
+  });
+  it('a guest or an unverified account cannot', async () => {
+    for (const db of [anon(), asStranger()]) {
+      await assertFails(get(ref(db, 'groupMembers/g1')));
+      await assertFails(get(ref(db, 'parentBriefs')));
+      await assertFails(get(ref(db, 'briefProposals/b1')));
+    }
+  });
+});
+
+describe('reports: only verified accounts file them (no flooding by guests)', () => {
+  const anon = () => testEnv.authenticatedContext('guest-uid', { firebase: { sign_in_provider: 'anonymous' } }).database();
+  const rec = () => ({ targetType: 'user', targetId: TEACHER, reason: 'other', status: 'open', severity: 'medium', createdAt: Date.now(), slaDueAt: Date.now() + 172800000, reporterId: 'x', description: 'x' });
+  it('a verified user can report; a guest and an unverified account cannot', async () => {
+    await assertSucceeds(set(ref(asStudent(), 'reports/r1'), rec()));
+    await assertFails(set(ref(anon(), 'reports/r2'), rec()));
+    await assertFails(set(ref(asStranger(), 'reports/r3'), rec()));
+  });
+});
+
 // ── A TEACHER CANNOT WRITE INTO A CHILD'S BOOKING LIST ────────────────────
 // userBookings/<student>/<id> was writable by the teacher named on bookings/<id>
 // with no check on the content, and bookings/<id> could be CREATED by a teacher

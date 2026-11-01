@@ -74,6 +74,38 @@ exports.handler = async (event) => {
     tokens.forEach((c) => { tokenKeys.push(c.key); });
     for (const k of tokenKeys) await drop('parentTokens/' + k);
 
+    // שיחות: הלקוח לא רשאי למחוק הודעות (חוקי הנתונים — ראיה לא נמחקת בידי משתתף), אז מחיקת חשבון עוברת כאן.
+    // הרשימות מגיעות מהלקוח, אבל chatId נבנה תמיד מה-uid של המנוקה, כך שאי אפשר לגעת בשיחה של אחרים.
+    const listOf = (v) => (Array.isArray(v) ? v : []).map(String).filter((x) => UID_RE.test(x) && x !== uid).slice(0, 500);
+    for (const partner of listOf(body.chatPartners)) {
+      const chatId = [uid, partner].sort().join('_');
+      await drop('messages/' + chatId);
+      await drop('newConversationNotified/' + chatId);
+    }
+    for (const g of listOf(body.groupIds)) await drop('groupMembers/' + g + '/' + uid);
+
+    // מה שהמשתמש כתב בצמתים ציבוריים: שאלות שהוא שאל, "דרוש" שפרסם, הצעות שהגיש
+    for (const p of ['messageStats/' + uid, 'referrals/' + uid, 'teacherQA/' + uid]) await drop(p);
+    const fcm = await db.ref('fcmTokens').orderByChild('uid').equalTo(uid).get();
+    const fcmKeys = [];
+    fcm.forEach((c) => { fcmKeys.push(c.key); });
+    for (const k of fcmKeys) await drop('fcmTokens/' + k);
+
+    const qaAll = await db.ref('teacherQA').get();
+    const qaKeys = [];
+    qaAll.forEach((t) => { t.forEach((qa) => { if ((qa.val() || {}).askerUid === uid) qaKeys.push('teacherQA/' + t.key + '/' + qa.key); }); });
+    for (const k of qaKeys) await drop(k);
+
+    const briefs = await db.ref('parentBriefs').orderByChild('parentUid').equalTo(uid).get();
+    const briefKeys = [];
+    briefs.forEach((c) => { briefKeys.push(c.key); });
+    for (const k of briefKeys) { await drop('parentBriefs/' + k); await drop('briefProposals/' + k); }
+
+    const props = await db.ref('briefProposals').get();
+    const propKeys = [];
+    props.forEach((b) => { if (b.child(uid).exists()) propKeys.push('briefProposals/' + b.key + '/' + uid); });
+    for (const k of propKeys) await drop(k);
+
     // סטוריז שהמשתמש העלה (נושאים uid, לא מפתחים אותו)
     const stories = await db.ref('stories').orderByChild('uid').equalTo(uid).get();
     const storyKeys = [];
