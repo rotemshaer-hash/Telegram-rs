@@ -29,6 +29,7 @@ No duplicates. No inline magic numbers. Refer to the one definition everywhere.
 - `_attachStudentApprovalListener(uid)` **must** be called before every `go('studentPending')`.
 - `render()` **must** contain the unverified-student guard that redirects to `studentPending`.
 - Every `db.ref(...).on(...)` listener that matters for UX must be attached **before** the `return` that exits the auth flow.
+- Every `${...}` inside a JS string of an inline handler (`onclick="go('${id}')"`) goes through `jsAttrEscape`. Database keys may contain `' ( ) ;`, so a raw id runs code for whoever clicks. Enforced by `scripts/check-handler-escapes.js` (`--fix` wraps them).
 
 ## Working with the owner (asked for explicitly — do not drift from this)
 
