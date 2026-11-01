@@ -176,6 +176,24 @@ fi
 
 echo ""
 
+# ── מזהים בתוך ידיות onclick חייבים escape ───────────────────────────────────
+# מפתח במסד יכול להכיל ' ( ) ; ולכן go('${id}') בלי jsAttrEscape הוא הרצת קוד אצל
+# מי שלוחץ. הבדיקה והתיקון האוטומטי (--fix) באותו סקריפט.
+echo "-- Inline handlers escape their ids --"
+
+if command -v node >/dev/null 2>&1; then
+  if node scripts/check-handler-escapes.js >/tmp/handler-escapes.out 2>&1; then
+    pass "every \${...} inside a JS string of an inline handler is escaped"
+  else
+    fail "unescaped \${...} inside an inline handler (run: node scripts/check-handler-escapes.js --fix)"
+    head -12 /tmp/handler-escapes.out
+  fi
+else
+  pass "node not available — handler-escape check skipped"
+fi
+
+echo ""
+
 # ── Result ────────────────────────────────────────────────────────────────────
 if [ "$ERRORS" -gt 0 ]; then
   echo "🚫  Validation FAILED — $ERRORS violation(s). Deploy blocked."
