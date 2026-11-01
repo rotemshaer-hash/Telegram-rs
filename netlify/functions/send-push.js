@@ -12,6 +12,7 @@
 // אפליקציה שילדים משתמשים בה.
 
 const { admin, initAdmin } = require('../lib/firebase-admin-init');
+const ALLOWED_ORIGINS = require('../lib/allowed-origins');
 
 
 // מניעת שיגור חוזר: זוכרים לאיזו הודעה כבר נשלחה התראה בכל צ'אט.
@@ -68,8 +69,19 @@ async function pruneDeadTokens(db, tokens, responses) {
 }
 
 exports.handler = async (event) => {
-  const headers = { 'Content-Type': 'application/json' };
+  // CORS כמו בשאר הפונקציות (רשימה אחת, allowed-origins): האפליקציה הארוזה פונה
+  // מ-capacitor://localhost ו-http://localhost, ובלי כותרות הדפדפן חוסם את
+  // התשובה — וההתראה לא נשלחת בלי שום שגיאה גלויה.
+  const origin = event.headers.origin || event.headers.Origin || '';
+  const headers = {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0],
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    Vary: 'Origin',
+  };
 
+  if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers, body: '' };
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
   }

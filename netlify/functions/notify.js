@@ -122,6 +122,15 @@ async function verifyRelationship(db, { type, fromUid, toUid, ctx }) {
     if (!(await db.ref('teachers/' + teacherUid).get()).exists()) return 'teacher not found';
     if (type === 'newQuestion' && toUid !== teacherUid) return 'questions notify the teacher only';
     if (type === 'questionAnswered' && fromUid !== teacherUid) return 'only the teacher answers';
+    // התראה על שאלה/תשובה חייבת להצביע על שאלה אמיתית: אחרת כל מורה יכול לשלוח
+    // "ענו לשאלה שלך" לכל משתמש, כולל ילד, ובשמו (השם נגזר בשרת, והטקסט קצר
+    // אבל נראה כתגובה אמיתית).
+    const qaId = typeof ctx.qaId === 'string' ? ctx.qaId : '';
+    if (!/^[-A-Za-z0-9_]{1,40}$/.test(qaId)) return 'qaId is required';
+    const qa = (await db.ref('teacherQA/' + teacherUid + '/' + qaId).get()).val();
+    if (!qa) return 'no such question';
+    if (type === 'newQuestion' && qa.askerUid !== fromUid) return 'that is not your question';
+    if (type === 'questionAnswered' && (qa.askerUid !== toUid || !qa.answer)) return 'that question was not asked by that user, or is not answered';
     return null;
   }
 
@@ -131,6 +140,11 @@ async function verifyRelationship(db, { type, fromUid, toUid, ctx }) {
     if (!brief) return 'brief not found';
     if (type === 'briefProposal' && toUid !== brief.parentUid) return 'that brief belongs to someone else';
     if (type === 'briefAccepted' && fromUid !== brief.parentUid) return 'only the brief owner accepts';
+    // וההצעה חייבת להיות אמיתית: מי ששלח "הצעה" הגיש אותה, ומי שהתקבל הגיש הצעה.
+    const proposer = type === 'briefProposal' ? fromUid : toUid;
+    if (!(await db.ref('briefProposals/' + ctx.briefId + '/' + proposer).get()).exists()) {
+      return type === 'briefProposal' ? 'you have not submitted a proposal to that brief' : 'that teacher has no proposal on that brief';
+    }
     return null;
   }
 

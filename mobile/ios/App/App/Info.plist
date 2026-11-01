@@ -24,6 +24,12 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Drushe צריכה גישה למצלמה כדי לצלם תמונת פרופיל, סטורי או מסמך זיהוי.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Drushe צריכה גישה לתמונות כדי לבחור תמונת פרופיל, סטורי או מסמך זיהוי.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Drushe צריכה גישה למיקרופון כדי להקליט סרטון.</string>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>

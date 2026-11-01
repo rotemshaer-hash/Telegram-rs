@@ -293,7 +293,7 @@
       "$errorId": { ".write": "auth != null && !data.exists()" }
     },
     "parentTokens": {
-      "$token": { ".read": true, ".write": "auth.token.email == 'rotemshaer@gmail.com'" }
+      "$token": { ".read": "data.child('expiresAt').isNumber() && data.child('expiresAt').val() > now", ".write": "auth.token.email == 'rotemshaer@gmail.com'" }
     },
     "parentConsent": {
       "$token": {

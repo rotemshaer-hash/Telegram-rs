@@ -560,6 +560,29 @@ describe('a teacher cannot inject or rewrite a booking in a child’s list', () 
   });
 });
 
+describe('parent portal tokens expire on the server, not only on the page', () => {
+  it('a live token is readable by anyone who holds it, signed in or not', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await set(ref(ctx.database(), 'parentTokens/live'), { studentId: STUDENT, studentName: 'Minor', expiresAt: Date.now() + 60000 });
+    });
+    await assertSucceeds(get(ref(asGuest(), 'parentTokens/live')));
+    await assertSucceeds(get(ref(asStranger(), 'parentTokens/live')));
+  });
+
+  it('an expired token, or one with no expiry, is not readable', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await set(ref(ctx.database(), 'parentTokens/old'), { studentId: STUDENT, studentName: 'Minor', expiresAt: Date.now() - 1000 });
+      await set(ref(ctx.database(), 'parentTokens/noexp'), { studentId: STUDENT, studentName: 'Minor' });
+    });
+    await assertFails(get(ref(asGuest(), 'parentTokens/old')));
+    await assertFails(get(ref(asGuest(), 'parentTokens/noexp')));
+  });
+
+  it('the list of tokens cannot be read', async () => {
+    await assertFails(get(ref(asStranger(), 'parentTokens')));
+  });
+});
+
 describe('parent consent: what the child cannot forge or read', () => {
   it('the child cannot write the server-only consent flags on their own record', async () => {
     for (const [k, v] of [['parentConsentAt', Date.now()], ['parentConsentEmail', 'me@example.org'], ['parentConsentSameDevice', false]]) {
