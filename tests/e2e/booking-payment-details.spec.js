@@ -36,10 +36,10 @@ const PUBLIC = { name: 'מורה', verified: true, cat: 'chess', cats: ['chess']
 
 
 test.describe('booking: no lesson payment handling', () => {
-  async function run(page, privateRecord, credit = 0) {
+  async function run(page, privateRecord) {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => typeof loadRealTeachers === 'function' && typeof requestBooking === 'function');
-    return page.evaluate(async ({ privateRecord, publicRecord, installSrc, credit }) => {
+    return page.evaluate(async ({ privateRecord, publicRecord, installSrc }) => {
       window.__writes = [];
       // eslint-disable-next-line no-new-func
       db = new Function('nodes', 'writes', `return (${installSrc})(nodes, writes)`)(
@@ -47,7 +47,6 @@ test.describe('booking: no lesson payment handling', () => {
       await Promise.race([loadRealTeachers(), new Promise((r) => setTimeout(r, 3000))]);
       currentUser = { uid: 'stu', email: 's@example.com', emailVerified: true };
       currentUserData = { name: 'תלמיד', role: 'student', verified: true };
-      if (credit) { _userCredit = credit; _userCreditLoaded = true; }
       sendEmail = async () => {}; notifyUser = () => {};
       S.bookStep = 2; S.bookType = 'single'; S.bookDayIdx = 1; S.bookTime = '10:00';
       go('booking', { teacher: TEACHERS[0] });
@@ -56,7 +55,7 @@ test.describe('booking: no lesson payment handling', () => {
       S.teacher = TEACHERS[0];
       await requestBooking(60);
       return { screen, written: window.__writes[0] || null };
-    }, { privateRecord, publicRecord: PUBLIC, installSrc: installDb.toString(), credit });
+    }, { privateRecord, publicRecord: PUBLIC, installSrc: installDb.toString() });
   }
 
   test('step 2 offers a plain request — no payment methods, no "payment details missing" block', async ({ page }) => {
@@ -91,16 +90,6 @@ test.describe('booking: no lesson payment handling', () => {
         expect(r.written[path], k + ' must not be on ' + path).not.toHaveProperty(k);
       }
     }
-  });
-
-  // Owner decision 28.10.2026: the "you have N credit, it will be deducted after
-  // the team approves" banner implied Drushe handles lesson money. The referral
-  // card on the profile still shows the balance; the booking screen does not.
-  test('the booking screen shows no referral-credit banner even when the student has credit', async ({ page }) => {
-    const r = await run(page, { email: 't@example.com' }, 25);
-    expect(r.screen).toContain('שלח בקשת שיעור');
-    expect(r.screen).not.toContain('קרדיט');
-    expect(r.screen).not.toContain('יקוזז');
   });
 
   // QA 29.10.2026: the link used to be copied from the teacher's private record by the
