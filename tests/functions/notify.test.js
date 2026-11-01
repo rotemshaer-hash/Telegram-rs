@@ -50,7 +50,25 @@ beforeEach(() => {
     [`groupMembers/g1/${JOINER}`]: { status: 'approved', name: 'Joiner' },
     [`users/${OWNER}/name`]: 'Owner',
     [`users/${JOINER}/name`]: 'Joiner',
+    [`users/${OWNER}/verified`]: true,
+    [`users/${JOINER}/verified`]: true,
   };
+});
+
+describe('only an approved, unblocked account can notify another user', () => {
+  it('an unverified sender is refused', async () => {
+    delete data[`users/${OWNER}/verified`];
+    const r = await call(OWNER, { toUid: JOINER, type: 'groupApproved', ctx: { groupId: 'g1' } });
+    assert.equal(r.status, 403);
+    assert.equal(pushed.length, 0);
+  });
+
+  it('a blocked sender is refused', async () => {
+    data[`userBlocks/${OWNER}`] = { at: 1 };
+    const r = await call(OWNER, { toUid: JOINER, type: 'groupApproved', ctx: { groupId: 'g1' } });
+    assert.equal(r.status, 403);
+    assert.equal(pushed.length, 0);
+  });
 });
 
 describe('group notifications', () => {

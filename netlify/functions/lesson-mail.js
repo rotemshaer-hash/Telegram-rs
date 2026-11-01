@@ -28,7 +28,7 @@ const clip = (v, n) => String(v == null ? '' : v).replace(/[\u0000-\u001f]/g, ' 
 function composeRequested(b, link) {
   return {
     subject: `📅 הזמנה חדשה — ${clip(b.studentName, 60) || 'תלמיד'} — Drushe`,
-    body: `שלום,\n\nיש לך הזמנה חדשה:\n\n👤 תלמיד: ${clip(b.studentName, 60)}\n📅 ${clip(b.day, 40)} בשעה ${clip(b.time, 20)}\n💰 מחיר השיעור: ₪${Number(b.price) || 0}\n\nכנס לאפליקציה כדי לאשר את ההזמנה ולתאם עם התלמיד את פרטי השיעור והתשלום:\n${link}\n\n– צוות Drushe`,
+    body: `שלום,\n\nיש לך הזמנה חדשה:\n\n👤 תלמיד: ${clip(b.studentName, 60)}\n📅 ${clip(b.day, 40)} בשעה ${clip(b.time, 20)}\n💰 מחיר השיעור: ${Number(b.price) > 0 ? '₪' + Number(b.price) : 'חינם (שיעור ניסיון)'}\n\nכנס לאפליקציה כדי לאשר את ההזמנה:\n(את התשלום מתאמים ישירות עם התלמיד — Drushe אינה מעורבת בו)\n${link}\n\n– צוות Drushe`,
   };
 }
 
@@ -96,8 +96,18 @@ exports.handler = async (event) => {
       return reply(429, { error: 'Too many requests' });
     }
 
+    // אותו תנאי כמו בחוקי הנתונים: רק משתמש מאושר ולא חסום שולח מייל בשם Drushe
+    const [verified, blocked] = await Promise.all([
+      db.ref('users/' + uid + '/verified').get(),
+      db.ref('userBlocks/' + uid).get(),
+    ]);
+    if (verified.val() !== true || blocked.exists()) return reply(403, { error: 'account is not active' });
+
     const b = (await db.ref('bookings/' + bookingId).get()).val();
     if (!b) return reply(403, { error: 'no such booking' });
+    // הזמנה שבה אותו אדם הוא גם התלמיד וגם המורה היא דרך להפעיל את המייל מול כתובת שהוא בחר
+    if (b.studentId === b.teacherId) return reply(409, { error: 'invalid booking' });
+    if (!(await db.ref('teachers/' + b.teacherId).get()).exists()) return reply(409, { error: 'no such teacher' });
     const byStudent = kind === 'requested';
     if ((byStudent ? b.studentId : b.teacherId) !== uid) return reply(403, { error: 'not your booking' });
     if (b.status !== EVENTS[kind]) return reply(409, { error: 'booking is not ' + EVENTS[kind] });
@@ -115,7 +125,9 @@ exports.handler = async (event) => {
         ['parentEmail', 'parentName', 'name'].map(async (k) => (await db.ref('users/' + b.studentId + '/' + k).get()).val())
       );
       stu = { parentEmail, parentName, name };
-      to = String(stu.parentEmail || '').trim();
+      // הכתובת ש-parent-consent נעלה בשרת קודמת לכתובת ברשומת המשתמש, שהילד עורך בעצמו
+      const locked = (await db.ref('parentContact/' + b.studentId + '/email').get()).val();
+      to = String(locked || stu.parentEmail || '').trim();
     }
     if (!EMAIL_RE.test(to) || to.toLowerCase().endsWith(FAKE_DOMAIN)) return reply(200, { ok: true, sent: false });
 

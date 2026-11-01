@@ -242,6 +242,14 @@ exports.handler = async (event) => {
     // הפלטפורמה, ואין רשומת "יחסים" שמתארת את זה.
     const isAdminCaller = callerEmail === ADMIN_EMAIL;
     if (!isAdminCaller) {
+      // אותו תנאי כמו בחוקי הנתונים: רק משתמש מאושר ולא חסום מתריע למשתמש אחר
+      const [verified, blocked] = await Promise.all([
+        db.ref('users/' + fromUid + '/verified').get(),
+        db.ref('userBlocks/' + fromUid).get(),
+      ]);
+      if (verified.val() !== true || blocked.exists()) {
+        return { statusCode: 403, headers, body: JSON.stringify({ error: 'account is not active' }) };
+      }
       const problem = await verifyRelationship(db, { type, fromUid, toUid, ctx });
       if (problem) {
         return { statusCode: 403, headers, body: JSON.stringify({ error: problem }) };

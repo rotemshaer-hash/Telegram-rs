@@ -512,6 +512,54 @@ describe('gates: only a verified, unblocked user reaches another user', () => {
   });
 });
 
+// ── GROUPS, POSTS, Q&A AND BRIEFS FOLLOW THE SAME GATE ─────────────────────
+// 1.11.2026: a guest could create a group, join others to it, post, ask questions and
+// send a brief proposal — each of which reaches another user (and the group's location
+// text was rendered unescaped on every home screen).
+describe('gates: groups, posts, questions and briefs need a verified, unblocked user', () => {
+  const anon = () => testEnv.authenticatedContext('guest-uid', { firebase: { sign_in_provider: 'anonymous' } }).database();
+  const group = (over = {}) => ({ teacherId: TEACHER, title: 'Chess', desc: 'fun', location: 'Tel Aviv', day: 'ב', time: '17:00', status: 'open', ...over });
+
+  it('a verified teacher creates a group; an unverified user or a guest cannot', async () => {
+    await assertSucceeds(set(ref(asTeacher(), 'groups/gg1'), group()));
+    await assertFails(set(ref(asStranger(), 'groups/gg2'), group({ teacherId: STRANGER })));
+    await assertFails(set(ref(anon(), 'groups/gg3'), group({ teacherId: 'guest-uid' })));
+  });
+
+  it('a blocked teacher cannot create a group', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => { await set(ref(ctx.database(), `userBlocks/${TEACHER}`), true); });
+    await assertFails(set(ref(asTeacher(), 'groups/gg4'), group()));
+  });
+
+  it('group text may not carry markup', async () => {
+    await assertFails(set(ref(asTeacher(), 'groups/gg5'), group({ location: '<img src=x onerror=alert(1)>' })));
+    await assertFails(set(ref(asTeacher(), 'groups/gg6'), group({ title: '<b>x</b>' })));
+    await assertSucceeds(set(ref(asTeacher(), 'groups/gg7'), group({ title: 'ד"ר שחמט' })));
+  });
+
+  it('only a verified user can ask to join, and only the group owner can write another user’s membership', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => { await set(ref(ctx.database(), 'groups/gm1'), group()); });
+    await assertSucceeds(set(ref(asStudent(), `groupMembers/gm1/${STUDENT}`), { status: 'pending', name: 'Minor' }));
+    await assertFails(set(ref(asStranger(), `groupMembers/gm1/${STRANGER}`), { status: 'pending', name: 'X' }));
+    await assertFails(set(ref(anon(), 'groupMembers/gm1/guest-uid'), { status: 'pending', name: 'G' }));
+    await assertSucceeds(set(ref(asTeacher(), `groupMembers/gm1/${STUDENT}/status`), 'approved'));
+  });
+
+  it('an unverified user cannot post, ask a teacher or open a brief; a verified one can', async () => {
+    await assertFails(set(ref(asStranger(), 'posts/p1'), { authUid: STRANGER, text: 'hi' }));
+    await assertSucceeds(set(ref(asStudent(), 'posts/p2'), { authUid: STUDENT, text: 'hi' }));
+    await assertFails(set(ref(asStranger(), `teacherQA/${TEACHER}/q1`), { askerUid: STRANGER, question: 'hi' }));
+    await assertSucceeds(set(ref(asStudent(), `teacherQA/${TEACHER}/q2`), { askerUid: STUDENT, question: 'hi' }));
+    await assertFails(set(ref(asStranger(), 'parentBriefs/b1'), { parentUid: STRANGER, title: 'x' }));
+    await assertSucceeds(set(ref(asStudent(), 'parentBriefs/b2'), { parentUid: STUDENT, title: 'x' }));
+  });
+
+  it('a teacher proposal on a brief needs a verified, unblocked teacher', async () => {
+    await assertSucceeds(set(ref(asTeacher(), `briefProposals/b2/${TEACHER}`), { price: 50 }));
+    await assertFails(set(ref(asStranger(), `briefProposals/b2/${STRANGER}`), { price: 50 }));
+  });
+});
+
 // ── A TEACHER CANNOT WRITE INTO A CHILD'S BOOKING LIST ────────────────────
 // userBookings/<student>/<id> was writable by the teacher named on bookings/<id>
 // with no check on the content, and bookings/<id> could be CREATED by a teacher

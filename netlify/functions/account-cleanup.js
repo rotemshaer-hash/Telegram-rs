@@ -33,10 +33,12 @@ exports.handler = async (event) => {
   if (!body.idToken) return reply(401, { error: 'idToken is required' });
 
   let uid;
+  let isAdmin = false;
   try {
     initAdmin();
     const decoded = await admin.auth().verifyIdToken(body.idToken);
     uid = decoded.uid;
+    isAdmin = decoded.email === ADMIN_EMAIL;
     if (body.uid && body.uid !== uid) {
       if (decoded.email !== ADMIN_EMAIL) return reply(403, { error: 'you can only clean up your own account' });
       if (!UID_RE.test(String(body.uid))) return reply(400, { error: 'invalid uid' });
@@ -48,6 +50,11 @@ exports.handler = async (event) => {
 
   try {
     const db = admin.database();
+    // משתמש רגיל מנקה רק חשבון שכבר נמחק. אחרת ילד היה קורא לכאן על עצמו, מוחק את כתובת ההורה
+    // ואת תיעוד ההסכמה (ששמורים כדי שהוא לא יוכל לקבוע בעצמו מי "ההורה"), ומתחיל מחדש.
+    if (!isAdmin && (await db.ref('users/' + uid).get()).exists()) {
+      return reply(409, { error: 'account still exists' });
+    }
     const removed = [];
     const drop = async (p) => { await db.ref(p).remove(); removed.push(p); };
 

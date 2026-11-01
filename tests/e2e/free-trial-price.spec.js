@@ -26,5 +26,7 @@ test('trial price: free when the teacher offers it, half otherwise, one definiti
   expect(r.label).toBe('חינם');
   expect(r.labelHalf).toBe('₪30');
   expect(r.picker).toContain('חינם');
-  expect(r.step2).toContain('₪0');
+  // the summary says "חינם" too — a teenager never sees a price of "₪0" for a free trial
+  expect(r.step2).toContain('חינם');
+  expect(r.step2).not.toContain('₪0');
 });

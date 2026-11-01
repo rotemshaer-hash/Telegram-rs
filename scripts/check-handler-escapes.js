@@ -19,7 +19,9 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const SAFE_CALL = /jsAttrEscape\(|escapeHtml\(|JSON\.stringify\(/;
+// Inside a JS string only jsAttrEscape is enough. escapeHtml turns ' into &#39;, which the browser decodes back
+// to ' before the handler runs — so escapeHtml(name) in '${...}' still closes the string (found 1.11.2026).
+const SAFE_CALL = /jsAttrEscape\(/;
 
 // Inside handler code (the text between the attribute quotes, or the body of a nested template
 // literal that builds such code) find every ${...} that sits inside a JS string and is not wrapped.

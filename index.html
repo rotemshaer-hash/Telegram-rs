@@ -133,7 +133,7 @@ if(IS_STAGING){
 <meta name="mobile-web-app-capable" content="yes"/>
 <meta name="application-name" content="Drushe"/>
 <meta name="theme-color" content="#14B8A6"/>
-<meta name="description" content="Drushe – האפליקציה לשיעורים פרטיים לילדים ובני נוער. מורים מאומתים ובדוקים, מחירים שקופים, תשלום בטוח. שיעור ניסיון ראשון במחצית המחיר!"/>
+<meta name="description" content="Drushe – האפליקציה לשיעורים פרטיים לילדים ובני נוער. מורים מאומתים ובדוקים, מחירים שקופים, בלי עמלות. שיעור ניסיון ראשון במחצית המחיר!"/>
 
 <!-- PWA Manifest -->
 <link rel="manifest" href="/manifest.json">
@@ -836,7 +836,7 @@ function showAskQuestionDialog(teacherUid){
       </div>
       <p style="color:#64748B;font-size:13px;margin:0 0 14px;line-height:1.6">שאלתך תפורסם בפרופיל של <b>${escapeHtml(teacherName)}</b> ותהיה גלויה לכולם.</p>
       <textarea id="_qaQuestionInput" placeholder="מה ברצונך לשאול?" style="width:100%;border:1.5px solid rgba(20,184,166,0.3);border-radius:14px;padding:12px 14px;font-size:14px;font-family:inherit;direction:rtl;outline:none;box-sizing:border-box;resize:none;min-height:100px;margin-bottom:14px" oninput="const b=document.getElementById('_qaSubmitBtn');if(b){b.disabled=!this.value.trim();b.style.opacity=this.value.trim()?'1':'0.5';}"></textarea>
-      <button id="_qaSubmitBtn" disabled onclick="submitTeacherQuestion('${escapeHtml(teacherUid)}',this.closest('._qaDlg').parentElement)" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;opacity:0.5">${icon("send",14)} שלח שאלה</button>
+      <button id="_qaSubmitBtn" disabled onclick="submitTeacherQuestion('${jsAttrEscape(teacherUid)}',this.closest('._qaDlg').parentElement)" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;opacity:0.5">${icon("send",14)} שלח שאלה</button>
     </div>`;
   document.body.appendChild(ov);
   ov.onclick=e=>{if(e.target===ov)ov.remove();};
@@ -1179,7 +1179,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.50';
+const APP_VERSION='4.11.51';
 
 // ─── הודעות קוליות — כבויות ────────────────────────────────────────────────
 // הקלטה קולית היא הערוץ היחיד בין ילדים שאיש לא בודק: אין תמלול, אין סינון,
@@ -1590,7 +1590,7 @@ function _obSteps(role){
   if(role!=='teacher'){
     return [
       {em:'🔍',title:'מצא מורה',desc:'חפש מורה לפי מקצוע, מיקום ומחיר — מורים מאומתים ובדוקים'},
-      {em:'📅',title:'הזמן שיעור',desc:'בחר תאריך ושעה שנוחים לך ושלם בקלות — ביט, PayPal או PayBox'},
+      {em:'📅',title:'הזמן שיעור',desc:'בחר תאריך ושעה שנוחים לך — את התשלום מתאמים ישירות עם המורה'},
       {em:'🌟',title:'למד והתקדם',desc:'קבל סיכומי שיעורים, עקוב אחר ההתקדמות ורכוש הישגים'},
     ];
   }
@@ -1732,10 +1732,16 @@ window.onunhandledrejection=function(ev){
 
 function kcbToggle(el){const r=el.closest('.kcb-row');if(!r)return;const v=r.dataset.checked==='true';r.dataset.checked=v?'false':'true';}
 function kcbChecked(id){const el=document.getElementById(id);return el?.dataset.checked==='true';}
+// שם קטגוריה שאינו מהרשימה מגיע ממשתמש (custom:...) או ממפתח שמור, ונכנס לתבניות רבות — לכן הוא נקי מסימון כבר כאן
+const _catPlain=v=>String(v||'').replace(/[<>"`&]/g,'').replace(/'/g,'׳').slice(0,60);
 const catById=id=>{
-  if(typeof id==='string'&&id.startsWith('custom:'))return{id,lbl:id.slice(7)||'כללי',col:'#14B8A6'};
-  return CATS.find(c=>c.id===id)||{id,lbl:id||'כללי',col:'#14B8A6'};
+  if(typeof id==='string'&&id.startsWith('custom:'))return{id,lbl:_catPlain(id.slice(7))||'כללי',col:'#14B8A6'};
+  return CATS.find(c=>c.id===id)||{id,lbl:_catPlain(id)||'כללי',col:'#14B8A6'};
 };
+// צבע שמגיע מרשומה של משתמש: רק #rgb/#rrggbb, אחרת צבע המותג
+// כתובת שנכנסת ל-url(...) בתוך style: https או תמונה מוטמעת בלבד, בלי תווים שיוצאים מהסוגריים או מהמרכאות
+const safeCssUrl=u=>/^(https:\/\/|data:image\/)[^"'()<>\s\\]+$/.test(String(u||''))?String(u):null;
+const safeColor=c=>/^#[0-9a-fA-F]{3,8}$/.test(String(c||''))?String(c):'#14B8A6';
 const stars=r=>"★".repeat(Math.floor(r))+" "+r;
 function timeAgoTxt(ts){
   if(!ts)return '';
@@ -1853,7 +1859,7 @@ async function _sendContactMsg(){
 function shareApp(){
   openShare(
     "Drushe – שיעורים פרטיים לילדים ובני נוער",
-    `🎓 גילינו את Drushe – ומשתמשים כבר!\n\nהאפליקציה שמחברת ילדים עם מורים בני נוער מאומתים ובדוקים.\n\n👦👧 המורים הם בני נוער מוכשרים שעברו בדיקה אישית\n💰 מחירים שקופים | שיעור ניסיון במחצית המחיר\n🔒 תשלום בטוח דרך האפליקציה\n📚 מוזיקה, ספורט, לימודים, אמנות ועוד\n\n👇 הורידו ונסו בחינם:\nhttps://kidemy-app.netlify.app`,
+    `🎓 גילינו את Drushe – ומשתמשים כבר!\n\nהאפליקציה שמחברת ילדים עם מורים בני נוער מאומתים ובדוקים.\n\n👦👧 המורים הם בני נוער מוכשרים שעברו בדיקה אישית\n💰 מחירים שקופים | שיעור ניסיון במחצית המחיר\n🔒 מורים מאומתים ובדוקים\n📚 מוזיקה, ספורט, לימודים, אמנות ועוד\n\n👇 הורידו ונסו בחינם:\nhttps://kidemy-app.netlify.app`,
     "https://kidemy-app.netlify.app"
   );
 }
@@ -2370,7 +2376,8 @@ async function quickRegister(){
   const rawUsername=usernameEl.value.trim().toLowerCase().replace(/[^a-z0-9_]/g,'');
   if(rawUsername.length<3){showFireToast('❌ שם משתמש חייב להכיל לפחות 3 תווים');return;}
   if(rawUsername.length>20){showFireToast('❌ שם משתמש ארוך מדי – עד 20 תווים');return;}
-  if(!age||!_ageOk(parseInt(age.value),'student')){showFireToast(`❌ גיל חייב להיות בין ${AGE_RANGE.student.min}-${AGE_RANGE.student.max}`);return;}
+  const _regRole=_selectedRole==='teacher'?'teacher':'student';
+  if(!age||!_ageOk(parseInt(age.value),_regRole)){showFireToast(`❌ גיל ${_regRole==='teacher'?'מורה':'תלמיד'} חייב להיות בין ${AGE_RANGE[_regRole].min} ל-${AGE_RANGE[_regRole].max}`);return;}
   if(!pass||pass.value.length<6){showFireToast('❌ סיסמה לפחות 6 תווים');return;}
   if(!pass2||pass.value!==pass2.value){showFireToast('❌ הסיסמאות לא תואמות');return;}
   if(!kcbChecked('regTerms')){showFireToast('❌ נדרש אישור תנאי שימוש');return;}
@@ -2480,7 +2487,7 @@ function TeacherSetup(){
         <h3 style="font-weight:900;font-size:16px;margin:0 0 8px;color:#04778A;display:flex;align-items:center;gap:6px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><circle cx="8" cy="10" r="2"/><path d="M14 9h6M14 13h6M5 17h14"/></svg> אימות גיל וזהות המורה</h3>
         <p style="font-size:12px;color:#64748B;margin:0 0 14px;line-height:1.6">נדרש לאישור הפרופיל. המידע גלוי לצוות Drushe בלבד.</p>
         <div class="ing" style="margin-bottom:12px"><label>גיל (${AGE_RANGE.teacher.min}–${AGE_RANGE.teacher.max})</label>
-          <input type="number" id="tAge" class="inp" placeholder="לדוגמה: 14" min="${AGE_RANGE.teacher.min}" max="${AGE_RANGE.teacher.max}">
+          <input type="number" id="tAge" class="inp" placeholder="לדוגמה: 14" min="${AGE_RANGE.teacher.min}" max="${AGE_RANGE.teacher.max}" value="${currentUserData?.age||''}">
         </div>
         <div class="ing" style="margin-bottom:12px"><label>סוג מסמך מזהה</label>
           <select id="tIdType" class="inp">
@@ -2816,6 +2823,7 @@ async function saveTeacherProfile(){
   if(!kcbChecked('tAgeConfirm')){showFireToast('❌ יש לאשר שאתה/ת בין גיל 14 ל-18');return;}
   const _ageVal=parseInt(document.getElementById('tAge')?.value||0);
   if(!_ageOk(_ageVal,'teacher')){showFireToast(`❌ הכנס גיל תקין בין ${AGE_RANGE.teacher.min} ל-${AGE_RANGE.teacher.max}`);return;}
+  if(currentUserData?.age&&_ageVal!==parseInt(currentUserData.age)){showFireToast('❌ הגיל חייב להיות זהה לגיל שהוזן בהרשמה');return;}
   const _idTypeVal=document.getElementById('tIdType')?.value||'';
   if(!_idTypeVal){showFireToast('❌ בחר סוג מסמך לאימות זהות');return;}
   if(_idTypeVal!=='parent_confirm'&&!_idPhotoBase64){showFireToast('❌ יש לצלם או להעלות את מסמך הזיהוי');return;}
@@ -2831,9 +2839,11 @@ async function saveTeacherProfile(){
     // _teacherPrivateCache. הם נכתבים ל-teacherPrivate/<uid> לפני הפרופיל.
     // פרטי תשלום של שיעורים לא נאספים בכלל: Drushe לא מעורבת בכסף, והמורה
     // והתלמיד מתאמים אותו ביניהם.
+    const _ml=(document.getElementById('tMeetingLink')?.value.trim()||'');
+    if(_ml&&!meetingLinkClean(_ml)){showFireToast('❌ קישור השיעור חייב להתחיל ב-https://');return;}
     const teacherPrivateData={
       email:currentUser.email,
-      meetingLink:(document.getElementById('tMeetingLink')?.value.trim()||''),
+      meetingLink:_ml,
       updatedAt:Date.now()
     };
     const teacherData={
@@ -2844,6 +2854,7 @@ async function saveTeacherProfile(){
       customCats:_customCats,
       area:area.value,
       city:city.value.trim(),
+      age:_ageVal,
       price:parseInt(price.value),
       desc:desc.value.trim(),
       mode:modes,
@@ -3120,7 +3131,7 @@ async function adminRejectSubscription(subId,uid){
 // יכול היה להגיע למחיקת חשבון. מחיקה חייבת להישאר זמינה מכל מצב — זו דרישה של
 // החנויות ושל החוק, והמשתמש שלא רוצה לשלם הוא בדיוק מי שמחפש אותה.
 function subscribeExitHtml(){
-  return `<div style="padding:8px 16px 28px;text-align:center"><button onclick="deleteMyAccount()" style="background:none;border:none;color:#EF4444;font-size:12px;font-weight:700;cursor:pointer;min-height:44px;text-decoration:underline">מחק את החשבון שלי</button></div>`;
+  return `<div style="padding:8px 16px 28px;text-align:center"><button onclick="confirmLogout()" style="display:block;margin:0 auto 4px;background:none;border:none;color:#475569;font-size:13px;font-weight:700;cursor:pointer;min-height:44px;text-decoration:underline">התנתק</button><button onclick="deleteMyAccount()" style="background:none;border:none;color:#EF4444;font-size:12px;font-weight:700;cursor:pointer;min-height:44px;text-decoration:underline">מחק את החשבון שלי</button></div>`;
 }
 
 function Subscribe(){
@@ -3136,7 +3147,7 @@ function Subscribe(){
   if(isNativeApp())return `
   <div class="screen" style="background:linear-gradient(165deg,#ECFEFF 0%,#F0F9FF 50%,#EEF2FF 100%);min-height:100dvh;padding:0;direction:rtl">
     <div style="padding:24px 20px 20px;text-align:center;background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);border-radius:0 0 28px 28px;position:relative">
-      <button onclick="go('home')" style="position:absolute;top:20px;right:20px;background:rgba(255,255,255,0.15);border:none;color:#fff;border-radius:50px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer">← חזרה</button>
+      ${teacherNeedsSubscription()?'':`<button onclick="go('home')" style="position:absolute;top:20px;right:20px;background:rgba(255,255,255,0.15);border:none;color:#fff;border-radius:50px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer">← חזרה</button>`}
       <div style="font-size:36px;margin-bottom:8px">🌐</div>
       <h2 style="color:#fff;font-weight:900;font-size:20px;margin:0 0 4px">מנוי מורים באתר</h2>
       <p style="color:rgba(255,255,255,0.7);font-size:13px;margin:0">השלימו את הרשמת המנוי מהדפדפן</p>
@@ -3153,7 +3164,7 @@ function Subscribe(){
   if(step===2||hasPending) return `
   <div class="screen" style="background:linear-gradient(165deg,#ECFEFF 0%,#F0F9FF 50%,#EEF2FF 100%);min-height:100dvh;padding:0;direction:rtl">
     <div style="padding:24px 20px 20px;text-align:center;background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);border-radius:0 0 28px 28px">
-      <button onclick="go('home')" style="position:absolute;top:20px;right:20px;background:rgba(255,255,255,0.15);border:none;color:#fff;border-radius:50px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer">← חזרה</button>
+      ${teacherNeedsSubscription()?'':`<button onclick="go('home')" style="position:absolute;top:20px;right:20px;background:rgba(255,255,255,0.15);border:none;color:#fff;border-radius:50px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer">← חזרה</button>`}
       <div style="font-size:36px;margin-bottom:8px">⏳</div>
       <h2 style="color:#fff;font-weight:900;font-size:20px;margin:0 0 4px">ממתין לאישור</h2>
       <p style="color:rgba(255,255,255,0.7);font-size:13px;margin:0">הבקשה נשלחה לצוות Drushe</p>
@@ -3181,7 +3192,7 @@ function Subscribe(){
   return `
   <div class="screen" style="background:linear-gradient(165deg,#F0FDFA 0%,#CCFBF1 100%);min-height:100dvh;padding:0;direction:rtl">
     <div style="padding:24px 20px 20px;background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);border-radius:0 0 28px 28px;position:relative">
-      <button onclick="go(S.prev||'home')" style="position:absolute;top:20px;right:20px;background:rgba(255,255,255,0.15);border:none;color:#fff;border-radius:50px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer">← חזרה</button>
+      ${teacherNeedsSubscription()?'':`<button onclick="go(S.prev||'home')" style="position:absolute;top:20px;right:20px;background:rgba(255,255,255,0.15);border:none;color:#fff;border-radius:50px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer">← חזרה</button>`}
       <div style="text-align:center">
         <div style="font-size:44px;margin-bottom:8px">💎</div>
         <h2 style="color:#fff;font-weight:900;font-size:22px;margin:0 0 4px">מנוי מורה ב-Drushe</h2>
@@ -3493,7 +3504,9 @@ async function approveBooking(bookingId){
     showFireToast('⏳ מאשר...');
     if(currentUserData?.verified!==true){showFireToast('❌ החשבון שלך טרם אושר על ידי הצוות');return;}
     const _own=await loadTeacherPrivate(currentUser.uid);
-    if(!_own.meetingLink){
+    const _link=meetingLinkClean(_own.meetingLink);
+    if(_own.meetingLink&&!_link){showFireToast('❌ קישור השיעור בפרופיל לא תקין — תקן אותו בעריכת הפרופיל (https://...)');return;}
+    if(!_link){
       if(!await _confirm('⚠️ לא הגדרת קישור לשיעור (Zoom/Jitsi/Meet) בפרופיל שלך.\nהתלמיד לא יוכל להצטרף!\n\nלאשר בכל זאת?',{confirmText:'אשר בכל זאת',cancelText:'ביטול'})) return;
     }
     const snap=await db.ref('bookings/'+bookingId).get();
@@ -3518,12 +3531,12 @@ async function approveBooking(bookingId){
       ['teacherBookings/'+b.teacherId+'/'+bookingId+'/status']:'approved',
       // הקישור שהמורה הגדיר עכשיו (לא הקישור שהיה בזמן הבקשה): תלמיד שהזמין לפני שהמורה
       // הגדיר קישור, או אחרי ששינה אותו, מקבל את הנוכחי
-      ['bookings/'+bookingId+'/jitsiUrl']:_own.meetingLink||'',
-      ['bookings/'+bookingId+'/meetingPlatform']:getMeetingLabel(_own.meetingLink||''),
-      ['userBookings/'+b.studentId+'/'+bookingId+'/jitsiUrl']:_own.meetingLink||'',
-      ['userBookings/'+b.studentId+'/'+bookingId+'/meetingPlatform']:getMeetingLabel(_own.meetingLink||''),
-      ['teacherBookings/'+b.teacherId+'/'+bookingId+'/jitsiUrl']:_own.meetingLink||'',
-      ['teacherBookings/'+b.teacherId+'/'+bookingId+'/meetingPlatform']:getMeetingLabel(_own.meetingLink||''),
+      ['bookings/'+bookingId+'/jitsiUrl']:_link,
+      ['bookings/'+bookingId+'/meetingPlatform']:getMeetingLabel(_link),
+      ['userBookings/'+b.studentId+'/'+bookingId+'/jitsiUrl']:_link,
+      ['userBookings/'+b.studentId+'/'+bookingId+'/meetingPlatform']:getMeetingLabel(_link),
+      ['teacherBookings/'+b.teacherId+'/'+bookingId+'/jitsiUrl']:_link,
+      ['teacherBookings/'+b.teacherId+'/'+bookingId+'/meetingPlatform']:getMeetingLabel(_link),
     });
     // התראה לתלמיד
     await notifyUser(b.studentId,'bookingApproved',{bookingId,day:b.day,time:b.time});
@@ -3554,7 +3567,7 @@ async function cancelBookingAsTeacher(bookingId){
     if(b.lessonTimestamp){
       const hoursUntil=(b.lessonTimestamp-Date.now())/3600000;
       if(hoursUntil<24&&hoursUntil>0){
-        if(!await _confirm('⚠️ ביטול פחות מ-24 שעות לפני השיעור\nייתכן שלא תקבל החזר כסף. להמשיך?',{confirmText:'כן, בטל',cancelText:'חזרה',destructive:true}))return;
+        if(!await _confirm('⚠️ ביטול פחות מ-24 שעות לפני השיעור\nהתשלום מתואם ישירות בינך לבין המורה — כדאי לעדכן אותו על הביטול. להמשיך?',{confirmText:'כן, בטל',cancelText:'חזרה',destructive:true}))return;
       }
     }
     const cancelledAt=Date.now();
@@ -3605,9 +3618,13 @@ async function deleteBooking(bookingId){
     const localB=teacherAllBookings.find(b=>(b.id||b.bookingId)===bookingId)||teacherPendingBookings.find(b=>(b.id||b.bookingId)===bookingId);
     teacherAllBookings=teacherAllBookings.filter(b=>(b.id||b.bookingId)!==bookingId);
     teacherPendingBookings=teacherPendingBookings.filter(b=>(b.id||b.bookingId)!==bookingId);
-    await db.ref('teacherBookings/'+currentUser.uid+'/'+bookingId).remove();
-    db.ref('bookings/'+bookingId).remove().catch(()=>{});
-    if(localB?.studentId)db.ref('userBookings/'+localB.studentId+'/'+bookingId).remove().catch(()=>{});
+    // שלושת העותקים נמחקים בפעולה אחת: חוק המחיקה של המורה ב-userBookings קורא את bookings/<id>/teacherId,
+    // אז מחיקה נפרדת של bookings קודם הייתה מבטלת את ההרשאה לשאר (והשגיאה נבלעה).
+    const _del={};
+    _del['teacherBookings/'+currentUser.uid+'/'+bookingId]=null;
+    if(localB?.studentId)_del['userBookings/'+localB.studentId+'/'+bookingId]=null;
+    _del['bookings/'+bookingId]=null;
+    await db.ref().update(_del);
     render();
     showFireToast('🗑 הוסר מהרשימה');
   }catch(e){showFireToast('❌ '+e.message);}
@@ -3623,15 +3640,26 @@ async function deleteStudentBooking(bookingId){
       }
     }
     studentBookings=studentBookings.filter(x=>(x.bookingId||x.id)!==bookingId);
-    await db.ref('userBookings/'+currentUser.uid+'/'+bookingId).update({cancelledAt:Date.now()});
-    await db.ref('userBookings/'+currentUser.uid+'/'+bookingId).remove();
-    db.ref('bookings/'+bookingId).update({cancelledAt:Date.now()}).catch(()=>{});
-    db.ref('bookings/'+bookingId).remove().catch(()=>{});
+    // פעולה אחת: מסירים את הרשומה מהרשימה של התלמיד, ובקשה שעדיין ממתינה מסומנת 'בוטלה' גם אצל המורה
+    // (לפני כן המורה המשיך לראות בקשה ממתינה ו"אשר" החזיר "הזמנה לא נמצאה")
+    const _del={};
+    _del['userBookings/'+currentUser.uid+'/'+bookingId]=null;
+    if(b?.status==='pending'&&b.teacherId){
+      _del['bookings/'+bookingId+'/status']='cancelled';
+      _del['teacherBookings/'+b.teacherId+'/'+bookingId+'/status']='cancelled';
+    }
+    await db.ref().update(_del);
     render();
     showFireToast('🗑 הוסר מהרשימה');
   }catch(e){showFireToast('❌ '+e.message);}
 }
 
+// קישור שיעור תקין: http(s) בלבד, בלי תווים שהחוקים אוסרים, עד 600 תווים — אותו תנאי כמו jitsiUrl ב-database.rules.json.
+// מחזיר את הקישור כפי שהוא, או '' אם אינו תקין.
+function meetingLinkClean(v){
+  const u=String(v||'').trim();
+  return u.length<=600&&/^https?:\/\//i.test(u)&&!/[<>"`']/.test(u)?u:'';
+}
 function getMeetingLabel(url){
   if(!url)return 'וידאו';
   if(url.includes('zoom.us'))return 'Zoom';
@@ -4384,8 +4412,14 @@ async function deleteAllUserData(uid,role){
     }
   }catch(_e){scanFailures.push('storage');}
 
+  const paths=USER_DATA_PATHS.map(p=>p+'/'+uid);
+  if(isTeacher)paths.push('teachers/'+uid);
+
+  const results=await Promise.allSettled(paths.map(p=>db.ref(p).remove()));
+  const failedPaths=results.map((r,i)=>r.status==='rejected'?paths[i]:null).filter(Boolean);
+
   // מה שרק השרת מחזיק (כתובת ההורה, תיעוד ההסכמה, טוקני אישור ופורטל הורים, סטוריז):
-  // הלקוח לא רשאי לכתוב אליהם ולכן גם לא למחוק. רץ לפני שההזדהות נמחקת.
+  // הלקוח לא רשאי לכתוב אליהם ולכן גם לא למחוק. רץ אחרי שרשומת המשתמש נמחקה (השרת מסרב לנקות משתמש שעדיין קיים — אחרת ילד היה מאפס בעצמו את כתובת ההורה ואת תיעוד ההסכמה) ולפני שההזדהות נמחקת.
   try{
     const idToken=await currentUser.getIdToken();
     const res=await withTimeout(fetch(API_BASE+'/api/account-cleanup',{
@@ -4396,11 +4430,6 @@ async function deleteAllUserData(uid,role){
     if(!res.ok)scanFailures.push('server-cleanup');
   }catch(_e){scanFailures.push('server-cleanup');}
 
-  const paths=USER_DATA_PATHS.map(p=>p+'/'+uid);
-  if(isTeacher)paths.push('teachers/'+uid);
-
-  const results=await Promise.allSettled(paths.map(p=>db.ref(p).remove()));
-  const failedPaths=results.map((r,i)=>r.status==='rejected'?paths[i]:null).filter(Boolean);
   return {failedPaths:failedPaths.concat(scanFailures),chatDeleteFailed};
 }
 
@@ -5462,7 +5491,7 @@ const ADMIN_PAYMENT={
   paypal:ADMIN_EMAIL,   // PayPal של המנהל
   paybox:'0542020812',    // PayBox של המנהל
   name:'Drushe',          // שם לתשלום
-  note:'Drushe – תשלום שיעור' // הערה לתשלום
+  note:'Drushe Premium' // הערה לתשלום המנוי
 };
 const COMMISSION_RATE=0; // ללא עמלה — הכנסה ממנויים
 function calcCommission(gross){
@@ -6333,7 +6362,7 @@ function showRatingDialog(bookingId,teacherId,teacherName){
       <textarea id="_ratingTxt" placeholder="ספר על השיעור (אופציונלי)..." style="width:100%;border:1.5px solid rgba(20,184,166,0.25);border-radius:14px;padding:12px;font-size:13px;font-family:inherit;direction:rtl;resize:none;height:80px;outline:none;box-sizing:border-box;margin-bottom:14px"></textarea>
       <div style="display:flex;gap:10px">
         <button onclick="document.getElementById('_ratingOv').remove()" style="flex:1;background:rgba(100,116,139,0.1);border:none;border-radius:50px;padding:13px;font-size:13px;font-weight:700;color:#64748B;cursor:pointer">דלג</button>
-        <button onclick="_submitRatingFromNotif('${jsAttrEscape(bookingId)}','${jsAttrEscape(teacherId)}','${escapeHtml(teacherName||'')}');document.getElementById('_ratingOv').remove()" style="flex:2;background:linear-gradient(135deg,#FBBF24,#F59E0B);border:none;color:#fff;border-radius:50px;padding:13px;font-size:14px;font-weight:900;cursor:pointer">${icon("star",14)} שלח דירוג</button>
+        <button onclick="_submitRatingFromNotif('${jsAttrEscape(bookingId)}','${jsAttrEscape(teacherId)}','${jsAttrEscape(teacherName||'')}');document.getElementById('_ratingOv').remove()" style="flex:2;background:linear-gradient(135deg,#FBBF24,#F59E0B);border:none;color:#fff;border-radius:50px;padding:13px;font-size:14px;font-weight:900;cursor:pointer">${icon("star",14)} שלח דירוג</button>
       </div>
     </div>`;
   document.body.appendChild(ov);
@@ -8518,7 +8547,7 @@ function renderAdminTab(){
             </div>
             <div style="font-size:10px;color:#CBD5E1;font-weight:700">${t.createdAt?new Date(t.createdAt).toLocaleDateString('he-IL'):''}</div>
           </div>
-          ${t.ageVerification?.age?`<div style="padding:0 16px 4px;font-size:11px;color:#04778A;font-weight:700">🪪 גיל ${t.ageVerification.age} • ${t.ageVerification.idType==='id'?'ת.ז.':t.ageVerification.idType==='passport'?'דרכון':'אישור הורה'} • ${t.ageVerification.status==='verified'?'✅ מאומת':'⏳ ממתין לאימות גיל'}</div>`:'<div style="padding:0 16px 4px;font-size:11px;color:#EF4444;font-weight:700">⚠️ לא הוגשו פרטי גיל/זהות</div>'}
+          ${t.ageVerification?.age?`<div style="padding:0 16px 4px;font-size:11px;color:#04778A;font-weight:700">🪪 גיל ${escapeHtml(String(t.ageVerification.age))} • ${t.ageVerification.idType==='id'?'ת.ז.':t.ageVerification.idType==='passport'?'דרכון':'אישור הורה'} • ${t.ageVerification.status==='verified'?'✅ מאומת':'⏳ ממתין לאימות גיל'}</div>`:'<div style="padding:0 16px 4px;font-size:11px;color:#EF4444;font-weight:700">⚠️ לא הוגשו פרטי גיל/זהות</div>'}
           ${(t._idPhoto||t.ageVerification?.idPhoto)?`<div style="padding:0 16px 10px"><img src="${escapeHtml(t._idPhoto||t.ageVerification.idPhoto)}" style="width:100%;max-height:120px;object-fit:cover;border-radius:10px;border:1.5px solid rgba(20,184,166,0.3)" alt="מסמך זהות" onclick="this.style.maxHeight=this.style.maxHeight==='none'?'120px':'none'"></div>`:''}
           ${t.desc?`<div style="padding:0 16px 10px;font-size:12px;color:#64748B;line-height:1.5">"${escapeHtml(t.desc.substring(0,120))}${t.desc.length>120?'...':''}"</div>`:''}
           ${t.ageVerification?.age&&t.ageVerification?.status!=='verified'?`<div style="padding:0 16px 10px"><button onclick="adminVerifyAge('${jsAttrEscape(t.uid)}')" style="width:100%;background:linear-gradient(135deg,#06B6D4,#14B8A6);border:none;color:#fff;border-radius:12px;padding:8px;font-weight:800;font-size:12px;cursor:pointer">🪪 אמת גיל וזהות</button></div>`:''}
@@ -8618,7 +8647,7 @@ function renderAdminTab(){
       html+=approved.map(v=>`
         <div style="background:rgba(16,185,129,0.05);border-radius:14px;padding:11px;margin-bottom:8px">
           <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
-            <div style="flex:1;min-width:0"><div style="font-weight:800;font-size:13px;color:#0F1A1F;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">🎬 ${escapeHtml(v.title||'סרטון ללא שם')}</div><div style="font-size:11px;color:#64748B">${escapeHtml(v.teacherName||'?')} • ${v.views||0} צפיות</div></div>
+            <div style="flex:1;min-width:0"><div style="font-weight:800;font-size:13px;color:#0F1A1F;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">🎬 ${escapeHtml(v.title||'סרטון ללא שם')}</div><div style="font-size:11px;color:#64748B">${escapeHtml(v.teacherName||'?')} • ${Number(v.views)||0} צפיות</div></div>
             <button onclick="adminDeleteVideo('${jsAttrEscape(v.teacherId)}','${jsAttrEscape(v.id)}')" style="background:rgba(239,68,68,0.1);color:#EF4444;border-radius:50px;padding:6px 12px;font-size:11px;font-weight:800;cursor:pointer">${icon("trash",14)}</button>
           </div>
         </div>`).join('');
@@ -8796,7 +8825,7 @@ function renderAdminTab(){
         </div>
         <div style="background:rgba(248,250,252,1);border-radius:12px;padding:12px;font-size:13px;color:#374151;line-height:1.7;white-space:pre-wrap;direction:rtl">${escapeHtml(m.message||'')}</div>
         <div style="margin-top:10px">
-          <a href="mailto:${escapeHtml(m.email||'')}?subject=תגובה מ-Drushe&body=שלום ${m.from||''},%0A%0A" style="display:block;background:linear-gradient(135deg,#14B8A6,#06B6D4);color:#fff;border-radius:50px;padding:9px;font-size:12px;font-weight:800;text-decoration:none;text-align:center">${icon("mail",14)} השב במייל</a>
+          <a href="mailto:${escapeHtml(m.email||'')}?subject=תגובה מ-Drushe&body=שלום ${encodeURIComponent(m.from||'')},%0A%0A" style="display:block;background:linear-gradient(135deg,#14B8A6,#06B6D4);color:#fff;border-radius:50px;padding:9px;font-size:12px;font-weight:800;text-decoration:none;text-align:center">${icon("mail",14)} השב במייל</a>
         </div>
       </div>`;
     return `
@@ -8821,12 +8850,12 @@ function renderAdminTab(){
             <div style="font-size:12px;color:#64748B;margin-top:2px">${escapeHtml(sub.email||'')}</div>
           </div>
           <div style="text-align:left">
-            <div style="font-weight:900;font-size:16px;color:#8B5CF6">₪${sub.amount||29}</div>
-            <div style="font-size:11px;color:#6C7686;margin-top:1px">${sub.payMethod||'—'}</div>
+            <div style="font-weight:900;font-size:16px;color:#8B5CF6">₪${escapeHtml(String(sub.amount||29))}</div>
+            <div style="font-size:11px;color:#6C7686;margin-top:1px">${escapeHtml(String(sub.payMethod||'—'))}</div>
           </div>
         </div>
         <div style="background:rgba(139,47,201,0.08);border-radius:10px;padding:8px 10px;margin-bottom:10px;font-size:12px;color:#7C3AED">
-          📌 קוד: <strong>${sub.payRef||'—'}</strong> · ${sub.createdAt?new Date(sub.createdAt).toLocaleString('he-IL'):''}
+          📌 קוד: <strong>${escapeHtml(String(sub.payRef||'—'))}</strong> · ${sub.createdAt?new Date(sub.createdAt).toLocaleString('he-IL'):''}
         </div>
         <div style="display:flex;gap:8px">
           <button onclick="adminApproveSubscription('${jsAttrEscape(sub.id)}','${jsAttrEscape(sub.uid)}')" style="flex:1;background:linear-gradient(135deg,#8B5CF6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">✅ אשר מנוי (30 יום)</button>
@@ -9013,7 +9042,7 @@ function renderAdminTab(){
               <button onclick="adminDeleteErrorGroup(${i})" title="מחק שגיאה זו" style="background:rgba(239,68,68,0.1);color:#EF4444;border:none;border-radius:50px;padding:5px 8px;cursor:pointer;display:flex;align-items:center">${icon("trash",14)}</button>
             </div>
           </div>
-          <div style="font-size:11px;color:#6C7686;margin-top:6px">${e.source?e.source.split('/').pop()+':'+(e.lineno||'?')+' · ':''}${e.lastScreen?'מסך: '+e.lastScreen+' · ':''}${e.userAgent?e.userAgent.substring(0,60):''}</div>
+          <div style="font-size:11px;color:#6C7686;margin-top:6px">${e.source?escapeHtml(String(e.source).split('/').pop())+':'+(Number(e.lineno)||'?')+' · ':''}${e.lastScreen?'מסך: '+escapeHtml(String(e.lastScreen))+' · ':''}${e.userAgent?escapeHtml(String(e.userAgent).substring(0,60)):''}</div>
           <div style="font-size:10px;color:#CBD5E1;margin-top:4px">ראשון: ${new Date(e.firstSeen).toLocaleString('he-IL')} · אחרון: ${new Date(e.lastSeen).toLocaleString('he-IL')}</div>
           ${e.stack?`<details style="margin-top:6px"><summary style="font-size:11px;color:#04778A;cursor:pointer">stack trace</summary><pre style="font-size:10px;color:#64748B;white-space:pre-wrap;word-break:break-word;margin:6px 0 0">${escapeHtml(e.stack)}</pre></details>`:''}
         </div>`).join('')}
@@ -9585,7 +9614,7 @@ function Home(){
             <div style="width:44px;height:44px;border-radius:13px;background:${c.col}18;display:flex;align-items:center;justify-content:center;flex-shrink:0">${catIcon(c,22)}</div>
             <div style="flex:1;min-width:0">
               <div style="font-weight:800;font-size:14px;color:#0F1A1F;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(g.title||'')}</div>
-              <div style="font-size:11px;color:#64748B;margin-top:2px">${icon("pin",14)} ${g.location} • ${escapeHtml(g.day)} ${escapeHtml(g.time)}${g.isMixed?' • 🌈':''}</div>
+              <div style="font-size:11px;color:#64748B;margin-top:2px">${icon("pin",14)} ${escapeHtml(g.location||'')} • ${escapeHtml(g.day)} ${escapeHtml(g.time)}${g.isMixed?' • 🌈':''}</div>
             </div>
             <div style="text-align:center;flex-shrink:0"><div style="font-weight:900;font-size:13px;color:${spots>0?'#10B981':'#EF4444'}">${spots>0?spots+' מקומות':'מלא'}</div><div style="font-size:10px;color:#64748B">₪${escapeHtml(String(g.price))}</div></div>
           </div>`;}).join('')}
@@ -9612,13 +9641,13 @@ function Home(){
               </div>
             </div>
             <div style="display:flex;gap:8px">
-              <button onclick="approveBooking('${jsAttrEscape(b.id)}')" style="flex:1;background:#10B981;border:none;color:#fff;border-radius:50px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">${icon("check-circle",14)} אשר</button>
-              <button onclick="rejectBooking('${jsAttrEscape(b.id)}')" style="flex:1;background:rgba(231,76,60,0.9);border:none;color:#fff;border-radius:50px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">${icon("x-circle",14)} דחה</button>
+              <button onclick="approveBooking('${jsAttrEscape(b.id)}')" style="min-height:44px;flex:1;background:#10B981;border:none;color:#fff;border-radius:50px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">${icon("check-circle",14)} אשר</button>
+              <button onclick="rejectBooking('${jsAttrEscape(b.id)}')" style="min-height:44px;flex:1;background:rgba(231,76,60,0.9);border:none;color:#fff;border-radius:50px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">${icon("x-circle",14)} דחה</button>
               <button onclick='showWhatsAppDialog("",WA_TEMPLATES.bookingApproved(${escapeHtml(JSON.stringify(b))}),"שלח אישור")' style="background:linear-gradient(135deg,#25D366,#128C7E);border:none;color:#fff;border-radius:50px;padding:10px 14px;font-weight:800;font-size:13px;cursor:pointer">${icon("smartphone",14)}</button>
             </div>
           </div>
         `).join('')}
-        ${teacherPendingBookings.length>3?`<button onclick="go('messages')" style="width:100%;margin-top:4px;background:rgba(255,255,255,.18);color:#fff;border:1.5px solid rgba(255,255,255,.4);border-radius:14px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">עוד ${teacherPendingBookings.length-3} בקשות — לכל הבקשות</button>`:''}
+        ${teacherPendingBookings.length>3?`<button onclick="go('messages')" style="width:100%;margin-top:4px;background:rgba(255,255,255,.18);color:#fff;border:1.5px solid rgba(255,255,255,.4);border-radius:14px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">${teacherPendingBookings.length-3===1?'עוד בקשה אחת':'עוד '+(teacherPendingBookings.length-3)+' בקשות'} — לכל הבקשות</button>`:''}
       </div>`:''}
 
       ${currentUserData?.role==='teacher'&&!isAdmin()&&teacherBookingsLoaded&&!teacherAllBookings.length?`
@@ -9902,7 +9931,7 @@ function DiscoverSlide(v){
       <div style="display:flex;gap:10px;align-items:center">
         <button onclick="_openDiscoverBooking('${jsAttrEscape(v.teacherId)}')" style="flex:1;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:13px;font-weight:900;font-size:14px;cursor:pointer">📅 הזמן שיעור${v.teacherPrice?' · ₪'+v.teacherPrice:''}</button>
         <div style="font-size:11px;color:rgba(255,255,255,.7);display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0">
-          <span>👁️ ${v.views||0}</span>
+          <span>👁️ ${Number(v.views)||0}</span>
         </div>
       </div>
     </div>
@@ -10140,7 +10169,7 @@ function Teacher(){
       ${_head('video','#14B8A6','סרטוני הדגמה'+(cat?' – '+cat.lbl:'')+(S.teacherCat&&_strictMatch.length===0?' (ללא קטגוריה)':''))}
       ${filtPubVids.slice(0,5).map(v=>{
         const ytId=v.platform==='youtube'?(v.url||'').match(/(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/)([^&?\s]+)/)?.[1]:null;
-        const thumb=v.thumbnail||(ytId?'https://img.youtube.com/vi/'+ytId+'/hqdefault.jpg':null);
+        const thumb=safeCssUrl(v.thumbnail||(ytId?'https://img.youtube.com/vi/'+ytId+'/hqdefault.jpg':null));
         const platLabel=v.platform==='youtube'?'YouTube':v.platform==='instagram'?'Instagram':v.platform==='tiktok'?'TikTok':'וידאו';
         const catObj=v.cat?CATS.find(c=>c.id===v.cat):null;
         const _vUrl=safeUrl(v.url||'');
@@ -10153,7 +10182,7 @@ function Teacher(){
               <span style="background:rgba(0,0,0,0.72);color:#fff;padding:3px 9px;border-radius:8px;font-size:10px;font-weight:700">${platLabel}</span>
               ${catObj?`<span style="background:${catObj.col}cc;color:#fff;padding:3px 9px;border-radius:8px;font-size:10px;font-weight:700;display:inline-flex;align-items:center;gap:3px">${catIcon(catObj,10,'#fff')} ${catObj.lbl}</span>`:''}
             </div>
-            ${v.views>0?`<div style="position:absolute;top:9px;left:10px;background:rgba(0,0,0,0.6);color:#fff;padding:3px 9px;border-radius:8px;font-size:10px;font-weight:700">👁 ${v.views}</div>`:''}
+            ${v.views>0?`<div style="position:absolute;top:9px;left:10px;background:rgba(0,0,0,0.6);color:#fff;padding:3px 9px;border-radius:8px;font-size:10px;font-weight:700">👁 ${Number(v.views)||0}</div>`:''}
             ${v.approved!==true&&currentUser?.uid===t.id?`<div style="position:absolute;top:9px;right:10px;background:rgba(245,158,11,0.92);color:#fff;padding:3px 9px;border-radius:8px;font-size:10px;font-weight:800">⏳ ממתין לאישור</div>`:''}
           </div>
           <div style="padding:12px 14px 14px">
@@ -10214,7 +10243,7 @@ function Teacher(){
         `:_isOwn?`
           <div style="margin-top:8px">
             ${_qaAnsweringId===qa.id?`
-              <textarea id="_qaAnswer_${qa.id}" placeholder="כתוב תשובה פומבית..." style="width:100%;border:1.5px solid rgba(20,184,166,0.4);border-radius:12px;padding:10px 12px;font-size:13px;font-family:inherit;direction:rtl;outline:none;box-sizing:border-box;resize:none;min-height:80px;margin-bottom:8px"></textarea>
+              <textarea id="_qaAnswer_${escapeHtml(qa.id)}" placeholder="כתוב תשובה פומבית..." style="width:100%;border:1.5px solid rgba(20,184,166,0.4);border-radius:12px;padding:10px 12px;font-size:13px;font-family:inherit;direction:rtl;outline:none;box-sizing:border-box;resize:none;min-height:80px;margin-bottom:8px"></textarea>
               <div style="display:flex;gap:8px">
                 <button onclick="_qaAnsweringId=null;render()" style="flex:1;background:#F1F5F9;border:none;border-radius:50px;padding:9px;font-weight:700;font-size:13px;cursor:pointer;color:#64748B">ביטול</button>
                 <button onclick="answerQA('${jsAttrEscape(t.id)}','${jsAttrEscape(qa.id)}','${jsAttrEscape(qa.askerUid||'')}')" style="flex:2;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:9px;font-weight:800;font-size:13px;cursor:pointer">פרסם תשובה</button>
@@ -10247,7 +10276,7 @@ function Teacher(){
         </div>
         <div style="flex:1;min-width:0">
           <h2 style="margin:0;font-size:23px;font-weight:900;line-height:1.2">${escapeHtml(t.name||'')}</h2>
-          <div style="font-size:13px;opacity:.85;margin:3px 0 6px">גיל ${t.age} · ${escapeHtml(t.city||'')}</div>
+          <div style="font-size:13px;opacity:.85;margin:3px 0 6px">גיל ${escapeHtml(String(t.age))} · ${escapeHtml(t.city||'')}</div>
           ${(t.rating||0)>0
             ?`<div style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:800;flex-wrap:wrap">${_stars(t.rating,14)} <span>${t.rating}</span><span style="opacity:.75;font-weight:600">· ${t.lessons||0} שיעורים</span></div>`
             :`<div style="font-size:12.5px;font-weight:800;opacity:.9">🌱 מורה חדש/ה${t.lessons?' · '+t.lessons+' שיעורים':''}</div>`}
@@ -10314,6 +10343,7 @@ function Booking(){
   const t=S.teacher||TEACHERS[0];
   if(!t){go('home');return `<div class="screen"></div>`;}
   const step=S.bookStep||1;
+  const priceTxt=()=>S.bookType==="trial"?trialPriceLabel(t):'₪'+price;
   const price=S.bookType==="trial"?trialPrice(t):S.bookType==="package"?(t.price||0)*5-20:(t.price||0);
 
   // ── תאריכים אמיתיים ──────────────────────────────────────────────
@@ -10426,7 +10456,7 @@ function Booking(){
       <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:13px"><span style="font-weight:700">${escapeHtml(t.name||'')}</span><span style="color:${C.muted}">מורה</span></div>
       <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:13px"><span style="font-weight:700">${escapeHtml(selDay?.label||'')} ${escapeHtml(selDay?.num||'')} ${escapeHtml(selDay?.mon||'')} – ${escapeHtml(S.bookTime||'')}</span><span style="color:${C.muted}">מועד</span></div>
       <div style="height:1px;background:rgba(20,184,166,.15);margin:10px 0"></div>
-      <div style="display:flex;justify-content:space-between"><span style="font-weight:900;font-size:16px">מחיר השיעור</span><span style="font-weight:900;font-size:20px;color:#14B8A6">₪${price}</span></div>
+      <div style="display:flex;justify-content:space-between"><span style="font-weight:900;font-size:16px">מחיר השיעור</span><span style="font-weight:900;font-size:20px;color:#14B8A6">${priceTxt()}</span></div>
     </div>
 
     ${(()=>{
@@ -10448,7 +10478,7 @@ function Booking(){
       <div style="background:rgba(20,184,166,.06);border-radius:16px;padding:16px;margin-bottom:18px;text-align:right">
         <div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="font-weight:700">${escapeHtml(t.name||'')}</span><span style="color:${C.muted};font-size:13px">מורה</span></div>
         <div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="font-weight:700;font-size:13px">${escapeHtml(selDay?.label||'')} ${escapeHtml(selDay?.num||'')} ${escapeHtml(selDay?.mon||'')} בשעה ${escapeHtml(S.bookTime||'')}</span><span style="color:${C.muted};font-size:13px">מועד</span></div>
-        <div style="display:flex;justify-content:space-between"><span style="font-weight:700;color:var(--p)">₪${price}</span><span style="color:${C.muted};font-size:13px">מחיר השיעור</span></div>
+        <div style="display:flex;justify-content:space-between"><span style="font-weight:700;color:var(--p)">${priceTxt()}</span><span style="color:${C.muted};font-size:13px">מחיר השיעור</span></div>
       </div>
 
       <!-- שלבי תהליך -->
@@ -10469,7 +10499,7 @@ function Booking(){
 
   return `<div class="screen" style="background:linear-gradient(165deg,#ECFEFF 0%,#F0F9FF 50%,#EEF2FF 100%)">
     <div style="background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);padding:20px 20px 28px;color:#fff;border-radius:0 0 28px 28px">
-      <button onclick="${step===1?"back()":"S.bookStep--;render()"}" style="background:rgba(255,255,255,.1);border:none;color:#fff;font-size:14px;cursor:pointer;border-radius:50px;padding:8px 16px;min-height:44px;font-weight:700">← חזור</button>
+      <button onclick="${step===1?"back()":step===3?"go('home')":"S.bookStep--;render()"}" style="background:rgba(255,255,255,.1);border:none;color:#fff;font-size:14px;cursor:pointer;border-radius:50px;padding:8px 16px;min-height:44px;font-weight:700">← חזור</button>
       <h2 style="font-size:18px;font-weight:900;margin:10px 0 4px;display:flex;align-items:center;gap:8px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>קביעת שיעור עם ${escapeHtml(t.name||'')}</h2>
       <div class="steps" style="margin-top:12px">${[1,2,3].map(i=>`<span class="${i<=step?"on":""}"></span>`).join("")}</div>
     </div>
@@ -10603,8 +10633,8 @@ function Messages(){
               <span style="background:rgba(245,158,11,0.15);color:#D97706;font-size:10px;font-weight:800;padding:4px 10px;border-radius:50px">⏳ ממתין</span>
             </div>
             ${isTeacherRole?`<div style="display:flex;gap:8px;margin-top:12px">
-              <button onclick="rejectBooking('${jsAttrEscape(b.id)}')" style="flex:1;background:rgba(239,68,68,0.1);color:#EF4444;border:none;border-radius:12px;padding:9px;font-weight:800;font-size:12px;cursor:pointer">דחה</button>
-              <button onclick="approveBooking('${jsAttrEscape(b.id)}')" style="flex:1;background:linear-gradient(135deg,#10B981,#14B8A6);color:#fff;border:none;border-radius:12px;padding:9px;font-weight:800;font-size:12px;cursor:pointer">אשר</button>
+              <button onclick="rejectBooking('${jsAttrEscape(b.id)}')" style="min-height:44px;flex:1;background:rgba(239,68,68,0.1);color:#EF4444;border:none;border-radius:12px;padding:9px;font-weight:800;font-size:12px;cursor:pointer">דחה</button>
+              <button onclick="approveBooking('${jsAttrEscape(b.id)}')" style="min-height:44px;flex:1;background:linear-gradient(135deg,#10B981,#14B8A6);color:#fff;border:none;border-radius:12px;padding:9px;font-weight:800;font-size:12px;cursor:pointer">אשר</button>
             </div>`:''}
           </div>
         `).join('')}
@@ -10739,8 +10769,8 @@ function Profile(){
       const warning=catVids.length===0&&uncat.length>0?`<div style="background:rgba(245,158,11,0.08);border-radius:12px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#92400E;font-weight:700">${icon("alert-triangle",14)} ${uncat.length} סרטונים ללא מקצוע — לחץ "שייך" כדי לשייכם ל${catObj.lbl}</div>`:'';
       return warning+showVids.map(v=>{
         const ytId=v.platform==='youtube'?(v.url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/)([^&?\s]+)/)?.[1]):null;
-        const thumb=ytId?`https://img.youtube.com/vi/${ytId}/hqdefault.jpg`:null;
-        return `<div class="card" style="padding:0;overflow:hidden"><div style="aspect-ratio:16/9;background:${thumb?'url('+thumb+') center/cover,':''}linear-gradient(135deg,#14B8A6,#06B6D4);position:relative;cursor:pointer" onclick="if(safeUrl('${jsAttrEscape(v.url||'')}'))window.open('${jsAttrEscape(v.url||'')}','_blank');else showFireToast('❌ קישור לא תקין')"><div style="position:absolute;inset:0;background:rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center"><div style="background:rgba(255,255,255,0.95);width:54px;height:54px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px">▶️</div></div>${v.approved===true?`<div style="position:absolute;top:10px;right:10px;background:rgba(16,185,129,0.95);color:#fff;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:800">✓ פורסם</div>`:v.approved==='rejected'?`<div style="position:absolute;top:10px;right:10px;background:rgba(239,68,68,0.95);color:#fff;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:800">✗ לא מאושר</div>`:`<div style="position:absolute;top:10px;right:10px;background:rgba(245,158,11,0.95);color:#fff;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:800">⏳ מחכה לאישור</div>`}</div><div style="padding:13px 15px"><p style="margin:0 0 5px;font-weight:800;font-size:14px">${escapeHtml(v.title||'')}</p>${v.desc?`<p style="margin:0 0 7px;font-size:12px;color:#64748B;line-height:1.5">${escapeHtml(v.desc)}</p>`:''}<div style="display:flex;gap:8px;align-items:center;justify-content:space-between">${!v.cat?`<button onclick="assignVideoCategory('${jsAttrEscape(v.id)}','${jsAttrEscape(tab)}')" style="background:rgba(245,158,11,0.12);color:#B45309;border-radius:50px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer">🏷 שייך ל${catObj.lbl}</button>`:`<div></div>`}<div style="display:flex;gap:8px"><button onclick="deleteMyVideo('${jsAttrEscape(v.id)}')" style="background:rgba(239,68,68,0.1);color:#EF4444;border-radius:50px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer">${icon("trash",14)}</button><span style="font-size:12px;color:${C.muted};align-self:center">👁 ${v.views||0}</span></div></div></div></div>`;
+        const thumb=ytId?safeCssUrl(`https://img.youtube.com/vi/${ytId}/hqdefault.jpg`):null;
+        return `<div class="card" style="padding:0;overflow:hidden"><div style="aspect-ratio:16/9;background:${thumb?'url('+thumb+') center/cover,':''}linear-gradient(135deg,#14B8A6,#06B6D4);position:relative;cursor:pointer" onclick="if(safeUrl('${jsAttrEscape(v.url||'')}'))window.open('${jsAttrEscape(v.url||'')}','_blank');else showFireToast('❌ קישור לא תקין')"><div style="position:absolute;inset:0;background:rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center"><div style="background:rgba(255,255,255,0.95);width:54px;height:54px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px">▶️</div></div>${v.approved===true?`<div style="position:absolute;top:10px;right:10px;background:rgba(16,185,129,0.95);color:#fff;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:800">✓ פורסם</div>`:v.approved==='rejected'?`<div style="position:absolute;top:10px;right:10px;background:rgba(239,68,68,0.95);color:#fff;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:800">✗ לא מאושר</div>`:`<div style="position:absolute;top:10px;right:10px;background:rgba(245,158,11,0.95);color:#fff;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:800">⏳ מחכה לאישור</div>`}</div><div style="padding:13px 15px"><p style="margin:0 0 5px;font-weight:800;font-size:14px">${escapeHtml(v.title||'')}</p>${v.desc?`<p style="margin:0 0 7px;font-size:12px;color:#64748B;line-height:1.5">${escapeHtml(v.desc)}</p>`:''}<div style="display:flex;gap:8px;align-items:center;justify-content:space-between">${!v.cat?`<button onclick="assignVideoCategory('${jsAttrEscape(v.id)}','${jsAttrEscape(tab)}')" style="background:rgba(245,158,11,0.12);color:#B45309;border-radius:50px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer">🏷 שייך ל${catObj.lbl}</button>`:`<div></div>`}<div style="display:flex;gap:8px"><button onclick="deleteMyVideo('${jsAttrEscape(v.id)}')" style="background:rgba(239,68,68,0.1);color:#EF4444;border-radius:50px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer">${icon("trash",14)}</button><span style="font-size:12px;color:${C.muted};align-self:center">👁 ${Number(v.views)||0}</span></div></div></div></div>`;
       }).join('');
     })()}`;
   }
@@ -10779,7 +10809,7 @@ function Profile(){
       </div>
     `:filteredVids.map(v=>{
       const ytId=v.platform==='youtube'?(v.url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/)([^&?\s]+)/)?.[1]):null;
-      const thumb=ytId?`https://img.youtube.com/vi/${ytId}/hqdefault.jpg`:null;
+      const thumb=ytId?safeCssUrl(`https://img.youtube.com/vi/${ytId}/hqdefault.jpg`):null;
       const catObj=v.cat?CATS.find(c=>c.id===v.cat):null;
       return `<div class="card" style="padding:0;overflow:hidden;position:relative">
         <div style="aspect-ratio:16/9;background:${thumb?'url('+thumb+') center/cover,':''}linear-gradient(135deg,#14B8A6,#06B6D4);position:relative;cursor:pointer" onclick="if(safeUrl('${jsAttrEscape(v.url||'')}'))window.open('${jsAttrEscape(v.url||'')}','_blank');else showFireToast('❌ קישור לא תקין')">
@@ -10796,7 +10826,7 @@ function Profile(){
           <div style="display:flex;gap:14px;align-items:center;justify-content:space-between">
             <button onclick="deleteMyVideo('${jsAttrEscape(v.id)}')" style="background:rgba(239,68,68,0.1);color:#EF4444;border-radius:50px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer">${icon("trash",14)} מחק</button>
             <div style="display:flex;gap:14px">
-              <span style="font-size:12px;color:${C.muted}">👁 ${v.views||0}</span>
+              <span style="font-size:12px;color:${C.muted}">👁 ${Number(v.views)||0}</span>
               <span style="font-size:12px;color:${C.muted}">❤️ ${v.likes||0}</span>
             </div>
           </div>
@@ -10812,7 +10842,7 @@ function Profile(){
     const myUid=currentUser?.uid;
     content=`
     <div style="background:linear-gradient(135deg,#ECFDF5,#D1FAE5);border-radius:22px;padding:20px;margin-bottom:14px">
-      <div style="font-size:12px;color:#64748B;margin-bottom:4px">סה"כ הרווחת</div>
+      <div style="font-size:12px;color:#64748B;margin-bottom:4px">סה"כ שווי השיעורים שהושלמו</div>
       <div style="font-size:36px;font-weight:900;color:#059669">₪${earn.total.toLocaleString()}</div>
       <div style="font-size:12px;color:#64748B;margin-top:2px">${earn.count} שיעורים הושלמו</div>
     </div>
@@ -10823,7 +10853,7 @@ function Profile(){
       </div>
       <div style="background:transparent;border-radius:18px;padding:14px;text-align:center;box-shadow:none">
         <div style="font-size:22px;font-weight:900;color:#F59E0B">${earn.count>0?('₪'+(earn.total/earn.count).toFixed(0)):'—'}</div>
-        <div style="font-size:11px;color:#64748B;margin-top:3px">ממוצע לשיעור</div>
+        <div style="font-size:11px;color:#64748B;margin-top:3px">מחיר ממוצע לשיעור</div>
       </div>
       <div style="background:transparent;border-radius:18px;padding:14px;text-align:center;box-shadow:none">
         <div style="font-size:22px;font-weight:900;color:#FB923C">${streak}${streak>0?' 🔥':''}</div>
@@ -10836,10 +10866,10 @@ function Profile(){
     </div>
     <button onclick="shareTeacher(TEACHERS.find(x=>x.id==='${jsAttrEscape(myUid)}'))" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;border-radius:16px;padding:13px;font-weight:900;font-size:14px;color:#fff;cursor:pointer;margin-bottom:14px">${icon("send",14)} שתף פרופיל שלי — קבל יותר הזמנות</button>
     ${done.length===0?`<div style="background:transparent;border-radius:18px;padding:28px;text-align:center;box-shadow:none"><div style="margin-bottom:10px">${miniBadge('dollar','#14B8A6',72)}</div><p style="color:#64748B;font-size:13px;margin:0">עוד אין הכנסות. כשתשלים שיעורים הם יופיעו כאן.</p></div>`:`
-    <h4 style="font-size:14px;font-weight:800;margin:0 0 10px;color:#0F1A1F">תשלומים אחרונים</h4>
+    <h4 style="font-size:14px;font-weight:800;margin:0 0 10px;color:#0F1A1F">שיעורים אחרונים שהושלמו</h4>
     ${done.slice(0,15).map(b=>`
       <div style="background:transparent;border-radius:16px;padding:13px 15px;margin-bottom:8px;box-shadow:none;display:flex;align-items:center;justify-content:space-between">
-        <div style="text-align:left"><div style="font-weight:900;font-size:15px;color:#10B981">+₪${escapeHtml(String(b.grossAmount||b.price||0))}</div></div>
+        <div style="text-align:left"><div style="font-weight:900;font-size:15px;color:#10B981">₪${escapeHtml(String(b.grossAmount||b.price||0))}</div></div>
         <div style="text-align:right"><div style="font-weight:700;font-size:13px;color:#0F1A1F">${escapeHtml(b.studentName||'תלמיד')}</div><div style="font-size:11px;color:#64748B">${escapeHtml(b.day||'')} ${escapeHtml(b.time||'')}</div></div>
       </div>`).join('')}
     `}`;
@@ -10878,7 +10908,7 @@ function Profile(){
         <button onclick="shareMyReferralLink()" style="background:rgba(255,255,255,.2);color:#fff;border-radius:50px;padding:9px 16px;font-weight:700;cursor:pointer;font-size:12px">${icon("send",12)} שתף</button>
       </div>
     </div>
-    ${[["edit",'#14B8A6',"ערוך פרופיל",isTeacher?"showEditTeacherProfileDialog()":`showEditProfileDialog()`],["dollar",'#F59E0B',"השיעורים שלי","showPaymentManagement()"],["award",'#8B5CF6',"ראה לידרבורד","go('leaderboard')"],["info",'#06B6D4',"הצג מדריך מחדש","_obReset();showFireToast('✅ המדריך יוצג בכניסה הבאה')"],["x-circle",'#E74C3C',"התנתקות","confirmLogout()"]].map(([ic,col,l,fn])=>`<div class="card-sm" style="display:flex;align-items:center;gap:13px;cursor:pointer" onclick="${fn}">${miniBadge(ic,col,32)}<span style="font-weight:700;font-size:15px;color:${l==="התנתקות"?"#E74C3C":"#1A1A2E"}">${l}</span><span style="margin-right:auto;color:#6F7786">←</span></div>`).join("")}`;
+    ${[["edit",'#14B8A6',"ערוך פרופיל",isTeacher?"showEditTeacherProfileDialog()":`showEditProfileDialog()`],["calendar",'#F59E0B',"השיעורים שלי","showPaymentManagement()"],["award",'#8B5CF6',"ראה לידרבורד","go('leaderboard')"],["info",'#06B6D4',"הצג מדריך מחדש","_obReset();showFireToast('✅ המדריך יוצג בכניסה הבאה')"],["x-circle",'#E74C3C',"התנתקות","confirmLogout()"]].map(([ic,col,l,fn])=>`<div class="card-sm" style="display:flex;align-items:center;gap:13px;cursor:pointer" onclick="${fn}">${miniBadge(ic,col,32)}<span style="font-weight:700;font-size:15px;color:${l==="התנתקות"?"#E74C3C":"#1A1A2E"}">${l}</span><span style="margin-right:auto;color:#6F7786">←</span></div>`).join("")}`;
 
   if(isTeacher&&tab==='bookings'){
     const pendingB=teacherAllBookings.filter(b=>b.status==='pending');
@@ -10909,8 +10939,8 @@ function Profile(){
               </div>
             </div>
             ${status==='pending'?`<div style="display:flex;gap:8px">
-              <button onclick="rejectBooking('${jsAttrEscape(b.id||b.bookingId||'')}')" style="flex:1;background:rgba(239,68,68,0.1);color:#EF4444;border-radius:12px;padding:9px;font-weight:800;font-size:12px;cursor:pointer">✗ דחה</button>
-              <button onclick="approveBooking('${jsAttrEscape(b.id||b.bookingId||'')}')" style="flex:1;background:linear-gradient(135deg,#10B981,#14B8A6);border:none;color:#fff;border-radius:12px;padding:9px;font-weight:800;font-size:12px;cursor:pointer">✓ אשר</button>
+              <button onclick="rejectBooking('${jsAttrEscape(b.id||b.bookingId||'')}')" style="min-height:44px;flex:1;background:rgba(239,68,68,0.1);color:#EF4444;border-radius:12px;padding:9px;font-weight:800;font-size:12px;cursor:pointer">✗ דחה</button>
+              <button onclick="approveBooking('${jsAttrEscape(b.id||b.bookingId||'')}')" style="min-height:44px;flex:1;background:linear-gradient(135deg,#10B981,#14B8A6);border:none;color:#fff;border-radius:12px;padding:9px;font-weight:800;font-size:12px;cursor:pointer">✓ אשר</button>
             </div>`:status==='approved'?`<button onclick="S.chat={otherUid:'${jsAttrEscape(b.studentId||'')}',otherName:'${jsAttrEscape(b.studentName||'תלמיד')}'};go('chat')" style="width:100%;background:rgba(6,182,212,0.1);color:#04778A;border-radius:12px;padding:9px;font-weight:800;font-size:12px;cursor:pointer">${icon("chat",14)} שלח הודעה</button>`:`<button onclick="deleteBooking('${jsAttrEscape(b.id||b.bookingId||'')}')" style="width:100%;background:rgba(148,163,184,0.1);color:#6C7686;border-radius:12px;padding:9px;font-weight:800;font-size:12px;cursor:pointer">${icon("trash",14)} מחק מהרשימה</button>`}
           </div>`).join('')}
       </div>`;
@@ -10918,7 +10948,7 @@ function Profile(){
   }
 
   const tabItems=isTeacher&&myCats.length
-    ?[...myCats.map(cid=>{const c=catById(cid);return [cid,c.lbl];}),...[['bookings','<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>הזמנות'+(teacherPendingBookings.length>0?` (${teacherPendingBookings.length})`:'')],['wallet','<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>ארנק'],['portfolio','🖼 תיק עבודות'],['ach','<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M17 5h3a2 2 0 0 1 0 4h-1M7 5H4a2 2 0 0 0 0 4h1"/></svg>הישגים'],['about','<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>אודות']]]
+    ?[...myCats.map(cid=>{const c=catById(cid);return [cid,c.lbl];}),...[['bookings','<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>הזמנות'+(teacherPendingBookings.length>0?` (${teacherPendingBookings.length})`:'')],['wallet','<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>סטטיסטיקה'],['portfolio','🖼 תיק עבודות'],['ach','<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M17 5h3a2 2 0 0 1 0 4h-1M7 5H4a2 2 0 0 0 0 4h1"/></svg>הישגים'],['about','<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>אודות']]]
     :[['lessons','<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>שיעורים'],['ach','<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M17 5h3a2 2 0 0 1 0 4h-1M7 5H4a2 2 0 0 0 0 4h1"/></svg>הישגים'],['about','<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>אודות']];
 
   // ─── STUDENT PROFILE (dedicated design) ─────────────────────────────────────
@@ -11170,13 +11200,13 @@ function Community(){
   const postCards=vis.map(p=>{
     const isMine=currentUser&&p.authUid===currentUser.uid;
     return `
-    <div class="post" style="border-top:3px solid ${p.col||'#14B8A6'};${p.status==='pending'?'border:2px solid rgba(245,158,11,0.5);border-top:3px solid rgba(245,158,11,0.5);opacity:0.9':''}">
+    <div class="post" style="border-top:3px solid ${safeColor(p.col)};${p.status==='pending'?'border:2px solid rgba(245,158,11,0.5);border-top:3px solid rgba(245,158,11,0.5);opacity:0.9':''}">
       ${p.status==='pending'?`<div style="background:linear-gradient(135deg,rgba(245,158,11,0.15),rgba(234,179,8,0.1));padding:8px 15px;font-size:12px;font-weight:800;color:#92400E;border-bottom:1px solid rgba(245,158,11,0.2);border-radius:0;text-align:center">⏳ הפוסט שלך ממתין לאישור מנהל — גלוי לך בלבד</div>`:''}
       <div style="padding:15px 15px 11px;display:flex;gap:11px;align-items:center">
-        <div style="width:46px;height:46px;border-radius:42% 58% 63% 37%/45% 40% 60% 55%;flex-shrink:0;background:linear-gradient(135deg,${p.col||'#14B8A6'},${p.col||'#14B8A6'}99);display:flex;align-items:center;justify-content:center;font-size:22px;overflow:hidden;box-shadow:0 3px 10px ${p.col||'#14B8A6'}55">${p.photo?`<img src="${escapeHtml(p.photo)}" style="width:100%;height:100%;object-fit:cover" alt="">`:p.av||'😊'}</div>
+        <div style="width:46px;height:46px;border-radius:42% 58% 63% 37%/45% 40% 60% 55%;flex-shrink:0;background:linear-gradient(135deg,${safeColor(p.col)},${safeColor(p.col)}99);display:flex;align-items:center;justify-content:center;font-size:22px;overflow:hidden;box-shadow:0 3px 10px ${safeColor(p.col)}55">${p.photo?`<img src="${escapeHtml(p.photo)}" style="width:100%;height:100%;object-fit:cover" alt="">`:p.av||'😊'}</div>
         <div style="flex:1">
           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="font-weight:800;font-size:15px">${escapeHtml(p.author||'משתמש')}</span>${isMine?'<span style="background:rgba(20,184,166,0.15);color:#14B8A6;font-size:9px;font-weight:800;padding:2px 6px;border-radius:50px">אני</span>':''}${p.status==='pending'?'<span style="background:rgba(245,158,11,0.15);color:#F59E0B;font-size:9px;font-weight:800;padding:2px 6px;border-radius:50px">⏳ בבדיקה</span>':''}</div>
-          <div style="font-size:11px;color:${p.col||'#14B8A6'};font-weight:700">${escapeHtml(p.role||'')}${p.area?' • 📍 '+escapeHtml(p.area):''}</div>
+          <div style="font-size:11px;color:${safeColor(p.col)};font-weight:700">${escapeHtml(p.role||'')}${p.area?' • 📍 '+escapeHtml(p.area):''}</div>
         </div>
         <div style="text-align:left">
           <div style="font-size:11px;color:${C.muted};margin-bottom:4px">${escapeHtml(p.time||'')}</div>
@@ -11186,19 +11216,19 @@ function Community(){
       <div style="padding:0 15px ${p.mediaUrl?'8':'13'}px"><p style="margin:0;font-size:14px;line-height:1.7">${escapeHtml(p.text)}</p></div>
       ${p.mediaUrl?`<div style="padding:0 15px 13px">${p.mediaType==='video'?`<video src="${escapeHtml(p.mediaUrl)}" controls playsinline style="width:100%;max-height:260px;border-radius:14px;display:block;background:#000"></video>`:`<img src="${escapeHtml(p.mediaUrl)}" alt="" style="width:100%;max-height:300px;object-fit:cover;border-radius:14px;display:block;cursor:pointer" onclick="if(safeUrl('${jsAttrEscape(p.mediaUrl||'')}'))window.open('${jsAttrEscape(p.mediaUrl||'')}','_blank')">`}</div>`:''}
       <div class="p-acts">
-        <button onclick="toggleLike('${jsAttrEscape(p.id)}')" style="color:${p.liked?"#E74C3C":C.muted}">${p.liked?"❤️":"🤍"} ${p.likes||0}</button>
+        <button onclick="toggleLike('${jsAttrEscape(p.id)}')" style="color:${p.liked?"#E74C3C":C.muted}">${p.liked?"❤️":"🤍"} ${Number(p.likes)||0}</button>
         <button onclick="openPost('${jsAttrEscape(p.id)}')">${icon("chat",14)} ${(p.reps||[]).length}</button>
         ${isMine||isAdmin()?`<button onclick="deleteMyPost('${jsAttrEscape(p.id)}')" style="color:#EF4444">${icon("trash",14)}</button>`:''}
         <button onclick="sharePost('${jsAttrEscape((p.text||'').substring(0,80))}')" style="margin-right:auto;color:var(--s)">${icon("send",14)} שתף</button>
       </div>
       ${S.openPost===p.id?`<div style="background:#FAFAFE;border-top:1px solid rgba(0,0,0,.05)">
         ${(p.reps||[]).map(r=>`<div style="padding:11px 14px;border-bottom:1px solid rgba(0,0,0,.04);display:flex;gap:9px">
-          <div style="width:32px;height:32px;border-radius:10px;background:#EEE;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0">${r.av||'😊'}</div>
+          <div style="width:32px;height:32px;border-radius:10px;background:#EEE;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0">${escapeHtml(r.av||'😊')}</div>
           <div style="flex:1"><div style="display:flex;justify-content:space-between"><span style="font-size:11px;color:${C.muted}">${r.createdAt?new Date(r.createdAt).toLocaleDateString('he-IL'):r.time||''}</span><span style="font-weight:800;font-size:13px">${escapeHtml(r.auth)}</span></div><p style="margin:4px 0 0;font-size:13px;line-height:1.5">${escapeHtml(r.text)}</p></div>
         </div>`).join("")}
         <div style="padding:11px 14px;display:flex;gap:9px;align-items:center">
           <button onclick="sendReply('${jsAttrEscape(p.id)}')" style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;border-radius:50%;width:36px;height:36px;color:#fff;font-weight:900;cursor:pointer;flex-shrink:0">↑</button>
-          <input id="rp_${p.id}" class="inp" style="padding:9px 14px;border-radius:50px;font-size:13px" placeholder="כתוב תגובה..." onkeydown="if(event.key==='Enter')sendReply('${jsAttrEscape(p.id)}')">
+          <input id="rp_${escapeHtml(p.id)}" class="inp" style="padding:9px 14px;border-radius:50px;font-size:13px" placeholder="כתוב תגובה..." onkeydown="if(event.key==='Enter')sendReply('${jsAttrEscape(p.id)}')">
         </div>
       </div>`:""}
     </div>`;}).join("");
@@ -11230,7 +11260,7 @@ function Community(){
     </div>
   </div>`:"";
   const _isTeacherU=currentUserData?.role==='teacher';
-  const _groupsHtml=(()=>{const openG=communityGroups.filter(g=>g.status==='open'&&(!S.groupSubj||g.subject===S.groupSubj));const hdr=_isTeacherU?`<div style="display:flex;gap:8px;margin-bottom:16px"><button onclick="showCreateGroupDialog()" style="flex:1;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:14px;padding:12px;font-weight:800;font-size:13px;cursor:pointer">+ צור קבוצה</button><button onclick="showTeacherGroupsPanel()" style="flex:1;background:rgba(20,184,166,0.1);color:#14B8A6;border-radius:14px;padding:12px;font-weight:800;font-size:13px;cursor:pointer">${icon("users",14)} הקבוצות שלי</button></div>`:currentUser?`<div style="margin-bottom:14px"><button onclick="showStudentGroupsPanel()" style="width:100%;background:rgba(20,184,166,0.08);color:#14B8A6;border-radius:14px;padding:11px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">${icon("users",14)} הקבוצות שלי${Object.keys(myGroupStatuses).length?' ('+Object.keys(myGroupStatuses).length+')':''}</button></div>`:'';const allSubjs=[...new Set(communityGroups.filter(g=>g.status==='open'&&g.subject).map(g=>g.subject))];const subjFilter=allSubjs.length>1?'<div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px">'+['<button onclick="S.groupSubj=null;render()" style="flex-shrink:0;padding:6px 14px;border-radius:50px;font-size:12px;font-weight:800;cursor:pointer;border:none;background:'+(S.groupSubj?'rgba(100,116,139,0.1)':'linear-gradient(135deg,#14B8A6,#06B6D4)')+';color:'+(S.groupSubj?'#64748B':'#fff')+'">הכל</button>',...allSubjs.map(sid=>{const c=catById(sid);const on=S.groupSubj===sid;return '<button onclick="S.groupSubj=\''+sid+'\';render()" style="flex-shrink:0;padding:6px 14px;border-radius:50px;font-size:12px;font-weight:800;cursor:pointer;border:none;background:'+(on?c.col:'rgba(100,116,139,0.1)')+';color:'+(on?'#fff':'#64748B')+'">'+catIcon(c,13)+' '+c.lbl+'</button>';})].join('')+'</div>':'';if(!openG.length)return hdr+subjFilter+`<div style="text-align:center;padding:40px 20px"><div style="margin-bottom:16px">${miniBadge('home','#8B5CF6',90)}</div><h3 style="font-weight:900;font-size:18px;margin:0 0 8px">אין קבוצות פעילות</h3><p style="color:#64748B;font-size:13px">${S.groupSubj?'נסה לשנות את הסינון':_isTeacherU?'היה הראשון ליצור קבוצה!':'בקרוב יהיו קבוצות זמינות...'}</p></div>`;return hdr+subjFilter+openG.map(g=>{const cat=catById(g.subject);const spots=Math.max(0,(g.maxStudents||0)-(g.membersCount||0));const spotsHtml=(g.maxStudents||0)>0?spots>0?`<div style="text-align:center;background:rgba(16,185,129,0.1);border-radius:12px;padding:8px 12px;flex-shrink:0"><div style="font-weight:900;font-size:16px;color:#10B981">${spots}</div><div style="font-size:10px;color:#64748B">מקומות</div></div>`:`<div style="background:rgba(239,68,68,0.1);border-radius:12px;padding:8px 12px;flex-shrink:0"><div style="font-size:11px;font-weight:800;color:#EF4444">מלא</div></div>`:'';return `<div class="card" onclick="showGroupDetail('${jsAttrEscape(g.id)}')" style="cursor:pointer;margin-bottom:12px;padding:16px 18px"><div style="display:flex;gap:12px;align-items:center">${catBadge(cat,48)}<div style="flex:1;min-width:0"><div style="font-weight:900;font-size:15px;margin-bottom:3px">${escapeHtml(g.title)}</div><div style="font-size:12px;color:${cat.col};font-weight:700">${cat.lbl}${g.isMixed?' · 🌈 מעורבת':''}</div></div>${spotsHtml}</div>${g.desc?`<p style="margin:10px 0 0;font-size:13px;color:#64748B;line-height:1.5">${escapeHtml(g.desc.substring(0,100))}${g.desc.length>100?'...':''}</p>`:''}<div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">${g.day?`<span style="background:rgba(20,184,166,0.1);color:#14B8A6;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">📅 ${escapeHtml(g.day)}</span>`:''}${g.time?` <span style="background:rgba(20,184,166,0.1);color:#14B8A6;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">${icon("clock",14)} ${escapeHtml(g.time)}</span>`:''}${g.location?` <span style="background:rgba(20,184,166,0.1);color:#14B8A6;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">${icon("pin",14)} ${g.location}</span>`:''}${g.price?`<span style="background:rgba(20,184,166,0.1);color:#14B8A6;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">₪${escapeHtml(String(g.price))}</span>`:`<span style="background:rgba(16,185,129,0.1);color:#10B981;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">חינם!</span>`}</div></div>`;}).join('');})();
+  const _groupsHtml=(()=>{const openG=communityGroups.filter(g=>g.status==='open'&&(!S.groupSubj||g.subject===S.groupSubj));const hdr=_isTeacherU?`<div style="display:flex;gap:8px;margin-bottom:16px"><button onclick="showCreateGroupDialog()" style="flex:1;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:14px;padding:12px;font-weight:800;font-size:13px;cursor:pointer">+ צור קבוצה</button><button onclick="showTeacherGroupsPanel()" style="flex:1;background:rgba(20,184,166,0.1);color:#14B8A6;border-radius:14px;padding:12px;font-weight:800;font-size:13px;cursor:pointer">${icon("users",14)} הקבוצות שלי</button></div>`:currentUser?`<div style="margin-bottom:14px"><button onclick="showStudentGroupsPanel()" style="width:100%;background:rgba(20,184,166,0.08);color:#14B8A6;border-radius:14px;padding:11px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">${icon("users",14)} הקבוצות שלי${Object.keys(myGroupStatuses).length?' ('+Object.keys(myGroupStatuses).length+')':''}</button></div>`:'';const allSubjs=[...new Set(communityGroups.filter(g=>g.status==='open'&&g.subject).map(g=>g.subject))];const subjFilter=allSubjs.length>1?'<div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px">'+['<button onclick="S.groupSubj=null;render()" style="flex-shrink:0;padding:6px 14px;border-radius:50px;font-size:12px;font-weight:800;cursor:pointer;border:none;background:'+(S.groupSubj?'rgba(100,116,139,0.1)':'linear-gradient(135deg,#14B8A6,#06B6D4)')+';color:'+(S.groupSubj?'#64748B':'#fff')+'">הכל</button>',...allSubjs.map(sid=>{const c=catById(sid);const on=S.groupSubj===sid;return '<button onclick="S.groupSubj=\''+sid+'\';render()" style="flex-shrink:0;padding:6px 14px;border-radius:50px;font-size:12px;font-weight:800;cursor:pointer;border:none;background:'+(on?c.col:'rgba(100,116,139,0.1)')+';color:'+(on?'#fff':'#64748B')+'">'+catIcon(c,13)+' '+c.lbl+'</button>';})].join('')+'</div>':'';if(!openG.length)return hdr+subjFilter+`<div style="text-align:center;padding:40px 20px"><div style="margin-bottom:16px">${miniBadge('home','#8B5CF6',90)}</div><h3 style="font-weight:900;font-size:18px;margin:0 0 8px">אין קבוצות פעילות</h3><p style="color:#64748B;font-size:13px">${S.groupSubj?'נסה לשנות את הסינון':_isTeacherU?'היה הראשון ליצור קבוצה!':'בקרוב יהיו קבוצות זמינות...'}</p></div>`;return hdr+subjFilter+openG.map(g=>{const cat=catById(g.subject);const spots=Math.max(0,(g.maxStudents||0)-(g.membersCount||0));const spotsHtml=(g.maxStudents||0)>0?spots>0?`<div style="text-align:center;background:rgba(16,185,129,0.1);border-radius:12px;padding:8px 12px;flex-shrink:0"><div style="font-weight:900;font-size:16px;color:#10B981">${spots}</div><div style="font-size:10px;color:#64748B">מקומות</div></div>`:`<div style="background:rgba(239,68,68,0.1);border-radius:12px;padding:8px 12px;flex-shrink:0"><div style="font-size:11px;font-weight:800;color:#EF4444">מלא</div></div>`:'';return `<div class="card" onclick="showGroupDetail('${jsAttrEscape(g.id)}')" style="cursor:pointer;margin-bottom:12px;padding:16px 18px"><div style="display:flex;gap:12px;align-items:center">${catBadge(cat,48)}<div style="flex:1;min-width:0"><div style="font-weight:900;font-size:15px;margin-bottom:3px">${escapeHtml(g.title)}</div><div style="font-size:12px;color:${cat.col};font-weight:700">${cat.lbl}${g.isMixed?' · 🌈 מעורבת':''}</div></div>${spotsHtml}</div>${g.desc?`<p style="margin:10px 0 0;font-size:13px;color:#64748B;line-height:1.5">${escapeHtml(g.desc.substring(0,100))}${g.desc.length>100?'...':''}</p>`:''}<div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">${g.day?`<span style="background:rgba(20,184,166,0.1);color:#14B8A6;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">📅 ${escapeHtml(g.day)}</span>`:''}${g.time?` <span style="background:rgba(20,184,166,0.1);color:#14B8A6;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">${icon("clock",14)} ${escapeHtml(g.time)}</span>`:''}${g.location?` <span style="background:rgba(20,184,166,0.1);color:#14B8A6;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">${icon("pin",14)} ${escapeHtml(g.location||'')}</span>`:''}${g.price?`<span style="background:rgba(20,184,166,0.1);color:#14B8A6;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">₪${escapeHtml(String(g.price))}</span>`:`<span style="background:rgba(16,185,129,0.1);color:#10B981;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">חינם!</span>`}</div></div>`;}).join('');})();
 
   const _briefsHtml=(()=>{
     const briefs=S.parentBriefs||[];
@@ -11260,7 +11290,7 @@ function Community(){
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:9px">
           <span style="background:${cat.col}15;color:${cat.col};font-size:11px;font-weight:700;padding:3px 10px;border-radius:50px">${cat.lbl}</span>
-          <span style="background:rgba(16,185,129,0.12);color:#059669;font-size:11px;font-weight:800;padding:3px 10px;border-radius:50px">${icon('dollar',10,'#059669')} ₪${b.budget} לשיעור</span>
+          <span style="background:rgba(16,185,129,0.12);color:#059669;font-size:11px;font-weight:800;padding:3px 10px;border-radius:50px">${icon('dollar',10,'#059669')} ₪${Number(b.budget)||0} לשיעור</span>
           <span style="background:rgba(20,184,166,0.1);color:#14B8A6;font-size:11px;font-weight:700;padding:3px 10px;border-radius:50px">${icon('user',10,'#14B8A6')} ${escapeHtml(b.childName)}</span>
         </div>
         <p style="margin:0 0 12px;font-size:13px;color:#334155;line-height:1.6">${escapeHtml((b.description||'').substring(0,160))}${(b.description||'').length>160?'...':''}</p>
@@ -11586,10 +11616,10 @@ function showBriefProposalDialog(briefId){
     <div style="background:rgba(20,184,166,0.06);border-radius:14px;padding:14px;margin-bottom:16px">
       <div style="font-size:12px;color:#64748B;margin-bottom:4px">${catObj.em} ${catObj.lbl} • ילד/ה: <strong>${escapeHtml(brief.childName)}</strong></div>
       <div style="font-size:13px;font-weight:700;line-height:1.6;margin-bottom:6px">${escapeHtml((brief.description||'').substring(0,120))}${(brief.description||'').length>120?'...':''}</div>
-      <div style="font-size:13px;color:#10B981;font-weight:800">${icon('dollar',13,'#10B981')} תקציב הורה: &#x20AA;${brief.budget} לשיעור</div>
+      <div style="font-size:13px;color:#10B981;font-weight:800">${icon('dollar',13,'#10B981')} תקציב הורה: &#x20AA;${Number(brief.budget)||0} לשיעור</div>
     </div>
     <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">${icon('dollar',14)} המחיר שלי לשיעור (&#x20AA;)</label>
-    <input id="_bpPrice" type="number" min="0" value="${brief.budget}" class="inp" style="margin-bottom:12px">
+    <input id="_bpPrice" type="number" min="0" value="${Number(brief.budget)||0}" class="inp" style="margin-bottom:12px">
     <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">${icon('chat',14)} הודעה להורה</label>
     <textarea id="_bpMsg" rows="4" placeholder="ספר/י על ניסיונך, כיצד תוכל/י לעזור לילד/ה ומה כולל השיעור..." class="inp" style="margin-bottom:20px;resize:none"></textarea>
     <button onclick="_submitBriefProposal('${jsAttrEscape(briefId)}')" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:14px;font-weight:900;font-size:15px;cursor:pointer;box-shadow:0 6px 20px rgba(20,184,166,0.3);display:flex;align-items:center;justify-content:center;gap:8px">${icon('send',16,'#fff')} שלח הצעה</button>
@@ -11653,7 +11683,7 @@ async function showMyBriefProposals(briefId){
       <h3 style="font-weight:900;font-size:18px;margin:0">הצעות מורים — ${escapeHtml(brief.childName)}</h3>
     </div>
     <div style="background:rgba(20,184,166,0.06);border-radius:12px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#64748B">
-      ${catObj.em} ${catObj.lbl} • תקציבך: &#x20AA;${brief.budget} • ${proposals.length} הצעות
+      ${catObj.em} ${catObj.lbl} • תקציבך: &#x20AA;${Number(brief.budget)||0} • ${proposals.length} הצעות
     </div>
     ${propCards}
     <button onclick="document.getElementById('_mpOv')?.remove()" style="width:100%;background:rgba(100,116,139,0.1);border:none;color:#64748B;border-radius:50px;padding:12px;font-weight:700;font-size:13px;cursor:pointer;margin-top:8px">סגור</button>
@@ -11678,7 +11708,6 @@ async function _acceptBriefProposal(briefId,teacherUid){
       id:bookingId,
       studentId:currentUser.uid,
       studentName:currentUserData?.name||currentUser.email.split('@')[0],
-      parentName:currentUserData?.parentName||'',
       teacherId:teacherUid,
       teacherName:proposal.teacherName,
       teacherCat:brief.subject,
@@ -11729,11 +11758,11 @@ function Leaderboard(){
         </div>
       `:`
       <div style="display:flex;align-items:flex-end;justify-content:center;gap:10px;margin-bottom:26px">
-        ${LEADERBOARD.length>=3?[1,0,2].map(i=>{const p=LEADERBOARD[i];const h=[155,190,135][i===0?1:i===1?0:2];return `<div style="flex:1;text-align:center"><div style="font-size:26px;margin-bottom:5px">${med[p.rank-1]}</div><div style="font-size:28px;margin-bottom:5px">${p.av}</div><div style="font-size:12px;font-weight:800;margin-bottom:4px">${escapeHtml(p.name).split(" ")[0]}</div><div style="height:${h}px;background:linear-gradient(to top,${p.col},${p.col}88);border-radius:14px 14px 0 0;display:flex;align-items:flex-start;justify-content:center;padding-top:10px"><div style="color:#fff;font-weight:900;font-size:16px">${p.rating}${icon("star",14)}</div></div></div>`;}).join(""):''}
+        ${LEADERBOARD.length>=3?[1,0,2].map(i=>{const p=LEADERBOARD[i];const h=[155,190,135][i===0?1:i===1?0:2];return `<div style="flex:1;text-align:center"><div style="font-size:26px;margin-bottom:5px">${med[p.rank-1]}</div><div style="font-size:28px;margin-bottom:5px">${p.av}</div><div style="font-size:12px;font-weight:800;margin-bottom:4px">${escapeHtml(p.name).split(" ")[0]}</div><div style="height:${h}px;background:linear-gradient(to top,${safeColor(p.col)},${safeColor(p.col)}88);border-radius:14px 14px 0 0;display:flex;align-items:flex-start;justify-content:center;padding-top:10px"><div style="color:#fff;font-weight:900;font-size:16px">${p.rating}${icon("star",14)}</div></div></div>`;}).join(""):''}
       </div>
       ${LEADERBOARD.map(p=>`<div class="lb-row">
         <div style="font-size:18px;font-weight:900;width:30px;text-align:center;flex-shrink:0">${p.rank<=3?med[p.rank-1]:p.rank}</div>
-        <div style="width:44px;height:44px;border-radius:14px;background:${p.col}20;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">${p.av}</div>
+        <div style="width:44px;height:44px;border-radius:14px;background:${safeColor(p.col)}20;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">${p.av}</div>
         <div style="flex:1"><div style="font-weight:800;font-size:14px">${escapeHtml(p.name)}</div><div style="font-size:12px;color:${C.muted}">${escapeHtml(p.cat)} • ${p.lessons} שיעורים</div></div>
         <div style="text-align:left"><div style="font-weight:900;font-size:14px;color:var(--p)">${p.rating>0?p.rating.toFixed(1)+'⭐':'חדש'}</div><div style="color:#FFD23F;font-weight:700;font-size:11px">${stars(p.rating)}</div></div>
       </div>`).join("")}
@@ -12411,7 +12440,7 @@ async function saveProfileEdits(){
 function showPaymentManagement(){
   if(!currentUser){showFireToast('❌ לא מחובר');return;}
   const isTeacher=currentUserData?.role==='teacher';
-  const bookings=isTeacher?teacherPendingBookings:studentBookings;
+  const bookings=(isTeacher?teacherAllBookings:studentBookings).slice();
   const approved=bookings.filter(b=>b.status==='approved'||b.status==='completed');
   const pending=bookings.filter(b=>b.status==='pending');
   const totalEarned=isTeacher
@@ -12454,7 +12483,7 @@ function showPaymentManagement(){
         <div style="display:flex;flex-direction:column;gap:10px">
           ${bookings.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)).map(b=>{
             const statusColor=b.status==='approved'||b.status==='completed'?'#10B981':b.status==='pending'?'#F59E0B':'#EF4444';
-            const statusLabel=b.status==='approved'?'✓ מאושר':b.status==='completed'?'✅ הושלם':b.status==='pending'?'⏳ ממתין':'❌ נדחה';
+            const statusLabel=b.status==='approved'?'✓ מאושר':b.status==='completed'?'✅ הושלם':b.status==='pending'?'⏳ ממתין':b.status==='cancelled'?'🚫 בוטל':'❌ נדחה';
             const otherName=isTeacher?(b.studentName||b.from||'תלמיד'):(b.teacherName||'מורה');
             return `<div style="background:rgba(20,184,166,.06);border-radius:16px;padding:14px 16px;display:flex;align-items:center;gap:12px">
               <div style="width:44px;height:44px;border-radius:14px;background:${statusColor}18;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">${icon("calendar",14)}</div>
@@ -12858,6 +12887,7 @@ async function saveTeacherProfileEdits(){
   const facebook=document.getElementById('_etFacebook')?.value.trim()||'';
   const notificationEmail=document.getElementById('_etNotifEmail')?.value.trim()||'';
   const meetingLink=document.getElementById('_etMeetingLink')?.value.trim()||'';
+  if(meetingLink&&!meetingLinkClean(meetingLink)){showFireToast('❌ קישור השיעור חייב להתחיל ב-https://');return;}
   const cats=(window._etCats&&window._etCats.length)?window._etCats:(TEACHERS.find(x=>x.id===currentUser?.uid)?.cats||[]);
   const customCats=window._etCustomCats||[];
   const allCats=[...cats,...customCats.map(c=>'custom:'+c)];
@@ -13158,7 +13188,7 @@ function renderPortfolioGallery(teacherId,portfolio){
   if(!items.length)return '';
   const thumbs=items.map((item,i)=>{
     const isPdf=!!(item.isPdf);
-    return `<div onclick="portfolioLightbox('${escapeHtml(teacherId)}',${i})" style="flex-shrink:0;width:120px;cursor:pointer">
+    return `<div onclick="portfolioLightbox('${jsAttrEscape(teacherId)}',${i})" style="flex-shrink:0;width:120px;cursor:pointer">
       <div style="width:120px;height:120px;border-radius:16px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,0.12);margin-bottom:6px">
         ${isPdf
           ?`<div style="width:100%;height:100%;background:linear-gradient(135deg,#EF4444,#DC2626);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px">
@@ -13319,8 +13349,8 @@ function showGroupDetail(groupId){
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
       <div style="background:rgba(20,184,166,0.08);border-radius:14px;padding:12px;text-align:center"><div style="font-size:20px">📅</div><div style="font-weight:800;font-size:13px;margin-top:4px">${escapeHtml(g.day)}</div><div style="font-size:11px;color:#64748B">שעה ${escapeHtml(g.time)}</div></div>
-      <div style="background:rgba(20,184,166,0.08);border-radius:14px;padding:12px;text-align:center"><div style="font-size:20px">${icon("pin",14)}</div><div style="font-weight:800;font-size:13px;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${g.location}</div><div style="font-size:11px;color:#64748B">מיקום</div></div>
-      <div style="background:rgba(16,185,129,0.08);border-radius:14px;padding:12px;text-align:center"><div style="font-size:20px">${icon("users",14)}</div><div style="font-weight:800;font-size:13px;margin-top:4px">${g.membersCount||0}/${g.maxStudents}</div><div style="font-size:11px;color:${spotsLeft>0?'#10B981':'#EF4444'}">${spotsLeft>0?spotsLeft+' מקומות פנויים':'מלא'}</div></div>
+      <div style="background:rgba(20,184,166,0.08);border-radius:14px;padding:12px;text-align:center"><div style="font-size:20px">${icon("pin",14)}</div><div style="font-weight:800;font-size:13px;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(g.location||'')}</div><div style="font-size:11px;color:#64748B">מיקום</div></div>
+      <div style="background:rgba(16,185,129,0.08);border-radius:14px;padding:12px;text-align:center"><div style="font-size:20px">${icon("users",14)}</div><div style="font-weight:800;font-size:13px;margin-top:4px">${Number(g.membersCount)||0}/${Number(g.maxStudents)||0}</div><div style="font-size:11px;color:${spotsLeft>0?'#10B981':'#EF4444'}">${spotsLeft>0?spotsLeft+' מקומות פנויים':'מלא'}</div></div>
       <div style="background:rgba(245,158,11,0.08);border-radius:14px;padding:12px;text-align:center"><div style="font-size:20px">${icon("dollar",14)}</div><div style="font-weight:800;font-size:13px;margin-top:4px">₪${escapeHtml(String(g.price))} לילד</div><div style="font-size:11px;color:#64748B">לפגישה</div></div>
     </div>
     <div style="display:flex;align-items:center;gap:10px;padding:12px;background:rgba(100,116,139,0.06);border-radius:14px;margin-bottom:16px">
@@ -13333,7 +13363,7 @@ function showGroupDetail(groupId){
       :myStatus==='pending'
         ?`<div style="text-align:center;padding:14px;background:rgba(245,158,11,0.08);border-radius:14px;color:#F59E0B;font-weight:800;margin-bottom:8px">⏳ ממתין לאישור המורה</div><button onclick="leaveGroup('${jsAttrEscape(g.id)}');delete myGroupStatuses['${jsAttrEscape(g.id)}'];document.getElementById('_gdOv')?.remove()" style="width:100%;background:rgba(239,68,68,0.07);color:#EF4444;border-radius:50px;padding:11px;font-weight:700;font-size:13px;cursor:pointer;margin-bottom:8px">ביטול בקשה</button>`
         :myStatus==='approved'
-          ?`<div style="text-align:center;padding:14px;background:rgba(16,185,129,0.08);border-radius:14px;color:#10B981;font-weight:800;margin-bottom:8px">${icon("check-circle",14)} התקבלת! נפגשים ב${escapeHtml(g.day||'')} ${g.time?'בשעה '+g.time:''}</div><button onclick="leaveGroup('${jsAttrEscape(g.id)}');delete myGroupStatuses['${jsAttrEscape(g.id)}'];document.getElementById('_gdOv')?.remove()" style="width:100%;background:rgba(239,68,68,0.07);color:#EF4444;border-radius:50px;padding:11px;font-weight:700;font-size:13px;cursor:pointer;margin-bottom:8px">יציאה מהקבוצה</button>`
+          ?`<div style="text-align:center;padding:14px;background:rgba(16,185,129,0.08);border-radius:14px;color:#10B981;font-weight:800;margin-bottom:8px">${icon("check-circle",14)} התקבלת! נפגשים ב${escapeHtml(g.day||'')} ${g.time?'בשעה '+escapeHtml(g.time):''}</div><button onclick="leaveGroup('${jsAttrEscape(g.id)}');delete myGroupStatuses['${jsAttrEscape(g.id)}'];document.getElementById('_gdOv')?.remove()" style="width:100%;background:rgba(239,68,68,0.07);color:#EF4444;border-radius:50px;padding:11px;font-weight:700;font-size:13px;cursor:pointer;margin-bottom:8px">יציאה מהקבוצה</button>`
           :myStatus==='rejected'
             ?`<div style="text-align:center;padding:14px;background:rgba(239,68,68,0.08);border-radius:14px;color:#EF4444;font-weight:800;margin-bottom:8px">😔 הבקשה לא אושרה</div>`
             :spotsLeft>0&&g.status==='open'
@@ -13393,7 +13423,7 @@ async function showStudentGroupsPanel(){
       <div style="width:44px;height:44px;border-radius:12px;background:${cat.col}18;display:flex;align-items:center;justify-content:center;flex-shrink:0">${catIcon(cat,24)}</div>
       <div style="flex:1;min-width:0">
         <div style="font-weight:800;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(g.title)}</div>
-        <div style="font-size:11px;color:#64748B;margin-top:2px">${escapeHtml(g.day||'')}${g.time?' • '+g.time:''}${g.location?' • '+g.location:''}</div>
+        <div style="font-size:11px;color:#64748B;margin-top:2px">${escapeHtml(g.day||'')}${g.time?' • '+escapeHtml(g.time):''}${g.location?' • '+escapeHtml(g.location):''}</div>
       </div>
       <span style="font-size:11px;font-weight:800;padding:5px 11px;border-radius:50px;background:${stCol}18;color:${stCol};flex-shrink:0">${stLabel}</span>
     </div>`;
@@ -13426,11 +13456,11 @@ async function showTeacherGroupsPanel(){
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
         <div style="display:flex;align-items:center;gap:8px">
           ${catIcon(catObj,22)}
-          <div><div style="font-weight:800;font-size:14px">${escapeHtml(g.title)}</div><div style="font-size:11px;color:#64748B">${escapeHtml(g.day)} ${escapeHtml(g.time)} • ${g.location}</div></div>
+          <div><div style="font-weight:800;font-size:14px">${escapeHtml(g.title)}</div><div style="font-size:11px;color:#64748B">${escapeHtml(g.day)} ${escapeHtml(g.time)} • ${escapeHtml(g.location||'')}</div></div>
         </div>
         <span style="font-size:11px;font-weight:800;padding:4px 10px;border-radius:50px;background:${g.status==='open'?'rgba(16,185,129,0.12)':'rgba(239,68,68,0.1)'};color:${g.status==='open'?'#10B981':'#EF4444'}">${g.status==='open'?'פעיל':'מלא'}</span>
       </div>
-      <div style="font-size:12px;color:#64748B;margin-bottom:8px">${icon("users",14)} ${g.membersCount||0}/${g.maxStudents} • ${icon("dollar",14)} ₪${escapeHtml(String(g.price))} לילד${g.isMixed?' • 🌈 מעורבת':''}</div>
+      <div style="font-size:12px;color:#64748B;margin-bottom:8px">${icon("users",14)} ${Number(g.membersCount)||0}/${Number(g.maxStudents)||0} • ${icon("dollar",14)} ₪${escapeHtml(String(g.price))} לילד${g.isMixed?' • 🌈 מעורבת':''}</div>
       ${members.length===0?'<p style="text-align:center;color:#6C7686;font-size:12px;padding:6px 0">אין נרשמים עדיין</p>':members.map(m=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:#fff;border-radius:10px;margin-bottom:5px">
         <span style="font-weight:700;font-size:13px">${escapeHtml(m.name)}</span>
         ${m.status==='pending'?`<div style="display:flex;gap:5px"><button onclick="_approveGroupMember('${jsAttrEscape(g.id)}','${jsAttrEscape(m.uid)}',this.parentElement)" style="background:rgba(16,185,129,0.12);border:none;color:#10B981;border-radius:50px;padding:5px 11px;font-size:11px;font-weight:800;cursor:pointer">✓ אשר</button><button onclick="_rejectGroupMember('${jsAttrEscape(g.id)}','${jsAttrEscape(m.uid)}',this.parentElement)" style="background:rgba(239,68,68,0.1);border:none;color:#EF4444;border-radius:50px;padding:5px 11px;font-size:11px;font-weight:800;cursor:pointer">✗ דחה</button></div>`:`<span style="font-size:11px;font-weight:800;padding:4px 10px;border-radius:50px;background:${m.status==='approved'?'rgba(16,185,129,0.12)':'rgba(239,68,68,0.1)'};color:${m.status==='approved'?'#10B981':'#EF4444'}">${m.status==='approved'?'✓ מאושר':'✗ נדחה'}</span>`}
@@ -13689,7 +13719,11 @@ async function _loadParentPortalData(token){
         <p style="color:#64748B;font-size:12px;margin:0;line-height:1.6">פורטל הורים של Drushe<br>קישור זה תקף ל-30 יום מקבלת המייל</p>
       </div>`;
   }catch(e){
-    if(el)el.innerHTML=`<div style="margin-bottom:12px;display:flex;justify-content:center">${miniBadge('alert-triangle','#EF4444',48)}</div><p style="color:#F59E0B;font-weight:800">שגיאה בטעינה</p>`;
+    // החוק מתיר קריאה רק לטוקן שבתוקף: קישור שפג או שלא קיים מגיע לכאן כ-PERMISSION_DENIED
+    const _denied=e&&(e.code==='PERMISSION_DENIED'||/permission_denied/i.test(e.message||''));
+    if(el)el.innerHTML=_denied
+      ?`<div style="margin-bottom:12px;display:flex;justify-content:center">${miniBadge('x-circle','#EF4444',48)}</div><p style="color:#EF4444;font-weight:800;font-size:16px">הקישור לא תקף או שפג תוקפו</p><p style="color:#64748B;font-size:13px;margin-top:6px">בקש קישור חדש מצוות Drushe</p>`
+      :`<div style="margin-bottom:12px;display:flex;justify-content:center">${miniBadge('alert-triangle','#EF4444',48)}</div><p style="color:#F59E0B;font-weight:800">שגיאה בטעינה</p>`;
   }
 }
 
@@ -13963,11 +13997,11 @@ function showWhatsAppDialog(phone,message,title='שלח דרך WhatsApp'){
     <div style="background:#fff;border-radius:24px;padding:24px;width:100%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
         <div style="width:48px;height:48px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-size:26px;color:#25D366">${icon("chat",14)}</div>
-        <h3 style="font-weight:900;font-size:18px;margin:0;color:#0F1A1F">${title}</h3>
+        <h3 style="font-weight:900;font-size:18px;margin:0;color:#0F1A1F">${escapeHtml(title)}</h3>
       </div>
       <div style="background:rgba(37,211,102,0.06);border-radius:14px;padding:14px;margin-bottom:14px">
         <p style="margin:0 0 4px;font-size:11px;color:#64748B;font-weight:700">תצוגה מקדימה:</p>
-        <pre style="margin:0;font-family:inherit;font-size:13px;color:#0F1A1F;white-space:pre-wrap;word-break:break-word;line-height:1.5">${message}</pre>
+        <pre style="margin:0;font-family:inherit;font-size:13px;color:#0F1A1F;white-space:pre-wrap;word-break:break-word;line-height:1.5">${escapeHtml(message)}</pre>
       </div>
       ${phone?`<div style="margin-bottom:14px"><label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:6px">${icon("smartphone",14)} שולח אל:</label><div style="background:rgba(20,184,166,0.06);border-radius:12px;padding:10px;font-weight:700;color:#14B8A6;direction:ltr;text-align:left">${phone}</div></div>`:`<div style="margin-bottom:14px"><label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:6px">${icon("smartphone",14)} מספר טלפון</label><input id="_waPhone" type="tel" placeholder="050-1234567" style="width:100%;background:rgba(20,184,166,0.06);border:1.5px solid rgba(20,184,166,0.25);border-radius:12px;padding:12px;font-size:14px;font-family:inherit;direction:ltr;outline:none;box-sizing:border-box"></div>`}
       <div style="display:flex;gap:10px">

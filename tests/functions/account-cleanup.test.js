@@ -66,6 +66,14 @@ describe('account-cleanup', () => {
     assert.equal(data[`parentContact/${OTHER}/email`], 'other-mom@example.org');
   });
 
+  it('a user whose profile still exists cannot wipe the parent address and the consent log', async () => {
+    data[`users/${ME}`] = { name: 'Kid' };
+    const r = await call(ME);
+    assert.equal(r.status, 409);
+    assert.equal(data[`parentContact/${ME}/email`], 'mom@example.org');
+    assert.equal(data[`parentConsentLog/${ME}/e1/ip`], '1.1.1.1');
+  });
+
   it('a user cannot clean up someone else’s account', async () => {
     const r = await call(ME, { uid: OTHER });
     assert.equal(r.status, 403);

@@ -46,6 +46,9 @@ beforeEach(() => {
   data = {
     'bookings/b1': { teacherId: TEACHER, studentId: STUDENT, status: 'approved', teacherName: 'Teach', day: "ב' 3 נוב", time: '10:00', jitsiUrl: 'https://zoom.us/j/1', studentName: 'Kid' },
     [`users/${STUDENT}/name`]: 'Kid',
+    [`users/${STUDENT}/verified`]: true,
+    [`users/${TEACHER}/verified`]: true,
+    [`teachers/${TEACHER}`]: { name: 'Teach' },
     [`users/${STUDENT}/parentEmail`]: 'mom@example.org',
     [`users/${STUDENT}/parentName`]: 'Mom',
     [`teacherSummaries/${TEACHER}/b1`]: { topic: 'Fractions', notes: 'Good', homework: 'p. 4' },
@@ -53,6 +56,29 @@ beforeEach(() => {
 });
 
 describe('lesson-mail', () => {
+  it('prefers the parent address the server locked over the one the child can edit', async () => {
+    data[`parentContact/${STUDENT}/email`] = 'real-mom@example.org';
+    data[`users/${STUDENT}/parentEmail`] = 'kid-own@example.net';
+    const r = await call(TEACHER, { event: 'approved', bookingId: 'b1' });
+    assert.equal(r.status, 200);
+    assert.equal(sent[0].to, 'real-mom@example.org');
+  });
+
+  it('an unverified or blocked caller, a self-booking or a non-teacher are refused', async () => {
+    delete data[`users/${TEACHER}/verified`];
+    assert.equal((await call(TEACHER, { event: 'approved', bookingId: 'b1' })).status, 403);
+    data[`users/${TEACHER}/verified`] = true;
+    data[`userBlocks/${TEACHER}`] = true;
+    assert.equal((await call(TEACHER, { event: 'approved', bookingId: 'b1' })).status, 403);
+    delete data[`userBlocks/${TEACHER}`];
+    data['bookings/b1'].studentId = TEACHER;
+    assert.equal((await call(TEACHER, { event: 'approved', bookingId: 'b1' })).status, 409);
+    data['bookings/b1'].studentId = STUDENT;
+    delete data[`teachers/${TEACHER}`];
+    assert.equal((await call(TEACHER, { event: 'approved', bookingId: 'b1' })).status, 409);
+    assert.equal(sent.length, 0);
+  });
+
   it('emails the parent on the student record when the booking teacher says it was approved', async () => {
     const r = await call(TEACHER, { bookingId: 'b1', event: 'approved' });
     assert.equal(r.status, 200);

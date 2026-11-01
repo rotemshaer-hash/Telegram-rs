@@ -28,7 +28,7 @@ test('four requests: the heading is grammatical and the rest is one tap away', a
   const r = await setup(page, 4);
   expect(r.home).toContain('4 בקשות שיעור חדשות!');
   expect(r.home).not.toContain('בקשת שיעור חדשה!');
-  expect(r.home).toContain('עוד 1 בקשות');
+  expect(r.home).toContain('עוד בקשה אחת');
 });
 
 test('one request: singular heading, no "more" link', async ({ page }) => {
