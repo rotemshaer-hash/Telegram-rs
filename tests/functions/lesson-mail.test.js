@@ -111,3 +111,38 @@ describe('lesson-mail', () => {
     assert.equal((await call('bad', { bookingId: 'b1', event: 'approved' })).status, 401);
   });
 });
+
+describe('lesson-mail: a new booking mails the teacher', () => {
+  beforeEach(() => {
+    data['bookings/b2'] = { teacherId: TEACHER, studentId: STUDENT, status: 'pending', studentName: 'Kid', day: "ב' 3 נוב", time: '10:00', price: 80 };
+    data[`teacherPrivate/${TEACHER}`] = { email: 'teacher@example.org', notificationEmail: 'alerts@example.org' };
+  });
+
+  it('the student who booked can trigger it, and it goes to the teacher’s notification address', async () => {
+    const r = await call(STUDENT, { bookingId: 'b2', event: 'requested' });
+    assert.equal(r.status, 200);
+    assert.equal(sent.length, 1);
+    assert.equal(sent[0].to, 'alerts@example.org');
+    assert.match(sent[0].message, /Kid/);
+  });
+
+  it('falls back to the teacher’s email when there is no notification address', async () => {
+    delete data[`teacherPrivate/${TEACHER}`].notificationEmail;
+    await call(STUDENT, { bookingId: 'b2', event: 'requested' });
+    assert.equal(sent[0].to, 'teacher@example.org');
+  });
+
+  it('a different student, or the teacher, cannot trigger it', async () => {
+    assert.equal((await call('someone-else', { bookingId: 'b2', event: 'requested' })).status, 403);
+    assert.equal((await call(TEACHER, { bookingId: 'b2', event: 'requested' })).status, 403);
+    assert.equal(sent.length, 0);
+  });
+
+  it('only for a booking that is still pending, and once', async () => {
+    await call(STUDENT, { bookingId: 'b2', event: 'requested' });
+    assert.equal((await call(STUDENT, { bookingId: 'b2', event: 'requested' })).body.duplicate, true);
+    data['bookings/b2'].status = 'approved';
+    data['lessonMailSent/b2_requested'] = undefined;
+    assert.equal((await call(STUDENT, { bookingId: 'b2', event: 'requested' })).status, 409);
+  });
+});

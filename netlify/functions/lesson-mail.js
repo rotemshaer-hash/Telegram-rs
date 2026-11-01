@@ -1,4 +1,4 @@
-// Drushe — מייל להורה על שיעור (אושר / נדחה / הושלם), נשלח מהשרת.
+// Drushe — מיילים על שיעור, נשלחים מהשרת: להורה (אושר / נדחה / הושלם) ולמורה (הזמנה חדשה).
 //
 // למה זה לא נשלח מהלקוח של המורה: כדי לשלוח אותו הלקוח של המורה היה צריך את
 // מייל ההורה, ולכן הוא נכתב לתוך רשומת ההזמנה (studentEmail, parentEmail,
@@ -20,9 +20,17 @@ const { withinWindowLimit } = require('../lib/rate-limit');
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const RATE_LIMIT_MAX = 60;
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
-const EVENTS = { approved: 'approved', rejected: 'rejected', completed: 'completed' };
+// requested: מיילים את המורה (מהתלמיד שהזמין); השאר: מיילים את ההורה (מהמורה)
+const EVENTS = { requested: 'pending', approved: 'approved', rejected: 'rejected', completed: 'completed' };
 
 const clip = (v, n) => String(v == null ? '' : v).replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, n);
+
+function composeRequested(b, link) {
+  return {
+    subject: `📅 הזמנה חדשה — ${clip(b.studentName, 60) || 'תלמיד'} — Drushe`,
+    body: `שלום,\n\nיש לך הזמנה חדשה:\n\n👤 תלמיד: ${clip(b.studentName, 60)}\n📅 ${clip(b.day, 40)} בשעה ${clip(b.time, 20)}\n💰 מחיר השיעור: ₪${Number(b.price) || 0}\n\nכנס לאפליקציה כדי לאשר את ההזמנה ולתאם עם התלמיד את פרטי השיעור והתשלום:\n${link}\n\n– צוות Drushe`,
+  };
+}
 
 function compose(event, b, stu, summary, link) {
   const parent = clip(stu.parentName, 60) || 'הורה יקר';
@@ -69,7 +77,7 @@ exports.handler = async (event) => {
   let body;
   try { body = JSON.parse(event.body || '{}'); } catch (_e) { return reply(400, { error: 'Invalid JSON' }); }
 
-  const kind = EVENTS[body.event];
+  const kind = Object.prototype.hasOwnProperty.call(EVENTS, body.event) ? body.event : null;
   const bookingId = String(body.bookingId || '');
   if (!kind || !/^[-A-Za-z0-9_]{1,40}$/.test(bookingId)) return reply(400, { error: 'Invalid request' });
   if (!body.idToken) return reply(401, { error: 'idToken is required' });
@@ -89,12 +97,22 @@ exports.handler = async (event) => {
     }
 
     const b = (await db.ref('bookings/' + bookingId).get()).val();
-    if (!b || b.teacherId !== uid) return reply(403, { error: 'not your booking' });
-    if (b.status !== kind) return reply(409, { error: 'booking is not ' + kind });
+    if (!b) return reply(403, { error: 'no such booking' });
+    const byStudent = kind === 'requested';
+    if ((byStudent ? b.studentId : b.teacherId) !== uid) return reply(403, { error: 'not your booking' });
+    if (b.status !== EVENTS[kind]) return reply(409, { error: 'booking is not ' + EVENTS[kind] });
     if (!b.studentId) return reply(409, { error: 'no student' });
 
-    const stu = (await db.ref('users/' + b.studentId).get()).val() || {};
-    const to = String(stu.parentEmail || '').trim();
+    // המקבל: המורה (הכתובת שלו נקראת מ-teacherPrivate, שרק הוא והשרת קוראים) או ההורה
+    let to = '';
+    let stu = {};
+    if (byStudent) {
+      const priv = (await db.ref('teacherPrivate/' + b.teacherId).get()).val() || {};
+      to = String(priv.notificationEmail || priv.email || '').trim();
+    } else {
+      stu = (await db.ref('users/' + b.studentId).get()).val() || {};
+      to = String(stu.parentEmail || '').trim();
+    }
     if (!EMAIL_RE.test(to) || to.toLowerCase().endsWith(FAKE_DOMAIN)) return reply(200, { ok: true, sent: false });
 
     const summary = kind === 'completed'
@@ -105,7 +123,7 @@ exports.handler = async (event) => {
     const claim = await db.ref('lessonMailSent/' + bookingId + '_' + kind).transaction((cur) => (cur ? undefined : Date.now()));
     if (!claim.committed) return reply(200, { ok: true, sent: false, duplicate: true });
 
-    const { subject, body: text } = compose(kind, b, stu, summary, ALLOWED_ORIGINS[0]);
+    const { subject, body: text } = byStudent ? composeRequested(b, ALLOWED_ORIGINS[0]) : compose(kind, b, stu, summary, ALLOWED_ORIGINS[0]);
     try {
       await sendViaEmailJS(to, subject, text);
     } catch (mailErr) {

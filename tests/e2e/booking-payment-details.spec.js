@@ -73,6 +73,7 @@ test.describe('booking: no lesson payment handling', () => {
     const booking = r.written['bookings/bk1'];
     expect(booking.status).toBe('pending');
     expect(booking.price).toBe(60);
+    expect(booking.jitsiUrl, 'the link is added by the teacher at approval').toBe('');
     for (const k of ['payMethod', 'payRef', 'grossAmount', 'commission', 'netToTeacher']) {
       expect(booking, `${k} must not be recorded`).not.toHaveProperty(k);
     }
@@ -100,5 +101,38 @@ test.describe('booking: no lesson payment handling', () => {
     expect(r.screen).toContain('שלח בקשת שיעור');
     expect(r.screen).not.toContain('קרדיט');
     expect(r.screen).not.toContain('יקוזז');
+  });
+
+  // QA 29.10.2026: the link used to be copied from the teacher's private record by the
+  // STUDENT's client at request time (so every approved student could read teacherPrivate,
+  // and a link added later never reached a booking made earlier). Now the booking starts
+  // without one and the teacher's own client adds the current link when approving.
+  test('a booking starts without a meeting link; approving adds the teacher’s current one and asks the server to mail the parent', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => typeof approveBooking === 'function' && typeof loadTeacherPrivate === 'function');
+    const r = await page.evaluate(async ({ installSrc }) => {
+      const writes = []; const calls = [];
+      const nodes = {
+        'bookings/bk9': { id: 'bk9', teacherId: 'teach1', studentId: 'stu', status: 'pending', day: "ב' 3 נוב", time: '10:00', studentName: 'ילד' },
+        'teacherBookings/teach1': {},
+        'teacherPrivate/teach1': { meetingLink: 'https://meet.example.org/room' },
+      };
+      // eslint-disable-next-line no-new-func
+      db = new Function('nodes', 'writes', `return (${installSrc})(nodes, writes)`)(nodes, writes);
+      window.fetch = async (url, init) => { calls.push({ url: String(url), body: JSON.parse((init && init.body) || '{}') }); return { ok: true }; };
+      currentUser = { uid: 'teach1', email: 't@example.com', emailVerified: true, getIdToken: async () => 'tok' };
+      currentUserData = { name: 'מורה', role: 'teacher', verified: true };
+      notifyUser = () => {}; loadTeacherBookings = async () => {}; render = () => {};
+      await approveBooking('bk9');
+      return { update: writes[0] || null, calls };
+    }, { installSrc: installDb.toString() });
+    expect(r.update, 'approving must write').not.toBeNull();
+    expect(r.update['bookings/bk9/jitsiUrl']).toBe('https://meet.example.org/room');
+    expect(r.update['userBookings/stu/bk9/jitsiUrl']).toBe('https://meet.example.org/room');
+    expect(r.update['teacherBookings/teach1/bk9/status']).toBe('approved');
+    const mail = r.calls.find((c) => c.url.includes('/api/lesson-mail'));
+    expect(mail, 'the server mail must be requested').toBeTruthy();
+    expect(mail.body).toMatchObject({ bookingId: 'bk9', event: 'approved' });
+    expect(JSON.stringify(mail.body)).not.toMatch(/parentEmail|@/);
   });
 });

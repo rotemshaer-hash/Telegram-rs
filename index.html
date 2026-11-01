@@ -1177,7 +1177,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.46';
+const APP_VERSION='4.11.47';
 
 // ─── הודעות קוליות — כבויות ────────────────────────────────────────────────
 // הקלטה קולית היא הערוץ היחיד בין ילדים שאיש לא בודק: אין תמלול, אין סינון,
@@ -2996,7 +2996,6 @@ async function requestBooking(totalAmount){
     const bookingId=bookingRef.key;
     const jitsiRoom='Drushe-'+bookingId.replace(/[^a-zA-Z0-9]/g,'');
     // מייל וקישור מפגש של המורה — ראה teacherPrivate. נטענים לפני בניית ההזמנה.
-    const _tpv=await loadTeacherPrivate(t.id);
     const bookingData={
       id:bookingId,
       studentId:currentUser.uid,
@@ -3023,8 +3022,9 @@ async function requestBooking(totalAmount){
       price:totalAmount,
       status:'pending',
       jitsiRoom:jitsiRoom,
-      jitsiUrl:_tpv.meetingLink||'',
-      meetingPlatform:getMeetingLabel(_tpv.meetingLink||''),
+      // הקישור לשיעור מתווסף על ידי המורה באישור (approveBooking), מתוך הרשומה הפרטית שלו
+      jitsiUrl:'',
+      meetingPlatform:'',
       createdAt:Date.now()
     };
     // כתיבה אטומית לשלושת הנתיבים — אם אחד נכשל, הכל נכשל
@@ -3036,12 +3036,8 @@ async function requestBooking(totalAmount){
     // התראה למורה — הוא זה שמאשר את ההזמנה
     notifyUser(t.id,'newBooking',{bookingId,day:bookingData.day||'',time:bookingData.time||'',amount:totalAmount,preview:'הזמנה חדשה ממתינה לאישורך'});
     try{
-      // מייל למורה — הזמנה חדשה, ממתינה לאישורו
-      const teacherEmail=_tpv.notificationEmail||_tpv.email||'';
-      if(teacherEmail)await sendEmail(teacherEmail,
-        `📅 הזמנה חדשה — ${bookingData.studentName||'תלמיד'} — Drushe`,
-        `שלום,\n\nיש לך הזמנה חדשה:\n\n👤 תלמיד: ${bookingData.studentName||''}\n📅 ${bookingData.day||''} בשעה ${bookingData.time||''}\n💰 מחיר השיעור: ₪${totalAmount}\n\nכנס לאפליקציה כדי לאשר את ההזמנה ולתאם עם התלמיד את פרטי השיעור והתשלום:\nhttps://kidemy-app.netlify.app\n\n– צוות Drushe`
-      );
+      // מייל למורה — מהשרת (הכתובת הפרטית שלו לא נקראת בלקוח של התלמיד)
+      lessonMail(bookingId,'requested');
       // מייל להורה — ממתין לאישור המורה
       if(currentUserData?.parentEmail){
         sendEmail(currentUserData.parentEmail,
@@ -3498,7 +3494,8 @@ async function approveBooking(bookingId){
   try{
     showFireToast('⏳ מאשר...');
     if(currentUserData?.verified!==true){showFireToast('❌ החשבון שלך טרם אושר על ידי הצוות');return;}
-    if(!currentUserData?.jitsiUrl){
+    const _own=await loadTeacherPrivate(currentUser.uid);
+    if(!_own.meetingLink){
       if(!await _confirm('⚠️ לא הגדרת קישור לשיעור (Zoom/Jitsi/Meet) בפרופיל שלך.\nהתלמיד לא יוכל להצטרף!\n\nלאשר בכל זאת?',{confirmText:'אשר בכל זאת',cancelText:'ביטול'})) return;
     }
     const snap=await db.ref('bookings/'+bookingId).get();
@@ -3521,11 +3518,19 @@ async function approveBooking(bookingId){
       ['bookings/'+bookingId+'/status']:'approved',
       ['userBookings/'+b.studentId+'/'+bookingId+'/status']:'approved',
       ['teacherBookings/'+b.teacherId+'/'+bookingId+'/status']:'approved',
+      // הקישור שהמורה הגדיר עכשיו (לא הקישור שהיה בזמן הבקשה): תלמיד שהזמין לפני שהמורה
+      // הגדיר קישור, או אחרי ששינה אותו, מקבל את הנוכחי
+      ['bookings/'+bookingId+'/jitsiUrl']:_own.meetingLink||'',
+      ['bookings/'+bookingId+'/meetingPlatform']:getMeetingLabel(_own.meetingLink||''),
+      ['userBookings/'+b.studentId+'/'+bookingId+'/jitsiUrl']:_own.meetingLink||'',
+      ['userBookings/'+b.studentId+'/'+bookingId+'/meetingPlatform']:getMeetingLabel(_own.meetingLink||''),
+      ['teacherBookings/'+b.teacherId+'/'+bookingId+'/jitsiUrl']:_own.meetingLink||'',
+      ['teacherBookings/'+b.teacherId+'/'+bookingId+'/meetingPlatform']:getMeetingLabel(_own.meetingLink||''),
     });
     // התראה לתלמיד
     await notifyUser(b.studentId,'bookingApproved',{bookingId,day:b.day,time:b.time});
     // מייל להורה — מהשרת, לפי הכתובת ברשומת התלמיד
-    parentLessonMail(bookingId,'approved');
+    lessonMail(bookingId,'approved');
     // יצירת ערך שיחה בשני הצדדים כדי שהמורה יקבל הודעות מהתלמיד ב-realtime
     const _convInit={otherUid:b.studentId,otherName:b.studentName||'תלמיד',lastMessage:`שיעור אושר ✅ ${b.day||''} ${b.time||''}`,lastTime:Date.now(),unread:false};
     db.ref('userChats/'+currentUser.uid+'/'+b.studentId).set(_convInit).catch(()=>{});
@@ -3586,7 +3591,7 @@ async function rejectBooking(bookingId){
     });
     await notifyUser(b.studentId,'bookingRejected',{bookingId,day:b.day,time:b.time});
     // מייל להורה — מהשרת, לפי הכתובת ברשומת התלמיד
-    parentLessonMail(bookingId,'rejected');
+    lessonMail(bookingId,'rejected');
     showFireToast('🚫 ההזמנה נדחתה');
     await loadTeacherBookings();
     render();
@@ -5108,7 +5113,7 @@ async function _saveLessonSummary(bookingId,enc){
     notifyUser(b.studentId,'lessonSummary',{bookingId,preview:'סיכום שיעור: '+topic});
     notifyUser(b.studentId,'rateLesson',{bookingId,teacherId:tid,teacherName:summary.teacherName,preview:'איך היה השיעור עם '+summary.teacherName+'?'});
     // מייל להורה על סיום שיעור — מהשרת; הוא קורא את הסיכום שנשמר זה עתה
-    parentLessonMail(bookingId,'completed');
+    lessonMail(bookingId,'completed');
     document.getElementById('_lsDialog')?.remove();
     showFireToast('🎓 כל הכבוד! עוד שיעור הושלם בהצלחה — הסיכום נשלח לתלמיד ולהורה');
     await loadTeacherBookings();
@@ -5228,10 +5233,11 @@ async function notifyUser(toUid,type,ctx={}){
   }catch(e){console.warn('[notifyUser]',type,e);}
 }
 
-// מייל להורה על שיעור (approved / rejected / completed). נשלח מהשרת: הכתובת של
-// ההורה לא יוצאת מהמסד ולא נכתבת על ההזמנה, והמורה לא מקבל אותה. כמו notifyUser,
+// מייל על שיעור (requested → למורה; approved / rejected / completed → להורה). נשלח
+// מהשרת: הכתובת של ההורה והכתובת הפרטית של המורה לא יוצאות מהמסד ולא נכתבות על
+// ההזמנה, ושום צד לא מקבל אותן. כמו notifyUser,
 // לא זורקת לעולם — מייל הוא תוצר לוואי של הפעולה ואסור שכישלון שלו יפיל אותה.
-async function parentLessonMail(bookingId,event){
+async function lessonMail(bookingId,event){
   try{
     if(!currentUser||!bookingId)return;
     const idToken=await currentUser.getIdToken();
@@ -5240,8 +5246,21 @@ async function parentLessonMail(bookingId,event){
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({idToken,bookingId,event})
     });
-    if(!res.ok)console.warn('[parentLessonMail]',event,res.status);
-  }catch(e){console.warn('[parentLessonMail]',event,e);}
+    if(!res.ok)console.warn('[lessonMail]',event,res.status);
+  }catch(e){console.warn('[lessonMail]',event,e);}
+}
+
+// תג "הורה אישר" ליד תלמיד/מורה שממתינים לאישור. מציג מאיזו כתובת אישרו בפועל, ומזהיר
+// בשני מקרים שבהם ההסכמה כנראה אינה של הורה: הקישור נפתח מאותו מכשיר ומאותה רשת
+// שממנה נוצרה הבקשה, או שהכתובת ברשומה שונה מהכתובת שאישרה (נערכה אחרי ההסכמה).
+function consentBadgeHtml(u){
+  const pad='padding:0 16px 6px;font-size:11px;font-weight:800';
+  if(!u.parentConsentAt)return `<div style="${pad};color:#B45309">⏳ ממתין לאישור הורה</div>`;
+  const from=u.parentConsentEmail?` · מהכתובת ${escapeHtml(u.parentConsentEmail)}`:'';
+  let out=`<div style="${pad};color:#059669">✅ הורה אישר · ${escapeHtml(new Date(u.parentConsentAt).toLocaleDateString('he-IL'))}${from}</div>`;
+  if(u.parentConsentSameDevice)out+=`<div style="${pad};color:#B45309">⚠️ הקישור נפתח מאותו מכשיר ומאותה רשת שממנה נוצרה הבקשה — כדאי לוודא טלפונית שזה ההורה</div>`;
+  if(u.parentConsentEmail&&u.parentEmail&&u.parentConsentEmail.toLowerCase()!==String(u.parentEmail).toLowerCase())out+=`<div style="${pad};color:#B45309">⚠️ כתובת ההורה ברשומה שונה מהכתובת שאישרה</div>`;
+  return out;
 }
 
 async function notifyAdmin(notif){
@@ -6367,7 +6386,7 @@ function adminFilterStudents(){
       <div style="font-size:12px;color:#64748B;direction:ltr;text-align:right">${escapeHtml(u.email||'')}</div>
       ${u.verified===false?'<div style="font-size:11px;color:#F59E0B;font-weight:700;margin-top:4px">⏳ ממתין לאישור</div>':''}
       <div style="display:flex;gap:8px;margin-top:8px">
-        ${(u.verified===false||u._fromAlert)?(u.parentConsentAt?`<div style="padding:0 16px 6px;font-size:11px;color:#059669;font-weight:800">✅ הורה אישר · ${new Date(u.parentConsentAt).toLocaleDateString('he-IL')}</div>`:`<div style="padding:0 16px 6px;font-size:11px;color:#B45309;font-weight:800">⏳ ממתין לאישור הורה</div>`):''}
+        ${(u.verified===false||u._fromAlert)?consentBadgeHtml(u):''}
         ${(u.verified===false||u._fromAlert)&&!u.blocked?`<button onclick="adminVerifyStudent('${jsAttrEscape(u.uid)}')" style="flex:2;background:#10B981;border:none;color:#fff;border-radius:50px;padding:8px;font-size:12px;font-weight:800;cursor:pointer">${icon("check-circle",14)} אשר</button><button onclick="adminRejectStudent('${jsAttrEscape(u.uid)}')" style="flex:1;background:rgba(239,68,68,0.9);border:none;color:#fff;border-radius:50px;padding:8px;font-size:12px;font-weight:800;cursor:pointer">🚫 דחה</button>`:''}
       </div>
     </div>`;
@@ -8368,7 +8387,7 @@ function renderAdminTab(){
         </div>
         <div style="display:flex;gap:8px">
           ${(u.parentEmail||u.parentPhone)?`<button onclick='showWhatsAppDialog("${jsAttrEscape(u.parentPhone||'')}","שלום ${jsAttrEscape(u.parentName||'')}, פנייה מטעם Drushe בעניין ${jsAttrEscape(u.name||'')}.","פניה להורה")' style="flex:1;background:linear-gradient(135deg,#25D366,#128C7E);border:none;color:#fff;border-radius:50px;padding:8px;font-size:11px;font-weight:800;cursor:pointer">${icon("smartphone",14)} פנה להורה</button>`:''}
-          ${(u.verified===false||u._fromAlert)?(u.parentConsentAt?`<div style="padding:0 16px 6px;font-size:11px;color:#059669;font-weight:800">✅ הורה אישר · ${new Date(u.parentConsentAt).toLocaleDateString('he-IL')}</div>`:`<div style="padding:0 16px 6px;font-size:11px;color:#B45309;font-weight:800">⏳ ממתין לאישור הורה</div>`):''}
+          ${(u.verified===false||u._fromAlert)?consentBadgeHtml(u):''}
         ${(u.verified===false||u._fromAlert)&&!u.blocked?`<button onclick="adminVerifyStudent('${jsAttrEscape(u.uid)}')" style="flex:2;background:#10B981;border:none;color:#fff;border-radius:50px;padding:8px;font-size:11px;font-weight:800;cursor:pointer">${icon("check-circle",14)} אשר</button><button onclick="adminRejectStudent('${jsAttrEscape(u.uid)}')" style="flex:1;background:rgba(239,68,68,0.9);border:none;color:#fff;border-radius:50px;padding:8px;font-size:11px;font-weight:800;cursor:pointer">🚫 דחה</button>`:''}
           ${!u._fromAlert?(u.blocked?
             `<button onclick="adminUnblockUser('${jsAttrEscape(u.uid)}')" style="flex:1;background:#10B981;border:none;color:#fff;border-radius:50px;padding:8px;font-size:11px;font-weight:800;cursor:pointer">${icon("unlock",14)} שחרר חסימה</button>`:
