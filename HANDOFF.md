@@ -195,6 +195,13 @@ Firebase iOS SDK, `GoogleService-Info.plist`, מפתח APNs בקונסולת Fir
 **נשאר בכוונה (החלטה, לא תקלה):** ביצועים ל-3,000 מורים דורשים צומת `teacherCards` קל + כתיבה מכל נתיב שמעדכן מורה (שמירה, עריכה, אישור מנהל, דירוג, ספירת שיעורים) + מיגרציה — עד כמה מאות מורים ההורדה המלאה סבירה
 (~2KB למורה). סינון `verified` בלבד לא חוסך כמעט כלום (רוב המורים מאושרים). הודעה בין תלמידים: החלטת מוצר (האם בכלל לאפשר). צבע כפתור ראשי (לבן על טורקיז ~2.5:1): החלטת מותג — `#0e7a72` כבר קיים בכותרת המוגנת.
 
+**נסגר ב-4.11.67 (אפל 4.2, חלק א׳ — push נייטיבי ל-iOS בלי Firebase iOS SDK):** `mobile/ios/.../AppDelegate.swift` מעביר את טוקן APNs ל-plugin; `App.entitlements` (`aps-environment`) מחובר ל-`project.pbxproj`;
+הלקוח רושם `fcmTokens/<token>` עם `platform` ('ios'/'android'); `netlify/lib/apns.js` שולח ישירות ל-APNs (JWT ES256 + HTTP/2) ו-`netlify/lib/push.js` מפצל לפי פלטפורמה (FCM לאנדרואיד, APNs ל-iOS) —
+`send-push` ו-`report-alert` משתמשים בו. נבדק עם סשן HTTP/2 מדומה בלבד; **לא נבדק מול אפל ולא קומפל ב-Xcode** (אין Mac) — ה-workflow `build-ios.yml` (סימולטור) ירוץ אחרי המיזוג וימצא שבר קומפילציה.
+**מה חסר כדי שזה יעבוד באמת (אצל הבעלים, אחרי אישור חשבון Apple):** (1) ב-developer.apple.com ← Identifiers ← `app.drushe.mobile` ← להפעיל Push Notifications; (2) Keys ← מפתח APNs חדש, להוריד את ה-.p8 (פעם אחת!);
+(3) ב-Netlify (`.../configuration/env`): `APNS_KEY` (תוכן ה-.p8), `APNS_KEY_ID`, `APNS_TEAM_ID`, ואם בונים מ-Xcode רגיל — `APNS_ENV=sandbox`; (4) כשמעלים ל-TestFlight/חנות ה-entitlement הופך ל-production אוטומטית בחתימה.
+נשאר ל-4.2: עוד יכולת נייטיבית אחת או שתיים (למשל שיתוף נייטיבי / מצלמה דרך plugin) — לא נוסף כי אי אפשר לבדוק קומפילציה כאן.
+
 **פתוח מהסבב הזה, לפי חשיבות:**
 1. ~~מייל להורה על שיחה חדשה~~ — נסגר ב-4.11.61: `netlify/functions/conversation-mail.js` (השרת בודק שיחה אמיתית, קורא `parentContact`, מייל אחד לשיחה).
 2. **ביצועים ב-3,000:** `teachers` נשלף במלואו בכל כניסה (~5.8MB), `videos` עם תמונות base64, `stories.on('value')` בלי limit, מורה עם 100 שיחות = ~230 קריאות; צריך צומת כרטיסי מורים, עימוד, טעינה עצלה.

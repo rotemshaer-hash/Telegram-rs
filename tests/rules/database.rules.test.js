@@ -770,6 +770,14 @@ describe('foundingMember: set by the server, never by the user', () => {
   });
 });
 
+describe('fcmTokens: platform is ios or android', () => {
+  it('a device token records its platform; anything else is refused', async () => {
+    await assertSucceeds(set(ref(asStudent(), 'fcmTokens/tok-ios'), { uid: STUDENT, updatedAt: 1, platform: 'ios' }));
+    await assertSucceeds(set(ref(asStudent(), 'fcmTokens/tok-old'), { uid: STUDENT, updatedAt: 1 }));
+    await assertFails(set(ref(asStudent(), 'fcmTokens/tok-bad'), { uid: STUDENT, updatedAt: 1, platform: 'windows' }));
+  });
+});
+
 // A teacher used to create a booking on themselves or on a child's uid and then ride it: notify.js, studentProgress
 // and the chat all trusted "there is a booking between them" (security review 2.11.2026).
 describe('a booking needs a real, different teacher; progress and Q&A are not forgeable by the teacher', () => {
