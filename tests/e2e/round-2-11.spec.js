@@ -52,3 +52,22 @@ test('lesson price range is one definition; an unknown meeting host is refused',
   expect(r.bad).toBe('');
   expect(r.ok).toBe('https://meet.google.com/abc-defg-hij');
 });
+
+// Apple 3.1.1: inside the iOS app there is no payment UI and no subscription lock (teachers are never gated there).
+test('in the iOS app a teacher is never gated by the subscription and sees no payment banner', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof teacherNeedsSubscription === 'function' && typeof isIosApp === 'function');
+  const r = await page.evaluate(() => {
+    currentUserData = { role: 'teacher', createdAt: Date.now() - 400 * 86400000, name: 'מורה' };
+    teacherAllBookings = [];
+    const web = { ios: isIosApp(), needs: teacherNeedsSubscription(), banner: _teacherSubscriptionBanner().length > 0 };
+    window.Capacitor = { isNativePlatform: () => true, getPlatform: () => 'ios' };
+    const ios = { ios: isIosApp(), needs: teacherNeedsSubscription(), banner: _teacherSubscriptionBanner() };
+    window.Capacitor = { isNativePlatform: () => true, getPlatform: () => 'android' };
+    const android = { ios: isIosApp(), needs: teacherNeedsSubscription() };
+    return { web, ios, android };
+  });
+  expect(r.web).toEqual({ ios: false, needs: true, banner: true });
+  expect(r.ios).toEqual({ ios: true, needs: false, banner: '' });
+  expect(r.android).toEqual({ ios: false, needs: true });
+});

@@ -135,12 +135,12 @@ describe('privacy: what a user must not reach', () => {
 // beforeEach) to pick the right bound, the same sibling-lookup pattern used
 // elsewhere in this file (e.g. teacherId on a booking).
 describe('age: bounded by role, enforced on the server, not only the client', () => {
-  it('a student can set their age inside 8-18', async () => {
+  it('a student can set their age inside 9-18', async () => {
     await assertSucceeds(set(ref(asStudent(), 'users/student-uid/age'), 15));
   });
 
-  it('a student cannot set an age under 8', async () => {
-    await assertFails(set(ref(asStudent(), 'users/student-uid/age'), 7));
+  it('a student cannot set an age under 9', async () => {
+    await assertFails(set(ref(asStudent(), 'users/student-uid/age'), 8));
   });
 
   it('a student cannot set an age over 18', async () => {
@@ -759,6 +759,14 @@ describe('analytics and stories: writes need a verified account', () => {
     await assertFails(set(ref(asStranger(), '_analytics/2026-11/e3'), { e: 'login', uid: STRANGER, ts: 1 }));
     await assertSucceeds(set(ref(asTeacher(), 'stories/s1'), { uid: TEACHER, status: 'pending', createdAt: 1 }));
     await assertFails(set(ref(asStranger(), 'stories/s2'), { uid: STRANGER, status: 'pending', createdAt: 1 }));
+  });
+});
+
+describe('foundingMember: set by the server, never by the user', () => {
+  it('a user cannot grant themselves founding status; the admin can', async () => {
+    await assertFails(set(ref(asTeacher(), 'users/teacher-uid/foundingMember'), true));
+    await assertFails(set(ref(asStudent(), 'users/student-uid/foundingMember'), true));
+    await assertSucceeds(set(ref(testEnv.authenticatedContext('admin-uid', { email: 'rotemshaer@gmail.com' }).database(), 'users/teacher-uid/foundingMember'), true));
   });
 });
 

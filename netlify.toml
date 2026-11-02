@@ -42,6 +42,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/claim-founding"
+  to = "/.netlify/functions/claim-founding"
+  status = 200
+
+[[redirects]]
   from = "/api/account-cleanup"
   to = "/.netlify/functions/account-cleanup"
   status = 200

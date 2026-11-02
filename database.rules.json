@@ -90,7 +90,7 @@
           ".validate": "auth.token.email == 'rotemshaer@gmail.com' || !data.exists()"
         },
         "age": {
-          ".validate": "auth.token.email == 'rotemshaer@gmail.com' || (newData.isNumber() && (newData.parent().child('role').val() == 'teacher' ? (newData.val() >= 14 && newData.val() <= 18) : (newData.val() >= 8 && newData.val() <= 18)))"
+          ".validate": "auth.token.email == 'rotemshaer@gmail.com' || (newData.isNumber() && (newData.parent().child('role').val() == 'teacher' ? (newData.val() >= 14 && newData.val() <= 18) : (newData.val() >= 9 && newData.val() <= 18)))"
         },
         "verified": {
           ".validate": "auth.token.email == 'rotemshaer@gmail.com' || newData.val() == false"
@@ -102,7 +102,7 @@
           ".validate": "auth.token.email == 'rotemshaer@gmail.com' || !data.exists()"
         },
         "foundingMember": {
-          ".validate": "auth.token.email == 'rotemshaer@gmail.com' || !data.exists()"
+          ".validate": "auth.token.email == 'rotemshaer@gmail.com'"
         },
         "subscription": {
           ".validate": "auth.token.email == 'rotemshaer@gmail.com' || newData.child('status').val() != 'active'"
