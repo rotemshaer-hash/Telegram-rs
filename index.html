@@ -1198,7 +1198,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.65';
+const APP_VERSION='4.11.66';
 
 // ─── הודעות קוליות — כבויות ────────────────────────────────────────────────
 // הקלטה קולית היא הערוץ היחיד בין ילדים שאיש לא בודק: אין תמלול, אין סינון,
@@ -2970,13 +2970,11 @@ async function saveTeacherProfile(){
     // לא מסומן כמייסד, והמנהל יכול להוסיף את הדגל ידנית.
     try{
       if(currentUserData?.foundingMember===undefined){
-        const _tSnap=await db.ref('teachers').get();
-        let _teacherCount=0;
-        if(_tSnap.exists())_tSnap.forEach(()=>{_teacherCount++;});
-        if(_teacherCount<=FOUNDING_TEACHER_LIMIT){
-          await db.ref('users/'+currentUser.uid+'/foundingMember').set(true);
-          currentUserData={...(currentUserData||{}),foundingMember:true};
-        }
+        // השרת סופר ומחליט (claim-founding.js): הלקוח כבר לא יכול לכתוב את הדגל בעצמו
+        const _idTok=await currentUser.getIdToken();
+        const _fr=await fetch(API_BASE+'/api/claim-founding',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({idToken:_idTok})});
+        const _fd=_fr.ok?await _fr.json():{};
+        if(_fd.founding===true)currentUserData={...(currentUserData||{}),foundingMember:true};
       }
     }catch(e){console.warn('[founding] could not set founding flag:',e);}
     // role כבר נקבע פעם אחת בהרשמה (חשבון הוא תלמיד או מורה בלעדית) — חוקי ה-DB
@@ -12422,12 +12420,12 @@ function About(){
       </div>
       ${content}
       <div style="text-align:center;padding:12px 0 4px;font-size:11px;color:#6C7686">גרסה ${APP_VERSION} · ${APP_BUILD}</div>
-      <div style="text-align:center;padding:0 0 16px;display:flex;justify-content:center;gap:16px">
-        <a href="/terms.html" target="_blank" style="font-size:11px;color:#14B8A6;text-decoration:none;font-weight:700">תנאי שימוש</a>
+      <div style="text-align:center;padding:0 0 16px;display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:4px">
+        <a href="/terms.html" target="_blank" style="display:inline-flex;align-items:center;min-height:44px;padding:0 6px;font-size:12px;color:#04778A;text-decoration:none;font-weight:700">תנאי שימוש</a>
         <span style="color:#CBD5E1;font-size:11px">·</span>
-        <a href="/privacy.html" target="_blank" style="font-size:11px;color:#14B8A6;text-decoration:none;font-weight:700">מדיניות פרטיות</a>
+        <a href="/privacy.html" target="_blank" style="display:inline-flex;align-items:center;min-height:44px;padding:0 6px;font-size:12px;color:#04778A;text-decoration:none;font-weight:700">מדיניות פרטיות</a>
         <span style="color:#CBD5E1;font-size:11px">·</span>
-        <a href="/child-safety.html" target="_blank" style="font-size:11px;color:#14B8A6;text-decoration:none;font-weight:700">בטיחות ילדים</a>
+        <a href="/child-safety.html" target="_blank" style="display:inline-flex;align-items:center;min-height:44px;padding:0 6px;font-size:12px;color:#04778A;text-decoration:none;font-weight:700">בטיחות ילדים</a>
       </div>
     </div>
     ${BNav("about")}

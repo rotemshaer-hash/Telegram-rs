@@ -762,6 +762,14 @@ describe('analytics and stories: writes need a verified account', () => {
   });
 });
 
+describe('foundingMember: set by the server, never by the user', () => {
+  it('a user cannot grant themselves founding status; the admin can', async () => {
+    await assertFails(set(ref(asTeacher(), 'users/teacher-uid/foundingMember'), true));
+    await assertFails(set(ref(asStudent(), 'users/student-uid/foundingMember'), true));
+    await assertSucceeds(set(ref(testEnv.authenticatedContext('admin-uid', { email: 'rotemshaer@gmail.com' }).database(), 'users/teacher-uid/foundingMember'), true));
+  });
+});
+
 // A teacher used to create a booking on themselves or on a child's uid and then ride it: notify.js, studentProgress
 // and the chat all trusted "there is a booking between them" (security review 2.11.2026).
 describe('a booking needs a real, different teacher; progress and Q&A are not forgeable by the teacher', () => {

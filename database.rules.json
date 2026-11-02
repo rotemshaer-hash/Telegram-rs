@@ -102,7 +102,7 @@
           ".validate": "auth.token.email == 'rotemshaer@gmail.com' || !data.exists()"
         },
         "foundingMember": {
-          ".validate": "auth.token.email == 'rotemshaer@gmail.com' || !data.exists()"
+          ".validate": "auth.token.email == 'rotemshaer@gmail.com'"
         },
         "subscription": {
           ".validate": "auth.token.email == 'rotemshaer@gmail.com' || newData.child('status').val() != 'active'"
