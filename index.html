@@ -526,6 +526,10 @@ body.dark .online-dot{border-color:#0D1117 !important}
 function _lsGet(key,fallback=null){try{return localStorage.getItem(key);}catch(e){return fallback;}}
 function _lsSet(key,val){try{localStorage.setItem(key,val);}catch(e){}}
 function _lsRemove(key){try{localStorage.removeItem(key);}catch(e){}}
+// sessionStorage יכול לזרוק (מצב פרטי/אחסון חסום) — שורה בלי try על ה-top level השאירה את כל האפליקציה דף לבן (2.11.2026)
+function _ssGet(key,fallback=null){try{return sessionStorage.getItem(key);}catch(e){return fallback;}}
+function _ssSet(key,val){try{sessionStorage.setItem(key,val);}catch(e){}}
+function _ssRemove(key){try{sessionStorage.removeItem(key);}catch(e){}}
 // ─── AGE RANGE ────────────────────────────────────────────────────────────────
 // מקור אמת יחיד לטווח הגיל המותר לכל תפקיד. עד עכשיו היו חמש הגדרות נפרדות
 // בקוד (שני מסכי הרשמה ושני מסכי עריכת פרופיל, ועוד תווית input) — אחת מהן,
@@ -980,7 +984,7 @@ function _applyDemoTeachers(){
       cat:t.cat, cats:[t.cat], customCats:[], price:t.price,
       rating:t.rating, reviews:t.reviews, lessons:t.lessons,
       mode:['online'], av:catObj.em, photo:null, col:catObj.col,
-      badge:'מורה מוסמך', ageVerified:true, meetingLink:'', online:true, group:false,
+      badge:'מאושר ע״י Drushe', ageVerified:true, meetingLink:'', online:true, group:false,
       desc:t.desc, freeTrial:true, gps:null, schedule:null, tags:t.tags,
       catProfiles:{}, whyTeach:t.whyTeach, proudOf:t.proudOf, typicalLesson:t.typicalLesson,
     });
@@ -1038,7 +1042,7 @@ async function loadRealTeachers(){
             av:t.photo?'📸':catObj.em,
             photo:t.photo||null,
             col:catObj.col,
-            badge:t.verified?'מורה מוסמך':'',
+            badge:t.verified?'מאושר ע״י Drushe':'',
             ageVerified:t.ageVerification?.status==='verified',
             online:t.online!==false,
             group:t.group||false,
@@ -1173,7 +1177,7 @@ const ACHIEVEMENTS=[
   {id:2,em:"⭐",ttl:"מורה מצוין",  desc:"קיבלת 5 כוכבים 5 פעמים",    col:"#FFD23F"},
   {id:3,em:"🏆",ttl:"50 שיעורים",  desc:"השלמת 50 שיעורים כמורה",     col:"#14B8A6"},
   {id:4,em:"🔥",ttl:"שבוע רצוף",   desc:"לימדת 7 ימים ברציפות",       col:"#E74C3C"},
-  {id:5,em:"💎",ttl:"מורה מוסמך",  desc:"אושרת על ידי צוות Drushe",   col:"#1B4FCC"},
+  {id:5,em:"💎",ttl:"מאושר ע״י Drushe",  desc:"אושרת על ידי צוות Drushe",   col:"#1B4FCC"},
   {id:6,em:"👥",ttl:"שיעור קבוצתי",desc:"לימדת קבוצה של 4 תלמידים",  col:"#27AE60"},
 ];
 const STUDENT_ACHIEVEMENTS=[
@@ -1185,7 +1189,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.55';
+const APP_VERSION='4.11.58';
 
 // ─── הודעות קוליות — כבויות ────────────────────────────────────────────────
 // הקלטה קולית היא הערוץ היחיד בין ילדים שאיש לא בודק: אין תמלול, אין סינון,
@@ -2413,6 +2417,12 @@ async function quickRegister(){
 
 // ─── TEACHER PROFILE SETUP ───────────────────────────────────────────────────
 function TeacherSetup(){
+  // תלמיד לא הופך למורה מתוך האפליקציה: התפקיד נעול בהרשמה (userRoles), והמנהל מסרב לאשר "מורה" שנרשם כתלמיד.
+  // בלי השער הזה הכפתורים 'הצטרף כמורה' הובילו ילד לטופס שלם שלא יאושר לעולם.
+  if(currentUserData?.role&&currentUserData.role!=='teacher'&&!isAdmin()){
+    setTimeout(()=>{showFireToast('ℹ️ כדי ללמד צריך להירשם כמורה בהרשמה חדשה (עם אישור הורה). אפשר להמשיך כתלמיד.');go('home');},0);
+    return '';
+  }
   return `<div class="screen" style="background:linear-gradient(165deg,#ECFEFF 0%,#F0F9FF 50%,#EEF2FF 100%);min-height:100dvh;padding-bottom:80px">
     <div style="background:linear-gradient(150deg,#0F1A1F 0%,#0e7a72 45%,#8b2fc9 100%);padding:24px 20px 32px;border-radius:0 0 32px 32px;color:#fff;position:relative;overflow:hidden">
       <div style="position:absolute;top:-60px;right:-60px;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,0.08)"></div>
@@ -2583,7 +2593,7 @@ function TeacherSetup(){
         <p style="font-size:11px;color:#6C7686;margin:6px 0 0">${icon("alert-triangle",14)} ללא קישור, תלמידים לא יוכלו להצטרף לשיעור</p>
       </div>
 
-      <div class="warn" style="margin-bottom:14px"><span>🛡</span><span>הפרופיל יעבור אישור צוות הבטיחות תוך 24 שעות.</span></div>
+      <div class="warn" style="margin-bottom:14px"><span>🛡</span><span>הפרופיל יעבור אישור צוות הבטיחות, בדרך כלל תוך יום-יומיים.</span></div>
 
       <!-- מייסדים / טריאל חינם — הדגשה מרכזית.
            כל עוד נותרו מקומות מייסדים, זו ההבטחה הנכונה להציג: מורה שמגיע
@@ -2686,7 +2696,8 @@ function toggleCat(btn,catId){
 
 function addCustomCat(){
   const inp=document.getElementById('tCustomCat');
-  const val=inp?.value.trim();
+  // אותם תווים שחוקי ההזמנה אוסרים בשדה המקצוע (' \" ` < >): מקצוע כמו "ג'ודו" היה חוסם כל הזמנה אצל המורה. מחליפים גרש בגרש עברי
+  const val=(inp?.value||'').replace(/'/g,'׳').replace(/[<>"`]/g,'').trim().slice(0,40);
   if(!val){showFireToast('❌ הכנס שם מקצוע');return;}
   if(_customCats.includes(val)){showFireToast('כבר קיים');return;}
   _customCats.push(val);
@@ -2986,7 +2997,15 @@ async function saveTeacherProfile(){
 // ─── BOOKING SYSTEM (Firebase) ────────────────────────────────────────────────
 // בקשת שיעור. Drushe לא מעורבת בכסף של שיעורים — התלמיד והמורה מתאמים אותו
 // ביניהם — ולכן אין כאן אמצעי תשלום, קוד הפניה או סכום ששולם.
+// הזמנה אחת בכל רגע: ברשת איטית הכתיבה נתקעת, ולחיצה חוזרת אחרי חלון ה-5 שניות יצרה הזמנה שנייה ושלישית (בדיקת משתמש 2.11.2026)
+let _bookingBusy=false;
 async function requestBooking(totalAmount){
+  if(_bookingBusy){showFireToast('⏳ הבקשה כבר נשלחת — אפשר להמתין');return;}
+  _bookingBusy=true;
+  try{await _requestBookingInner(totalAmount);}
+  finally{_bookingBusy=false;}
+}
+async function _requestBookingInner(totalAmount){
   if(!currentUser){
     showFireToast('❌ צריך להתחבר כדי להזמין שיעור');
     setTimeout(()=>go('login'),1200);return;
@@ -3001,7 +3020,7 @@ async function requestBooking(totalAmount){
   }
   const _bookNow=Date.now();
   if(_bookNow-_lastBookingTime<5000){showFireToast('⚠️ אנא המתן לפני הגשת בקשה נוספת');return;}
-  _lastBookingTime=_bookNow;sessionStorage.setItem('_lbt',_bookNow);
+  _lastBookingTime=_bookNow;_ssSet('_lbt',_bookNow);
   try{
     showFireToast('⏳ יוצר הזמנה...');
     const days=["א'","ב'","ג'","ד'","ה'","ו'"];
@@ -3254,7 +3273,7 @@ function Subscribe(){
       ${S.subPay?`<div style="background:linear-gradient(135deg,rgba(139,47,201,0.08),rgba(6,182,212,0.06));border-radius:14px;padding:14px;margin-bottom:14px">
         <div style="font-weight:800;font-size:13px;color:#8B5CF6;margin-bottom:8px">כיצד לשלם:</div>
         <div style="font-size:13px;color:#374151;line-height:1.8">1. שלח <strong>₪${TEACHER_PLAN_PRICE}</strong> ל: <strong>${S.subPay==='paypal'?ADMIN_PAYMENT.paypal:S.subPay==='bit'?ADMIN_PAYMENT.bit:ADMIN_PAYMENT.paybox}</strong><br>2. בהערה כתוב: <strong>"Drushe Premium"</strong><br>3. לחץ "אישור – שילמתי!" למטה</div>
-        ${S.subPay==='bit'?`<button onclick="navigator.clipboard?.writeText('${jsAttrEscape(ADMIN_PAYMENT.bit)}').then(()=>showFireToast('✅ הועתק!'))" style="display:block;width:100%;margin-top:10px;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:12px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">💜 העתק מספר Bit</button>`:S.subPay==='paypal'?`<a href="https://paypal.me/rotemshaer/${TEACHER_PLAN_PRICE}USD" target="_blank" style="display:block;width:100%;margin-top:10px;background:linear-gradient(135deg,#003087,#009CDE);color:#fff;border-radius:12px;padding:10px;font-weight:800;font-size:13px;text-align:center;text-decoration:none">🅿️ פתח PayPal.me</a>`:`<button onclick="navigator.clipboard?.writeText('${jsAttrEscape(ADMIN_PAYMENT.paybox)}').then(()=>showFireToast('✅ הועתק!'))" style="display:block;width:100%;margin-top:10px;background:linear-gradient(135deg,#0066CC,#0052A3);border:none;color:#fff;border-radius:12px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">🔵 העתק מספר PayBox</button>`}
+        ${S.subPay==='bit'?`<button onclick="navigator.clipboard?.writeText('${jsAttrEscape(ADMIN_PAYMENT.bit)}').then(()=>showFireToast('✅ הועתק!'))" style="display:block;width:100%;margin-top:10px;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:12px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">💜 העתק מספר Bit</button>`:S.subPay==='paypal'?`<a href="https://paypal.me/rotemshaer/${TEACHER_PLAN_PRICE}ILS" target="_blank" style="display:block;width:100%;margin-top:10px;background:linear-gradient(135deg,#003087,#009CDE);color:#fff;border-radius:12px;padding:10px;font-weight:800;font-size:13px;text-align:center;text-decoration:none">🅿️ פתח PayPal.me</a>`:`<button onclick="navigator.clipboard?.writeText('${jsAttrEscape(ADMIN_PAYMENT.paybox)}').then(()=>showFireToast('✅ הועתק!'))" style="display:block;width:100%;margin-top:10px;background:linear-gradient(135deg,#0066CC,#0052A3);border:none;color:#fff;border-radius:12px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">🔵 העתק מספר PayBox</button>`}
       </div>`:''}
 
       <button class="btn" ${!S.subPay?'disabled':`onclick="processSubscriptionPayment('${jsAttrEscape(S.subPay)}')"`} style="${S.subPay?'background:linear-gradient(135deg,#8B5CF6,#06B6D4);border:none;color:#fff;':''}border-radius:16px;padding:14px;font-weight:900;font-size:15px;width:100%;cursor:${S.subPay?'pointer':'not-allowed'};opacity:${S.subPay?1:0.5}">
@@ -3631,15 +3650,22 @@ async function deleteBooking(bookingId){
   if(!await _confirm('למחוק הזמנה זו מהרשימה?',{confirmText:'מחק',cancelText:'חזרה',destructive:true}))return;
   try{
     const localB=teacherAllBookings.find(b=>(b.id||b.bookingId)===bookingId)||teacherPendingBookings.find(b=>(b.id||b.bookingId)===bookingId);
-    teacherAllBookings=teacherAllBookings.filter(b=>(b.id||b.bookingId)!==bookingId);
-    teacherPendingBookings=teacherPendingBookings.filter(b=>(b.id||b.bookingId)!==bookingId);
     // שלושת העותקים נמחקים בפעולה אחת: חוק המחיקה של המורה ב-userBookings קורא את bookings/<id>/teacherId,
     // אז מחיקה נפרדת של bookings קודם הייתה מבטלת את ההרשאה לשאר (והשגיאה נבלעה).
     const _del={};
     _del['teacherBookings/'+currentUser.uid+'/'+bookingId]=null;
     if(localB?.studentId)_del['userBookings/'+localB.studentId+'/'+bookingId]=null;
     _del['bookings/'+bookingId]=null;
-    await db.ref().update(_del);
+    try{await db.ref().update(_del);}
+    catch(e){
+      // התלמיד כבר מחק את העותק שלו: החוק מתיר למורה לגעת ב-userBookings רק ברשומה קיימת, ולכן כל העדכון נדחה. מנסים בלעדיו
+      const k='userBookings/'+localB?.studentId+'/'+bookingId;
+      if(localB?.studentId&&(e?.code==='PERMISSION_DENIED'||/permission_denied/i.test(e?.message||''))){delete _del[k];await db.ref().update(_del);}
+      else throw e;
+    }
+    // הרשימה מתעדכנת רק אחרי הצלחה — אחרת הרשומה נעלמת מהמסך כשהמחיקה נכשלה
+    teacherAllBookings=teacherAllBookings.filter(b=>(b.id||b.bookingId)!==bookingId);
+    teacherPendingBookings=teacherPendingBookings.filter(b=>(b.id||b.bookingId)!==bookingId);
     render();
     showFireToast('🗑 הוסר מהרשימה');
   }catch(e){showFireToast('❌ '+e.message);}
@@ -4273,8 +4299,8 @@ function showCropDialog(srcUrl,callback,aw=1,ah=1){
 let _idPhotoBase64=null;
 
 // ─── RATE LIMITING ────────────────────────────────────────────────────────────
-let _lastMsgTime=parseInt(sessionStorage.getItem('_lmt')||'0');
-let _lastBookingTime=parseInt(sessionStorage.getItem('_lbt')||'0');
+let _lastMsgTime=parseInt(_ssGet('_lmt')||'0');
+let _lastBookingTime=parseInt(_ssGet('_lbt')||'0');
 
 // ─── SECURITY HELPERS ─────────────────────────────────────────────────────────
 async function sha256hex(text){
@@ -4298,7 +4324,7 @@ async function sha256hex(text){
 const USER_DATA_PATHS=['users','userChats','notifications','userBookings','favorites',
   'userGroups','parentLinks','schedules','lessonSummaries','studentProgress',
   'teacherSummaries','teacherBookings','teacherVerification','reviews','videos',
-  'chats','userCredits'];
+  'chats','userCredits','teacherPrivate','userBlockedUsers','adminAlerts/students'];
 
 async function deleteAllUserData(uid,role){
   // כישלון בסריקות שלמטה נבלע עד עכשיו ב-catch ריק. זה בדיוק הדפוס שהחזיר
@@ -4883,7 +4909,7 @@ async function sendChatMessage(otherUid,otherName){
   if(text.length > 2000){ showFireToast('❌ הודעה ארוכה מדי (מקסימום 2000 תווים)'); return; }
   if(containsProfanity(text)){ showFireToast('❌ ההודעה מכילה שפה לא הולמת. נסה לנסח מחדש בבקשה.'); return; }
   const _contactKinds=detectContactSharing(text);
-  _lastMsgTime=now;sessionStorage.setItem('_lmt',now);
+  _lastMsgTime=now;_ssSet('_lmt',now);
   inp.value='';
   inp.focus();
   const chatId=getChatId(currentUser.uid,otherUid);
@@ -6060,9 +6086,12 @@ async function loadAdminData(){
 
 async function adminApproveBooking(teacherId,bookingId){
   try{
+    const _sid=adminAllBookings.find(x=>x.id===bookingId)?.studentId;
     await db.ref().update({
       ['teacherBookings/'+teacherId+'/'+bookingId+'/status']: 'approved',
       ['bookings/'+bookingId+'/status']: 'approved',
+      // גם העותק ברשימה של התלמיד — הוא קורא משם, ובלעדיו נשאר "ממתין" אחרי אישור המנהל
+      ...(_sid?{['userBookings/'+_sid+'/'+bookingId+'/status']:'approved'}:{}),
     });
     // הודע לתלמיד
     const b=adminAllBookings.find(x=>x.id===bookingId);
@@ -6076,9 +6105,11 @@ async function adminApproveBooking(teacherId,bookingId){
 }
 async function adminRejectBooking(teacherId,bookingId){
   try{
+    const _sid=adminAllBookings.find(x=>x.id===bookingId)?.studentId;
     await db.ref().update({
       ['teacherBookings/'+teacherId+'/'+bookingId+'/status']: 'rejected',
       ['bookings/'+bookingId+'/status']: 'rejected',
+      ...(_sid?{['userBookings/'+_sid+'/'+bookingId+'/status']:'rejected'}:{}),
     });
     const b=adminAllBookings.find(x=>x.id===bookingId);
     if(b?.studentId){
@@ -6093,22 +6124,18 @@ async function adminRejectBooking(teacherId,bookingId){
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function adminVerifyStudent(uid){
-  // הסכמת ההורה אינה מפעילה את החשבון — היא תנאי מוקדם לאישור שלך. הבדיקה
-  // כאן היא מה שהופך אותה לשער ולא לקישוט: בלעדיה אפשר לאשר תלמיד שההורה שלו
-  // מעולם לא נגע בקישור, וחזרנו למצב שבו ההורה אינו בלולאה.
-  //
-  // זו אזהרה ולא חסימה, כי יש מקרים לגיטימיים — הורה שמאשר טלפונית, או תלמיד
-  // שנרשם לפני שהמנגנון הזה היה קיים.
+  // הסכמת ההורה אינה מפעילה את החשבון — היא תנאי מוקדם לאישור שלך, וגם החסימה כאן היא מה שהופך אותה לשער ולא לקישוט.
+  // היה כאן "אשר בכל זאת" (אזהרה בלבד), אבל ילד בן 8–18 לא נכנס בלי שהורה נגע בקישור (החלטת הבעלים, 2.11.2026) — בדיוק
+  // כמו אישור מורה. הורה שאישר בטלפון: מבקשים ממנו ללחוץ על הקישור, או שהילד לוחץ "שלח שוב" במסך ההמתנה.
   let _consentAt=null;
   try{_consentAt=(await db.ref('users/'+uid+'/parentConsentAt').get()).val();}catch(_e){}
   const _nm=(adminAlertStudents.find(s=>s.uid===uid)||adminAllUsers.find(u=>u.uid===uid)||{}).name||'התלמיד/ה';
-  if(_consentAt){
-    if(!await _confirm('✅ ההורה אישר/ה ב-'+new Date(_consentAt).toLocaleString('he-IL')+'\n\nלאשר את '+_nm+'?',
-      {confirmText:'אשר',cancelText:'ביטול'}))return;
-  }else{
-    if(!await _confirm('⚠️ ההורה של '+_nm+' עדיין לא אישר/ה דרך הקישור שנשלח במייל.\n\nלאשר בכל זאת?',
-      {confirmText:'כן, אשר בלי אישור הורה',cancelText:'ביטול',destructive:true}))return;
+  if(!_consentAt){
+    showFireToast('❌ ההורה של '+_nm+' עדיין לא אישר דרך הקישור. אי אפשר לאשר ילד בלי אישור הורה — בקש מההורה ללחוץ על הקישור, או שהילד ישלח אותו שוב.');
+    return;
   }
+  if(!await _confirm('✅ ההורה אישר/ה ב-'+new Date(_consentAt).toLocaleString('he-IL')+'\n\nלאשר את '+_nm+'?',
+    {confirmText:'אשר',cancelText:'ביטול'}))return;
   _adminActionInProgress=true;
   try{
     // שלב 1: קרא נתונים קיימים — משתי מקורות: users/ ו-adminAlerts/students/
@@ -6122,9 +6149,7 @@ async function adminVerifyStudent(uid){
     // מיזוג: alertData מספק שם/אימייל/הורה; existing מנצח על כל שדה שכבר קיים
     const baseData={...alertData,...existing};
     // שלב 2: בנה אובייקט מעודכן
-    // approvedWithoutParent נרשם כדי שיהיה אפשר לדעת בדיעבד אילו חשבונות
-    // נפתחו בלי שההורה נגע בקישור — כמו verifiedWithoutDoc אצל מורים.
-    const updatedUser={...baseData,uid,verified:true,role:'student',rejected:false,verifiedAt:Date.now(),...(_consentAt?{}:{approvedWithoutParent:true})};
+    const updatedUser={...baseData,uid,verified:true,role:'student',rejected:false,verifiedAt:Date.now()};
     // שלב 3: כתוב ל-Firebase (set כדי ליצור רשומה מלאה אם לא קיימת)
     await db.ref('users/'+uid).set(updatedUser);
     await db.ref('adminAlerts/students/'+uid).remove().catch(()=>{});
@@ -6301,8 +6326,9 @@ async function adminApproveTeacher(uid){
     // אחרי שההורה לחץ — ולכן אי אפשר לזייף אותה מהמכשיר.
     // הצומת teachers/<uid> נכתב על ידי המשתמש עצמו, אז חשבון שנרשם כתלמיד יכול ליצור אותו. רק תפקיד "מורה" מאושר כמורה
     // (תפקיד תלמיד פטור משער השיחות של מורים — ראה userRoles בחוקים)
-    const roleSnap=await db.ref('users/'+uid+'/role').get();
-    if(roleSnap.val()!=='teacher'){
+    const [roleSnap,lockedRoleSnap]=await Promise.all([db.ref('users/'+uid+'/role').get(),db.ref('userRoles/'+uid).get()]);
+    // userRoles הוא התפקיד שננעל בהרשמה. אם הוא אומר 'תלמיד' והרשומה טוענת 'מורה' — מישהו שיחק עם הרשומה, ולא מאשרים
+    if(roleSnap.val()!=='teacher'||(lockedRoleSnap.exists()&&lockedRoleSnap.val()!=='teacher')){
       showFireToast('❌ החשבון הזה נרשם כתלמיד ולא כמורה — לא ניתן לאשר אותו כמורה');
       return;
     }
@@ -6311,6 +6337,9 @@ async function adminApproveTeacher(uid){
       showFireToast('❌ ההורה עדיין לא אישר. המורה יאושר רק אחרי שההורה ילחץ על הקישור שנשלח אליו במייל');
       return;
     }
+    // המנהל כותב את הסימון שהחוקים סומכים עליו: מורה מאושר נשאר "מורה" גם אם ימחק או ישנה את השדה role של עצמו
+    await db.ref('approvedTeachers/'+uid).set(true);
+    if(!lockedRoleSnap.exists())await db.ref('userRoles/'+uid).set('teacher');
     await db.ref('teachers/'+uid+'/verified').set(true);
     await db.ref('teachers/'+uid+'/active').set(true);
     await db.ref('users/'+uid+'/verified').set(true);
@@ -9812,7 +9841,7 @@ function Home(){
               <div class="tc-av" style="background:${t.col}20;overflow:hidden;padding:${t.photo?'0':'0'}">${t.photo?avatarHtml(t.photo,t.name,52,'16px'):t.av}${t.online?`<div class="online-dot"></div>`:""}</div>
               <div style="flex:1">
                 <div style="display:flex;justify-content:space-between;align-items:flex-start">
-                  <span style="color:#FFD23F;font-weight:700;font-size:12px">${t.rating>0?stars(t.rating):'חדש 🆕'}</span>
+                  <span style="color:#B45309;font-weight:700;font-size:12px">${t.rating>0?stars(t.rating):'חדש 🆕'}</span>
                   <span style="font-weight:800;font-size:14px">${escapeHtml(t.name||'')}</span>
                 </div>
                 <div style="font-size:12px;color:${C.muted};margin-top:2px">${cat?.lbl||''} • ${escapeHtml(t.city||'')}</div>
@@ -9834,7 +9863,7 @@ function Home(){
             <div class="tc-av" style="background:${t.col}20;overflow:hidden;padding:${t.photo?'0':'0'}">${t.photo?avatarHtml(t.photo,t.name,52,'16px'):t.av}${t.online?`<div class="online-dot"></div>`:""}</div>
             <div style="flex:1">
               <div style="display:flex;justify-content:space-between;align-items:flex-start">
-                <span style="color:#FFD23F;font-weight:700;font-size:12px">${t.rating>0?stars(t.rating):'חדש 🆕'}</span>
+                <span style="color:#B45309;font-weight:700;font-size:12px">${t.rating>0?stars(t.rating):'חדש 🆕'}</span>
                 <span style="font-weight:800;font-size:14px">${escapeHtml(t.name||'')}</span>
               </div>
               <div style="font-size:12px;color:${C.muted};margin-top:2px">${catById(t.cat).lbl||""} • ${escapeHtml(t.city||'')}</div>
@@ -9867,7 +9896,7 @@ function Home(){
               <div class="tc-av" style="background:${t.col}20;overflow:hidden;padding:0">${t.photo?avatarHtml(t.photo,t.name,52,'16px'):t.av}${t.online?'<div class="online-dot"></div>':''}</div>
               <div style="flex:1">
                 <div style="display:flex;justify-content:space-between;align-items:flex-start">
-                  <span style="color:#FFD23F;font-weight:700;font-size:12px">${t.rating>0?stars(t.rating):'חדש 🆕'}</span>
+                  <span style="color:#B45309;font-weight:700;font-size:12px">${t.rating>0?stars(t.rating):'חדש 🆕'}</span>
                   <span style="font-weight:800;font-size:14px">${escapeHtml(t.name||'')}</span>
                 </div>
                 <div style="font-size:12px;color:${C.muted};margin-top:2px">${catById(t.cat).lbl||''} • ${escapeHtml(t.city||'')}</div>
@@ -9897,7 +9926,7 @@ function Home(){
             <div style="font-size:12px;color:${C.muted};margin-top:2px">${catById(t.cat).lbl||""} • ${escapeHtml(t.city||'')}</div>
             <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
               <span style="font-weight:900;font-size:14px;color:var(--p)">₪${escapeHtml(String(t.price))}/שיעור</span>
-              <span style="color:#FFD23F;font-weight:700;font-size:12px">${t.rating>0?stars(t.rating):'חדש'}</span>
+              <span style="color:#B45309;font-weight:700;font-size:12px">${t.rating>0?stars(t.rating):'חדש'}</span>
             </div>
             ${responseStatsBadge(t)}
           </div>
@@ -9908,9 +9937,9 @@ function Home(){
       ${(()=>{
         const catChips=[['all','הכל'],...CATS.map(c=>[c.id,c.lbl])].map(([val,label])=>`
           <button onclick="S.filterCat=${val==='all'?'null':`'${jsAttrEscape(val)}'`};render()" style="
-            background:${(S.filterCat||null)===(val==='all'?null:val)?'linear-gradient(135deg,#14B8A6,#06B6D4)':'rgba(255,255,255,0.1)'};
-            border:1.5px solid ${(S.filterCat||null)===(val==='all'?null:val)?'transparent':'rgba(255,255,255,0.2)'};
-            color:#fff;border-radius:50px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap
+            background:${(S.filterCat||null)===(val==='all'?null:val)?'linear-gradient(135deg,#14B8A6,#06B6D4)':'rgba(20,184,166,0.08)'};
+            border:1.5px solid ${(S.filterCat||null)===(val==='all'?null:val)?'transparent':'rgba(20,184,166,0.35)'};
+            color:${(S.filterCat||null)===(val==='all'?null:val)?'#fff':'#0F1A1F'};border-radius:50px;padding:8px 16px;min-height:44px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap
           ">${label}</button>
         `).join('');
         return `<div style="overflow-x:auto;display:flex;gap:8px;padding:0 0 12px;margin-bottom:8px;scrollbar-width:none;-ms-overflow-style:none">${catChips}</div>`;
@@ -9931,7 +9960,7 @@ function Home(){
           <div class="tc-av" style="background:${t.col}20;overflow:hidden;padding:${t.photo?'0':'0'}">${t.photo?avatarHtml(t.photo,t.name,52,'16px'):t.av}${t.online?`<div class="online-dot"></div>`:""}</div>
           <div style="flex:1">
             <div style="display:flex;justify-content:space-between;align-items:flex-start">
-              <span style="color:#FFD23F;font-weight:700;font-size:12px">${t.rating>0?stars(t.rating):'חדש 🆕'}</span>
+              <span style="color:#B45309;font-weight:700;font-size:12px">${t.rating>0?stars(t.rating):'חדש 🆕'}</span>
               <span style="font-weight:800;font-size:14px">${escapeHtml(t.name||'')}</span>
             </div>
             <div style="font-size:12px;color:${C.muted};margin-top:2px">${catById(t.cat).lbl||""} • ${escapeHtml(t.city||'')}</div>
@@ -10158,7 +10187,7 @@ function Nearby(){
               <div style="font-size:12px;color:${C.muted};margin-top:3px">${CATS.find(c=>c.id===t.cat)?.lbl||''} • ${escapeHtml(t.city||'')}</div>
               <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
                 <span style="font-weight:900;font-size:14px;color:var(--p)">₪${escapeHtml(String(t.price))}/שיעור</span>
-                <span style="color:#FFD23F;font-weight:700;font-size:12px">${t.rating>0?stars(t.rating):'חדש 🆕'}</span>
+                <span style="color:#B45309;font-weight:700;font-size:12px">${t.rating>0?stars(t.rating):'חדש 🆕'}</span>
               </div>
               ${t.freeTrial?`<div style="margin-top:6px"><span style="background:linear-gradient(135deg,#FBBF24,#F59E0B);color:#fff;font-weight:800;font-size:10px;padding:2px 8px;border-radius:50px">${icon("gift",14)} ניסיון חינם</span></div>`:''}
               ${responseStatsBadge(t)}
@@ -10256,7 +10285,7 @@ function Teacher(){
       ${t.group?`<div class="info" style="margin-top:12px">${icon("users",14)} מלמד/ת גם שיעורי קבוצה עד 4 תלמידים!</div>`:""}
       ${t.mode.includes("frontal")?`<div class="warn" style="margin-top:12px"><span>${icon("alert-triangle",14)}</span><span>פגישות פרונטליות מחייבות נוכחות הורה.</span></div>`:""}
     </div>
-    ${(t.instagram||t.tiktok||t.facebook)?`<div style="display:flex;gap:8px;margin-bottom:14px">${safeUrl(t.instagram)?`<a href="${safeUrl(t.instagram)}" target="_blank" rel="noopener noreferrer" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;background:linear-gradient(135deg,#E1306C,#833AB4);color:#fff;border-radius:50px;padding:12px;font-weight:800;font-size:12px;text-decoration:none">${icon("camera",14)} Instagram</a>`:''} ${safeUrl(t.tiktok)?`<a href="${safeUrl(t.tiktok)}" target="_blank" rel="noopener noreferrer" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;background:linear-gradient(135deg,#010101,#EE1D52);color:#fff;border-radius:50px;padding:12px;font-weight:800;font-size:12px;text-decoration:none">🎵 TikTok</a>`:''} ${safeUrl(t.facebook)?`<a href="${safeUrl(t.facebook)}" target="_blank" rel="noopener noreferrer" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;background:#1877F2;color:#fff;border-radius:50px;padding:12px;font-weight:800;font-size:12px;text-decoration:none">👍 Facebook</a>`:''}</div>`:''}`;
+`;
 
   // ── טאב וידאו (כולל גלריית העבודות) ──
   const _videos=()=>{
@@ -10394,7 +10423,7 @@ function Teacher(){
       <div class="tpcard" style="padding:14px 12px;display:flex;align-items:center;gap:8px">
         <div style="flex:1;text-align:center"><div style="font-size:11.5px;color:#64748B;font-weight:700">שיעור 45 דק׳</div><div style="font-size:23px;font-weight:900;color:#0F1A1F">₪${escapeHtml(String(t.price))}</div></div>
         <div style="width:1px;height:40px;background:rgba(20,184,166,.2)"></div>
-        <div ${_canAct?`onclick="S.bookStep=1;S.bookType='trial';S.bookDayIdx=null;S.bookTime=null;S.booked=false;go('booking',{teacher:S.teacher})"`:''} style="flex:1;text-align:center;${_canAct?'cursor:pointer':''}"><div style="font-size:11.5px;color:#B45309;font-weight:800">🎁 שיעור ניסיון</div><div style="font-size:23px;font-weight:900;color:#F59E0B">${trialPriceLabel(t)}</div></div>
+        <div ${_canAct?`onclick="S.bookStep=1;S.bookType='trial';S.bookDayIdx=null;S.bookTime=null;S.booked=false;go('booking',{teacher:S.teacher})"`:''} style="flex:1;text-align:center;${_canAct?'cursor:pointer':''}"><div style="font-size:11.5px;color:#B45309;font-weight:800">🎁 שיעור ניסיון</div><div style="font-size:23px;font-weight:900;color:#B45309">${trialPriceLabel(t)}</div></div>
         <div style="width:1px;height:40px;background:rgba(20,184,166,.2)"></div>
         <div style="flex:1;text-align:center"><div style="font-size:11.5px;color:#64748B;font-weight:700">5 שיעורים</div><div style="font-size:20px;font-weight:900;color:#0e7a72">₪${t.price*5-20}</div></div>
       </div>
@@ -10411,7 +10440,7 @@ function Teacher(){
         ?`<div class="tpcard" style="text-align:center;padding:20px">
             <div style="font-size:44px;margin-bottom:10px">🎉</div>
             <p style="font-weight:800;color:#0e7a72;font-size:16px;margin:0 0 4px">הבקשה נשלחה!</p>
-            <p style="color:#0e7a72;font-size:13px;margin:0 0 14px">${escapeHtml(t.name||'')} יאשר/תאשר תוך 24 שעות. ההורים יקבלו הודעה.</p>
+            <p style="color:#0e7a72;font-size:13px;margin:0 0 14px">${escapeHtml(t.name||'')} יאשר/תאשר בקרוב. ההורים יקבלו הודעה.</p>
             <div style="display:flex;gap:10px">
               <button class="btn bs" style="flex:1;padding:13px" onclick="S.ratingT='${jsAttrEscape(t.id)}';S.booked=false;render()">${icon("star",14)} דרג שיעור</button>
               <button onclick="shareTeacher(S.teacher)" style="background:linear-gradient(135deg,#833AB4,#FD1D1D);color:#fff;border:none;border-radius:50px;padding:13px 18px;font-weight:800;cursor:pointer">${icon("send",14)}</button>
@@ -10547,6 +10576,7 @@ function Booking(){
       </div>
     </div>
 
+    ${(t.mode||[]).includes('frontal')?`<div class="warn" style="margin-bottom:16px"><span>${icon("alert-triangle",14)}</span><span>${(t.mode||[]).includes('online')?'המורה מלמד/ת גם פנים-אל-פנים. פגישה פנים-אל-פנים מחייבת נוכחות של הורה.':'השיעורים אצל מורה זה הם פנים-אל-פנים, ופגישה כזו מחייבת נוכחות של הורה.'}</span></div>`:''}
     <!-- סיכום הזמנה -->
     <div style="background:rgba(20,184,166,.06);border-radius:16px;padding:16px;margin-bottom:16px">
       <h4 style="font-weight:900;font-size:14px;margin:0 0 10px;color:#14B8A6;display:flex;align-items:center;gap:6px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>פרטי ההזמנה</h4>
@@ -11473,8 +11503,15 @@ function toggleLike(id){
     p.likes=(p.likes||0)+1;
     p.liked=true;
   }
-  db.ref('communityPosts/'+id+'/likes').set(p.likes);
-  db.ref('communityPosts/'+id+'/likedBy/'+currentUser.uid).set(wasLiked?null:true);
+  // הכתיבה יכולה להידחות (חסום/לא מאושר): אז מחזירים את הלייק ואומרים — לא מציגים הצלחה שנעלמת ברענון
+  Promise.all([
+    db.ref('communityPosts/'+id+'/likes').set(p.likes),
+    db.ref('communityPosts/'+id+'/likedBy/'+currentUser.uid).set(wasLiked?null:true)
+  ]).catch(()=>{
+    if(wasLiked){p.likedBy=p.likedBy||{};p.likedBy[currentUser.uid]=true;p.likes=(p.likes||0)+1;p.liked=true;}
+    else{delete p.likedBy[currentUser.uid];p.likes=Math.max(0,(p.likes||0)-1);p.liked=false;}
+    showFireToast('⚠️ לא הצלחנו לשמור את הלייק');render();
+  });
   render();
 }
 
@@ -11500,7 +11537,12 @@ async function sendReply(id){
   p.reps.push(reply);
   try{
     await db.ref('communityPosts/'+id+'/reps').push(reply);
-  }catch(e){}
+  }catch(e){
+    // לא נשמרה: מסירים מהתצוגה ומחזירים את הטקסט לתיבה, במקום להציג תגובה שתיעלם ברענון
+    p.reps=(p.reps||[]).filter(x=>x!==reply);
+    setTimeout(()=>{const n=document.getElementById('rp_'+id);if(n)n.value=text;},0);
+    showFireToast('⚠️ התגובה לא נשלחה. נסה שוב');
+  }
   render();
 }
 
@@ -12040,7 +12082,7 @@ function _aiSearchTab(){
           <div style="flex:1">
             <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-weight:800;font-size:14px">${escapeHtml(t.name||'')}</span><span style="font-weight:900;font-size:14px;color:var(--p)">₪${escapeHtml(String(t.price))}</span></div>
             <div style="font-size:12px;color:${C.muted};margin-top:3px">${CATS.find(c=>c.id===t.cat)?.lbl||''} • ${escapeHtml(t.city||'')}</div>
-            <div style="margin-top:4px;color:#FFD23F;font-weight:700;font-size:12px">${t.rating>0?stars(t.rating):'חדש 🆕'}</div>
+            <div style="margin-top:4px;color:#B45309;font-weight:700;font-size:12px">${t.rating>0?stars(t.rating):'חדש 🆕'}</div>
           </div>
         </button>`).join('')}
     `:''}
@@ -12685,26 +12727,6 @@ function showEditTeacherProfileDialog(){
         <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:6px">🏙 עיר</label>
         <input id="_etCity" class="inp" value="${escapeHtml(t.city||'')}" placeholder="עיר בה אתה מלמד">
       </div>
-      <div style="margin-bottom:14px">
-        <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:6px">${icon("video",14)} קישור שיעור (Zoom / Google Meet)</label>
-        <input id="_etMeetingLink" class="inp" type="url" value="${escapeHtml(_tpv.meetingLink||'')}" placeholder="https://zoom.us/j/... או https://meet.google.com/...">
-        <p style="font-size:10px;color:#6C7686;margin:4px 0 0">${icon("alert-triangle",14)} ללא קישור, תלמידים לא יוכלו להצטרף לשיעור</p>
-      </div>
-      <div style="background:rgba(20,184,166,0.04);border-radius:18px;padding:16px;margin-bottom:16px">
-        <h3 style="font-weight:900;font-size:15px;margin:0 0 12px;color:#14B8A6">${icon("smartphone",14)} רשתות חברתיות</h3>
-        <div style="margin-bottom:11px">
-          <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">${icon("camera",14)} Instagram</label>
-          <input id="_etInsta" class="inp" value="${escapeHtml(t.instagram||'')}" placeholder="https://instagram.com/...">
-        </div>
-        <div style="margin-bottom:11px">
-          <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">🎵 TikTok</label>
-          <input id="_etTiktok" class="inp" value="${escapeHtml(t.tiktok||'')}" placeholder="https://tiktok.com/@...">
-        </div>
-        <div style="margin-bottom:0">
-          <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">👍 Facebook</label>
-          <input id="_etFacebook" class="inp" value="${escapeHtml(t.facebook||'')}" placeholder="https://facebook.com/...">
-        </div>
-      </div>
       <div style="background:rgba(6,182,212,0.04);border-radius:18px;padding:16px;margin-bottom:16px">
         <h3 style="font-weight:900;font-size:15px;margin:0 0 6px;color:#04778A">${icon("video",14)} קישור שיעור אישי (Zoom / Google Meet)</h3>
         <p style="font-size:12px;color:#64748B;margin:0 0 10px;line-height:1.6">תלמידים ישתמשו בקישור זה לכניסה לשיעור. יש להגדיר קישור פעיל כדי שתלמידים יוכלו להצטרף.</p>
@@ -12790,7 +12812,7 @@ function _etRenderSubjectDescs(t){
   return (window._etCats||[]).map(cid=>{
     const c=CATS.find(x=>x.id===cid)||{em:'📚',lbl:cid,col:'#14B8A6'};
     const existing=(t?.catProfiles||{})[cid]||{};
-    const desc=(existing.desc||'').replace(/`/g,"'");
+    const desc=(existing.desc||(t?.cats?.length<=1||cid===(t?.cat)?t?.desc:'')||'').replace(/`/g,"'");
     const tags=(existing.tags||[]).join(', ');
     return `<div style="background:${c.col}09;border-radius:16px;padding:14px 15px;margin-bottom:12px">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
@@ -12982,9 +13004,6 @@ async function saveTeacherProfileEdits(){
   const bio=document.getElementById('_etBio')?.value.trim();
   const price=parseInt(document.getElementById('_etPrice')?.value)||0;
   const city=document.getElementById('_etCity')?.value.trim();
-  const instagram=document.getElementById('_etInsta')?.value.trim()||'';
-  const tiktok=document.getElementById('_etTiktok')?.value.trim()||'';
-  const facebook=document.getElementById('_etFacebook')?.value.trim()||'';
   const notificationEmail=document.getElementById('_etNotifEmail')?.value.trim()||'';
   const meetingLink=document.getElementById('_etMeetingLink')?.value.trim()||'';
   if(meetingLink&&!meetingLinkClean(meetingLink)){showFireToast('❌ קישור השיעור חייב להתחיל ב-https://');return;}
@@ -13014,7 +13033,7 @@ async function saveTeacherProfileEdits(){
     await db.ref('users/'+currentUser.uid).update(userUpdates);
     if(currentUserData)Object.assign(currentUserData,userUpdates);
     const faq=(window._etFaq||[]).filter(x=>x&&x.q&&x.a).slice(0,5);
-    const teacherUpdates={desc:firstDesc,price,city,cats:allCats,cat:allCats[0],customCats,name,instagram,tiktok,facebook,faq};
+    const teacherUpdates={desc:firstDesc,price,city,cats:allCats,cat:allCats[0],customCats,name,faq,instagram:null,tiktok:null,facebook:null}; // רשתות חברתיות הוסרו: קטין לא מפרסם קישור לחשבון אישי שלו לילדים (בדיקת בטיחות 2.11.2026)
     // פרטים פרטיים נכתבים ל-teacherPrivate; null על ההעתקים הישנים ב-teachers/
     // מנקה רשומות שנשמרו לפני המעבר (החוקים כבר אוסרים לכתוב אותם שם).
     const privateUpdates={notificationEmail,meetingLink,updatedAt:Date.now()};
@@ -13861,7 +13880,7 @@ function _hs(inp){
       <div class="tc-av" style="background:${t.col}20;overflow:hidden;padding:0">${t.photo?avatarHtml(t.photo,t.name,52,'16px'):t.av}${t.online?'<div class="online-dot"></div>':''}</div>
       <div style="flex:1">
         <div style="display:flex;justify-content:space-between;align-items:flex-start">
-          <span style="color:#FFD23F;font-weight:700;font-size:12px">${t.rating>0?stars(t.rating):'חדש 🆕'}</span>
+          <span style="color:#B45309;font-weight:700;font-size:12px">${t.rating>0?stars(t.rating):'חדש 🆕'}</span>
           <span style="font-weight:800;font-size:14px">${escapeHtml(t.name||'')}</span>
         </div>
         <div style="font-size:12px;color:#6C7686;margin-top:2px">${catById(t.cat).lbl||''} • ${escapeHtml(t.city||'')}</div>
@@ -13937,9 +13956,14 @@ function render(){
   const _prevScreen=_lastRenderedScreen;
   const _prevPageScroll=window.scrollY||document.documentElement.scrollTop||0;
 
+  // טיוטת הודעה/תגובה שהמשתמש מקליד לא נמחקת כשמגיע רינדור (הודעה נכנסת, התראה, מאזין) — הוא ימחק רק מה שהוא שולח
+  const _drafts={};
+  document.querySelectorAll('#chatInputBox,input[id^="rp_"]').forEach(el=>{if(el.value)_drafts[el.id]=el.value;});
+
   const fn=SCREENS[S.screen]||Home;
   // הרענון נעשה עכשיו במשיכה למטה (pull-to-refresh) במקום כפתור צף.
   document.getElementById("app").innerHTML=fn()+SharePanel()
+  if(_prevScreen===S.screen)for(const id in _drafts){const el=document.getElementById(id);if(el&&!el.value)el.value=_drafts[id];}
   requestAnimationFrame(_markScrollableTabRows);
 
   if(_prevScreen===S.screen){
@@ -13989,7 +14013,7 @@ function render(){
   if(S.screen==="profile"&&isAdmin())setTimeout(_checkAdminBadge,200);
   if(S.screen==='teacher'&&S.teacher?.id&&currentUser?.uid!==S.teacher.id&&db){
     const _vk='_pv_'+S.teacher.id;
-    if(!sessionStorage.getItem(_vk)){sessionStorage.setItem(_vk,'1');db.ref('teachers/'+S.teacher.id+'/views').transaction(v=>(v||0)+1).catch(()=>{});}
+    if(!_ssGet(_vk)){_ssSet(_vk,'1');db.ref('teachers/'+S.teacher.id+'/views').transaction(v=>(v||0)+1).catch(()=>{});}
   }
 }
 
@@ -14277,7 +14301,8 @@ function _attachStudentApprovalListener(uid){
     if(d.verified===true&&S.screen==='teacherPending'){
       currentUserData={...(currentUserData||{}),verified:true,rejected:false};
       showFireToast('🎉 הפרופיל שלך אושר — תלמידים יכולים לראות אותך');
-      go('home');
+      // בלי הטעינה הזו הפרופיל מציג לשוניות תלמיד עד רענון (isTeacher נגזר מהימצאות המורה ב-TEACHERS)
+      Promise.resolve(typeof loadRealTeachers==='function'?loadRealTeachers():null).catch(()=>{}).then(()=>go('home'));
     } else if(d.verified===true&&S.screen==='studentPending'){
       currentUserData={...(currentUserData||{}),verified:true,rejected:false};
       if(S._firstApproval){S._firstApproval=false;showFireToast('🎉 ברוכים הבאים ל-Drushe!');}
@@ -14420,7 +14445,7 @@ auth&&auth.onAuthStateChanged(async user=>{
             await _migrateLegacyTeacherPrivate(user.uid,tData);
             if(!tData.verified&&!isAdmin()){
               S.pendingTeacherData=tData;
-              S._loggingIn=false;S._registering=false;go('teacherPending');return;
+              S._loggingIn=false;S._registering=false;_attachStudentApprovalListener(user.uid);go('teacherPending');return;
             }
           }
         }catch(tErr){
@@ -14762,7 +14787,7 @@ async function firebaseRegister(email,password,userData){
       // הורה ושולחת. לכן התיקון הוא הסרת התנאי, לא מנגנון שני.
       if(_userRecord.parentEmail){
         try{
-          await _createParentConsent(cred.user,_userRecord.name||'',_userRecord.parentEmail);
+          await withTimeout(_createParentConsent(cred.user,_userRecord.name||'',_userRecord.parentEmail),15000,'parent-consent');
         }catch(pcErr){
           // כישלון כאן משאיר את החשבון ממתין לאישור המנהל — כלומר נופל אחורה
           // להתנהגות הקודמת, ולא פותח חשבון בלי הסכמה. אבל הוא לא נבלע:
@@ -14779,7 +14804,7 @@ async function firebaseRegister(email,password,userData){
         await db.ref('refCodes/'+refCode).set(cred.user.uid);
         if(currentUserData)currentUserData.refCode=refCode;
         // Process incoming referral if any
-        const storedRef=sessionStorage.getItem('_kidRefCode');
+        const storedRef=_ssGet('_kidRefCode');
         if(storedRef&&storedRef!==refCode){
           const refSnap=await db.ref('refCodes/'+storedRef).get();
           if(refSnap.exists()){
@@ -14788,7 +14813,7 @@ async function firebaseRegister(email,password,userData){
               await db.ref('referrals/'+referrerUid+'/'+cred.user.uid).set({at:Date.now(),code:storedRef});
               await db.ref('users/'+cred.user.uid+'/referredBy').set(referrerUid);
               await notifyUser(referrerUid,'referralJoined',{message:'חבר שהפנית נרשם ל-Drushe! 🎉'});
-              sessionStorage.removeItem('_kidRefCode');
+              _ssRemove('_kidRefCode');
             }
           }
         }
@@ -14807,11 +14832,11 @@ async function firebaseRegister(email,password,userData){
     currentUserData={...userData,email,uid:cred.user.uid,role:userData.role||'student'};
     kLog('sign_up',{method:'email',role:userData.role||'student'});
     try{
-      sessionStorage.removeItem('_kidReg');
-      sessionStorage.removeItem('_rName');
-      sessionStorage.removeItem('_rAge');
-      sessionStorage.removeItem('_rEmail');
-      sessionStorage.removeItem('_rUser');
+      _ssRemove('_kidReg');
+      _ssRemove('_rName');
+      _ssRemove('_rAge');
+      _ssRemove('_rEmail');
+      _ssRemove('_rUser');
     }catch(e){}
     S.safetyConfirmed=false;S.parentRegData=null;
     S._registering=false;S._loggingIn=false;
@@ -15113,9 +15138,10 @@ async function firebaseLogin(usernameOrEmail,password){
       'auth/user-not-found':'❌ שם משתמש לא קיים',
       'auth/wrong-password':'❌ סיסמה שגויה',
       'auth/invalid-credential':'❌ שם משתמש או סיסמה שגויים',
-      'auth/too-many-requests':'❌ יותר מדי ניסיונות – המתן כמה דקות'
+      'auth/too-many-requests':'❌ יותר מדי ניסיונות – המתן כמה דקות',
+      'auth/network-request-failed':'❌ אין חיבור לאינטרנט — בדוק את הרשת ונסה שוב'
     };
-    showFireToast(m[e.code]||'❌ '+e.message);
+    showFireToast(m[e.code]||'❌ לא הצלחנו להתחבר. נסה שוב');
   }
 }
 

@@ -79,6 +79,7 @@ beforeEach(() => {
     'parentBriefs/b1/parentUid': ME, 'parentBriefs/b2/parentUid': OTHER, 'briefProposals/b1/t/price': 1,
     [`briefProposals/b2/${ME}/price`]: 2, [`briefProposals/b2/${OTHER}/price`]: 3,
     'fcmTokens/f1/uid': ME, 'fcmTokens/f2/uid': OTHER,
+    [`chatStarters/${ME}/${OTHER}`]: true, [`userBlockedUsers/${ME}/${OTHER}`]: true, [`userRoles/${ME}`]: 'student', [`approvedTeachers/${ME}`]: true, [`userRoles/${OTHER}`]: 'teacher',
   };
 });
 
@@ -100,8 +101,8 @@ describe('account-cleanup', () => {
     const gone = (p) => !Object.keys(data).some((k) => k === p || k.startsWith(p + '/'));
     const chat = [ME, OTHER].sort().join('_');
     assert.equal(Object.keys(data).some((k) => k.startsWith('messageArchive/' + chat + '/') && k.endsWith('/m1/text')), true, 'the conversation is archived for the admin before it is deleted');
-    for (const p of [`messages/${chat}`, `newConversationNotified/${chat}`, `groupMembers/g1/${ME}`, `messageStats/${ME}`, `referrals/${ME}`, `teacherQA/${OTHER}/q1`, `teacherQA/${ME}`, 'parentBriefs/b1', 'briefProposals/b1', `briefProposals/b2/${ME}`, 'fcmTokens/f1']) assert.equal(gone(p), true, p);
-    for (const p of [`messages/${['x-uid', OTHER].sort().join('_')}`, `groupMembers/g1/${OTHER}`, `teacherQA/${OTHER}/q2`, 'parentBriefs/b2', `briefProposals/b2/${OTHER}`, 'fcmTokens/f2']) assert.equal(gone(p), false, p + ' must stay');
+    for (const p of [`messages/${chat}`, `newConversationNotified/${chat}`, `groupMembers/g1/${ME}`, `messageStats/${ME}`, `referrals/${ME}`, `teacherQA/${OTHER}/q1`, `teacherQA/${ME}`, 'parentBriefs/b1', 'briefProposals/b1', `chatStarters/${ME}`, `userBlockedUsers/${ME}`, `userRoles/${ME}`, `approvedTeachers/${ME}`, `briefProposals/b2/${ME}`, 'fcmTokens/f1']) assert.equal(gone(p), true, p);
+    for (const p of [`messages/${['x-uid', OTHER].sort().join('_')}`, `groupMembers/g1/${OTHER}`, `teacherQA/${OTHER}/q2`, 'parentBriefs/b2', `briefProposals/b2/${OTHER}`, 'fcmTokens/f2', `userRoles/${OTHER}`]) assert.equal(gone(p), false, p + ' must stay');
   });
 
   it('a user whose profile still exists cannot wipe the parent address and the consent log', async () => {

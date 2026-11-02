@@ -63,6 +63,13 @@ describe('only an approved, unblocked account can notify another user', () => {
     assert.equal(pushed.length, 0);
   });
 
+  it('"preview" is dropped for a notification type whose relationship the sender wrote themselves (referral)', async () => {
+    data[`referrals/${JOINER}/${OWNER}`] = { at: 1 };
+    const r = await call(OWNER, { toUid: JOINER, type: 'referralJoined', ctx: { preview: 'add me on another app' } });
+    assert.equal(r.status, 200);
+    assert.equal(pushed[0].value.preview, undefined);
+  });
+
   it('free text in "message" comes only from the admin', async () => {
     const r = await call(OWNER, { toUid: JOINER, type: 'groupApproved', ctx: { groupId: 'g1', message: 'add me on another app' } });
     assert.equal(r.status, 200);

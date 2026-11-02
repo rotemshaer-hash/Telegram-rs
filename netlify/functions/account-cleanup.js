@@ -104,7 +104,7 @@ exports.handler = async (event) => {
     for (const g of listOf(body.groupIds)) await drop('groupMembers/' + g + '/' + uid);
 
     // מה שהמשתמש כתב בצמתים ציבוריים: שאלות שהוא שאל, "דרוש" שפרסם, הצעות שהגיש
-    for (const p of ['messageStats/' + uid, 'referrals/' + uid, 'teacherQA/' + uid]) await drop(p);
+    for (const p of ['messageStats/' + uid, 'referrals/' + uid, 'teacherQA/' + uid, 'chatStarters/' + uid, 'userBlockedUsers/' + uid, 'userRoles/' + uid, 'approvedTeachers/' + uid]) await drop(p);
     const fcm = await db.ref('fcmTokens').orderByChild('uid').equalTo(uid).get();
     const fcmKeys = [];
     fcm.forEach((c) => { fcmKeys.push(c.key); });

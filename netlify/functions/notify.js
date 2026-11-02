@@ -41,6 +41,8 @@ const TEXT_FIELDS = {
 const ID_FIELDS = ['bookingId', 'groupId', 'teacherId', 'teacherUid', 'briefId', 'qaId'];
 const NUM_FIELDS = ['price', 'amount', 'daysLeft', 'stars', 'ts'];
 
+// סוגי התראה ש-preview שלהם מגיע מרשומה אמיתית שהשרת מאמת (הודעה אחרונה, שאלה, סיכום, בקשת הזמנה)
+const PREVIEW_TYPES = ['newMessage', 'lessonSummary', 'newQuestion', 'questionAnswered', 'newBooking'];
 const BOOKING_TYPES = ['newBooking', 'bookingApproved', 'bookingRejected', 'bookingCancelled', 'lessonSummary', 'rateLesson', 'lessonCompleted'];
 const GROUP_TYPES = ['groupJoin', 'groupApproved', 'groupRejected'];
 const QA_TYPES = ['newQuestion', 'questionAnswered'];
@@ -181,6 +183,9 @@ function buildNotification(type, fromUid, senderName, ctx, isAdminCaller) {
   for (const [field, max] of Object.entries(TEXT_FIELDS)) {
     // "message" הוא טקסט חופשי בשם הפלטפורמה — רק המנהל. אחרת מורה שהקים "הפניה" על ילד שולח לו 300 תווים שלו
     if (field === 'message' && !isAdminCaller) continue;
+    // "preview" הוא קטע ממשהו שכבר קיים ברשומה אחרת (הודעה, שאלה, סיכום) — לא טקסט חופשי שהשולח המציא. בסוגים שהיחס
+    // שלהם נקבע על ידי רשומה שהשולח כתב לעצמו (הפניה, קבוצה) אין רשומה כזו, ולכן אין preview
+    if (field === 'preview' && !isAdminCaller && !PREVIEW_TYPES.includes(type)) continue;
     if (typeof ctx[field] === 'string' && ctx[field]) notif[field] = ctx[field].slice(0, max);
   }
   for (const field of ID_FIELDS) {

@@ -112,7 +112,7 @@ async function sendAll(db) {
   const usersVal = usersSnap.val() || {};
   const students = Object.entries(usersVal)
     .map(([uid, v]) => ({ uid, ...v }))
-    .filter((u) => u.parentEmail && u.role !== 'teacher');
+    .filter((u) => u.parentEmail && u.role !== 'teacher' && u.verified === true && u.parentConsentAt); // רק ילד שההורה אישר והצוות אישר
 
   console.log(`Found ${students.length} student(s) with a registered parent email.`);
 
@@ -121,6 +121,9 @@ async function sendAll(db) {
 
   for (const stu of students) {
     try {
+      // הכתובת שננעלה בשרת באישור ההורה קודמת לכתובת ברשומה, שהילד עורך בעצמו
+      const lockedTo = (await db.ref('parentContact/' + stu.uid + '/email').once('value')).val();
+      stu.parentEmail = lockedTo || stu.parentEmail;
       const progressSnap = await db.ref('studentProgress/' + stu.uid).once('value');
       const allLessons = [];
       progressSnap.forEach((c) => { allLessons.push({ id: c.key, ...c.val() }); });
