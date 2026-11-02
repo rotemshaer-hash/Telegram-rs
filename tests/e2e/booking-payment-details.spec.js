@@ -104,7 +104,7 @@ test.describe('booking: no lesson payment handling', () => {
       const nodes = {
         'bookings/bk9': { id: 'bk9', teacherId: 'teach1', studentId: 'stu', status: 'pending', day: "ב' 3 נוב", time: '10:00', studentName: 'ילד' },
         'teacherBookings/teach1': {},
-        'teacherPrivate/teach1': { meetingLink: 'https://meet.example.org/room' },
+        'teacherPrivate/teach1': { meetingLink: 'https://zoom.us/j/room' },
       };
       // eslint-disable-next-line no-new-func
       db = new Function('nodes', 'writes', `return (${installSrc})(nodes, writes)`)(nodes, writes);
@@ -116,8 +116,8 @@ test.describe('booking: no lesson payment handling', () => {
       return { update: writes[0] || null, calls };
     }, { installSrc: installDb.toString() });
     expect(r.update, 'approving must write').not.toBeNull();
-    expect(r.update['bookings/bk9/jitsiUrl']).toBe('https://meet.example.org/room');
-    expect(r.update['userBookings/stu/bk9/jitsiUrl']).toBe('https://meet.example.org/room');
+    expect(r.update['bookings/bk9/jitsiUrl']).toBe('https://zoom.us/j/room');
+    expect(r.update['userBookings/stu/bk9/jitsiUrl']).toBe('https://zoom.us/j/room');
     expect(r.update['teacherBookings/teach1/bk9/status']).toBe('approved');
     const mail = r.calls.find((c) => c.url.includes('/api/lesson-mail'));
     expect(mail, 'the server mail must be requested').toBeTruthy();
