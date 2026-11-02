@@ -343,7 +343,8 @@
       ".indexOn": ["uid"],
       "$token": {
         ".write": "auth != null && ((newData.exists() && newData.child('uid').val() == auth.uid) || (!newData.exists() && data.child('uid').val() == auth.uid))",
-        ".validate": "newData.hasChildren(['uid', 'updatedAt']) && newData.child('updatedAt').isNumber()"
+        ".validate": "newData.hasChildren(['uid', 'updatedAt']) && newData.child('updatedAt').isNumber()",
+        "platform": { ".validate": "newData.val() == 'ios' || newData.val() == 'android'" }
       }
     },
     "parentLinks": {
