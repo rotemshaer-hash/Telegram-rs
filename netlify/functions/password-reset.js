@@ -84,13 +84,22 @@ exports.handler = async (event) => {
     }
 
     const fakeEmail = username + FAKE_DOMAIN;
-    const snap = await db.ref('users').orderByChild('email').equalTo(fakeEmail).get();
-    if (!snap.exists()) return generic;
-
-    let rec = null;
-    snap.forEach((c) => { rec = c.val(); });
-    const parentEmail = (rec && rec.parentEmail) || '';
-    const name = (rec && rec.name) || 'המשתמש';
+    // מי הוא המשתמש — לפי Firebase Auth, לא לפי שדה ב-users. השדה users/<uid>/email כתוב על ידי המשתמש עצמו, ולכן תוקף
+    // שכתב לרשומה שלו email של קורבן (ו-parentEmail משלו) היה מקבל את קישור האיפוס של הקורבן (נמצא 2.11.2026).
+    let uid;
+    try {
+      uid = (await admin.auth().getUserByEmail(fakeEmail)).uid;
+    } catch (_e) {
+      return generic; // אין חשבון כזה — אותה תשובה בדיוק
+    }
+    // הכתובת: זו שננעלה בשרת באישור ההורה, ורק אם אין — מה שנרשם ברשומה של המשתמש הזה עצמו (לא של אחר)
+    const [locked, recParent, recName] = await Promise.all([
+      db.ref('parentContact/' + uid + '/email').get(),
+      db.ref('users/' + uid + '/parentEmail').get(),
+      db.ref('users/' + uid + '/name').get(),
+    ]);
+    const parentEmail = String(locked.val() || recParent.val() || '').trim();
+    const name = recName.val() || 'המשתמש';
 
     if (!parentEmail || parentEmail.endsWith(FAKE_DOMAIN)) {
       // אין תיבה אמיתית לשלוח אליה. במקום להצהיר הצלחה כוזבת, מדווחים למנהל

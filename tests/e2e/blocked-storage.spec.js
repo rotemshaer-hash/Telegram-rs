@@ -47,3 +47,19 @@ test.describe('the app survives localStorage being blocked', () => {
     expect(result).toBe('ok');
   });
 });
+
+test.describe('the app survives sessionStorage being blocked too', () => {
+  test('boots even when both storages throw', async ({ page }) => {
+    await page.addInitScript(() => {
+      const blocked = () => { throw new DOMException('blocked', 'SecurityError'); };
+      for (const name of ['localStorage', 'sessionStorage']) {
+        Object.defineProperty(window, name, { get() { return { getItem: blocked, setItem: blocked, removeItem: blocked }; } });
+      }
+    });
+    const jsErrors = [];
+    page.on('pageerror', (err) => jsErrors.push('pageerror: ' + err.message));
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await expect(page.locator('#app')).not.toBeEmpty();
+    expect(jsErrors, jsErrors.join('\n')).toEqual([]);
+  });
+});

@@ -64,7 +64,7 @@ test.describe('a teacher cannot be approved before the parent clicked', () => {
       };
       db = {
         ref: (p) => ({
-          get: () => Promise.resolve({ val: () => vals[p] ?? null }),
+          get: () => Promise.resolve({ val: () => vals[p] ?? null, exists: () => vals[p] !== undefined }),
           set: (v) => { writes.push(p); return Promise.resolve(); },
           push: () => Promise.resolve(),
         }),
@@ -90,7 +90,7 @@ test.describe('a teacher cannot be approved before the parent clicked', () => {
       const toasts = []; const writes = [];
       window.showFireToast = (m) => toasts.push(m);
       const vals = { 'teachers/s1/ageVerification/status': 'verified', 'users/s1/parentConsentAt': 1, 'users/s1/role': 'student' };
-      db = { ref: (p) => ({ get: () => Promise.resolve({ val: () => vals[p] ?? null }), set: () => { writes.push(p); return Promise.resolve(); }, push: () => Promise.resolve() }) };
+      db = { ref: (p) => ({ get: () => Promise.resolve({ val: () => vals[p] ?? null, exists: () => vals[p] !== undefined }), set: () => { writes.push(p); return Promise.resolve(); }, push: () => Promise.resolve() }) };
       window.sendAdminEmail = () => {}; window.loadAdminData = () => Promise.resolve(); window.renderAdminPanel = () => {};
       await adminApproveTeacher('s1');
       return { toasts, writes };
@@ -99,10 +99,25 @@ test.describe('a teacher cannot be approved before the parent clicked', () => {
     expect(r.toasts.join(' ')).toContain('נרשם כתלמיד');
   });
 
+  test('refuses a record whose locked role says student even though users/role says teacher', async ({ page }) => {
+    await boot(page);
+    const r = await page.evaluate(async () => {
+      const toasts = []; const writes = [];
+      window.showFireToast = (m) => toasts.push(m);
+      const vals = { 'teachers/f1/ageVerification/status': 'verified', 'users/f1/parentConsentAt': 1, 'users/f1/role': 'teacher', 'userRoles/f1': 'student' };
+      db = { ref: (p) => ({ get: () => Promise.resolve({ val: () => vals[p] ?? null, exists: () => vals[p] !== undefined }), set: () => { writes.push(p); return Promise.resolve(); }, push: () => Promise.resolve() }) };
+      window.sendAdminEmail = () => {}; window.loadAdminData = () => Promise.resolve(); window.renderAdminPanel = () => {};
+      await adminApproveTeacher('f1');
+      return { toasts, writes };
+    });
+    expect(r.writes).toEqual([]);
+  });
+
   test('approves once the parent has', async ({ page }) => {
     await boot(page);
     const r = await approve(page, { consentAt: 1760000000000 });
     expect(r.writes).toContain('teachers/t1/verified');
+    expect(r.writes, 'the admin writes the marker the rules trust').toContain('approvedTeachers/t1');
     expect(r.writes).toContain('users/t1/verified');
   });
 });

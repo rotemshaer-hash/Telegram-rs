@@ -19,7 +19,7 @@ const path = require('node:path');
 const {
   initializeTestEnvironment, assertFails, assertSucceeds,
 } = require('@firebase/rules-unit-testing');
-const { ref, get, set, remove, update } = require('firebase/database');
+const { ref, get, set, remove, update, push } = require('firebase/database');
 
 const ADMIN_EMAIL = 'rotemshaer@gmail.com';
 const STUDENT = 'student-uid';
@@ -712,6 +712,79 @@ describe('a booking needs a real, different teacher; progress and Q&A are not fo
     await assertFails(set(ref(asTeacher(), `teacherQA/${TEACHER}/q1`), { askerUid: STUDENT, question: 'fake', askedAt: 1 }));
     await assertSucceeds(set(ref(asStudent(), `teacherQA/${TEACHER}/q2`), { askerUid: STUDENT, question: 'real', askedAt: 1 }));
     await assertSucceeds(set(ref(asTeacher(), `teacherQA/${TEACHER}/q2/answer`), 'yes'));
+  });
+});
+
+// An anonymous guest holds nothing but the public apiKey, yet could read children's names, uids and photos from
+// posts, reviews, questions and stories (security review 2.11.2026). Those nodes now need a real sign-in.
+describe('children’s content is not readable by an anonymous guest', () => {
+  const anon = () => testEnv.authenticatedContext('guest-uid', { firebase: { sign_in_provider: 'anonymous' } }).database();
+  beforeEach(async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const d = ctx.database();
+      await set(ref(d, 'communityPosts/p1'), { authUid: STUDENT, author: 'Minor', status: 'approved', createdAt: 1 });
+      await set(ref(d, 'posts/p1'), { authUid: STUDENT, author: 'Minor' });
+      await set(ref(d, `reviews/${TEACHER}/r1`), { from: STUDENT, fromName: 'Minor', status: 'approved' });
+      await set(ref(d, `teacherQA/${TEACHER}/q1`), { askerUid: STUDENT, askerName: 'Minor', question: 'x' });
+      await set(ref(d, 'stories/s1'), { uid: STUDENT, status: 'approved' });
+    });
+  });
+  it('a signed-in user can read them', async () => {
+    for (const path of ['communityPosts', 'posts', `reviews/${TEACHER}`, `teacherQA/${TEACHER}`, 'stories']) {
+      await assertSucceeds(get(ref(asStranger(), path)));
+    }
+  });
+  it('an anonymous guest cannot', async () => {
+    for (const path of ['communityPosts', 'posts', `reviews/${TEACHER}`, `teacherQA/${TEACHER}`, 'stories']) {
+      await assertFails(get(ref(anon(), path)));
+    }
+  });
+  it('the public teacher list is still browsable as a guest', async () => {
+    await assertSucceeds(get(ref(anon(), 'teachers')));
+  });
+});
+
+// A teacher approved by the admin stays restricted even if they delete their own role field.
+describe('approvedTeachers: the marker the rules trust is written by the admin', () => {
+  const chat = (a, b) => [a, b].sort().join('_');
+  it('only the admin writes it', async () => {
+    await assertFails(set(ref(asTeacher(), `approvedTeachers/${TEACHER}`), true));
+    await assertFails(set(ref(asStudent(), `approvedTeachers/${STUDENT}`), true));
+    await assertSucceeds(set(ref(asAdmin(), `approvedTeachers/${TEACHER}`), true));
+  });
+  it('an approved teacher who erased the role, with a student userRoles, is still blocked from a cold chat', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await set(ref(ctx.database(), `userRoles/${TEACHER}`), 'student');
+      await set(ref(ctx.database(), `approvedTeachers/${TEACHER}`), true);
+    });
+    await remove(ref(asTeacher(), `users/${TEACHER}/role`));
+    await assertFails(set(ref(asTeacher(), `messages/${chat(STUDENT, TEACHER)}/x`), { from: TEACHER, text: 'hi', createdAt: 1 }));
+    await assertFails(set(ref(asTeacher(), `userChats/${STUDENT}/${TEACHER}`), { otherUid: TEACHER, lastMessage: 'hi' }));
+  });
+});
+
+// A like or a reply on someone else's post used to be rejected (the post is writable only by its author), while
+// the screen showed it as done until the next refresh (QA 2.11.2026).
+describe('likes and replies on another user’s post', () => {
+  beforeEach(async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await set(ref(ctx.database(), 'communityPosts/lp1'), { authUid: TEACHER, author: 'T', createdAt: 1, text: 'hi', status: 'approved', likes: 0 });
+    });
+  });
+  it('a verified user can like and reply, as themselves only', async () => {
+    await assertSucceeds(set(ref(asStudent(), 'communityPosts/lp1/likes'), 1));
+    await assertSucceeds(set(ref(asStudent(), `communityPosts/lp1/likedBy/${STUDENT}`), true));
+    await assertSucceeds(push(ref(asStudent(), 'communityPosts/lp1/reps'), { auth: 'Minor', authUid: STUDENT, text: 'nice', createdAt: 2 }));
+    await assertFails(set(ref(asStudent(), `communityPosts/lp1/likedBy/${TEACHER}`), true));
+    await assertFails(push(ref(asStudent(), 'communityPosts/lp1/reps'), { auth: 'X', authUid: TEACHER, text: 'forged', createdAt: 2 }));
+  });
+  it('an unverified account, or markup in a reply, is refused', async () => {
+    await assertFails(set(ref(asStranger(), 'communityPosts/lp1/likes'), 1));
+    await assertFails(push(ref(asStranger(), 'communityPosts/lp1/reps'), { auth: 'X', authUid: STRANGER, text: 'hi', createdAt: 2 }));
+    await assertFails(push(ref(asStudent(), 'communityPosts/lp1/reps'), { auth: 'Minor', authUid: STUDENT, text: '<img src=x>', createdAt: 2 }));
+  });
+  it('the post itself is still not editable by another user', async () => {
+    await assertFails(set(ref(asStudent(), 'communityPosts/lp1/text'), 'hijacked'));
   });
 });
 

@@ -179,6 +179,17 @@ echo ""
 # ── מזהים בתוך ידיות onclick חייבים escape ───────────────────────────────────
 # מפתח במסד יכול להכיל ' ( ) ; ולכן go('${id}') בלי jsAttrEscape הוא הרצת קוד אצל
 # מי שלוחץ. הבדיקה והתיקון האוטומטי (--fix) באותו סקריפט.
+echo "-- Inline scripts parse --"
+
+if command -v node >/dev/null 2>&1; then
+  if node scripts/check-syntax.js >/tmp/inline-syntax.out 2>&1; then
+    pass "every inline script in index.html parses"
+  else
+    cat /tmp/inline-syntax.out
+    fail "an inline script in index.html has a syntax error (run: node scripts/check-syntax.js)"
+  fi
+fi
+
 echo "-- Inline handlers escape their ids --"
 
 if command -v node >/dev/null 2>&1; then
