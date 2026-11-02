@@ -9,7 +9,6 @@
 const { admin, initAdmin } = require('../lib/firebase-admin-init');
 const ALLOWED_ORIGINS = require('../lib/allowed-origins');
 const { withinWindowLimit } = require('../lib/rate-limit');
-const { pushToTokens } = require('../lib/push');
 
 const ADMIN_EMAIL = 'rotemshaer@gmail.com';
 const ID_RE = /^[A-Za-z0-9_-]{1,128}$/;
@@ -62,15 +61,19 @@ exports.handler = async (event) => {
     let adminUid;
     try { adminUid = (await admin.auth().getUserByEmail(ADMIN_EMAIL)).uid; } catch (_e) { return reply(200, { sent: 0, reason: 'no admin' }); }
     const snap = await db.ref('fcmTokens').orderByChild('uid').equalTo(adminUid).get();
-    const tokensVal = snap.exists() ? snap.val() : {};
-    if (!Object.keys(tokensVal).length) return reply(200, { sent: 0, reason: 'No registered devices' });
+    const tokens = snap.exists() ? Object.keys(snap.val()) : [];
+    if (!tokens.length) return reply(200, { sent: 0, reason: 'No registered devices' });
 
-    const r = await pushToTokens(admin, db, tokensVal, {
-      title: report.severity === 'critical' ? '🚨 דיווח קריטי ב-Drushe' : '🚩 דיווח חמור ב-Drushe',
-      body: clip((report.reasonLabel || '') + ' · ' + (report.targetName || report.targetType || ''), 120),
+    const res = await admin.messaging().sendEachForMulticast({
+      tokens,
+      notification: {
+        title: report.severity === 'critical' ? '🚨 דיווח קריטי ב-Drushe' : '🚩 דיווח חמור ב-Drushe',
+        body: clip((report.reasonLabel || '') + ' · ' + (report.targetName || report.targetType || ''), 120),
+      },
       data: { type: 'report', reportId },
+      android: { priority: 'high', notification: { channelId: 'default', sound: 'default' } },
     });
-    return reply(200, { sent: r.sent, failed: r.failed });
+    return reply(200, { sent: res.successCount, failed: res.failureCount });
   } catch (e) {
     console.error('[report-alert] failed:', e);
     return reply(500, { error: 'Failed to send notification' });

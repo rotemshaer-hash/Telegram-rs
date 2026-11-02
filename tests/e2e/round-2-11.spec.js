@@ -71,31 +71,3 @@ test('in the iOS app a teacher is never gated by the subscription and sees no pa
   expect(r.ios).toEqual({ ios: true, needs: false, banner: '' });
   expect(r.android).toEqual({ ios: false, needs: true });
 });
-
-test('the iOS app registers its push token with platform "ios"; Android with "android"', async ({ page }) => {
-  await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(() => typeof _registerNativePush === 'function');
-  const r = await page.evaluate(async () => {
-    const out = {};
-    for (const platform of ['ios', 'android']) {
-      _pushSetupStarted = false;
-      const listeners = {};
-      window.Capacitor = {
-        isNativePlatform: () => true, getPlatform: () => platform,
-        Plugins: { PushNotifications: {
-          checkPermissions: async () => ({ receive: 'granted' }), requestPermissions: async () => ({ receive: 'granted' }),
-          addListener: (n, cb) => { listeners[n] = cb; }, register: async () => { listeners.registration({ value: 'tok-' + platform }); },
-        } },
-      };
-      let written = null;
-      db = { ref: (p) => ({ set: async (v) => { written = [p, v]; }, remove: async () => {} }) };
-      currentUser = { uid: 'u1', email: 'a@b.c', emailVerified: true };
-      await _registerNativePush();
-      out[platform] = written;
-    }
-    return out;
-  });
-  expect(r.ios[0]).toBe('fcmTokens/tok-ios');
-  expect(r.ios[1].platform).toBe('ios');
-  expect(r.android[1].platform).toBe('android');
-});

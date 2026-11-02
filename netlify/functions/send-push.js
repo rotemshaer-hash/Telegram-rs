@@ -13,7 +13,6 @@
 
 const { admin, initAdmin } = require('../lib/firebase-admin-init');
 const ALLOWED_ORIGINS = require('../lib/allowed-origins');
-const { pushToTokens } = require('../lib/push');
 
 
 // מניעת שיגור חוזר: זוכרים לאיזו הודעה כבר נשלחה התראה בכל צ'אט.
@@ -154,19 +153,26 @@ exports.handler = async (event) => {
 
     // 4. הטוקנים של הנמען.
     const tokensSnap = await db.ref('fcmTokens').orderByChild('uid').equalTo(toUid).get();
-    const tokensVal = tokensSnap.exists() ? tokensSnap.val() : {};
-    if (!Object.keys(tokensVal).length) {
+    const tokens = tokensSnap.exists() ? Object.keys(tokensSnap.val()) : [];
+    if (!tokens.length) {
       return { statusCode: 200, headers, body: JSON.stringify({ sent: 0, reason: 'No registered devices' }) };
     }
 
-    // FCM לאנדרואיד, APNs ל-iOS (netlify/lib/push.js). fromUid/fromName נקראים ע"י pushNotificationActionPerformed
-    // באפליקציה כדי לפתוח את הצ'אט הנכון בהקשה.
-    const r = await pushToTokens(admin, db, tokensVal, {
-      title: '💬 ' + senderName,
-      body,
+    const res = await admin.messaging().sendEachForMulticast({
+      tokens,
+      notification: { title: '💬 ' + senderName, body },
+      // fromUid/fromName נקראים ע"י pushNotificationActionPerformed באפליקציה
+      // כדי לפתוח את הצ'אט הנכון בהקשה.
       data: { type: 'newMessage', fromUid: senderUid, fromName: senderName },
+      android: { priority: 'high', notification: { channelId: 'default', sound: 'default' } },
     });
-    return { statusCode: 200, headers, body: JSON.stringify(r) };
+
+    const pruned = await pruneDeadTokens(db, tokens, res.responses);
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({ sent: res.successCount, failed: res.failureCount, pruned }),
+    };
   } catch (e) {
     console.error('[send-push] failed:', e);
     return { statusCode: 500, headers, body: JSON.stringify({ error: 'Failed to send notification' }) };

@@ -1198,7 +1198,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.67';
+const APP_VERSION='4.11.66';
 
 // ─── הודעות קוליות — כבויות ────────────────────────────────────────────────
 // הקלטה קולית היא הערוץ היחיד בין ילדים שאיש לא בודק: אין תמלול, אין סינון,
@@ -5791,7 +5791,7 @@ async function _registerNativePush(){
       const token=t?.value;
       if(!token||!currentUser)return;
       _pushToken=token;
-      db.ref('fcmTokens/'+token).set({uid:currentUser.uid,updatedAt:Date.now(),platform:isIosApp()?'ios':'android'}).catch(()=>{});
+      db.ref('fcmTokens/'+token).set({uid:currentUser.uid,updatedAt:Date.now()}).catch(()=>{});
     });
     Push.addListener('registrationError',e=>console.warn('[push] registration failed:',e));
 
