@@ -998,7 +998,14 @@ function _applyDemoTeachers(){
 }
 
 // טעינת מורים אמיתיים מ-Firebase
-async function loadRealTeachers(){
+let _teachersInFlight=null;
+function loadRealTeachers(){
+  // קריאה שנייה בזמן שהראשונה עוד רצה מחזירה את אותה הבטחה: ברשת איטית loadDiscoverFeed הפעילה הורדה שנייה של כל צומת teachers
+  if(_teachersInFlight)return _teachersInFlight;
+  _teachersInFlight=_loadRealTeachersInner().finally(()=>{_teachersInFlight=null;});
+  return _teachersInFlight;
+}
+async function _loadRealTeachersInner(){
   loadCommunityGroups();
   if(DEMO_MODE){_applyDemoTeachers();if(['home','nearby'].includes(S.screen))renderSoon();return;}
   try{
@@ -1189,7 +1196,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.61';
+const APP_VERSION='4.11.62';
 
 // ─── הודעות קוליות — כבויות ────────────────────────────────────────────────
 // הקלטה קולית היא הערוץ היחיד בין ילדים שאיש לא בודק: אין תמלול, אין סינון,
@@ -3296,9 +3303,14 @@ let STORIES=[];
 let MY_PENDING_STORIES=[];
 
 let storiesLoaded=false;
+let _storiesQuery=null;
 function loadStories(){
   if(!db)return;
-  db.ref('stories').on('value',snap=>{
+  // מאזין אחד: כניסה, יציאה וכניסה הצמידו מאזין נוסף בכל פעם (וכל עדכון רינדר פעמיים)
+  if(_storiesQuery){try{_storiesQuery.off('value');}catch(_e){}}
+  // רק סטוריז שפג תוקפם לא מוגזם מעבר ליום: לא מורידים את כל ההיסטוריה (expiresAt באינדקס ב-database.rules.json)
+  _storiesQuery=db.ref('stories').orderByChild('expiresAt').startAt(Date.now()-24*3600*1000);
+  _storiesQuery.on('value',snap=>{
     const now=Date.now();
     STORIES=[];
     MY_PENDING_STORIES=[];
@@ -14483,7 +14495,7 @@ auth&&auth.onAuthStateChanged(async user=>{
       await loadStudentBookings();
       await loadParentChildren();
       await loadFavorites();
-      loadDiscoverFeed(); // טעינה מוקדמת ברקע כדי שדרילס ייפתח מיידית כשלוחצים עליו
+      // הסרטונים נטענים כשנכנסים לדרילס (loadDiscoverFeed, בפתיחת המסך) — לא בכל כניסה: זו הורדה של כל הצומת עם תמונות ממוזערות
       await loadNotifications();
       await loadMyGroupStatuses();
       await loadUserChats();
@@ -14535,7 +14547,7 @@ auth&&auth.onAuthStateChanged(async user=>{
       // Timestamp of when we attached the listener — used to skip old notifications
       // that fire on initial listener attachment (Firebase fires child_added for all existing children)
       const _notifListenStart=Date.now();
-      db.ref('notifications/'+user.uid).on('child_added',snap=>{
+      db.ref('notifications/'+user.uid).limitToLast(50).on('child_added',snap=>{
         const n=snap.val();
         const isNew=(n?.createdAt||0)>=_notifListenStart-5000;
         if(!isNew)return; // התעלם מהתראות ישנות — נטענות כבר ב-loadNotifications
@@ -15146,6 +15158,7 @@ async function firebaseLogout(){
       db.ref('adminNotifs').off();
       db.ref('adminAlerts').off();
     }
+    if(_storiesQuery){_storiesQuery.off('value');_storiesQuery=null;}
   }catch(e){}
   S._loggingIn=false;S._registering=false;
   await auth.signOut();

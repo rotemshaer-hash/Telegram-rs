@@ -538,7 +538,7 @@
     "pendingCategories": { ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'", "$suggestionId": { ".write": "auth != null && ((!data.exists() && newData.exists()) || auth.token.email == 'rotemshaer@gmail.com')" } },
     "stories": {
       ".read": "auth != null && auth.token.firebase.sign_in_provider != 'anonymous'",
-      ".indexOn": ["status", "uid"],
+      ".indexOn": ["status", "uid", "expiresAt"],
       "$storyId": {
         ".write": "auth != null && (!data.exists() && newData.child('uid').val() == auth.uid || data.child('uid').val() == auth.uid || auth.token.email == 'rotemshaer@gmail.com')",
         "status": {
