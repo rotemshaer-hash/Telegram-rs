@@ -56,7 +56,18 @@ exports.handler = async (event) => {
       return reply(409, { error: 'account still exists' });
     }
     const removed = [];
-    const drop = async (p) => { await db.ref(p).remove(); removed.push(p); };
+    // מוחקים בעדכון רב-נתיבי אחד לכל 300 נתיבים, לא קריאה סדרתית לכל נתיב: מחיקת חשבון עם מאות שיחות
+    // חייבת להיכנס בתקרה של ~10 שניות של Netlify (דוח הביצועים 2.11.2026).
+    const pending = [];
+    const drop = async (p) => { pending.push(p); removed.push(p); };
+    const flush = async () => {
+      for (let i = 0; i < pending.length; i += 300) {
+        const patch = {};
+        pending.slice(i, i + 300).forEach((p) => { patch[p] = null; });
+        await db.ref().update(patch);
+      }
+      pending.length = 0;
+    };
 
     // טוקן ההסכמה הפעיל, ואחריו כל השאר שנוצרו עבור המשתמש
     const activeToken = (await db.ref('parentConsentByUid/' + uid).get()).val();
@@ -76,7 +87,7 @@ exports.handler = async (event) => {
 
     // שיחות: הלקוח לא רשאי למחוק הודעות (חוקי הנתונים — ראיה לא נמחקת בידי משתתף), אז מחיקת חשבון עוברת כאן.
     // הרשימות מגיעות מהלקוח, אבל chatId נבנה תמיד מה-uid של המנוקה, כך שאי אפשר לגעת בשיחה של אחרים.
-    const listOf = (v) => (Array.isArray(v) ? v : []).map(String).filter((x) => UID_RE.test(x) && x !== uid).slice(0, 500);
+    const listOf = (v) => (Array.isArray(v) ? v : []).map(String).filter((x) => UID_RE.test(x) && x !== uid).slice(0, 5000);
     for (const partner of listOf(body.chatPartners)) {
       const chatId = [uid, partner].sort().join('_');
       await drop('messages/' + chatId);
@@ -101,10 +112,12 @@ exports.handler = async (event) => {
     briefs.forEach((c) => { briefKeys.push(c.key); });
     for (const k of briefKeys) { await drop('parentBriefs/' + k); await drop('briefProposals/' + k); }
 
-    const props = await db.ref('briefProposals').get();
-    const propKeys = [];
-    props.forEach((b) => { if (b.child(uid).exists()) propKeys.push('briefProposals/' + b.key + '/' + uid); });
-    for (const k of propKeys) await drop(k);
+    if (body.role === 'teacher') { // הצעות מוגשות רק על ידי מורים
+      const props = await db.ref('briefProposals').get();
+      const propKeys = [];
+      props.forEach((b) => { if (b.child(uid).exists()) propKeys.push('briefProposals/' + b.key + '/' + uid); });
+      for (const k of propKeys) await drop(k);
+    }
 
     // סטוריז שהמשתמש העלה (נושאים uid, לא מפתחים אותו)
     const stories = await db.ref('stories').orderByChild('uid').equalTo(uid).get();
@@ -112,6 +125,7 @@ exports.handler = async (event) => {
     stories.forEach((c) => { storyKeys.push(c.key); });
     for (const k of storyKeys) await drop('stories/' + k);
 
+    await flush();
     return reply(200, { ok: true, removed: removed.length });
   } catch (err) {
     console.error('[account-cleanup]', err);

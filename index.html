@@ -1185,7 +1185,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.52';
+const APP_VERSION='4.11.53';
 
 // ─── הודעות קוליות — כבויות ────────────────────────────────────────────────
 // הקלטה קולית היא הערוץ היחיד בין ילדים שאיש לא בודק: אין תמלול, אין סינון,
@@ -4423,7 +4423,10 @@ async function deleteAllUserData(uid,role){
     }
   }catch(_e){scanFailures.push('storage');}
 
-  const paths=USER_DATA_PATHS.map(p=>p+'/'+uid);
+  // userChats/userGroups נשארים עד שהשרת הצליח: הם הרשימה שלפיה הוא מוחק שיחות וחברויות, ובניסיון חוזר אחרי כשל
+  // אסור שיהיו כבר ריקים (אחרת ההודעות נשארות לצמיתות — חוקי הנתונים אוסרים על הלקוח למחוק אותן)
+  const _serverDriven=new Set(['userChats','userGroups']);
+  const paths=USER_DATA_PATHS.filter(p=>!_serverDriven.has(p)).map(p=>p+'/'+uid);
   if(isTeacher)paths.push('teachers/'+uid);
 
   const results=await Promise.allSettled(paths.map(p=>db.ref(p).remove()));
@@ -4436,9 +4439,13 @@ async function deleteAllUserData(uid,role){
     const res=await withTimeout(fetch(API_BASE+'/api/account-cleanup',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(uid===currentUser.uid?{idToken,chatPartners,groupIds}:{idToken,uid,chatPartners,groupIds})
+      body:JSON.stringify(uid===currentUser.uid?{idToken,chatPartners,groupIds,role}:{idToken,uid,chatPartners,groupIds,role})
     }),15000,'account-cleanup');
     if(!res.ok)scanFailures.push('server-cleanup');
+    else if(!scanFailuresEarly){
+      // השרת סיים — עכשיו אפשר למחוק את הרשימות
+      await Promise.allSettled(['userChats/'+uid,'userGroups/'+uid].map(p=>db.ref(p).remove().catch(()=>{scanFailures.push(p);})));
+    }
     if(scanFailuresEarly)scanFailures.push('userGroups');
   }catch(_e){scanFailures.push('server-cleanup');}
 
@@ -4762,9 +4769,14 @@ function stopVoiceRecording(otherUid,otherName){
 
 // מורה כותב רק במקום שהילד פתח (חוקי messages/userChats). הילד רושם את עצמו כפותח בשליחה הראשונה
 // ובהזמנת שיעור; למורה אין חוק כתיבה לשם, ולכן הקריאה היא no-op אצלו.
-async function markChatStarter(otherUid){
+const _starterMarked=new Set();
+function markChatStarter(otherUid){
   if(!currentUser||!otherUid||currentUserData?.role==='teacher')return;
-  try{await db.ref('chatStarters/'+currentUser.uid+'/'+otherUid).set(true);}catch(_e){}
+  const k=currentUser.uid+'>'+otherUid;
+  if(_starterMarked.has(k))return;
+  _starterMarked.add(k);
+  // לא ממתינים: חוק הכתיבה של הודעה מתלמיד לא תלוי בסימון (רק תשובת מורה תלויה בו)
+  db.ref('chatStarters/'+currentUser.uid+'/'+otherUid).set(true).catch(()=>{_starterMarked.delete(k);});
 }
 
 async function _sendVoiceMessage(blob,otherUid,otherName){
@@ -4868,7 +4880,7 @@ async function sendChatMessage(otherUid,otherName){
   inp.focus();
   const chatId=getChatId(currentUser.uid,otherUid);
   try{
-    await markChatStarter(otherUid);
+    markChatStarter(otherUid);
     await db.ref('messages/'+chatId).push({
       from:currentUser.uid,
       fromName:currentUserData?.name||currentUser.email.split('@')[0],

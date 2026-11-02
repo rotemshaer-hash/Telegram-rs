@@ -29,6 +29,7 @@ const snapOf = (p) => {
   };
 };
 const ref = (p) => ({
+  update: async (patch) => { Object.keys(patch).forEach((k) => { Object.keys(data).filter((d) => d === k || d.startsWith(k + '/')).forEach((d) => delete data[d]); }); },
   get: async () => snapOf(p),
   remove: async () => { Object.keys(data).filter((k) => k === p || k.startsWith(p + '/')).forEach((k) => delete data[k]); },
   orderByChild: (field) => ({
@@ -88,7 +89,7 @@ describe('account-cleanup', () => {
   });
 
   it('also removes chats, group memberships, questions, briefs, proposals and tokens — and only theirs', async () => {
-    const r = await call(ME, { chatPartners: [OTHER, 'not a uid!'], groupIds: ['g1'] });
+    const r = await call(ME, { chatPartners: [OTHER, 'not a uid!'], groupIds: ['g1'], role: 'teacher' });
     assert.equal(r.status, 200);
     const gone = (p) => !Object.keys(data).some((k) => k === p || k.startsWith(p + '/'));
     const chat = [ME, OTHER].sort().join('_');
