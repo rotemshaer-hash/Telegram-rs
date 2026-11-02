@@ -48,6 +48,18 @@ jobs:
           GOOGLE_APPLICATION_CREDENTIALS_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: echo "$GOOGLE_APPLICATION_CREDENTIALS_JSON" > /tmp/sa.json
 
+      # "Failed to authenticate" מ-firebase לא אומר מה הבעיה. הבדיקה הזו אומרת (בלי להדפיס שום סוד): האם הסוד הוא JSON תקין,
+      # של איזה פרויקט וחשבון שירות, והאם המפתח הפרטי שלם. כשל כאן = הסוד FIREBASE_SERVICE_ACCOUNT ב-GitHub שגוי או חתוך.
+      - name: Check the service account secret (prints no secret)
+        run: |
+          node -e "
+          const fs=require('fs');let j;
+          try{j=JSON.parse(fs.readFileSync('/tmp/sa.json','utf8'));}catch(e){console.error('SECRET IS NOT VALID JSON ('+e.message.slice(0,80)+'). Paste the whole key file, from { to }.');process.exit(1);}
+          const k=j.private_key||'';
+          console.log('type:',j.type,'| project:',j.project_id,'| account:',j.client_email,'| private key present:',/BEGIN PRIVATE KEY/.test(k),'| key length:',k.length);
+          if(j.type!=='service_account'||j.project_id!=='kidemy-83a17'||!/BEGIN PRIVATE KEY/.test(k)||k.length<1500){console.error('SECRET LOOKS WRONG (expected a service_account key of project kidemy-83a17 with a full private key)');process.exit(1);}
+          "
+
       # database ו-storage היו פריסה אחת (--only database,storage). firebase
       # מריץ אותן בסדר, ו-storage נכשל ב-403 על serviceusage.services.get —
       # מה שהפיל את כל הפקודה *אחרי* שחוקי ה-database כבר עברו ולידציה אך
