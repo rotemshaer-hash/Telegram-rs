@@ -134,3 +134,40 @@ test.describe('analytics is not collected from a minor before consent', () => {
     expect(pushed[0].e).toBe('screen_view');
   });
 });
+
+test.describe('a student cannot be approved before the parent clicked', () => {
+  async function approveStudent(page, consentAt) {
+    return page.evaluate(async (consent) => {
+      const toasts = []; const writes = []; let confirms = 0;
+      window.showFireToast = (m) => toasts.push(m);
+      window._confirm = async () => { confirms++; return true; };
+      const vals = { 'users/s1/parentConsentAt': consent, 'users/s1': { name: 'ילד', role: 'student' } };
+      db = { ref: (p) => ({
+        get: () => Promise.resolve({ val: () => vals[p] ?? null, exists: () => vals[p] !== undefined }),
+        set: () => { writes.push(p); return Promise.resolve(); },
+        push: () => Promise.resolve(),
+        remove: () => Promise.resolve(),
+      }) };
+      window.loadAdminData = () => Promise.resolve(); window.renderAdminPanel = () => {};
+      await adminVerifyStudent('s1');
+      return { toasts, writes, confirms };
+    }, consentAt);
+  }
+
+  test('refuses, and does not even offer "approve anyway"', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => typeof adminVerifyStudent === 'function');
+    const r = await approveStudent(page, null);
+    expect(r.writes).toEqual([]);
+    expect(r.confirms).toBe(0);
+    expect(r.toasts.join(' ')).toContain('בלי אישור הורה');
+  });
+
+  test('approves once the parent has', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => typeof adminVerifyStudent === 'function');
+    const r = await approveStudent(page, 1760000000000);
+    expect(r.confirms).toBe(1);
+    expect(r.writes).toContain('users/s1');
+  });
+});

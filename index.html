@@ -1185,7 +1185,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.55';
+const APP_VERSION='4.11.56';
 
 // ─── הודעות קוליות — כבויות ────────────────────────────────────────────────
 // הקלטה קולית היא הערוץ היחיד בין ילדים שאיש לא בודק: אין תמלול, אין סינון,
@@ -6093,22 +6093,18 @@ async function adminRejectBooking(teacherId,bookingId){
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function adminVerifyStudent(uid){
-  // הסכמת ההורה אינה מפעילה את החשבון — היא תנאי מוקדם לאישור שלך. הבדיקה
-  // כאן היא מה שהופך אותה לשער ולא לקישוט: בלעדיה אפשר לאשר תלמיד שההורה שלו
-  // מעולם לא נגע בקישור, וחזרנו למצב שבו ההורה אינו בלולאה.
-  //
-  // זו אזהרה ולא חסימה, כי יש מקרים לגיטימיים — הורה שמאשר טלפונית, או תלמיד
-  // שנרשם לפני שהמנגנון הזה היה קיים.
+  // הסכמת ההורה אינה מפעילה את החשבון — היא תנאי מוקדם לאישור שלך, וגם החסימה כאן היא מה שהופך אותה לשער ולא לקישוט.
+  // היה כאן "אשר בכל זאת" (אזהרה בלבד), אבל ילד בן 8–18 לא נכנס בלי שהורה נגע בקישור (החלטת הבעלים, 2.11.2026) — בדיוק
+  // כמו אישור מורה. הורה שאישר בטלפון: מבקשים ממנו ללחוץ על הקישור, או שהילד לוחץ "שלח שוב" במסך ההמתנה.
   let _consentAt=null;
   try{_consentAt=(await db.ref('users/'+uid+'/parentConsentAt').get()).val();}catch(_e){}
   const _nm=(adminAlertStudents.find(s=>s.uid===uid)||adminAllUsers.find(u=>u.uid===uid)||{}).name||'התלמיד/ה';
-  if(_consentAt){
-    if(!await _confirm('✅ ההורה אישר/ה ב-'+new Date(_consentAt).toLocaleString('he-IL')+'\n\nלאשר את '+_nm+'?',
-      {confirmText:'אשר',cancelText:'ביטול'}))return;
-  }else{
-    if(!await _confirm('⚠️ ההורה של '+_nm+' עדיין לא אישר/ה דרך הקישור שנשלח במייל.\n\nלאשר בכל זאת?',
-      {confirmText:'כן, אשר בלי אישור הורה',cancelText:'ביטול',destructive:true}))return;
+  if(!_consentAt){
+    showFireToast('❌ ההורה של '+_nm+' עדיין לא אישר דרך הקישור. אי אפשר לאשר ילד בלי אישור הורה — בקש מההורה ללחוץ על הקישור, או שהילד ישלח אותו שוב.');
+    return;
   }
+  if(!await _confirm('✅ ההורה אישר/ה ב-'+new Date(_consentAt).toLocaleString('he-IL')+'\n\nלאשר את '+_nm+'?',
+    {confirmText:'אשר',cancelText:'ביטול'}))return;
   _adminActionInProgress=true;
   try{
     // שלב 1: קרא נתונים קיימים — משתי מקורות: users/ ו-adminAlerts/students/
@@ -6122,9 +6118,7 @@ async function adminVerifyStudent(uid){
     // מיזוג: alertData מספק שם/אימייל/הורה; existing מנצח על כל שדה שכבר קיים
     const baseData={...alertData,...existing};
     // שלב 2: בנה אובייקט מעודכן
-    // approvedWithoutParent נרשם כדי שיהיה אפשר לדעת בדיעבד אילו חשבונות
-    // נפתחו בלי שההורה נגע בקישור — כמו verifiedWithoutDoc אצל מורים.
-    const updatedUser={...baseData,uid,verified:true,role:'student',rejected:false,verifiedAt:Date.now(),...(_consentAt?{}:{approvedWithoutParent:true})};
+    const updatedUser={...baseData,uid,verified:true,role:'student',rejected:false,verifiedAt:Date.now()};
     // שלב 3: כתוב ל-Firebase (set כדי ליצור רשומה מלאה אם לא קיימת)
     await db.ref('users/'+uid).set(updatedUser);
     await db.ref('adminAlerts/students/'+uid).remove().catch(()=>{});
