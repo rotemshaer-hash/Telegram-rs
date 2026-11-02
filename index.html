@@ -984,7 +984,7 @@ function _applyDemoTeachers(){
       cat:t.cat, cats:[t.cat], customCats:[], price:t.price,
       rating:t.rating, reviews:t.reviews, lessons:t.lessons,
       mode:['online'], av:catObj.em, photo:null, col:catObj.col,
-      badge:'מורה מוסמך', ageVerified:true, meetingLink:'', online:true, group:false,
+      badge:'מאושר ע״י Drushe', ageVerified:true, meetingLink:'', online:true, group:false,
       desc:t.desc, freeTrial:true, gps:null, schedule:null, tags:t.tags,
       catProfiles:{}, whyTeach:t.whyTeach, proudOf:t.proudOf, typicalLesson:t.typicalLesson,
     });
@@ -1042,7 +1042,7 @@ async function loadRealTeachers(){
             av:t.photo?'📸':catObj.em,
             photo:t.photo||null,
             col:catObj.col,
-            badge:t.verified?'מורה מוסמך':'',
+            badge:t.verified?'מאושר ע״י Drushe':'',
             ageVerified:t.ageVerification?.status==='verified',
             online:t.online!==false,
             group:t.group||false,
@@ -1177,7 +1177,7 @@ const ACHIEVEMENTS=[
   {id:2,em:"⭐",ttl:"מורה מצוין",  desc:"קיבלת 5 כוכבים 5 פעמים",    col:"#FFD23F"},
   {id:3,em:"🏆",ttl:"50 שיעורים",  desc:"השלמת 50 שיעורים כמורה",     col:"#14B8A6"},
   {id:4,em:"🔥",ttl:"שבוע רצוף",   desc:"לימדת 7 ימים ברציפות",       col:"#E74C3C"},
-  {id:5,em:"💎",ttl:"מורה מוסמך",  desc:"אושרת על ידי צוות Drushe",   col:"#1B4FCC"},
+  {id:5,em:"💎",ttl:"מאושר ע״י Drushe",  desc:"אושרת על ידי צוות Drushe",   col:"#1B4FCC"},
   {id:6,em:"👥",ttl:"שיעור קבוצתי",desc:"לימדת קבוצה של 4 תלמידים",  col:"#27AE60"},
 ];
 const STUDENT_ACHIEVEMENTS=[
@@ -1189,7 +1189,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.57';
+const APP_VERSION='4.11.58';
 
 // ─── הודעות קוליות — כבויות ────────────────────────────────────────────────
 // הקלטה קולית היא הערוץ היחיד בין ילדים שאיש לא בודק: אין תמלול, אין סינון,
@@ -2593,7 +2593,7 @@ function TeacherSetup(){
         <p style="font-size:11px;color:#6C7686;margin:6px 0 0">${icon("alert-triangle",14)} ללא קישור, תלמידים לא יוכלו להצטרף לשיעור</p>
       </div>
 
-      <div class="warn" style="margin-bottom:14px"><span>🛡</span><span>הפרופיל יעבור אישור צוות הבטיחות תוך 24 שעות.</span></div>
+      <div class="warn" style="margin-bottom:14px"><span>🛡</span><span>הפרופיל יעבור אישור צוות הבטיחות, בדרך כלל תוך יום-יומיים.</span></div>
 
       <!-- מייסדים / טריאל חינם — הדגשה מרכזית.
            כל עוד נותרו מקומות מייסדים, זו ההבטחה הנכונה להציג: מורה שמגיע
@@ -2997,7 +2997,15 @@ async function saveTeacherProfile(){
 // ─── BOOKING SYSTEM (Firebase) ────────────────────────────────────────────────
 // בקשת שיעור. Drushe לא מעורבת בכסף של שיעורים — התלמיד והמורה מתאמים אותו
 // ביניהם — ולכן אין כאן אמצעי תשלום, קוד הפניה או סכום ששולם.
+// הזמנה אחת בכל רגע: ברשת איטית הכתיבה נתקעת, ולחיצה חוזרת אחרי חלון ה-5 שניות יצרה הזמנה שנייה ושלישית (בדיקת משתמש 2.11.2026)
+let _bookingBusy=false;
 async function requestBooking(totalAmount){
+  if(_bookingBusy){showFireToast('⏳ הבקשה כבר נשלחת — אפשר להמתין');return;}
+  _bookingBusy=true;
+  try{await _requestBookingInner(totalAmount);}
+  finally{_bookingBusy=false;}
+}
+async function _requestBookingInner(totalAmount){
   if(!currentUser){
     showFireToast('❌ צריך להתחבר כדי להזמין שיעור');
     setTimeout(()=>go('login'),1200);return;
@@ -10432,7 +10440,7 @@ function Teacher(){
         ?`<div class="tpcard" style="text-align:center;padding:20px">
             <div style="font-size:44px;margin-bottom:10px">🎉</div>
             <p style="font-weight:800;color:#0e7a72;font-size:16px;margin:0 0 4px">הבקשה נשלחה!</p>
-            <p style="color:#0e7a72;font-size:13px;margin:0 0 14px">${escapeHtml(t.name||'')} יאשר/תאשר תוך 24 שעות. ההורים יקבלו הודעה.</p>
+            <p style="color:#0e7a72;font-size:13px;margin:0 0 14px">${escapeHtml(t.name||'')} יאשר/תאשר בקרוב. ההורים יקבלו הודעה.</p>
             <div style="display:flex;gap:10px">
               <button class="btn bs" style="flex:1;padding:13px" onclick="S.ratingT='${jsAttrEscape(t.id)}';S.booked=false;render()">${icon("star",14)} דרג שיעור</button>
               <button onclick="shareTeacher(S.teacher)" style="background:linear-gradient(135deg,#833AB4,#FD1D1D);color:#fff;border:none;border-radius:50px;padding:13px 18px;font-weight:800;cursor:pointer">${icon("send",14)}</button>
@@ -10568,6 +10576,7 @@ function Booking(){
       </div>
     </div>
 
+    ${(t.mode||[]).includes('frontal')?`<div class="warn" style="margin-bottom:16px"><span>${icon("alert-triangle",14)}</span><span>${(t.mode||[]).includes('online')?'המורה מלמד/ת גם פנים-אל-פנים. פגישה פנים-אל-פנים מחייבת נוכחות של הורה.':'השיעורים אצל מורה זה הם פנים-אל-פנים, ופגישה כזו מחייבת נוכחות של הורה.'}</span></div>`:''}
     <!-- סיכום הזמנה -->
     <div style="background:rgba(20,184,166,.06);border-radius:16px;padding:16px;margin-bottom:16px">
       <h4 style="font-weight:900;font-size:14px;margin:0 0 10px;color:#14B8A6;display:flex;align-items:center;gap:6px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>פרטי ההזמנה</h4>
@@ -12718,11 +12727,6 @@ function showEditTeacherProfileDialog(){
         <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:6px">🏙 עיר</label>
         <input id="_etCity" class="inp" value="${escapeHtml(t.city||'')}" placeholder="עיר בה אתה מלמד">
       </div>
-      <div style="margin-bottom:14px">
-        <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:6px">${icon("video",14)} קישור שיעור (Zoom / Google Meet)</label>
-        <input id="_etMeetingLink" class="inp" type="url" value="${escapeHtml(_tpv.meetingLink||'')}" placeholder="https://zoom.us/j/... או https://meet.google.com/...">
-        <p style="font-size:10px;color:#6C7686;margin:4px 0 0">${icon("alert-triangle",14)} ללא קישור, תלמידים לא יוכלו להצטרף לשיעור</p>
-      </div>
       <div style="background:rgba(6,182,212,0.04);border-radius:18px;padding:16px;margin-bottom:16px">
         <h3 style="font-weight:900;font-size:15px;margin:0 0 6px;color:#04778A">${icon("video",14)} קישור שיעור אישי (Zoom / Google Meet)</h3>
         <p style="font-size:12px;color:#64748B;margin:0 0 10px;line-height:1.6">תלמידים ישתמשו בקישור זה לכניסה לשיעור. יש להגדיר קישור פעיל כדי שתלמידים יוכלו להצטרף.</p>
@@ -12808,7 +12812,7 @@ function _etRenderSubjectDescs(t){
   return (window._etCats||[]).map(cid=>{
     const c=CATS.find(x=>x.id===cid)||{em:'📚',lbl:cid,col:'#14B8A6'};
     const existing=(t?.catProfiles||{})[cid]||{};
-    const desc=(existing.desc||'').replace(/`/g,"'");
+    const desc=(existing.desc||(t?.cats?.length<=1||cid===(t?.cat)?t?.desc:'')||'').replace(/`/g,"'");
     const tags=(existing.tags||[]).join(', ');
     return `<div style="background:${c.col}09;border-radius:16px;padding:14px 15px;margin-bottom:12px">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
@@ -14297,7 +14301,8 @@ function _attachStudentApprovalListener(uid){
     if(d.verified===true&&S.screen==='teacherPending'){
       currentUserData={...(currentUserData||{}),verified:true,rejected:false};
       showFireToast('🎉 הפרופיל שלך אושר — תלמידים יכולים לראות אותך');
-      go('home');
+      // בלי הטעינה הזו הפרופיל מציג לשוניות תלמיד עד רענון (isTeacher נגזר מהימצאות המורה ב-TEACHERS)
+      Promise.resolve(typeof loadRealTeachers==='function'?loadRealTeachers():null).catch(()=>{}).then(()=>go('home'));
     } else if(d.verified===true&&S.screen==='studentPending'){
       currentUserData={...(currentUserData||{}),verified:true,rejected:false};
       if(S._firstApproval){S._firstApproval=false;showFireToast('🎉 ברוכים הבאים ל-Drushe!');}
@@ -15133,9 +15138,10 @@ async function firebaseLogin(usernameOrEmail,password){
       'auth/user-not-found':'❌ שם משתמש לא קיים',
       'auth/wrong-password':'❌ סיסמה שגויה',
       'auth/invalid-credential':'❌ שם משתמש או סיסמה שגויים',
-      'auth/too-many-requests':'❌ יותר מדי ניסיונות – המתן כמה דקות'
+      'auth/too-many-requests':'❌ יותר מדי ניסיונות – המתן כמה דקות',
+      'auth/network-request-failed':'❌ אין חיבור לאינטרנט — בדוק את הרשת ונסה שוב'
     };
-    showFireToast(m[e.code]||'❌ '+e.message);
+    showFireToast(m[e.code]||'❌ לא הצלחנו להתחבר. נסה שוב');
   }
 }
 
