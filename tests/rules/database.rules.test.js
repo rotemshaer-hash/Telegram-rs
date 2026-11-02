@@ -135,12 +135,12 @@ describe('privacy: what a user must not reach', () => {
 // beforeEach) to pick the right bound, the same sibling-lookup pattern used
 // elsewhere in this file (e.g. teacherId on a booking).
 describe('age: bounded by role, enforced on the server, not only the client', () => {
-  it('a student can set their age inside 8-18', async () => {
+  it('a student can set their age inside 9-18', async () => {
     await assertSucceeds(set(ref(asStudent(), 'users/student-uid/age'), 15));
   });
 
-  it('a student cannot set an age under 8', async () => {
-    await assertFails(set(ref(asStudent(), 'users/student-uid/age'), 7));
+  it('a student cannot set an age under 9', async () => {
+    await assertFails(set(ref(asStudent(), 'users/student-uid/age'), 8));
   });
 
   it('a student cannot set an age over 18', async () => {
