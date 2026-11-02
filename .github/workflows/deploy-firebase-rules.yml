@@ -67,7 +67,17 @@ jobs:
       # ולכן החוקים פורסמו ידנית בקונסולה במשך חודשים.
       # הפרדה לשני שלבים מנתקת את התלות: חוקי ה-database נפרסים תמיד.
       - name: Deploy database rules
-        run: GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa.json firebase deploy --only database --project kidemy-83a17 --non-interactive
+        run: |
+          set +e
+          GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa.json firebase deploy --only database --project kidemy-83a17 --non-interactive --debug > /tmp/deploy.log 2>&1
+          code=$?
+          if [ $code -ne 0 ]; then
+            echo "=== why it failed (credentials and tokens filtered out) ==="
+            grep -iE "error|status|403|401|404|permission|denied|forbidden|message|reason|PUT|PATCH" /tmp/deploy.log | grep -viE "authorization|bearer|access_token|refresh_token|private_key|client_secret" | tail -50
+          else
+            tail -15 /tmp/deploy.log | grep -viE "authorization|bearer|access_token|refresh_token|private_key"
+          fi
+          exit $code
 
       # ── חוסם, סוף סוף ──
       #
