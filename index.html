@@ -857,6 +857,7 @@ async function submitTeacherQuestion(teacherUid,overlayEl){
   if(!currentUser){showFireToast('יש להתחבר');return;}
   const questionText=document.getElementById('_qaQuestionInput')?.value.trim();
   if(!questionText){showFireToast('אנא כתוב שאלה');return;}
+  if(rejectContactIn(questionText))return;
   try{
     showFireToast('⏳ שולח שאלה...');
     const qaRef=db.ref('teacherQA/'+teacherUid).push();
@@ -1196,7 +1197,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.62';
+const APP_VERSION='4.11.63';
 
 // ─── הודעות קוליות — כבויות ────────────────────────────────────────────────
 // הקלטה קולית היא הערוץ היחיד בין ילדים שאיש לא בודק: אין תמלול, אין סינון,
@@ -2842,7 +2843,7 @@ async function saveTeacherProfile(){
   if(!area?.value){showFireToast('❌ בחר אזור');return;}
   if(!city?.value.trim()){showFireToast('❌ הכנס עיר');return;}
   if(!price?.value||parseInt(price.value)<20){showFireToast('❌ מחיר מינימלי ₪20');return;}
-  if(descTooShort(desc?.value,'התיאור')){return;}
+  if(descTooShort(desc?.value,'התיאור')||rejectContactIn(desc?.value,document.getElementById('tWhyTeach')?.value,document.getElementById('tProudOf')?.value,document.getElementById('tTypicalLesson')?.value)){return;}
   if(!_modeOnline&&!_modeFrontal){showFireToast('❌ בחר לפחות אופן הוראה אחד');return;}
   if(!kcbChecked('tAgeConfirm')){showFireToast('❌ יש לאשר שאתה/ת בין גיל 14 ל-18');return;}
   const _ageVal=parseInt(document.getElementById('tAge')?.value||0);
@@ -4871,6 +4872,15 @@ const PROFANITY_PATTERNS=[
   /(?<![א-ת])שרמוטה(?![א-ת])/,/(?<![א-ת])קוקסינל(?![א-ת])/,/(?<![א-ת])חרא(?![א-ת])/,
   /(?<![א-ת])מפגר\w*(?![א-ת])/,/(?<![א-ת])הומו\s?(דפוק|מטונף)(?![א-ת])/,/(?<![א-ת])כוס\s?אחותך(?![א-ת])/,
 ];
+// טקסט ציבורי (פרופיל, קבוצה, פוסט, שאלה, הצעה) לא נושא פרטי קשר: בניגוד לצ'אט, שם אין שום שימוש לגיטימי לטלפון או קישור,
+// ושם זה בדיוק הערוץ שדרכו ילד מקבל הזמנה לצאת מהאפליקציה. אותו זיהוי של הצ'אט (CONTACT_PATTERNS), אבל כאן חוסם.
+function rejectContactIn(...texts){
+  const kinds=new Set();
+  texts.forEach(t=>detectContactSharing(String(t||'')).forEach(k=>kinds.add(k)));
+  if(!kinds.size)return false;
+  showFireToast('❌ אי אפשר לשתף '+[...kinds].join(' / ')+' בטקסט ציבורי. הקשר נשאר בתוך האפליקציה.');
+  return true;
+}
 function containsProfanity(text){
   if(!text)return false;
   return PROFANITY_PATTERNS.some(rx=>rx.test(text));
@@ -11569,6 +11579,7 @@ async function postNew(){
   if(!postText&&!mediaFile){showFireToast('❌ הוסף טקסט או מדיה');return;}
   if(postText.length > 5000){ showFireToast('❌ פוסט ארוך מדי (מקסימום 5000 תווים)'); return; }
   if(containsProfanity(postText)){ showFireToast('❌ הפוסט מכיל שפה לא הולמת. נסה לנסח מחדש בבקשה.'); return; }
+  if(rejectContactIn(postText))return;
   if(!currentUser){showFireToast('❌ צריך להתחבר');return;}
   if(currentUserData?.role==='student'&&currentUserData?.verified!==true&&!isAdmin()){
     showFireToast('🔒 חכה לאישור מנהל לפני פרסום');return;
@@ -11772,6 +11783,7 @@ async function _submitBriefProposal(briefId){
   const message=(document.getElementById('_bpMsg')?.value||'').trim();
   if(!price||price<1){showFireToast('❌ הזן מחיר לשיעור');return;}
   if(!message||message.length<10){showFireToast('❌ כתוב הודעה להורה (לפחות 10 תווים)');return;}
+  if(rejectContactIn(message))return;
   const brief=(S.parentBriefs||[]).find(b=>b.id===briefId);
   if(!brief){showFireToast('❌ הדרוש לא נמצא');return;}
   try{
@@ -12986,7 +12998,7 @@ function showEditCatProfileDialog(catId){
 }
 async function saveCatProfileEdits(catId){
   const desc=document.getElementById('_ecDesc')?.value.trim();
-  if(descTooShort(desc,'התיאור ב'+catById(catId).lbl))return;
+  if(descTooShort(desc,'התיאור ב'+catById(catId).lbl)||rejectContactIn(desc))return;
   const tagsRaw=document.getElementById('_ecTags')?.value.trim();
   const tags=tagsRaw?tagsRaw.split(',').map(s=>s.trim()).filter(Boolean):[];
   try{
@@ -13019,7 +13031,7 @@ async function saveTeacherProfileEdits(){
   let firstDesc='';
   for(const cid of cats){
     const d=document.getElementById('_etDesc_'+cid)?.value.trim()||'';
-    if(descTooShort(d,'התיאור ל'+(CATS.find(x=>x.id===cid)?.lbl||cid)))return;
+    if(descTooShort(d,'התיאור ל'+(CATS.find(x=>x.id===cid)?.lbl||cid))||rejectContactIn(d))return;
     const tr=document.getElementById('_etTags_'+cid)?.value.trim()||'';
     const tg=tr?tr.split(',').map(s=>s.trim()).filter(Boolean):[];
     catProfileUpdates[cid]={desc:d,tags:tg};
@@ -13111,7 +13123,7 @@ function showEditSubjectDialog(catId){
 }
 async function _saveSubjectEdit(catId){
   const desc=document.getElementById('_esDesc')?.value.trim()||'';
-  if(descTooShort(desc,'התיאור ב'+catById(catId).lbl))return;
+  if(descTooShort(desc,'התיאור ב'+catById(catId).lbl)||rejectContactIn(desc))return;
   const tagsRaw=document.getElementById('_esTags')?.value.trim()||'';
   const tags=tagsRaw?tagsRaw.split(',').map(s=>s.trim()).filter(Boolean):[];
   const price=parseInt(document.getElementById('_esPrice')?.value)||80;
@@ -13430,6 +13442,7 @@ async function _saveNewGroup(){
   const isMixed=document.getElementById('_cgMixed')?.checked||false;
   if(!title){showFireToast('❌ חסרה כותרת');return;}
   if(!location){showFireToast('❌ חסר מיקום');return;}
+  if(rejectContactIn(title,desc,location))return;
   const myT=TEACHERS.find(x=>x.id===currentUser.uid);
   try{
     const ref=db.ref('groups').push();

@@ -690,6 +690,29 @@ describe('role lock and group enrolment', () => {
   });
 });
 
+// Public free text is where a teenage teacher can invite a child out of the app. The client refuses it; the rules refuse
+// the obvious shapes too, for a hand-made client (security review 2.11.2026).
+describe('public text refuses links, handles and phone numbers', () => {
+  beforeEach(async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await set(ref(ctx.database(), `userRoles/${TEACHER}`), 'teacher');
+      await set(ref(ctx.database(), 'groups/gx'), { teacherId: TEACHER, title: 'G', location: 'x', status: 'open' });
+    });
+  });
+  it('a group field with a link, a @handle or a phone number is refused; a street address is fine', async () => {
+    await assertSucceeds(set(ref(asTeacher(), 'groups/gx/location'), 'הרצל 15, תל אביב'));
+    await assertFails(set(ref(asTeacher(), 'groups/gx/desc'), 'join https://wa.me/972501234567'));
+    await assertFails(set(ref(asTeacher(), 'groups/gx/title'), 'text me @kid_handle'));
+    await assertFails(set(ref(asTeacher(), 'groups/gx/location'), '050-1234567'));
+    await assertFails(set(ref(asTeacher(), 'groups/gx/desc'), 'www.example.com'));
+  });
+  it('a teacher bio with a phone number or link is refused', async () => {
+    await assertSucceeds(set(ref(asTeacher(), `teachers/${TEACHER}/desc`), 'מלמד מתמטיקה כבר 3 שנים, שיעורים כיפיים'));
+    await assertFails(set(ref(asTeacher(), `teachers/${TEACHER}/desc`), 'התקשרו אליי 0501234567'));
+    await assertFails(set(ref(asTeacher(), `teachers/${TEACHER}/desc`), 'instagram https://instagram.com/x'));
+  });
+});
+
 // A teacher used to create a booking on themselves or on a child's uid and then ride it: notify.js, studentProgress
 // and the chat all trusted "there is a booking between them" (security review 2.11.2026).
 describe('a booking needs a real, different teacher; progress and Q&A are not forgeable by the teacher', () => {

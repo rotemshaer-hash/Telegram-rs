@@ -8,6 +8,9 @@
       ".indexOn": ["cat", "city", "verified"],
       "$teacherUid": {
         ".write": "auth != null && (auth.uid == $teacherUid || auth.token.email == 'rotemshaer@gmail.com')",
+        "desc": {
+          ".validate": "newData.isString() && newData.val().length <= 2000 && !newData.val().matches(/[<>`]/) && !newData.val().matches(/(https?:\\/\\/|www\\.|@[a-zA-Z0-9._]{3,}|0[0-9]{1,2}[- ]?[0-9]{3}[- ]?[0-9]{4})/)"
+        },
         "verified": {
           ".validate": "auth.token.email == 'rotemshaer@gmail.com' || newData.val() == false"
         },
@@ -461,9 +464,9 @@
       ".read": "auth != null",
       "$groupId": {
         ".write": "auth != null && ((root.child('users').child(auth.uid).child('verified').val() == true && !root.child('userBlocks').child(auth.uid).exists() && (data.child('teacherId').val() == auth.uid || !data.exists())) || auth.token.email == 'rotemshaer@gmail.com')",
-        "title": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>`]/)" },
-        "desc": { ".validate": "newData.isString() && newData.val().length <= 2000 && !newData.val().matches(/[<>`]/)" },
-        "location": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>`]/)" },
+        "title": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>`]/) && !newData.val().matches(/(https?:\\/\\/|www\\.|@[a-zA-Z0-9._]{3,}|0[0-9]{1,2}[- ]?[0-9]{3}[- ]?[0-9]{4})/)" },
+        "desc": { ".validate": "newData.isString() && newData.val().length <= 2000 && !newData.val().matches(/[<>`]/) && !newData.val().matches(/(https?:\\/\\/|www\\.|@[a-zA-Z0-9._]{3,}|0[0-9]{1,2}[- ]?[0-9]{3}[- ]?[0-9]{4})/)" },
+        "location": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>`]/) && !newData.val().matches(/(https?:\\/\\/|www\\.|@[a-zA-Z0-9._]{3,}|0[0-9]{1,2}[- ]?[0-9]{3}[- ]?[0-9]{4})/)" },
         "day": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>`]/)" },
         "time": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>`]/)" }
       }
