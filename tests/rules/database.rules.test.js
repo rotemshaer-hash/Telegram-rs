@@ -518,7 +518,7 @@ describe('gates: only a verified, unblocked user reaches another user', () => {
 // text was rendered unescaped on every home screen).
 describe('gates: groups, posts, questions and briefs need a verified, unblocked user', () => {
   const anon = () => testEnv.authenticatedContext('guest-uid', { firebase: { sign_in_provider: 'anonymous' } }).database();
-  const group = (over = {}) => ({ teacherId: TEACHER, title: 'Chess', desc: 'fun', location: 'Tel Aviv', day: 'ב', time: '17:00', status: 'open', ...over });
+  const group = (over = {}) => ({ teacherId: TEACHER, title: 'Chess', desc: 'fun', location: 'Tel Aviv', day: 'ב', time: '17:00', status: 'pending', ...over });
 
   it('a verified teacher creates a group; an unverified user or a guest cannot', async () => {
     await assertSucceeds(set(ref(asTeacher(), 'groups/gg1'), group()));
@@ -706,10 +706,59 @@ describe('public text refuses links, handles and phone numbers', () => {
     await assertFails(set(ref(asTeacher(), 'groups/gx/location'), '050-1234567'));
     await assertFails(set(ref(asTeacher(), 'groups/gx/desc'), 'www.example.com'));
   });
+  it('posts, replies, questions, answers, briefs and proposals refuse contact details too', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await set(ref(ctx.database(), `users/${STUDENT}/verified`), true);
+      await set(ref(ctx.database(), `users/${TEACHER}/verified`), true);
+      await set(ref(ctx.database(), 'communityPosts/p1'), { authUid: STUDENT, author: 'S', text: 'hi', createdAt: 1 });
+    });
+    const post = (text) => ({ authUid: STUDENT, author: 'S', text, createdAt: Date.now() });
+    await assertSucceeds(set(ref(asStudent(), 'communityPosts/p2'), post('שלום, מי רוצה ללמוד איתי חשבון?')));
+    await assertFails(set(ref(asStudent(), 'communityPosts/p3'), post('כתבו לי 0521234567')));
+    await assertFails(set(ref(asStudent(), 'communityPosts/p1/reps/r1'), { auth: 'S', authUid: STUDENT, text: 'https://t.me/x', createdAt: 1 }));
+    await assertFails(set(ref(asStudent(), `teacherQA/${TEACHER}/q1`), { askerUid: STUDENT, askerName: 'S', question: 'call 052-123-4567', askedAt: 1 }));
+    await assertSucceeds(set(ref(asStudent(), `teacherQA/${TEACHER}/q2`), { askerUid: STUDENT, askerName: 'S', question: 'כמה עולה שיעור?', askedAt: 1 }));
+    await assertFails(set(ref(asStudent(), 'parentBriefs/b9'), { parentUid: STUDENT, childName: 'K', description: 'www.example.com', budget: 30, status: 'open', createdAt: 1 }));
+    await assertFails(set(ref(asTeacher(), 'briefProposals/b1/teacher-uid'), { teacherUid: TEACHER, message: 'my instagram @cool_teacher', price: 30, createdAt: 1 }));
+  });
   it('a teacher bio with a phone number or link is refused', async () => {
     await assertSucceeds(set(ref(asTeacher(), `teachers/${TEACHER}/desc`), 'מלמד מתמטיקה כבר 3 שנים, שיעורים כיפיים'));
     await assertFails(set(ref(asTeacher(), `teachers/${TEACHER}/desc`), 'התקשרו אליי 0501234567'));
     await assertFails(set(ref(asTeacher(), `teachers/${TEACHER}/desc`), 'instagram https://instagram.com/x'));
+  });
+});
+
+describe('groups: a new group waits for the admin before anyone can see it open', () => {
+  const ADMIN_DB = () => testEnv.authenticatedContext('admin-uid', { email: 'rotemshaer@gmail.com' }).database();
+  const g = (status) => ({ teacherId: TEACHER, title: 'Chess', desc: 'fun', location: 'Tel Aviv', day: 'ב', time: '17:00', status });
+  beforeEach(async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await set(ref(ctx.database(), `userRoles/${TEACHER}`), 'teacher');
+      await set(ref(ctx.database(), `users/${TEACHER}/verified`), true);
+    });
+  });
+  it('a teacher creates a group only as pending, and cannot approve it themselves', async () => {
+    await assertFails(set(ref(asTeacher(), 'groups/n1'), g('open')));
+    await assertSucceeds(set(ref(asTeacher(), 'groups/n1'), g('pending')));
+    await assertFails(set(ref(asTeacher(), 'groups/n1/status'), 'open'));
+  });
+  it('the admin approves it, and then the teacher may mark it full or close it', async () => {
+    await assertSucceeds(set(ref(asTeacher(), 'groups/n2'), g('pending')));
+    await assertSucceeds(set(ref(ADMIN_DB(), 'groups/n2/status'), 'open'));
+    await assertSucceeds(set(ref(asTeacher(), 'groups/n2/status'), 'full'));
+    await assertSucceeds(set(ref(asTeacher(), 'groups/n2/status'), 'closed'));
+    await assertFails(set(ref(asTeacher(), 'groups/n2/status'), 'open'));
+  });
+});
+
+describe('analytics and stories: writes need a verified account', () => {
+  it('an unverified user or a guest cannot write analytics or a story; a verified user can write their own', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => { await set(ref(ctx.database(), `users/${TEACHER}/verified`), true); });
+    await assertSucceeds(set(ref(asTeacher(), '_analytics/2026-11/e1'), { e: 'login', uid: TEACHER, ts: 1 }));
+    await assertFails(set(ref(asTeacher(), '_analytics/2026-11/e2'), { e: 'login', uid: STUDENT, ts: 1 }));
+    await assertFails(set(ref(asStranger(), '_analytics/2026-11/e3'), { e: 'login', uid: STRANGER, ts: 1 }));
+    await assertSucceeds(set(ref(asTeacher(), 'stories/s1'), { uid: TEACHER, status: 'pending', createdAt: 1 }));
+    await assertFails(set(ref(asStranger(), 'stories/s2'), { uid: STRANGER, status: 'pending', createdAt: 1 }));
   });
 });
 
@@ -843,6 +892,10 @@ describe('a teacher cannot inject or rewrite a booking in a child’s list', () 
   it('may set their meeting link when approving, but only as a plain http(s) link', async () => {
     await assertSucceeds(update(ref(asTeacher(), `userBookings/${STUDENT}/b1`), { status: 'approved', jitsiUrl: 'https://zoom.us/j/9', meetingPlatform: 'Zoom' }));
     await assertFails(update(ref(asTeacher(), `userBookings/${STUDENT}/b1`), { jitsiUrl: 'javascript:alert(1)' }));
+    // a lesson link may only point at a known video host: a free link is a way to take a child off the app
+    await assertSucceeds(update(ref(asTeacher(), `userBookings/${STUDENT}/b1`), { jitsiUrl: 'https://us02web.zoom.us/j/9' }));
+    await assertFails(update(ref(asTeacher(), `userBookings/${STUDENT}/b1`), { jitsiUrl: 'https://evil.example/zoom.us/j/9' }));
+    await assertFails(update(ref(asTeacher(), `userBookings/${STUDENT}/b1`), { jitsiUrl: 'http://zoom.us/j/9' }));
   });
 
   it('can still move an existing booking along: approve, complete, cancel (with its timestamp)', async () => {
@@ -1333,7 +1386,8 @@ describe('submission collections: anyone may add one, nobody may wipe them', () 
   }
 
   it('_analytics: a user can log an event but cannot wipe a month', async () => {
-    await assertSucceeds(set(ref(asStudent(), '_analytics/2026-09/ev1'), { e: 'open', ts: 1 }));
+    await testEnv.withSecurityRulesDisabled(async (ctx) => { await set(ref(ctx.database(), `users/${STUDENT}/verified`), true); });
+    await assertSucceeds(set(ref(asStudent(), '_analytics/2026-09/ev1'), { e: 'open', uid: STUDENT, ts: 1 }));
     await assertFails(remove(ref(asStudent(), '_analytics/2026-09')));
   });
 });
@@ -1549,9 +1603,10 @@ describe('privacy: a student cannot put markup into the teacher copy of a bookin
     await assertSucceeds(write('cJ2', { jitsiUrl: '' }));
   });
 
-  it('an http link and a long https link are fine (Teams links are long)', async () => {
-    await assertSucceeds(write('cH', { jitsiUrl: 'http://meet.example.org/room' }));
-    await assertSucceeds(write('cL', { jitsiUrl: 'https://teams.example.com/l/meetup-join/' + 'a'.repeat(400) }));
+  it('a long https link on a known host is fine (Teams links are long); http and unknown hosts are not', async () => {
+    await assertFails(write('cH', { jitsiUrl: 'http://meet.example.org/room' }));
+    await assertFails(write('cU', { jitsiUrl: 'https://teams.example.com/l/meetup-join/abc' }));
+    await assertSucceeds(write('cL', { jitsiUrl: 'https://teams.microsoft.com/l/meetup-join/' + 'a'.repeat(400) }));
   });
 
   it('a brief booking (the time is "לתיאום", to be agreed) still passes', async () => {

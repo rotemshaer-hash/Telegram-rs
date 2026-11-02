@@ -20,12 +20,12 @@ test('my lessons shows the teacher’s real lessons, and only a valid meeting li
     return {
       text: document.body.innerText,
       order: teacherAllBookings.map((b) => b.id).join(''),
-      links: [meetingLinkClean('https://zoom.us/j/1'), meetingLinkClean('zoom.us/j/1'), meetingLinkClean("https://a.b/x'y"), meetingLinkClean('https://' + 'a'.repeat(700))],
+      links: [meetingLinkClean('https://zoom.us/j/1'), meetingLinkClean('zoom.us/j/1'), meetingLinkClean("https://a.b/x'y"), meetingLinkClean('https://' + 'a'.repeat(700)), meetingLinkClean('https://evil.example/x'), meetingLinkClean('https://us02web.zoom.us/j/1'), meetingLinkClean('http://zoom.us/j/1')],
     };
   });
   expect(r.text).toContain('₪100');
   expect(r.text).toContain('דנה');
   expect(r.text).toContain('בוטל');
   expect(r.order).toBe('abc'); // the screen sorts a copy, not the shared list
-  expect(r.links).toEqual(['https://zoom.us/j/1', '', '', '']);
+  expect(r.links).toEqual(['https://zoom.us/j/1', '', '', '', '', 'https://us02web.zoom.us/j/1', '']);
 });

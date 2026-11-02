@@ -37,6 +37,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/report-alert"
+  to = "/.netlify/functions/report-alert"
+  status = 200
+
+[[redirects]]
   from = "/api/account-cleanup"
   to = "/.netlify/functions/account-cleanup"
   status = 200
