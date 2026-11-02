@@ -56,6 +56,19 @@ beforeEach(() => {
 });
 
 describe('only an approved, unblocked account can notify another user', () => {
+  it('a recipient who blocked the sender is not notified', async () => {
+    data[`userBlockedUsers/${JOINER}/${OWNER}`] = true;
+    const r = await call(OWNER, { toUid: JOINER, type: 'groupApproved', ctx: { groupId: 'g1' } });
+    assert.equal(r.status, 403);
+    assert.equal(pushed.length, 0);
+  });
+
+  it('free text in "message" comes only from the admin', async () => {
+    const r = await call(OWNER, { toUid: JOINER, type: 'groupApproved', ctx: { groupId: 'g1', message: 'add me on another app' } });
+    assert.equal(r.status, 200);
+    assert.equal(pushed[0].value.message, undefined);
+  });
+
   it('an unverified sender is refused', async () => {
     delete data[`users/${OWNER}/verified`];
     const r = await call(OWNER, { toUid: JOINER, type: 'groupApproved', ctx: { groupId: 'g1' } });

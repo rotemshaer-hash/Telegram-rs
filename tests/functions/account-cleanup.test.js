@@ -15,8 +15,27 @@ const children = (p) => {
   });
   return out;
 };
+// a snapshot built from the flat path map: val(), exists(), child(), forEach()
+const snapOf = (p) => {
+  const pre = p + '/';
+  const keys = [...new Set(Object.keys(data).filter((k) => k.startsWith(pre)).map((k) => k.slice(pre.length).split('/')[0]))];
+  const tree = () => { const o = {}; keys.forEach((k) => { o[k] = snapOf(p + '/' + k).val(); }); return o; };
+  return {
+    key: p.split('/').pop(),
+    val: () => (data[p] !== undefined ? data[p] : (keys.length ? tree() : null)),
+    exists: () => data[p] !== undefined || keys.length > 0,
+    child: (k) => snapOf(p + '/' + k),
+    forEach: (cb) => keys.forEach((k) => cb(snapOf(p + '/' + k))),
+  };
+};
 const ref = (p) => ({
-  get: async () => ({ val: () => data[p], exists: () => data[p] !== undefined }),
+  set: async (v) => { const flat = (pre, o) => (o && typeof o === 'object' ? Object.entries(o).forEach(([k, x]) => flat(pre + '/' + k, x)) : (data[pre] = o)); flat(p, v); },
+  update: async (patch) => {
+    // like firebase-admin: a multi-path update with a path that is an ancestor of another is rejected whole
+    const ks = Object.keys(patch);
+    if (ks.some((a) => ks.some((b) => a !== b && b.startsWith(a + '/')))) throw new Error('path that is ancestor of another path');
+    Object.keys(patch).forEach((k) => { Object.keys(data).filter((d) => d === k || d.startsWith(k + '/')).forEach((d) => delete data[d]); }); },
+  get: async () => snapOf(p),
   remove: async () => { Object.keys(data).filter((k) => k === p || k.startsWith(p + '/')).forEach((k) => delete data[k]); },
   orderByChild: (field) => ({
     equalTo: (v) => ({
@@ -51,6 +70,15 @@ beforeEach(() => {
     'parentTokens/t1/uid': ME, 'parentTokens/t2/uid': OTHER,
     'stories/s1/uid': ME, 'stories/s2/uid': OTHER,
     [`parentContact/${OTHER}/email`]: 'other-mom@example.org',
+    [`messages/${[ME, OTHER].sort().join('_')}/m1/text`]: 'hi', [`newConversationNotified/${[ME, OTHER].sort().join('_')}`]: true,
+    [`messages/${['x-uid', OTHER].sort().join('_')}/m1/text`]: 'not mine',
+    [`groupMembers/g1/${ME}/name`]: 'Kid', [`groupMembers/g1/${OTHER}/name`]: 'Other',
+    [`messageStats/${ME}/conversations/${OTHER}`]: true, [`referrals/${ME}/${OTHER}/at`]: 1,
+    [`teacherQA/${ME}/qSelf/askerUid`]: ME, // asked a question on their own profile: overlaps teacherQA/<me>
+    [`teacherQA/${OTHER}/q1/askerUid`]: ME, [`teacherQA/${OTHER}/q2/askerUid`]: 'x-uid', [`teacherQA/${ME}/q9/askerUid`]: OTHER,
+    'parentBriefs/b1/parentUid': ME, 'parentBriefs/b2/parentUid': OTHER, 'briefProposals/b1/t/price': 1,
+    [`briefProposals/b2/${ME}/price`]: 2, [`briefProposals/b2/${OTHER}/price`]: 3,
+    'fcmTokens/f1/uid': ME, 'fcmTokens/f2/uid': OTHER,
   };
 });
 
@@ -64,6 +92,16 @@ describe('account-cleanup', () => {
     assert.equal(data['parentTokens/t2/uid'], OTHER);
     assert.equal(data['stories/s2/uid'], OTHER);
     assert.equal(data[`parentContact/${OTHER}/email`], 'other-mom@example.org');
+  });
+
+  it('also removes chats, group memberships, questions, briefs, proposals and tokens — and only theirs', async () => {
+    const r = await call(ME, { chatPartners: [OTHER, 'not a uid!'], groupIds: ['g1'], role: 'teacher' });
+    assert.equal(r.status, 200);
+    const gone = (p) => !Object.keys(data).some((k) => k === p || k.startsWith(p + '/'));
+    const chat = [ME, OTHER].sort().join('_');
+    assert.equal(Object.keys(data).some((k) => k.startsWith('messageArchive/' + chat + '/') && k.endsWith('/m1/text')), true, 'the conversation is archived for the admin before it is deleted');
+    for (const p of [`messages/${chat}`, `newConversationNotified/${chat}`, `groupMembers/g1/${ME}`, `messageStats/${ME}`, `referrals/${ME}`, `teacherQA/${OTHER}/q1`, `teacherQA/${ME}`, 'parentBriefs/b1', 'briefProposals/b1', `briefProposals/b2/${ME}`, 'fcmTokens/f1']) assert.equal(gone(p), true, p);
+    for (const p of [`messages/${['x-uid', OTHER].sort().join('_')}`, `groupMembers/g1/${OTHER}`, `teacherQA/${OTHER}/q2`, 'parentBriefs/b2', `briefProposals/b2/${OTHER}`, 'fcmTokens/f2']) assert.equal(gone(p), false, p + ' must stay');
   });
 
   it('a user whose profile still exists cannot wipe the parent address and the consent log', async () => {

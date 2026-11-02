@@ -35,7 +35,7 @@ const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 // יצירת בקשת הסכמה: עד 5 ניסיונות לשעה לכל uid. מספיק להרשמה שנכשלה וניסיון
 // חוזר, נמוך מדי כדי לאפשר הצפת תיבת ההורה במיילים.
 const CREATE_RATE_LIMIT_MAX = 5;
-const CREATE_IP_RATE_LIMIT_MAX = 15;
+const CREATE_IP_RATE_LIMIT_MAX = 40; // כיתה שלמה על אותה רשת בית ספר (החלטת הבעלים, 1.11.2026)
 const CREATE_RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
 
 async function withinRateLimit(db, path, ip, max, windowMs) {
@@ -124,10 +124,10 @@ exports.handler = async (event) => {
       }
 
       // רק השדות שנחוצים — לא כל הרשומה (ברשומות ישנות יש בה תמונות base64)
-      const [parentConsentAt, userParentEmail, userName] = await Promise.all(
-        ['parentConsentAt', 'parentEmail', 'name'].map(async (k) => (await db.ref('users/' + uid + '/' + k).get()).val())
+      const [parentConsentAt, userParentEmail, userName, userRole] = await Promise.all(
+        ['parentConsentAt', 'parentEmail', 'name', 'role'].map(async (k) => (await db.ref('users/' + uid + '/' + k).get()).val())
       );
-      const userRec = { parentConsentAt, parentEmail: userParentEmail, name: userName };
+      const userRec = { parentConsentAt, parentEmail: userParentEmail, name: userName, role: userRole };
 
       // הורה שכבר אישר לא מקבל עוד מייל ולא נפתחת בקשה חדשה
       if (userRec.parentConsentAt) {
@@ -164,6 +164,7 @@ exports.handler = async (event) => {
       await db.ref('parentConsent/' + newToken).set({
         uid,
         studentName,
+        role: userRec.role === 'teacher' ? 'teacher' : 'student',
         parentEmail,
         status: 'pending',
         createdAt: Date.now(),
@@ -233,6 +234,7 @@ exports.handler = async (event) => {
         headers,
         body: JSON.stringify({
           studentName: rec.studentName || '',
+          role: rec.role === 'teacher' ? 'teacher' : 'student',
           status: rec.status || 'pending',
         }),
       };

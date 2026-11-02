@@ -560,6 +560,161 @@ describe('gates: groups, posts, questions and briefs need a verified, unblocked 
   });
 });
 
+// ── A CONVERSATION NEEDS A REASON, A CHILD CAN BLOCK, EVIDENCE STAYS ──────
+// 1.11.2026 (child-safety review): any verified teacher could open a chat with any child
+// uid they had seen, and any participant could delete the whole conversation after a report.
+describe('conversations: a teacher may only write where the child started, a child can block, chats are not deletable', () => {
+  const chat = (a, b) => [a, b].sort().join('_');
+  const msg = (from) => ({ from, text: 'hi', createdAt: 1 });
+  const starter = (uid, other) => testEnv.withSecurityRulesDisabled(async (ctx) => { await set(ref(ctx.database(), `chatStarters/${uid}/${other}`), true); });
+
+  it('a teacher cannot open a conversation with a child who has not contacted them', async () => {
+    await assertFails(set(ref(asTeacher(), `messages/${chat(STUDENT, TEACHER)}/m1`), msg(TEACHER)));
+    await assertFails(set(ref(asTeacher(), `userChats/${STUDENT}/${TEACHER}`), { otherUid: TEACHER, lastMessage: 'hi' }));
+  });
+
+  it('once the child started the conversation the teacher can answer', async () => {
+    await assertSucceeds(set(ref(asStudent(), `chatStarters/${STUDENT}/${TEACHER}`), true));
+    await assertSucceeds(set(ref(asTeacher(), `messages/${chat(STUDENT, TEACHER)}/m2`), msg(TEACHER)));
+    await assertSucceeds(set(ref(asTeacher(), `userChats/${STUDENT}/${TEACHER}`), { otherUid: TEACHER, lastMessage: 'hi' }));
+  });
+
+  it('only the child writes their own starter, and a teacher cannot mark themselves as a starter', async () => {
+    await assertFails(set(ref(asTeacher(), `chatStarters/${STUDENT}/${TEACHER}`), true));
+    await assertFails(set(ref(asTeacher(), `chatStarters/${TEACHER}/${STUDENT}`), true));
+    await assertFails(set(ref(asStranger(), `chatStarters/${STRANGER}/${TEACHER}`), true));
+  });
+
+  it('a child writes to a teacher without needing anything', async () => {
+    await assertSucceeds(set(ref(asStudent(), `messages/${chat(STUDENT, TEACHER)}/m3`), msg(STUDENT)));
+  });
+
+  it('a child who blocked the teacher receives nothing from them, even where a starter exists', async () => {
+    await starter(STUDENT, TEACHER);
+    await assertSucceeds(set(ref(asStudent(), `userBlockedUsers/${STUDENT}/${TEACHER}`), true));
+    await assertFails(set(ref(asTeacher(), `messages/${chat(STUDENT, TEACHER)}/m4`), msg(TEACHER)));
+    await assertFails(set(ref(asTeacher(), `userChats/${STUDENT}/${TEACHER}`), { otherUid: TEACHER, lastMessage: 'hi' }));
+    await assertFails(set(ref(asTeacher(), `userBlockedUsers/${STUDENT}/${TEACHER}`), null));
+    await assertFails(set(ref(asStranger(), `userBlockedUsers/${STUDENT}/${STRANGER}`), true));
+  });
+
+  it('the block list is private to its owner', async () => {
+    await assertSucceeds(set(ref(asStudent(), `userBlockedUsers/${STUDENT}/${TEACHER}`), true));
+    await assertFails(get(ref(asTeacher(), `userBlockedUsers/${STUDENT}`)));
+    await assertSucceeds(get(ref(asStudent(), `userBlockedUsers/${STUDENT}`)));
+  });
+
+  it('no participant can delete a conversation or a message', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => { await set(ref(ctx.database(), `messages/${chat(STUDENT, TEACHER)}/keep`), msg(TEACHER)); });
+    await assertFails(set(ref(asTeacher(), `messages/${chat(STUDENT, TEACHER)}`), null));
+    await assertFails(set(ref(asStudent(), `messages/${chat(STUDENT, TEACHER)}`), null));
+    await assertFails(set(ref(asTeacher(), `messages/${chat(STUDENT, TEACHER)}/keep`), null));
+  });
+
+  it('the admin can still write into any conversation', async () => {
+    await assertSucceeds(set(ref(asAdmin(), `messages/${chat(STUDENT, 'admin-uid')}/a1`), msg('admin-uid')));
+  });
+});
+
+// A child's name sits in groupMembers / parentBriefs / briefProposals: an anonymous guest or an
+// unapproved account must not be able to read them (1.11.2026).
+describe('children’s names in groups and briefs are readable only by verified users', () => {
+  const anon = () => testEnv.authenticatedContext('guest-uid', { firebase: { sign_in_provider: 'anonymous' } }).database();
+  beforeEach(async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await set(ref(ctx.database(), `groupMembers/g1/${STUDENT}`), { name: 'Minor', status: 'approved' });
+      await set(ref(ctx.database(), 'parentBriefs/b1'), { parentUid: STUDENT, childName: 'Minor', status: 'open' });
+      await set(ref(ctx.database(), `briefProposals/b1/${TEACHER}`), { price: 5 });
+    });
+  });
+  it('a verified user can read them', async () => {
+    await assertSucceeds(get(ref(asStudent(), 'groupMembers/g1')));
+    await assertSucceeds(get(ref(asTeacher(), 'parentBriefs')));
+    await assertSucceeds(get(ref(asTeacher(), 'briefProposals/b1')));
+  });
+  it('a guest or an unverified account cannot', async () => {
+    for (const db of [anon(), asStranger()]) {
+      await assertFails(get(ref(db, 'groupMembers/g1')));
+      await assertFails(get(ref(db, 'parentBriefs')));
+      await assertFails(get(ref(db, 'briefProposals/b1')));
+    }
+  });
+});
+
+describe('reports: only verified accounts file them (no flooding by guests)', () => {
+  const anon = () => testEnv.authenticatedContext('guest-uid', { firebase: { sign_in_provider: 'anonymous' } }).database();
+  const rec = () => ({ targetType: 'user', targetId: TEACHER, reason: 'other', status: 'open', severity: 'medium', createdAt: Date.now(), slaDueAt: Date.now() + 172800000, reporterId: STUDENT, description: 'x' });
+  it('a verified user can report; a guest and an unverified account cannot', async () => {
+    await assertSucceeds(set(ref(asStudent(), 'reports/r1'), rec()));
+    await assertFails(set(ref(anon(), 'reports/r2'), rec()));
+    await assertFails(set(ref(asStranger(), 'reports/r3'), rec()));
+  });
+});
+
+// ── THE ROLE CANNOT BE SWAPPED, AND A TEACHER CANNOT ENROL A CHILD ────────
+// (child-safety review 2.11.2026) .validate does not run on delete, so a teacher could delete
+// users/<uid>/role, write 'student' and lose every teacher-only restriction. userRoles is
+// create-once; and groupMembers/userGroups entries are created by the child, never the teacher.
+describe('role lock and group enrolment', () => {
+  const chat = (a, b) => [a, b].sort().join('_');
+  beforeEach(async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => { await set(ref(ctx.database(), `userRoles/${TEACHER}`), 'teacher'); });
+  });
+
+  it('a teacher who deletes and rewrites their role is still restricted', async () => {
+    await assertSucceeds(remove(ref(asTeacher(), `users/${TEACHER}/role`)));
+    await assertSucceeds(set(ref(asTeacher(), `users/${TEACHER}/role`), 'student'));
+    await assertFails(set(ref(asTeacher(), `messages/${chat(STUDENT, TEACHER)}/x1`), { from: TEACHER, text: 'hi', createdAt: 1 }));
+    await assertFails(set(ref(asTeacher(), `userChats/${STUDENT}/${TEACHER}`), { otherUid: TEACHER, lastMessage: 'hi' }));
+  });
+
+  it('userRoles can be created once by its owner and never changed or deleted', async () => {
+    await assertSucceeds(set(ref(asStudent(), `userRoles/${STUDENT}`), 'student'));
+    await assertFails(set(ref(asStudent(), `userRoles/${STUDENT}`), 'teacher'));
+    await assertFails(remove(ref(asStudent(), `userRoles/${STUDENT}`)));
+    await assertFails(set(ref(asTeacher(), `userRoles/${TEACHER}`), 'student'));
+    await assertFails(set(ref(asStranger(), `userRoles/${STUDENT}`), 'student'));
+    await assertFails(set(ref(asStudent(), `userRoles/${STUDENT}`), 'admin'));
+  });
+
+  it('a group owner cannot create a membership or a userGroups entry for a child, only move an existing one', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await set(ref(ctx.database(), 'groups/gx'), { teacherId: TEACHER, title: 'G', location: 'x', status: 'open' });
+    });
+    await assertFails(set(ref(asTeacher(), `groupMembers/gx/${STUDENT}`), { status: 'approved', name: 'Minor' }));
+    await assertFails(set(ref(asTeacher(), `userGroups/${STUDENT}/gx`), { status: 'approved' }));
+    await assertSucceeds(set(ref(asStudent(), `groupMembers/gx/${STUDENT}`), { status: 'pending', name: 'Minor' }));
+    await assertSucceeds(set(ref(asStudent(), `userGroups/${STUDENT}/gx`), { status: 'pending' }));
+    await assertSucceeds(set(ref(asTeacher(), `groupMembers/gx/${STUDENT}/status`), 'approved'));
+    await assertSucceeds(set(ref(asTeacher(), `userGroups/${STUDENT}/gx/status`), 'approved'));
+  });
+});
+
+// A teacher used to create a booking on themselves or on a child's uid and then ride it: notify.js, studentProgress
+// and the chat all trusted "there is a booking between them" (security review 2.11.2026).
+describe('a booking needs a real, different teacher; progress and Q&A are not forgeable by the teacher', () => {
+  const bk = (over) => ({ id: 'k1', studentId: STUDENT, teacherId: TEACHER, studentName: 'X', teacherName: 'T', day: 'ב', time: '10:00', price: 5, status: 'pending', createdAt: 5, ...over });
+  it('a student books a real teacher', async () => {
+    await assertSucceeds(update(ref(asStudent()), { 'bookings/k1': bk({}), [`teacherBookings/${TEACHER}/k1`]: bk({}) }));
+  });
+  it('nobody books themselves, or a uid that is not a teacher', async () => {
+    await assertFails(set(ref(asTeacher(), 'bookings/k2'), bk({ id: 'k2', studentId: TEACHER, teacherId: TEACHER })));
+    await assertFails(set(ref(asTeacher(), 'bookings/k3'), bk({ id: 'k3', studentId: TEACHER, teacherId: STUDENT })));
+    await assertFails(set(ref(asStudent(), 'bookings/k4'), bk({ id: 'k4', teacherId: STUDENT })));
+    await assertFails(set(ref(asStudent(), `teacherBookings/${STRANGER}/k5`), bk({ id: 'k5', teacherId: STRANGER })));
+  });
+  it('a teacher writes a lesson summary only for the student the booking names', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => { await set(ref(ctx.database(), 'bookings/k6'), bk({ id: 'k6', status: 'approved' })); });
+    await assertSucceeds(set(ref(asTeacher(), `studentProgress/${STUDENT}/k6`), { topic: 'x' }));
+    await assertFails(set(ref(asTeacher(), `studentProgress/${STRANGER}/k6`), { topic: 'x' }));
+  });
+  it('a teacher answers a question that exists but cannot create one in a child’s name', async () => {
+    await assertFails(set(ref(asTeacher(), `teacherQA/${TEACHER}/q1`), { askerUid: STUDENT, question: 'fake', askedAt: 1 }));
+    await assertSucceeds(set(ref(asStudent(), `teacherQA/${TEACHER}/q2`), { askerUid: STUDENT, question: 'real', askedAt: 1 }));
+    await assertSucceeds(set(ref(asTeacher(), `teacherQA/${TEACHER}/q2/answer`), 'yes'));
+  });
+});
+
 // ── A TEACHER CANNOT WRITE INTO A CHILD'S BOOKING LIST ────────────────────
 // userBookings/<student>/<id> was writable by the teacher named on bookings/<id>
 // with no check on the content, and bookings/<id> could be CREATED by a teacher
