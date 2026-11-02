@@ -1189,7 +1189,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.58';
+const APP_VERSION='4.11.59';
 
 // ─── הודעות קוליות — כבויות ────────────────────────────────────────────────
 // הקלטה קולית היא הערוץ היחיד בין ילדים שאיש לא בודק: אין תמלול, אין סינון,
@@ -6338,8 +6338,11 @@ async function adminApproveTeacher(uid){
       return;
     }
     // המנהל כותב את הסימון שהחוקים סומכים עליו: מורה מאושר נשאר "מורה" גם אם ימחק או ישנה את השדה role של עצמו
-    await db.ref('approvedTeachers/'+uid).set(true);
-    if(!lockedRoleSnap.exists())await db.ref('userRoles/'+uid).set('teacher');
+    // לא חוסם את האישור: עד שחוקי הנתונים החדשים מפורסמים הצמתים האלה לא קיימים בחוקים החיים והכתיבה נדחית
+    try{
+      await db.ref('approvedTeachers/'+uid).set(true);
+      if(!lockedRoleSnap.exists())await db.ref('userRoles/'+uid).set('teacher');
+    }catch(_e){console.warn('[approveTeacher] role marker not written (rules not published yet?)',_e?.message);showFireToast('⚠️ המורה אושר, אבל סימון התפקיד לא נכתב — לפרסם את חוקי הנתונים החדשים');}
     await db.ref('teachers/'+uid+'/verified').set(true);
     await db.ref('teachers/'+uid+'/active').set(true);
     await db.ref('users/'+uid+'/verified').set(true);
