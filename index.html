@@ -1198,7 +1198,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.66';
+const APP_VERSION='4.11.68';
 
 // ─── הודעות קוליות — כבויות ────────────────────────────────────────────────
 // הקלטה קולית היא הערוץ היחיד בין ילדים שאיש לא בודק: אין תמלול, אין סינון,
@@ -1292,7 +1292,7 @@ function _myRefLink(){
 function shareMyReferralLink(){
   const link=_myRefLink();
   const text='הצטרף ל-Drushe דרך הלינק שלי! '+link;
-  if(navigator.share){navigator.share({title:'Drushe – פלטפורמת מורים',text,url:link}).catch(()=>{});}
+  if(canShareNatively()){shareNatively({title:'Drushe – פלטפורמת מורים',text,url:link}).catch(()=>{});}
   else{window.open('https://wa.me/?text='+encodeURIComponent(text),'_blank');}
 }
 
@@ -1899,7 +1899,7 @@ function doWA(){window.open("https://wa.me/?text="+encodeURIComponent(S.shareTex
 function doTW(){window.open("https://twitter.com/intent/tweet?text="+encodeURIComponent(S.shareText)+"&url="+encodeURIComponent(S.shareUrl),"_blank");}
 function doTG(){window.open("https://t.me/share/url?url="+encodeURIComponent(S.shareUrl)+"&text="+encodeURIComponent(S.shareText),"_blank");}
 function doNative(){
-  if(navigator.share){navigator.share({title:S.shareTitle,text:S.shareText,url:S.shareUrl}).catch(()=>{});}
+  if(canShareNatively()){shareNatively({title:S.shareTitle,text:S.shareText,url:S.shareUrl}).catch(()=>{});}
   else doLink();
 }
 function doLink(){
@@ -5746,6 +5746,47 @@ function isIosApp(){
   try{return isNativeApp()&&Capacitor?.getPlatform?.()==='ios';}catch(_e){return false;}
 }
 
+// ─── יכולות נייטיביות (אפל 4.2: אפליקציה שהיא רק עטיפה של אתר נדחית) ─────────────────────────────────────
+// כל הפונקציות כאן בודקות שה-plugin קיים לפני שימוש: אנדרואיד טוען את האתר החי גם בגרסאות ישנות שנבנו בלי
+// ה-plugins האלה, ודפדפן רגיל אין לו אותם בכלל — שם הכול חוזר להתנהגות הרגילה.
+function _nativePlugin(name){
+  try{return isNativeApp()?(window.Capacitor?.Plugins?.[name]||null):null;}catch(_e){return null;}
+}
+// שיתוף: חלון השיתוף של המערכת (Share plugin) ואם אין — navigator.share של הדפדפן
+function canShareNatively(){return !!_nativePlugin('Share')||!!navigator.share;}
+function shareNatively({title,text,url}){
+  const Share=_nativePlugin('Share');
+  if(Share)return Share.share({title,text,url,dialogTitle:title});
+  return navigator.share({title,text,url});
+}
+// רטט קל על פעולה שהצליחה/נכשלה (Haptics plugin). מופעל ממקום אחד — showFireToast.
+function nativeHaptic(kind){
+  const H=_nativePlugin('Haptics');
+  if(!H||!kind)return;
+  try{H.notification({type:kind==='success'?'SUCCESS':'ERROR'});}catch(_e){}
+}
+// פס "אין חיבור": עובד בדפדפן ובאפליקציה. בלעדיו הלחיצות פשוט נכשלות בשקט ונראה שהאפליקציה תקועה.
+function _setOfflineBanner(offline){
+  const old=document.getElementById('_offlineBar');
+  if(!offline){if(old)old.remove();return;}
+  if(old||!document.body)return;
+  const b=document.createElement('div');
+  b.id='_offlineBar';b.setAttribute('role','status');
+  b.style.cssText='position:fixed;top:0;left:0;right:0;z-index:99998;background:var(--no);color:#fff;text-align:center;font-size:13px;font-weight:800;padding:calc(8px + env(safe-area-inset-top)) 12px 8px;direction:rtl';
+  b.textContent='📡 אין חיבור לאינטרנט — נסה שוב כשהחיבור יחזור';
+  document.body.appendChild(b);
+}
+function _initNetworkBanner(){
+  window.addEventListener('offline',()=>_setOfflineBanner(true));
+  window.addEventListener('online',()=>_setOfflineBanner(false));
+  const N=_nativePlugin('Network');
+  if(N){
+    try{N.addListener('networkStatusChange',st=>_setOfflineBanner(!st?.connected));N.getStatus().then(st=>_setOfflineBanner(!st?.connected)).catch(()=>{});}catch(_e){}
+  }
+  if(navigator.onLine===false)_setOfflineBanner(true);
+}
+window.addEventListener('load',_initNetworkBanner);
+
 // ─── Browser Push Notifications (zero-setup, no email needed) ────────────────
 function _sendBrowserNotif(title,body){
   if(!('Notification' in window))return;
@@ -5791,7 +5832,7 @@ async function _registerNativePush(){
       const token=t?.value;
       if(!token||!currentUser)return;
       _pushToken=token;
-      db.ref('fcmTokens/'+token).set({uid:currentUser.uid,updatedAt:Date.now()}).catch(()=>{});
+      db.ref('fcmTokens/'+token).set({uid:currentUser.uid,updatedAt:Date.now(),platform:isIosApp()?'ios':'android'}).catch(()=>{});
     });
     Push.addListener('registrationError',e=>console.warn('[push] registration failed:',e));
 
@@ -9658,8 +9699,8 @@ async function shareCert(){
   const text=isStudent
     ?`🎓 קיבלתי תעודת הצטיינות מ-Drushe!\n${rank.icon} ${rank.name}\n${lessons} שיעורים הושלמו\nהצטרפו: kidemy-app.netlify.app`
     :`🎓 קיבלתי תעודת הצטיינות מ-Drushe!\n${rank.icon} ${rank.name}\n${lessons} שיעורים | דירוג: ${teacherAnalytics?.avgRating||0}⭐\nהצטרפו אלי: kidemy-app.netlify.app`;
-  if(navigator.share){
-    try{await navigator.share({title:'תעודת הצטיינות Drushe',text});}catch(e){}
+  if(canShareNatively()){
+    try{await shareNatively({title:'תעודת הצטיינות Drushe',text});}catch(e){}
   } else {
     if(navigator.clipboard)navigator.clipboard.writeText(text);
     showFireToast('📋 הטקסט הועתק!');
@@ -15320,6 +15361,7 @@ function confirmLogout(){
 }
 
 function showFireToast(msg){
+  nativeHaptic(typeof msg==='string'?(msg.startsWith('✅')?'success':msg.startsWith('❌')?'error':''):'');
   const old=document.getElementById('_ft');if(old)old.remove();
   const t=document.createElement('div');t.id='_ft';
   t.style.cssText='position:fixed;bottom:110px;left:50%;transform:translateX(-50%);background:#1A1A2E;color:#fff;padding:13px 22px;border-radius:50px;font-size:14px;font-weight:700;z-index:9999;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,.35);direction:rtl;max-width:92vw;pointer-events:none';

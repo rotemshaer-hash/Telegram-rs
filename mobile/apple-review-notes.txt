@@ -1,0 +1,61 @@
+========================================
+DRUSHE — Apple App Store Connect: review notes + App Privacy answers (draft)
+========================================
+Written 2.11.2026 from what the code really does. Check every answer against the live App Store Connect form before
+submitting — Apple changes the questionnaires. Paste the English block into "App Review Information → Notes".
+
+--- 1. Notes for the reviewer (English, paste as is) ----------------------------------------------------------------
+
+Drushe is a peer-tutoring app in Hebrew: teenagers (14-18) teach younger children (9-18) under parental supervision.
+Every account is reviewed before it is active:
+- A student registration requires the parent to click a consent link emailed to the parent, and then an administrator
+  approves the account.
+- A teacher registration additionally requires an ID photo and the same parent consent.
+Because of this, a fresh sign-up cannot be used during review. Please use these pre-approved accounts:
+
+   Student account:  <EMAIL>   password: <PASSWORD>
+   Teacher account:  <EMAIL>   password: <PASSWORD>
+
+(The owner must create both accounts, complete the parent consent for each, and approve them in the admin panel
+BEFORE submitting. Keep the credentials out of the repository.)
+
+Child safety and user-generated content (Guideline 1.2):
+- Users can report any profile, post, question, group or chat from the app (🚨 button) and block any user
+  (Profile → Blocked users). Reports go to the administrator, who handles them with a documented procedure.
+- A teacher can only write to a child after the child started the conversation. Contact details (links, phone
+  numbers, @handles) are rejected in public text by the app and by the database rules. Chats are scanned for
+  attempts to move the conversation off the app and are flagged to the administrator.
+- Parents receive an email when a new conversation starts, and can log in with the child's credentials to see activity.
+
+Account deletion (5.1.1(v)): Profile → "Delete my account" removes the account and its data.
+Payments: lessons are agreed and paid directly between the student's family and the teacher; the app does not process,
+display or record any payment for a lesson. The iOS app contains no purchase flow and no external-payment links.
+Push notifications are optional and used only for new messages and safety reports.
+
+--- 2. App Privacy ("nutrition label") — what to declare -------------------------------------------------------------
+
+Tracking: NO. No data is used to track users across other companies' apps or websites. No advertising SDKs.
+
+Data collected and linked to the user (all for App Functionality; none used for tracking):
+  - Contact info: name, email address (the parent's email for minors), phone number is NOT collected
+  - User content: photos (profile photo, optional story, teacher ID photo), other user content (posts, messages,
+    reviews, group and lesson details)
+  - Identifiers: user ID; device push token (only if notifications are allowed)
+  - Location: coarse/precise location only if the user taps "teachers near me" (optional, used for search, not stored
+    with the profile unless the teacher saves a city)
+  - Usage data: product interaction (analytics) — collected only AFTER parental consent / account verification
+  - Diagnostics: crash/error logs (clientErrors)
+  - Sensitive/other: government ID number and ID photo of a minor TEACHER and of the parent (consent / age
+    verification) — declare under "Other data"; visible to the administrator only, deleted with the account.
+
+Data not collected: health, financial info (lesson payments never touch the app), contacts, browsing history,
+search history, purchases.
+
+--- 3. Other submission items --------------------------------------------------------------------------------------
+
+- Age rating: answer per age-rating-answers.txt (user-generated content, chat: yes). Do NOT choose the Kids Category.
+- Privacy policy URL: https://kidemy-app.netlify.app/privacy.html (move to drushe.com when it is the main domain)
+- Support URL / marketing URL: same site; support email = the ADMIN_EMAIL in index.html
+- Export compliance: ITSAppUsesNonExemptEncryption=false is set in Info.plist.
+- Push: needs the APNs key and APNS_* values in Netlify (see HANDOFF.md → 4.11.67).
+- Subscription (teachers, ₪49 after the first 500): not offered inside the iOS app (see HANDOFF.md → 4.11.65).

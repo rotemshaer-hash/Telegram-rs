@@ -71,3 +71,63 @@ test('in the iOS app a teacher is never gated by the subscription and sees no pa
   expect(r.ios).toEqual({ ios: true, needs: false, banner: '' });
   expect(r.android).toEqual({ ios: false, needs: true });
 });
+
+test('the iOS app registers its push token with platform "ios"; Android with "android"', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof _registerNativePush === 'function');
+  const r = await page.evaluate(async () => {
+    const out = {};
+    for (const platform of ['ios', 'android']) {
+      _pushSetupStarted = false;
+      const listeners = {};
+      window.Capacitor = {
+        isNativePlatform: () => true, getPlatform: () => platform,
+        Plugins: { PushNotifications: {
+          checkPermissions: async () => ({ receive: 'granted' }), requestPermissions: async () => ({ receive: 'granted' }),
+          addListener: (n, cb) => { listeners[n] = cb; }, register: async () => { listeners.registration({ value: 'tok-' + platform }); },
+        } },
+      };
+      let written = null;
+      db = { ref: (p) => ({ set: async (v) => { written = [p, v]; }, remove: async () => {} }) };
+      currentUser = { uid: 'u1', email: 'a@b.c', emailVerified: true };
+      await _registerNativePush();
+      out[platform] = written;
+    }
+    return out;
+  });
+  expect(r.ios[0]).toBe('fcmTokens/tok-ios');
+  expect(r.ios[1].platform).toBe('ios');
+  expect(r.android[1].platform).toBe('android');
+});
+
+// Apple 4.2: real native behaviour where the plugin exists, and the normal web behaviour where it does not.
+test('native share, haptics and the offline bar', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof shareNatively === 'function' && typeof nativeHaptic === 'function');
+  const r = await page.evaluate(async () => {
+    const out = {};
+    out.webCan = canShareNatively() === !!navigator.share; // no plugin: the browser decides
+    const calls = [];
+    window.Capacitor = {
+      isNativePlatform: () => true, getPlatform: () => 'ios',
+      Plugins: {
+        Share: { share: async (o) => { calls.push(['share', o.title, o.url]); } },
+        Haptics: { notification: (o) => { calls.push(['haptic', o.type]); } },
+      },
+    };
+    out.nativeCan = canShareNatively();
+    await shareNatively({ title: 'כותרת', text: 't', url: 'https://x.example' });
+    showFireToast('✅ נשמר'); showFireToast('❌ שגיאה'); showFireToast('שלום');
+    out.calls = calls;
+    _setOfflineBanner(true);
+    out.bar = !!document.getElementById('_offlineBar');
+    _setOfflineBanner(false);
+    out.barGone = !document.getElementById('_offlineBar');
+    return out;
+  });
+  expect(r.webCan).toBe(true);
+  expect(r.nativeCan).toBe(true);
+  expect(r.calls).toEqual([['share', 'כותרת', 'https://x.example'], ['haptic', 'SUCCESS'], ['haptic', 'ERROR']]);
+  expect(r.bar).toBe(true);
+  expect(r.barGone).toBe(true);
+});

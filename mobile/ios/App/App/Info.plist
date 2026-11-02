@@ -28,6 +28,10 @@
 	<string>Drushe צריכה גישה למצלמה כדי לצלם תמונת פרופיל, סטורי או מסמך זיהוי.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Drushe צריכה גישה לתמונות כדי לבחור תמונת פרופיל, סטורי או מסמך זיהוי.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Drushe משתמשת במיקום שלך רק כדי להציג מורים וקבוצות קרובים אליך.</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Drushe צריכה גישה למיקרופון כדי להקליט סרטון.</string>
 	<key>UILaunchStoryboardName</key>

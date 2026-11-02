@@ -195,6 +195,19 @@ Firebase iOS SDK, `GoogleService-Info.plist`, מפתח APNs בקונסולת Fir
 **נשאר בכוונה (החלטה, לא תקלה):** ביצועים ל-3,000 מורים דורשים צומת `teacherCards` קל + כתיבה מכל נתיב שמעדכן מורה (שמירה, עריכה, אישור מנהל, דירוג, ספירת שיעורים) + מיגרציה — עד כמה מאות מורים ההורדה המלאה סבירה
 (~2KB למורה). סינון `verified` בלבד לא חוסך כמעט כלום (רוב המורים מאושרים). הודעה בין תלמידים: החלטת מוצר (האם בכלל לאפשר). צבע כפתור ראשי (לבן על טורקיז ~2.5:1): החלטת מותג — `#0e7a72` כבר קיים בכותרת המוגנת.
 
+**נסגר ב-4.11.67 (אפל 4.2, חלק א׳ — push נייטיבי ל-iOS בלי Firebase iOS SDK):** `mobile/ios/.../AppDelegate.swift` מעביר את טוקן APNs ל-plugin; `App.entitlements` (`aps-environment`) מחובר ל-`project.pbxproj`;
+הלקוח רושם `fcmTokens/<token>` עם `platform` ('ios'/'android'); `netlify/lib/apns.js` שולח ישירות ל-APNs (JWT ES256 + HTTP/2) ו-`netlify/lib/push.js` מפצל לפי פלטפורמה (FCM לאנדרואיד, APNs ל-iOS) —
+`send-push` ו-`report-alert` משתמשים בו. נבדק עם סשן HTTP/2 מדומה בלבד; **לא נבדק מול אפל ולא קומפל ב-Xcode** (אין Mac) — ה-workflow `build-ios.yml` (סימולטור) ירוץ אחרי המיזוג וימצא שבר קומפילציה.
+**מה חסר כדי שזה יעבוד באמת (אצל הבעלים, אחרי אישור חשבון Apple):** (1) ב-developer.apple.com ← Identifiers ← `app.drushe.mobile` ← להפעיל Push Notifications; (2) Keys ← מפתח APNs חדש, להוריד את ה-.p8 (פעם אחת!);
+(3) ב-Netlify (`.../configuration/env`): `APNS_KEY` (תוכן ה-.p8), `APNS_KEY_ID`, `APNS_TEAM_ID`, ואם בונים מ-Xcode רגיל — `APNS_ENV=sandbox`; (4) כשמעלים ל-TestFlight/חנות ה-entitlement הופך ל-production אוטומטית בחתימה.
+נשאר ל-4.2: עוד יכולת נייטיבית אחת או שתיים (למשל שיתוף נייטיבי / מצלמה דרך plugin) — לא נוסף כי אי אפשר לבדוק קומפילציה כאן.
+
+**אפל — סבב מלא (2.11.2026, 4.11.67–4.11.68), הכול ממתין למיזוג:** (1) push נייטיבי ל-iOS בלי Firebase SDK (ראה 4.11.67 למעלה — הוחזר אחרי שבוטל בטעות והורשה מחדש על ידי הבעלים);
+(2) plugins נייטיביים חדשים ב-`mobile/` (`@capacitor/share`, `haptics`, `network`; `cap sync` רץ ל-iOS ול-Android): שיתוף נייטיבי, רטט על ✅/❌, פס "אין חיבור" (גם בדפדפן) — כולם מזהים שה-plugin קיים לפני שימוש,
+כך שאנדרואיד ישן ודפדפן לא מושפעים; (3) `Info.plist`: מחרוזת הרשאת מיקום + `ITSAppUsesNonExemptEncryption=false`; (4) `mobile/apple-review-notes.txt` — הערות לבודק (אנגלית) ותשובות ל-App Privacy.
+**לפני Submit חייב:** שני חשבונות הדגמה (תלמיד ומורה) שאושרו מראש (אישור הורה + אישור מנהל) והסיסמאות בהערות הבודק — בלי זה הבודק לא יכול להיכנס. לא נוסף `PrivacyInfo.xcprivacy` ברמת האפליקציה (דורש עריכת `project.pbxproj` שאי אפשר לאמת בלי Mac) — אם App Store Connect מתריע על "required reason API", להוסיף אז.
+**נבדק:** רק סימולטור מדומה ובדיקות דפדפן. הקומפילציה האמיתית ב-Xcode תיבדק ב-`build-ios.yml` אחרי המיזוג.
+
 **פתוח מהסבב הזה, לפי חשיבות:**
 1. ~~מייל להורה על שיחה חדשה~~ — נסגר ב-4.11.61: `netlify/functions/conversation-mail.js` (השרת בודק שיחה אמיתית, קורא `parentContact`, מייל אחד לשיחה).
 2. **ביצועים ב-3,000:** `teachers` נשלף במלואו בכל כניסה (~5.8MB), `videos` עם תמונות base64, `stories.on('value')` בלי limit, מורה עם 100 שיחות = ~230 קריאות; צריך צומת כרטיסי מורים, עימוד, טעינה עצלה.
