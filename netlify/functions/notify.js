@@ -179,6 +179,8 @@ function buildNotification(type, fromUid, senderName, ctx, isAdminCaller) {
   if (isAdminCaller && typeof ctx.from === 'string') notif.from = ctx.from.slice(0, 60);
 
   for (const [field, max] of Object.entries(TEXT_FIELDS)) {
+    // "message" הוא טקסט חופשי בשם הפלטפורמה — רק המנהל. אחרת מורה שהקים "הפניה" על ילד שולח לו 300 תווים שלו
+    if (field === 'message' && !isAdminCaller) continue;
     if (typeof ctx[field] === 'string' && ctx[field]) notif[field] = ctx[field].slice(0, max);
   }
   for (const field of ID_FIELDS) {
@@ -249,6 +251,10 @@ exports.handler = async (event) => {
       ]);
       if (verified.val() !== true || blocked.exists()) {
         return { statusCode: 403, headers, body: JSON.stringify({ error: 'account is not active' }) };
+      }
+      // מי שהנמען חסם אצלו לא שולח לו התראות (אותה חסימה אישית שחוסמת הודעות בחוקי הנתונים)
+      if ((await db.ref('userBlockedUsers/' + toUid + '/' + fromUid).get()).exists()) {
+        return { statusCode: 403, headers, body: JSON.stringify({ error: 'recipient blocked this sender' }) };
       }
       const problem = await verifyRelationship(db, { type, fromUid, toUid, ctx });
       if (problem) {

@@ -45,3 +45,20 @@ test('chat starters, block, report buttons and approve/reject', async ({ page })
   expect(r.btns.slice(0, 2)).toEqual(['ok', 'no']);
   expect(r.okH).toBeGreaterThanOrEqual(44);
 });
+
+test('a name inside a confirm or report dialog is text, never markup', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof _confirm === 'function' && typeof showReportDialog === 'function');
+  const r = await page.evaluate(async () => {
+    window.__p = 0;
+    currentUser = { uid: 'kid', email: 'k@example.com', emailVerified: true };
+    const evil = '<img src=x onerror="window.__p++">';
+    _confirm('לחסום את ' + evil + '?');
+    showReportDialog('chatUser', 'teach', evil);
+    await new Promise((res) => setTimeout(res, 300));
+    return { p: window.__p, imgs: document.querySelectorAll('img[src="x"]').length, closeH: document.querySelector('._repDlg button[aria-label="סגור"]')?.getBoundingClientRect().height || 0 };
+  });
+  expect(r.p).toBe(0);
+  expect(r.imgs).toBe(0);
+  expect(r.closeH).toBeGreaterThanOrEqual(44);
+});

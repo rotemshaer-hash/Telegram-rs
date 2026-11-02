@@ -29,7 +29,12 @@ const snapOf = (p) => {
   };
 };
 const ref = (p) => ({
-  update: async (patch) => { Object.keys(patch).forEach((k) => { Object.keys(data).filter((d) => d === k || d.startsWith(k + '/')).forEach((d) => delete data[d]); }); },
+  set: async (v) => { const flat = (pre, o) => (o && typeof o === 'object' ? Object.entries(o).forEach(([k, x]) => flat(pre + '/' + k, x)) : (data[pre] = o)); flat(p, v); },
+  update: async (patch) => {
+    // like firebase-admin: a multi-path update with a path that is an ancestor of another is rejected whole
+    const ks = Object.keys(patch);
+    if (ks.some((a) => ks.some((b) => a !== b && b.startsWith(a + '/')))) throw new Error('path that is ancestor of another path');
+    Object.keys(patch).forEach((k) => { Object.keys(data).filter((d) => d === k || d.startsWith(k + '/')).forEach((d) => delete data[d]); }); },
   get: async () => snapOf(p),
   remove: async () => { Object.keys(data).filter((k) => k === p || k.startsWith(p + '/')).forEach((k) => delete data[k]); },
   orderByChild: (field) => ({
@@ -69,6 +74,7 @@ beforeEach(() => {
     [`messages/${['x-uid', OTHER].sort().join('_')}/m1/text`]: 'not mine',
     [`groupMembers/g1/${ME}/name`]: 'Kid', [`groupMembers/g1/${OTHER}/name`]: 'Other',
     [`messageStats/${ME}/conversations/${OTHER}`]: true, [`referrals/${ME}/${OTHER}/at`]: 1,
+    [`teacherQA/${ME}/qSelf/askerUid`]: ME, // asked a question on their own profile: overlaps teacherQA/<me>
     [`teacherQA/${OTHER}/q1/askerUid`]: ME, [`teacherQA/${OTHER}/q2/askerUid`]: 'x-uid', [`teacherQA/${ME}/q9/askerUid`]: OTHER,
     'parentBriefs/b1/parentUid': ME, 'parentBriefs/b2/parentUid': OTHER, 'briefProposals/b1/t/price': 1,
     [`briefProposals/b2/${ME}/price`]: 2, [`briefProposals/b2/${OTHER}/price`]: 3,
@@ -93,6 +99,7 @@ describe('account-cleanup', () => {
     assert.equal(r.status, 200);
     const gone = (p) => !Object.keys(data).some((k) => k === p || k.startsWith(p + '/'));
     const chat = [ME, OTHER].sort().join('_');
+    assert.equal(Object.keys(data).some((k) => k.startsWith('messageArchive/' + chat + '/') && k.endsWith('/m1/text')), true, 'the conversation is archived for the admin before it is deleted');
     for (const p of [`messages/${chat}`, `newConversationNotified/${chat}`, `groupMembers/g1/${ME}`, `messageStats/${ME}`, `referrals/${ME}`, `teacherQA/${OTHER}/q1`, `teacherQA/${ME}`, 'parentBriefs/b1', 'briefProposals/b1', `briefProposals/b2/${ME}`, 'fcmTokens/f1']) assert.equal(gone(p), true, p);
     for (const p of [`messages/${['x-uid', OTHER].sort().join('_')}`, `groupMembers/g1/${OTHER}`, `teacherQA/${OTHER}/q2`, 'parentBriefs/b2', `briefProposals/b2/${OTHER}`, 'fcmTokens/f2']) assert.equal(gone(p), false, p + ' must stay');
   });

@@ -61,9 +61,13 @@ exports.handler = async (event) => {
     const pending = [];
     const drop = async (p) => { pending.push(p); removed.push(p); };
     const flush = async () => {
-      for (let i = 0; i < pending.length; i += 300) {
+      // עדכון רב-נתיבי נכשל כולו אם נתיב אחד הוא אב של אחר (teacherQA/<uid> מול teacherQA/<uid>/<qa> כשמורה שאל את
+      // עצמו) — אז משאירים רק את הנתיב העליון
+      const unique = [...new Set(pending)];
+      const top = unique.filter((p) => !unique.some((q) => q !== p && p.startsWith(q + '/')));
+      for (let i = 0; i < top.length; i += 300) {
         const patch = {};
-        pending.slice(i, i + 300).forEach((p) => { patch[p] = null; });
+        top.slice(i, i + 300).forEach((p) => { patch[p] = null; });
         await db.ref().update(patch);
       }
       pending.length = 0;
@@ -90,6 +94,10 @@ exports.handler = async (event) => {
     const listOf = (v) => (Array.isArray(v) ? v : []).map(String).filter((x) => UID_RE.test(x) && x !== uid).slice(0, 5000);
     for (const partner of listOf(body.chatPartners)) {
       const chatId = [uid, partner].sort().join('_');
+      // השיחה מועתקת לארכיון שרק המנהל קורא לפני שהיא נמחקת מהצדדים: מי שדווח עליו לא ימחק את הראיה בכך שימחק
+      // את חשבונו. הארכיון נמחק ידנית אחרי 30 יום (RUNBOOK.md, privacy.html).
+      const convo = (await db.ref('messages/' + chatId).get()).val();
+      if (convo) await db.ref('messageArchive/' + chatId + '/' + uid + '_' + Date.now()).set({ deletedBy: uid, archivedAt: Date.now(), messages: convo });
       await drop('messages/' + chatId);
       await drop('newConversationNotified/' + chatId);
     }
@@ -112,12 +120,11 @@ exports.handler = async (event) => {
     briefs.forEach((c) => { briefKeys.push(c.key); });
     for (const k of briefKeys) { await drop('parentBriefs/' + k); await drop('briefProposals/' + k); }
 
-    if (body.role === 'teacher') { // הצעות מוגשות רק על ידי מורים
-      const props = await db.ref('briefProposals').get();
-      const propKeys = [];
-      props.forEach((b) => { if (b.child(uid).exists()) propKeys.push('briefProposals/' + b.key + '/' + uid); });
-      for (const k of propKeys) await drop(k);
-    }
+    // ללא תלות בתפקיד שהלקוח שלח: אחרי כשל חלקי הרשומה נוצרת מחדש כ"תלמיד" ותפקיד המורה אבד
+    const props = await db.ref('briefProposals').get();
+    const propKeys = [];
+    props.forEach((b) => { if (b.child(uid).exists()) propKeys.push('briefProposals/' + b.key + '/' + uid); });
+    for (const k of propKeys) await drop(k);
 
     // סטוריז שהמשתמש העלה (נושאים uid, לא מפתחים אותו)
     const stories = await db.ref('stories').orderByChild('uid').equalTo(uid).get();

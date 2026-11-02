@@ -60,6 +60,7 @@ test.describe('a teacher cannot be approved before the parent clicked', () => {
       const vals = {
         'teachers/t1/ageVerification/status': 'verified',
         'users/t1/parentConsentAt': consent,
+        'users/t1/role': 'teacher',
       };
       db = {
         ref: (p) => ({
@@ -81,6 +82,21 @@ test.describe('a teacher cannot be approved before the parent clicked', () => {
     const r = await approve(page, { consentAt: null });
     expect(r.writes, 'nothing may be marked verified').toEqual([]);
     expect(r.toasts.join(' ')).toContain('ההורה עדיין לא אישר');
+  });
+
+  test('refuses an account that registered as a student', async ({ page }) => {
+    await boot(page);
+    const r = await page.evaluate(async () => {
+      const toasts = []; const writes = [];
+      window.showFireToast = (m) => toasts.push(m);
+      const vals = { 'teachers/s1/ageVerification/status': 'verified', 'users/s1/parentConsentAt': 1, 'users/s1/role': 'student' };
+      db = { ref: (p) => ({ get: () => Promise.resolve({ val: () => vals[p] ?? null }), set: () => { writes.push(p); return Promise.resolve(); }, push: () => Promise.resolve() }) };
+      window.sendAdminEmail = () => {}; window.loadAdminData = () => Promise.resolve(); window.renderAdminPanel = () => {};
+      await adminApproveTeacher('s1');
+      return { toasts, writes };
+    });
+    expect(r.writes).toEqual([]);
+    expect(r.toasts.join(' ')).toContain('נרשם כתלמיד');
   });
 
   test('approves once the parent has', async ({ page }) => {
