@@ -69,7 +69,7 @@ jobs:
       - name: Deploy database rules
         run: |
           set +e
-          GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa.json firebase deploy --only database --project kidemy-83a17 --non-interactive --debug > /tmp/deploy.log 2>&1
+          GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa.json firebase deploy --only database:kidemy-83a17-default-rtdb --project kidemy-83a17 --non-interactive --debug > /tmp/deploy.log 2>&1
           code=$?
           if [ $code -ne 0 ]; then
             echo "=== why it failed (credentials and tokens filtered out) ==="
@@ -99,6 +99,11 @@ jobs:
       #
       # ואימות התחביר לא אבד — הוא עבר מקום: job ה-test שמעל מריץ 34 טסטים
       # מול אמולטור Storage אמיתי, ובודק התנהגות ולא תחביר.
+      # drushe-staging מחזיר 402 (תשלום) ופעם אחת הפיל את כל הפריסה *אחרי* שחוקי הייצור כבר עלו. הוא נפרס בנפרד ולא חוסם.
+      - name: Deploy staging database rules (never blocks production)
+        continue-on-error: true
+        run: GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa.json firebase deploy --only database:drushe-staging --project kidemy-83a17 --non-interactive
+
       - name: Install script dependencies
         working-directory: scripts
         run: npm install
