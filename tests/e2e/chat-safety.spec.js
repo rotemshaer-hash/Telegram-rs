@@ -62,3 +62,23 @@ test('a name inside a confirm or report dialog is text, never markup', async ({ 
   expect(r.imgs).toBe(0);
   expect(r.closeH).toBeGreaterThanOrEqual(44);
 });
+
+test('a saved-but-unapproved teacher sees the waiting screen, never the open home; booking cards have no WhatsApp button', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof TeacherPending === 'function');
+  const r = await page.evaluate(async () => {
+    db = { ref: () => ({ set: async () => {}, on: () => {}, get: async () => ({ exists: () => false, val: () => null, forEach: () => {} }) }) };
+    currentUser = { uid: 't9', email: 't9@example.com', emailVerified: true };
+    currentUserData = { name: 'מורה חדש', role: 'teacher', verified: false, age: 15 };
+    S.pendingTeacherData = { name: 'מורה חדש', cat: 'chess' };
+    go('home'); await new Promise((res) => setTimeout(res, 300));
+    const screen = S.screen;
+    // approved lesson card in messages
+    currentUserData = { name: 'נועה', role: 'teacher', verified: true };
+    teacherAllBookings = [{ id: 'a', studentId: 's1', studentName: 'דנה', status: 'approved', price: 50, day: 'א', time: '10:00', createdAt: 1, lessonTimestamp: Date.now() + 86400000 }];
+    go('messages'); await new Promise((res) => setTimeout(res, 300));
+    return { screen, wa: document.getElementById('app').innerHTML.includes('showWhatsAppDialog') };
+  });
+  expect(r.screen).toBe('teacherPending');
+  expect(r.wa).toBe(false);
+});

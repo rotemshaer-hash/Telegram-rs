@@ -1185,7 +1185,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.54';
+const APP_VERSION='4.11.55';
 
 // ─── הודעות קוליות — כבויות ────────────────────────────────────────────────
 // הקלטה קולית היא הערוץ היחיד בין ילדים שאיש לא בודק: אין תמלול, אין סינון,
@@ -2050,7 +2050,7 @@ function Safety(){
         </div>
         ${[
           'כל משתמש יכול לדווח על פוסט, הודעה, מורה או תלמיד בלחיצת כפתור אחת.',
-          'דיווחים מגיעים ישירות למנהל האפליקציה. דיווח על סכנת בטיחות מטופל תוך שעתיים, הטרדה או תוכן בלתי הולם תוך 12 שעות, והשאר עד 48 שעות.',
+          'דיווחים מגיעים ישירות למנהל האפליקציה. דיווח על סכנת בטיחות מטופל בעדיפות עליונה, והשאר בדרך כלל תוך יום-יומיים.',
           'לאחר בדיקת הדיווח, הצוות נוקט פעולה בהתאם — כולל חסימת המשתמש במקרים חמורים.',
           'תוכן לא הולם, שפה פוגענית או ניסיון ליצור קשר מחוץ לאפליקציה – מוביל למחיקת חשבון.',
         ].map(t=>`<div style="display:flex;gap:9px;margin-bottom:10px;align-items:flex-start"><span style="color:#EF4444;font-size:16px;flex-shrink:0;margin-top:1px">✓</span><span style="font-size:13px;line-height:1.6;color:#475569">${t}</span></div>`).join('')}
@@ -2383,7 +2383,7 @@ async function quickRegister(){
   if(rawUsername.length<3){showFireToast('❌ שם משתמש חייב להכיל לפחות 3 תווים');return;}
   if(rawUsername.length>20){showFireToast('❌ שם משתמש ארוך מדי – עד 20 תווים');return;}
   const _regRole=_selectedRole==='teacher'?'teacher':'student';
-  if(!age||!_ageOk(parseInt(age.value),_regRole)){showFireToast(`❌ ${_regRole==='teacher'?'מורים':'תלמידים'} ב-Drushe הם בני ${AGE_RANGE[_regRole].min} עד ${AGE_RANGE[_regRole].max}. אם הגיל שלך שונה — בקש מההורה לפנות אלינו.`);return;}
+  if(!age||!_ageOk(parseInt(age.value),_regRole)){showFireToast(`❌ ${_regRole==='teacher'?'מורים':'תלמידים'} ב-Drushe הם בני ${AGE_RANGE[_regRole].min} עד ${AGE_RANGE[_regRole].max}.${_regRole==='teacher'&&parseInt(age?.value)>=AGE_RANGE.student.min&&parseInt(age?.value)<AGE_RANGE.teacher.min?' אפשר להירשם כתלמיד.':' אם הגיל שלך שונה — בקש מההורה לפנות אלינו: '+ADMIN_EMAIL}`);return;}
   if(!pass||pass.value.length<6){showFireToast('❌ סיסמה לפחות 6 תווים');return;}
   if(!pass2||pass.value!==pass2.value){showFireToast('❌ הסיסמאות לא תואמות');return;}
   if(!kcbChecked('regTerms')){showFireToast('❌ נדרש אישור תנאי שימוש');return;}
@@ -2969,9 +2969,17 @@ async function saveTeacherProfile(){
     notifyAdmin({type:'newTeacher',from:teacherData.name,teacherId:currentUser.uid,teacherCat:mainCat,teacherEmail:currentUser.email,customCats:_customCats}).catch(()=>{});
     sendAdminEmail('🎓 מורה חדש נרשם – עובר בדיקה',`שם: ${teacherData.name}\nמייל: ${currentUser.email}\nקטגוריה: ${mainCat}\nעיר: ${teacherData.city}\n\nכנס לפאנל מנהל:\nhttps://kidemy-app.netlify.app`);
     _idPhotoBase64=null;
-    showFireToast('🌟 ברוך הבא! הפרופיל שלך נשמר — תלמידים יוכלו לראות אותך בקרוב');
     await loadRealTeachers();
-    setTimeout(()=>go('home'),1200);
+    if(isAdmin()){
+      showFireToast('🌟 הפרופיל נשמר');
+      setTimeout(()=>go('home'),1200);
+    }else{
+      // הפרופיל מופיע לתלמידים רק אחרי אישור ההורה והצוות: מסך ההמתנה (ולא הבית הרגיל) מסביר מה קורה ומאפשר לשלוח שוב את קישור ההורה
+      showFireToast('🌟 הפרופיל נשמר — הוא יופיע לתלמידים אחרי אישור ההורה והצוות');
+      S.pendingTeacherData=teacherData;
+      _attachStudentApprovalListener(currentUser.uid);
+      setTimeout(()=>go('teacherPending'),1200);
+    }
   }catch(e){showFireToast('❌ '+e.message);}
 }
 
@@ -3574,7 +3582,7 @@ async function cancelBookingAsTeacher(bookingId){
     if(b.lessonTimestamp){
       const hoursUntil=(b.lessonTimestamp-Date.now())/3600000;
       if(hoursUntil<24&&hoursUntil>0){
-        if(!await _confirm('⚠️ ביטול פחות מ-24 שעות לפני השיעור\nהתשלום מתואם ישירות בינך לבין המורה — כדאי לעדכן אותו על הביטול. להמשיך?',{confirmText:'כן, בטל',cancelText:'חזרה',destructive:true}))return;
+        if(!await _confirm('⚠️ ביטול פחות מ-24 שעות לפני השיעור\nכדאי לעדכן את התלמיד על הביטול. להמשיך?',{confirmText:'כן, בטל',cancelText:'חזרה',destructive:true}))return;
       }
     }
     const cancelledAt=Date.now();
@@ -6397,7 +6405,7 @@ function adminSendSetupReminder(uid,teacherName,parentEmail,parentName){
 }
 
 async function cancelApprovedBooking(bookingId){
-  if(!await _confirm('ביטול שיעור מאושר\n\n⚠️ ביטול תוך 24 שעות עלול לגרור חיוב מלא.',{confirmText:'בטל שיעור',cancelText:'חזרה',destructive:true}))return;
+  if(!await _confirm('ביטול שיעור מאושר\n\nכדאי לעדכן את הצד השני על הביטול.',{confirmText:'בטל שיעור',cancelText:'חזרה',destructive:true}))return;
   try{
     const snap=await db.ref('bookings/'+bookingId).get();
     if(!snap.exists()){showFireToast('❌ הזמנה לא נמצאה');return;}
@@ -9732,7 +9740,7 @@ function Home(){
             <div style="display:flex;gap:8px">
               <button class="act-btn act-ok" aria-label="אשר בקשה של ${escapeHtml(b.studentName||'תלמיד')}" onclick="approveBooking('${jsAttrEscape(b.id)}')">${icon("check-circle",14)} אשר</button>
               <button class="act-btn act-no" aria-label="דחה בקשה של ${escapeHtml(b.studentName||'תלמיד')}" onclick="rejectBooking('${jsAttrEscape(b.id)}')">${icon("x-circle",14)} דחה</button>
-              <button onclick='showWhatsAppDialog("",WA_TEMPLATES.bookingApproved(${escapeHtml(JSON.stringify(b))}),"שלח אישור")' style="background:linear-gradient(135deg,#25D366,#128C7E);border:none;color:#fff;border-radius:50px;padding:10px 14px;font-weight:800;font-size:13px;cursor:pointer">${icon("smartphone",14)}</button>
+              
             </div>
           </div>
         `).join('')}
@@ -10635,7 +10643,7 @@ function Messages(){
 
       ${userChats.length>0?`
         <h3 style="font-size:14px;font-weight:800;margin:0 0 12px;color:#04778A;display:flex;align-items:center;gap:6px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> שיחות פעילות</h3>
-        ${userChats.slice(0,5).map(uc=>{
+        ${userChats.slice(0,S.chatsLimit||30).map(uc=>{
           const agoTxt=timeAgoTxt(uc.lastTime);
           const isUnread=!!uc.unread;
           return `
@@ -10696,7 +10704,7 @@ function Messages(){
             </button>
             <div style="display:flex;gap:8px;margin-bottom:0">
               <button onclick="S.chat={otherUid:'${jsAttrEscape(currentUserData?.role==='teacher'?b.studentId:b.teacherId)}',otherName:'${jsAttrEscape((currentUserData?.role==='teacher'?b.studentName:b.teacherName)||'')}'};go('chat')" style="flex:1;background:rgba(6,182,212,0.1);color:#04778A;border-radius:14px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">${icon("chat",14)} צ'אט</button>
-              <button onclick='showWhatsAppDialog("",WA_TEMPLATES.bookingReminder(${escapeHtml(JSON.stringify(b))}),"שלח תזכורת")' style="background:linear-gradient(135deg,#25D366,#128C7E);border:none;color:#fff;border-radius:14px;padding:10px 12px;font-weight:800;font-size:13px;cursor:pointer">${icon("smartphone",14)}</button>
+              
               ${isTeacherRole&&b.status==='approved'?`<button onclick="cancelBookingAsTeacher('${jsAttrEscape(b.id||b.bookingId||'')}')" title="בטל שיעור" style="background:rgba(245,158,11,0.1);color:#D97706;border-radius:14px;padding:10px 12px;font-weight:800;font-size:13px;cursor:pointer;flex-shrink:0">🚫</button>`:''}
               ${isTeacherRole&&b.status!=='completed'?`<button onclick="completeLesson('${jsAttrEscape(b.id)}')" style="flex:1;background:rgba(20,184,166,0.1);color:#14B8A6;border-radius:14px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">${icon("check-circle",14)} סיים ודרג</button>`:
               !isTeacherRole&&b.status==='completed'&&!b.studentRating?`<button onclick="showRatingDialog('${jsAttrEscape(b.id||b.bookingId||'')}','${jsAttrEscape(b.teacherId||'')}','${jsAttrEscape(b.teacherName||'')}')" style="flex:1;background:rgba(251,191,36,0.1);color:#D97706;border-radius:14px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">${icon("star",14)} דרג שיעור</button>`:''}
@@ -11313,7 +11321,7 @@ function Community(){
       ${S.openPost===p.id?`<div style="background:#FAFAFE;border-top:1px solid rgba(0,0,0,.05)">
         ${(p.reps||[]).map(r=>`<div style="padding:11px 14px;border-bottom:1px solid rgba(0,0,0,.04);display:flex;gap:9px">
           <div style="width:32px;height:32px;border-radius:10px;background:#EEE;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0">${escapeHtml(r.av||'😊')}</div>
-          <div style="flex:1"><div style="display:flex;justify-content:space-between"><span style="font-size:11px;color:${C.muted}">${r.createdAt?new Date(r.createdAt).toLocaleDateString('he-IL'):r.time||''}</span><span style="font-weight:800;font-size:13px">${escapeHtml(r.auth)}</span></div><p style="margin:4px 0 0;font-size:13px;line-height:1.5">${escapeHtml(r.text)}</p></div>
+          <div style="flex:1"><div style="display:flex;justify-content:space-between"><span style="font-size:11px;color:${C.muted}">${r.createdAt?new Date(r.createdAt).toLocaleDateString('he-IL'):r.time||''}</span><span style="font-weight:800;font-size:13px">${escapeHtml(r.auth)}${reportBtnHtml('post',r.authUid,r.auth)}</span></div><p style="margin:4px 0 0;font-size:13px;line-height:1.5">${escapeHtml(r.text)}</p></div>
         </div>`).join("")}
         <div style="padding:11px 14px;display:flex;gap:9px;align-items:center">
           <button onclick="sendReply('${jsAttrEscape(p.id)}')" style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;border-radius:50%;width:36px;height:36px;color:#fff;font-weight:900;cursor:pointer;flex-shrink:0">↑</button>
@@ -12098,7 +12106,7 @@ function Support(){
 
       <h3 style="font-weight:900;font-size:15px;margin:18px 0 12px;color:#0F1A1F">${icon('shield',14)} אלימות או בריונות ברשת</h3>
       <div class="card">
-        <p style="margin:0 0 12px;font-size:13px;color:#475569;line-height:1.7">אפשר תמיד לדווח על כל תוכן, הודעה או משתמש בתוך Drushe בלחיצת כפתור — הצוות שלנו מטפל בכל דיווח לפי דחיפותו — סכנת בטיחות תוך שעתיים, הטרדה או תוכן בלתי הולם תוך 12 שעות, והשאר עד 48 שעות. אם זה קרה מחוץ ל-Drushe, או שפשוט צריך לדבר עם מישהו מהצוות — אנחנו כאן:</p>
+        <p style="margin:0 0 12px;font-size:13px;color:#475569;line-height:1.7">אפשר תמיד לדווח על כל תוכן, הודעה או משתמש בתוך Drushe בלחיצת כפתור — הצוות שלנו מטפל בכל דיווח לפי דחיפותו — סכנת בטיחות בעדיפות עליונה, והשאר בדרך כלל תוך יום-יומיים. אם זה קרה מחוץ ל-Drushe, או שפשוט צריך לדבר עם מישהו מהצוות — אנחנו כאן:</p>
         <button onclick='openWhatsApp("972542020812","שלום, אני צריך/ה עזרה או רוצה לדווח על משהו...")' style="width:100%;background:linear-gradient(135deg,#25D366,#128C7E);border:none;color:#fff;border-radius:50px;padding:12px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">${icon('smartphone',14)} דבר/י עם הצוות שלנו בוואטסאפ</button>
       </div>
 
@@ -12450,7 +12458,7 @@ function StudentPending(){
               </div>
               <div style="display:flex;align-items:center;gap:8px">
                 <div style="width:22px;height:22px;border-radius:50%;background:#06B6D4;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;flex-shrink:0">2</div>
-                <span style="color:#475569;font-size:12px">נשלח קישור אישור למייל של ההורה. אחרי שההורה מאשר, צוות Drushe עובר על ההרשמה — בדרך כלל תוך 24 שעות</span>
+                <span style="color:#475569;font-size:12px">נשלח קישור אישור למייל של ההורה. אחרי שההורה מאשר, צוות Drushe עובר על ההרשמה — בדרך כלל תוך יום-יומיים</span>
               </div>
               <div style="display:flex;align-items:center;gap:8px">
                 <div style="width:22px;height:22px;border-radius:50%;background:#8b2fc9;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;flex-shrink:0">3</div>
@@ -13892,6 +13900,12 @@ function render(){
     S.screen='studentPending';
   }
 
+  // Guard: מורה שהפרופיל שלו נשמר וטרם אושר (הורה + צוות) רואה רק את מסך ההמתנה, כמו תלמיד
+  if(currentUser&&currentUserData?.role==='teacher'&&currentUserData?.verified!==true&&S.pendingTeacherData&&!isAdmin()
+     &&!_openScreens.concat(['teacherSetup','teacherPending','subscribe']).includes(S.screen)){
+    S.screen='teacherPending';
+  }
+
   // Guard: מורה שסיים את ימי הניסיון (TRIAL_DAYS) בלי מנוי פעיל — חסום עד לתשלום מנוי
   const _subOpenScreens=['splash','login','register','safety','parentReg','teacherReg','teacherSetup','teacherPending','emailVerify','subscribe','parentConsent'];
   if(teacherNeedsSubscription()&&!isAdmin()&&!_subOpenScreens.includes(S.screen)){
@@ -14260,7 +14274,11 @@ function _attachStudentApprovalListener(uid){
   db.ref('users/'+uid).on('value',snap=>{
     if(!snap.exists())return;
     const d=snap.val();
-    if(d.verified===true&&S.screen==='studentPending'){
+    if(d.verified===true&&S.screen==='teacherPending'){
+      currentUserData={...(currentUserData||{}),verified:true,rejected:false};
+      showFireToast('🎉 הפרופיל שלך אושר — תלמידים יכולים לראות אותך');
+      go('home');
+    } else if(d.verified===true&&S.screen==='studentPending'){
       currentUserData={...(currentUserData||{}),verified:true,rejected:false};
       if(S._firstApproval){S._firstApproval=false;showFireToast('🎉 ברוכים הבאים ל-Drushe!');}
       go('home');
