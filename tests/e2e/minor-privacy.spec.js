@@ -113,6 +113,25 @@ test.describe('a teacher cannot be approved before the parent clicked', () => {
     expect(r.writes).toEqual([]);
   });
 
+  test('still approves when the role marker cannot be written yet (rules not published)', async ({ page }) => {
+    await boot(page);
+    const r = await page.evaluate(async () => {
+      const toasts = []; const writes = [];
+      window.showFireToast = (m) => toasts.push(m);
+      const vals = { 'teachers/t1/ageVerification/status': 'verified', 'users/t1/parentConsentAt': 1, 'users/t1/role': 'teacher' };
+      db = { ref: (p) => ({
+        get: () => Promise.resolve({ val: () => vals[p] ?? null, exists: () => vals[p] !== undefined }),
+        set: () => { if (p.startsWith('approvedTeachers/') || p.startsWith('userRoles/')) return Promise.reject(new Error('PERMISSION_DENIED')); writes.push(p); return Promise.resolve(); },
+        push: () => Promise.resolve(),
+      }) };
+      window.sendAdminEmail = () => {}; window.loadAdminData = () => Promise.resolve(); window.renderAdminPanel = () => {};
+      await adminApproveTeacher('t1');
+      return { toasts, writes };
+    });
+    expect(r.writes).toContain('teachers/t1/verified');
+    expect(r.writes).toContain('users/t1/verified');
+  });
+
   test('approves once the parent has', async ({ page }) => {
     await boot(page);
     const r = await approve(page, { consentAt: 1760000000000 });
