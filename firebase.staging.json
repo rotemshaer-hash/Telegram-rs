@@ -1,0 +1,8 @@
+{
+  "database": [
+    {
+      "instance": "drushe-staging",
+      "rules": "database.rules.json"
+    }
+  ]
+}
