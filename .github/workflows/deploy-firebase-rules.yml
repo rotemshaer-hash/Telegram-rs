@@ -11,6 +11,8 @@ on:
       - 'database.rules.json'
       - 'storage.rules'
       - 'firebase.json'
+      - 'firebase.prod.json'
+      - 'firebase.staging.json'
 
 jobs:
   # 85 טסטים נכתבו כדי להגן על database.rules.json — ועד עכשיו הם לא שמרו
@@ -66,10 +68,12 @@ jobs:
       # לפני שנשמרו. התוצאה: כל פריסת חוקים נכשלה בגלל הרשאה חסרה ביעד אחר,
       # ולכן החוקים פורסמו ידנית בקונסולה במשך חודשים.
       # הפרדה לשני שלבים מנתקת את התלות: חוקי ה-database נפרסים תמיד.
+      # `--only database:<instance>` נכשל ("Could not find configurations in firebase.json for the following database targets") —
+      # ה-CLI מצפה שם לשם target ולא לשם מופע. לכל מופע יש לכן קובץ הגדרה משלו, ו-firebase.json נשאר לאמולטור ולבדיקות.
       - name: Deploy database rules
         run: |
           set +e
-          GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa.json firebase deploy --only database:kidemy-83a17-default-rtdb --project kidemy-83a17 --non-interactive --debug > /tmp/deploy.log 2>&1
+          GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa.json firebase deploy --config firebase.prod.json --only database --project kidemy-83a17 --non-interactive --debug > /tmp/deploy.log 2>&1
           code=$?
           if [ $code -ne 0 ]; then
             echo "=== why it failed (credentials and tokens filtered out) ==="
@@ -102,7 +106,7 @@ jobs:
       # drushe-staging מחזיר 402 (תשלום) ופעם אחת הפיל את כל הפריסה *אחרי* שחוקי הייצור כבר עלו. הוא נפרס בנפרד ולא חוסם.
       - name: Deploy staging database rules (never blocks production)
         continue-on-error: true
-        run: GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa.json firebase deploy --only database:drushe-staging --project kidemy-83a17 --non-interactive
+        run: GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa.json firebase deploy --config firebase.staging.json --only database --project kidemy-83a17 --non-interactive
 
       - name: Install script dependencies
         working-directory: scripts
