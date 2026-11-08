@@ -191,3 +191,15 @@ describe('parent-consent approve', () => {
     assert.equal(data[`users/${CHILD}/parentConsentAt`], undefined);
   });
 });
+
+// The group-meetup disclosure is written in two places (the page the parent sees, the email the parent gets); they must stay identical.
+describe('group meetup notice', () => {
+  it('index.html and the consent email carry the same sentence', () => {
+    const fs = require('node:fs'); const path = require('node:path');
+    const html = fs.readFileSync(path.join(__dirname, '../../index.html'), 'utf8');
+    const fn = fs.readFileSync(path.join(__dirname, '../../netlify/functions/parent-consent.js'), 'utf8');
+    const m = html.match(/const GROUP_MEETUP_NOTICE='([^']+)'/);
+    assert.ok(m, 'constant exists');
+    assert.ok(fn.includes(m[1]), 'the email says the same thing');
+  });
+});

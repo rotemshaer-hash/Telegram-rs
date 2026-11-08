@@ -1198,7 +1198,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.71';
+const APP_VERSION='4.11.72';
 
 // ─── הודעות קוליות — כבויות ────────────────────────────────────────────────
 // הקלטה קולית היא הערוץ היחיד בין ילדים שאיש לא בודק: אין תמלול, אין סינון,
@@ -2345,7 +2345,7 @@ function Register(){
         <span style="font-size:13px;line-height:1.6;color:#0F1A1F">🌈 <strong>פתוח לקבוצות מעורבות</strong> — שיעורים עם ילדים ממגוון אוכלוסיות ורקעים</span>
       </div>
 
-      <div class="warn" style="margin-bottom:18px"><span>🛡</span><span>אפליקציה לגילאי ${AGE_RANGE.student.min}-${AGE_RANGE.student.max}. ההורים מקבלים התראות והגישה לכל פעילותך — <strong>ההורה/אפוטרופוס יכול להיכנס בכל עת עם שם המשתמש והסיסמה של החשבון</strong> ולצפות בכל הפעילות, כולל שיחות הצ'אט.</span></div>
+      <div class="warn" style="margin-bottom:18px"><span>🛡</span><span>אפליקציה לגילאי ${AGE_RANGE.student.min}-${AGE_RANGE.student.max}. ההורים מקבלים התראות והגישה לכל פעילותך — <strong>ההורה/אפוטרופוס יכול להיכנס בכל עת עם שם המשתמש והסיסמה של החשבון</strong> ולצפות בכל הפעילות, כולל שיחות הצ'אט.<br>${GROUP_MEETUP_NOTICE} ההורה שלך מאשר זאת באישור ההרשמה.</span></div>
 
       <button id="_regBtn" class="btn bp" onclick="quickRegister()">✨ הצטרף עכשיו – חינם!</button>
 
@@ -3710,6 +3710,8 @@ async function deleteStudentBooking(bookingId){
 // קישור שיעור תקין: https בלבד, ממארח מוכר, בלי תווים שהחוקים אוסרים, עד 600 תווים — אותו תנאי כמו jitsiUrl ב-database.rules.json.
 // מחזיר את הקישור כפי שהוא, או '' אם אינו תקין.
 // מארחים מוכרים בלבד: קישור חופשי הוא דרך להוציא ילד מהאפליקציה (אתר זר, קבוצת צ'אט). אותה רשימה בחוקי jitsiUrl.
+// גילוי נאות על מפגשי קבוצה פיזיים — מוצג לילד בהרשמה ולהורה באישור (הוא ממקום אחד; נוסח המייל בשרת חייב להיות זהה, נבדק ב-tests/functions).
+const GROUP_MEETUP_NOTICE='חלק מהקבוצות נפגשות פיזית, ללא נוכחות הורים. כל קבוצה מאושרת על ידי צוות Drushe לפני שהיא מתפרסמת.';
 const MEETING_HOSTS=['zoom.us','meet.google.com','teams.microsoft.com','teams.live.com','whereby.com','meet.jit.si'];
 function meetingLinkClean(v){
   const u=String(v||'').trim();
@@ -13925,6 +13927,7 @@ async function _loadConsentInfo(token){
             ${data.role==='teacher'
               ?`<li>אתם מאשרים לו/לה ללמד ילדים אחרים ב-Drushe — בפיקוח הורים, בלי תשלום דרך האפליקציה, ובשיחות שנשמרות לבדיקת הצוות</li>`
               :`<li>אתם מאשרים לו/לה להשתמש ב-Drushe וליצור קשר עם מורים דרך האפליקציה</li>`}
+            <li>${escapeHtml(GROUP_MEETUP_NOTICE)} באישור זה אתם מסכימים גם לכך.</li>
             <li>קראתם את <a href="/privacy.html" target="_blank" style="color:#0e7a72">מדיניות הפרטיות</a> ואת <a href="/terms.html" target="_blank" style="color:#0e7a72">תנאי השימוש</a></li>
           </ul>
         </div>
