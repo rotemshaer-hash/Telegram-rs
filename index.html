@@ -1198,7 +1198,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.68';
+const APP_VERSION='4.11.69';
 
 // ─── הודעות קוליות — כבויות ────────────────────────────────────────────────
 // הקלטה קולית היא הערוץ היחיד בין ילדים שאיש לא בודק: אין תמלול, אין סינון,
@@ -9764,6 +9764,17 @@ function showRanksPanel(){
 }
 
 
+// פס "לומדים. נפגשים. מכירים חברים חדשים." — הערך של Drushe הוא לא רק שיעור אלא מפגש עם נער/ה קרוב/ה בגיל, בקבוצות
+// שהמנהל אישר. מוצג בבית; הנוסח לא מבטיח קהילה גדולה (PLATFORM_HAS_STUDENTS עדיין false) אלא מה שבאמת קיים.
+function communityStripHtml(){
+  return `<div style="background:var(--surface);border:1.5px solid rgba(14,122,114,0.22);border-radius:22px;padding:16px 18px;margin-bottom:20px;text-align:right">
+    <div style="font-size:11px;font-weight:800;color:#0e7a72;letter-spacing:.02em;margin-bottom:6px">יוצאים מהמסך 🌱</div>
+    <div style="font-size:19px;font-weight:900;color:#0F1A1F;line-height:1.35;margin-bottom:6px">לומדים. נפגשים.<br>מכירים חברים חדשים.</div>
+    <div style="font-size:13px;color:#475569;line-height:1.6;margin-bottom:14px">קבוצות ומפגשים עם מורים בני נוער מאושרים — בליווי הורים, ובמקומות שהצוות שלנו בדק.</div>
+    <button onclick="S.comTab='groups';go('community')" style="width:100%;min-height:44px;border:none;border-radius:50px;background:var(--grad-main);color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">קבוצות קרובות אליי ‹</button>
+  </div>`;
+}
+
 function Home(){
   const GRPS=["לימודים","אמנות","ספורט","טכנולוגיה","בישול","יופי","חופשיים"];
   const GCOL={"לימודים":"#14B8A6","אמנות":"#E74C3C","ספורט":"#27AE60","טכנולוגיה":"#1ABC9C","בישול":"#FF9800","יופי":"#EC407A","חופשיים":"#FF7043"};
@@ -9829,6 +9840,7 @@ function Home(){
     </div>
 
     <div style="padding:16px 20px 100px">
+      ${communityStripHtml()}
       <!-- Drils (רילס) discovery entry point -->
       <button onclick="openDiscover()" style="width:100%;border:none;background:transparent;cursor:pointer;margin-bottom:24px;padding:2px;display:flex;flex-direction:column;align-items:center;gap:6px;-webkit-tap-highlight-color:transparent">
         <div style="position:relative;flex-shrink:0;width:89px;height:89px;margin:2px 0">
