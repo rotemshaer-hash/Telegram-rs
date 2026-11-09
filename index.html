@@ -915,6 +915,10 @@ function _notifGoToQA(teacherUid){
 
 let communityGroups=[];
 let myGroupStatuses={};
+// true/false נקבעים בכל ניסיון; null = עוד לא נטען בכלל. מבדיל "אין קבוצות" מ"לא הצלחנו לטעון" מ"צריך להירשם ולהתאשר" —
+// בלי זה אורח או חשבון שממתין לאישור הורה רואה "בקרוב יהיו קבוצות זמינות", למרות שהקבוצות קיימות וזה פשוט לא פתוח לו עדיין.
+let groupsLoadFailed=false;
+let groupsNeedVerified=false;
 async function loadCommunityGroups(){
   try{
     const snap=await db.ref('groups').get();
@@ -924,7 +928,11 @@ async function loadCommunityGroups(){
       if(g.status!=='cancelled'&&g.status!=='closed')communityGroups.push(g);
     });
     communityGroups.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
-  }catch(e){}
+    groupsLoadFailed=false;groupsNeedVerified=false;
+  }catch(e){
+    if(e&&e.code==='PERMISSION_DENIED'){groupsNeedVerified=true;groupsLoadFailed=false;}
+    else{groupsLoadFailed=true;groupsNeedVerified=false;}
+  }
 }
 async function loadMyGroupStatuses(){
   if(!currentUser)return;
@@ -1198,7 +1206,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.68';
+const APP_VERSION='4.11.76';
 
 // ─── הודעות קוליות — כבויות ────────────────────────────────────────────────
 // הקלטה קולית היא הערוץ היחיד בין ילדים שאיש לא בודק: אין תמלול, אין סינון,
@@ -1982,7 +1990,7 @@ function Splash(){
         <button class="btn bd" onclick="go('login')">${icon("key",14)} כבר רשום? התחבר</button>
         <button onclick="browseAsGuest()" style="background:none;border:none;color:#64748B;font-size:13px;font-weight:700;cursor:pointer;padding:6px">${icon("search",12)} עיין כאורח בלי להירשם</button>
       </div>
-      <p style="color:#64748B;font-size:11px;margin-top:24px">מיועד לילדים ${AGE_RANGE.student.min}–${AGE_RANGE.student.max} בליווי הורים</p>
+      <p style="color:#64748B;font-size:11px;margin-top:24px">מיועד לילדים ${AGE_RANGE.student.min}–${AGE_RANGE.student.max}, בפיקוח ואישור הורים, וחלק מהקבוצות נפגשות פיזית ללא נוכחות הורה</p>
       <p style="color:#6C7686;font-size:10px;margin-top:6px">v${APP_VERSION} · ${APP_BUILD}</p>
     </div>
   </div>`;
@@ -2133,7 +2141,7 @@ function ParentReg(){
       <div style="background:rgba(20,184,166,.08);border-radius:16px;padding:12px 15px">
         <div style="font-size:12px;font-weight:800;color:#0F766E;margin-bottom:8px">${icon("shield",14)} בטיחות Drushe – בקצרה:</div>
         <div style="display:flex;flex-direction:column;gap:5px">
-          ${[['👨‍👩‍👧','פיקוח הורים מלא – ההורה רואה כל שיעור ומקבל עדכון על כל הזמנה'],['🎓','כל מורה עובר בדיקה לפני שמופיע בחיפוש'],['📹','שיעורים אונליין דרך קישור Zoom / Google Meet מאובטח'],['🚨','מערכת דיווח – אפס סבלנות לתוכן פוגעני']].map(([e,t])=>`<div style="display:flex;gap:8px;align-items:center"><span style="font-size:13px">${e}</span><span style="font-size:11px;color:#1E293B">${t}</span></div>`).join('')}
+          ${[['👨‍👩‍👧','פיקוח הורים על שיעורים – ההורה מקבל עדכון על כל הזמנה'],['🎓','כל מורה עובר בדיקה לפני שמופיע בחיפוש'],['📹','שיעורים אונליין דרך קישור Zoom / Google Meet מאובטח'],['🚨','מערכת דיווח – אפס סבלנות לתוכן פוגעני']].map(([e,t])=>`<div style="display:flex;gap:8px;align-items:center"><span style="font-size:13px">${e}</span><span style="font-size:11px;color:#1E293B">${t}</span></div>`).join('')}
         </div>
       </div>
 
@@ -2345,7 +2353,7 @@ function Register(){
         <span style="font-size:13px;line-height:1.6;color:#0F1A1F">🌈 <strong>פתוח לקבוצות מעורבות</strong> — שיעורים עם ילדים ממגוון אוכלוסיות ורקעים</span>
       </div>
 
-      <div class="warn" style="margin-bottom:18px"><span>🛡</span><span>אפליקציה לגילאי ${AGE_RANGE.student.min}-${AGE_RANGE.student.max}. ההורים מקבלים התראות והגישה לכל פעילותך — <strong>ההורה/אפוטרופוס יכול להיכנס בכל עת עם שם המשתמש והסיסמה של החשבון</strong> ולצפות בכל הפעילות, כולל שיחות הצ'אט.</span></div>
+      <div class="warn" style="margin-bottom:18px"><span>🛡</span><span>אפליקציה לגילאי ${AGE_RANGE.student.min}-${AGE_RANGE.student.max}. ההורים מקבלים התראות והגישה לכל פעילותך — <strong>ההורה/אפוטרופוס יכול להיכנס בכל עת עם שם המשתמש והסיסמה של החשבון</strong> ולצפות בכל הפעילות, כולל שיחות הצ'אט.<br>${GROUP_MEETUP_NOTICE} ההורה שלך מאשר זאת באישור ההרשמה.</span></div>
 
       <button id="_regBtn" class="btn bp" onclick="quickRegister()">✨ הצטרף עכשיו – חינם!</button>
 
@@ -3710,6 +3718,8 @@ async function deleteStudentBooking(bookingId){
 // קישור שיעור תקין: https בלבד, ממארח מוכר, בלי תווים שהחוקים אוסרים, עד 600 תווים — אותו תנאי כמו jitsiUrl ב-database.rules.json.
 // מחזיר את הקישור כפי שהוא, או '' אם אינו תקין.
 // מארחים מוכרים בלבד: קישור חופשי הוא דרך להוציא ילד מהאפליקציה (אתר זר, קבוצת צ'אט). אותה רשימה בחוקי jitsiUrl.
+// גילוי נאות על מפגשי קבוצה פיזיים — מוצג לילד בהרשמה ולהורה באישור (הוא ממקום אחד; נוסח המייל בשרת חייב להיות זהה, נבדק ב-tests/functions).
+const GROUP_MEETUP_NOTICE='חלק מהקבוצות נפגשות פיזית, ללא נוכחות הורים. כל קבוצה מאושרת על ידי צוות Drushe לפני שהיא מתפרסמת.';
 const MEETING_HOSTS=['zoom.us','meet.google.com','teams.microsoft.com','teams.live.com','whereby.com','meet.jit.si'];
 function meetingLinkClean(v){
   const u=String(v||'').trim();
@@ -5369,6 +5379,20 @@ async function notifyUser(toUid,type,ctx={}){
     });
     if(!res.ok)console.warn('[notifyUser]',type,res.status);
   }catch(e){console.warn('[notifyUser]',type,e);}
+}
+
+// מייל להורה כשהילד מתקבל/נדחה לקבוצה ספציפית (location/day/time — חלקן נפגשות פיזית). אותו דפוס כמו lessonMail.
+async function groupMail(groupId,uid,event){
+  try{
+    if(!currentUser||!groupId||!uid)return;
+    const idToken=await currentUser.getIdToken();
+    const res=await fetch(API_BASE+'/api/group-mail',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({idToken,groupId,uid,event})
+    });
+    if(!res.ok)console.warn('[groupMail]',event,res.status);
+  }catch(e){console.warn('[groupMail]',event,e);}
 }
 
 // מייל על שיעור (requested → למורה; approved / rejected / completed → להורה). נשלח
@@ -9764,6 +9788,17 @@ function showRanksPanel(){
 }
 
 
+// פס "לומדים. נפגשים. מכירים חברים חדשים." — הערך של Drushe הוא לא רק שיעור אלא מפגש עם נער/ה קרוב/ה בגיל, בקבוצות
+// שהמנהל אישר. מוצג בבית; הנוסח לא מבטיח קהילה גדולה (PLATFORM_HAS_STUDENTS עדיין false) אלא מה שבאמת קיים.
+function communityStripHtml(){
+  return `<div style="background:var(--surface);border:1.5px solid rgba(14,122,114,0.22);border-radius:22px;padding:16px 18px;margin-bottom:20px;text-align:right">
+    <div style="font-size:11px;font-weight:800;color:#0e7a72;letter-spacing:.02em;margin-bottom:6px">יוצאים מהמסך 🌱</div>
+    <div style="font-size:19px;font-weight:900;color:#0F1A1F;line-height:1.35;margin-bottom:6px">לומדים. נפגשים.<br>מכירים חברים חדשים.</div>
+    <div style="font-size:13px;color:#475569;line-height:1.6;margin-bottom:14px">קבוצות ומפגשים קטנים עם מורים בני נוער מאושרים — קרוב לבית, ועם חברים חדשים מהסביבה.</div>
+    <button onclick="S.comTab='groups';go('community')" style="width:100%;min-height:44px;border:none;border-radius:50px;background:var(--grad-main);color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">קבוצות קרובות אליי ‹</button>
+  </div>`;
+}
+
 function Home(){
   const GRPS=["לימודים","אמנות","ספורט","טכנולוגיה","בישול","יופי","חופשיים"];
   const GCOL={"לימודים":"#14B8A6","אמנות":"#E74C3C","ספורט":"#27AE60","טכנולוגיה":"#1ABC9C","בישול":"#FF9800","יופי":"#EC407A","חופשיים":"#FF7043"};
@@ -9829,6 +9864,7 @@ function Home(){
     </div>
 
     <div style="padding:16px 20px 100px">
+      ${communityStripHtml()}
       <!-- Drils (רילס) discovery entry point -->
       <button onclick="openDiscover()" style="width:100%;border:none;background:transparent;cursor:pointer;margin-bottom:24px;padding:2px;display:flex;flex-direction:column;align-items:center;gap:6px;-webkit-tap-highlight-color:transparent">
         <div style="position:relative;flex-shrink:0;width:89px;height:89px;margin:2px 0">
@@ -11556,7 +11592,9 @@ function Community(){
     </div>
   </div>`:"";
   const _isTeacherU=currentUserData?.role==='teacher';
-  const _groupsHtml=(()=>{const openG=communityGroups.filter(g=>g.status==='open'&&(!S.groupSubj||g.subject===S.groupSubj));const hdr=_isTeacherU?`<div style="display:flex;gap:8px;margin-bottom:16px"><button onclick="showCreateGroupDialog()" style="flex:1;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:14px;padding:12px;font-weight:800;font-size:13px;cursor:pointer">+ צור קבוצה</button><button onclick="showTeacherGroupsPanel()" style="flex:1;background:rgba(20,184,166,0.1);color:#14B8A6;border-radius:14px;padding:12px;font-weight:800;font-size:13px;cursor:pointer">${icon("users",14)} הקבוצות שלי</button></div>`:currentUser?`<div style="margin-bottom:14px"><button onclick="showStudentGroupsPanel()" style="width:100%;background:rgba(20,184,166,0.08);color:#14B8A6;border-radius:14px;padding:11px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">${icon("users",14)} הקבוצות שלי${Object.keys(myGroupStatuses).length?' ('+Object.keys(myGroupStatuses).length+')':''}</button></div>`:'';const allSubjs=[...new Set(communityGroups.filter(g=>g.status==='open'&&g.subject).map(g=>g.subject))];const subjFilter=allSubjs.length>1?'<div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px">'+['<button onclick="S.groupSubj=null;render()" style="flex-shrink:0;padding:6px 14px;border-radius:50px;font-size:12px;font-weight:800;cursor:pointer;border:none;background:'+(S.groupSubj?'rgba(100,116,139,0.1)':'linear-gradient(135deg,#14B8A6,#06B6D4)')+';color:'+(S.groupSubj?'#64748B':'#fff')+'">הכל</button>',...allSubjs.map(sid=>{const c=catById(sid);const on=S.groupSubj===sid;return '<button onclick="S.groupSubj=\''+sid+'\';render()" style="flex-shrink:0;padding:6px 14px;border-radius:50px;font-size:12px;font-weight:800;cursor:pointer;border:none;background:'+(on?c.col:'rgba(100,116,139,0.1)')+';color:'+(on?'#fff':'#64748B')+'">'+catIcon(c,13)+' '+c.lbl+'</button>';})].join('')+'</div>':'';if(!openG.length)return hdr+subjFilter+`<div style="text-align:center;padding:40px 20px"><div style="margin-bottom:16px">${miniBadge('home','#8B5CF6',90)}</div><h3 style="font-weight:900;font-size:18px;margin:0 0 8px">אין קבוצות פעילות</h3><p style="color:#64748B;font-size:13px">${S.groupSubj?'נסה לשנות את הסינון':_isTeacherU?'היה הראשון ליצור קבוצה!':'בקרוב יהיו קבוצות זמינות...'}</p></div>`;return hdr+subjFilter+openG.map(g=>{const cat=catById(g.subject);const spots=Math.max(0,(g.maxStudents||0)-(g.membersCount||0));const spotsHtml=(g.maxStudents||0)>0?spots>0?`<div style="text-align:center;background:rgba(16,185,129,0.1);border-radius:12px;padding:8px 12px;flex-shrink:0"><div style="font-weight:900;font-size:16px;color:#10B981">${spots}</div><div style="font-size:10px;color:#64748B">מקומות</div></div>`:`<div style="background:rgba(239,68,68,0.1);border-radius:12px;padding:8px 12px;flex-shrink:0"><div style="font-size:11px;font-weight:800;color:#EF4444">מלא</div></div>`:'';return `<div class="card" onclick="showGroupDetail('${jsAttrEscape(g.id)}')" style="cursor:pointer;margin-bottom:12px;padding:16px 18px"><div style="display:flex;gap:12px;align-items:center">${catBadge(cat,48)}<div style="flex:1;min-width:0"><div style="font-weight:900;font-size:15px;margin-bottom:3px">${escapeHtml(g.title)}</div><div style="font-size:12px;color:${cat.col};font-weight:700">${cat.lbl}${g.isMixed?' · 🌈 מעורבת':''}</div></div>${spotsHtml}</div>${g.desc?`<p style="margin:10px 0 0;font-size:13px;color:#64748B;line-height:1.5">${escapeHtml(g.desc.substring(0,100))}${g.desc.length>100?'...':''}</p>`:''}<div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">${g.day?`<span style="background:rgba(20,184,166,0.1);color:#14B8A6;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">📅 ${escapeHtml(g.day)}</span>`:''}${g.time?` <span style="background:rgba(20,184,166,0.1);color:#14B8A6;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">${icon("clock",14)} ${escapeHtml(g.time)}</span>`:''}${g.location?` <span style="background:rgba(20,184,166,0.1);color:#14B8A6;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">${icon("pin",14)} ${escapeHtml(g.location||'')}</span>`:''}${g.price?`<span style="background:rgba(20,184,166,0.1);color:#14B8A6;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">₪${escapeHtml(String(g.price))}</span>`:`<span style="background:rgba(16,185,129,0.1);color:#10B981;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">חינם!</span>`}</div></div>`;}).join('');})();
+  const _groupsHtml=(()=>{const openG=communityGroups.filter(g=>g.status==='open'&&(!S.groupSubj||g.subject===S.groupSubj));const hdr=_isTeacherU?`<div style="display:flex;gap:8px;margin-bottom:16px"><button onclick="showCreateGroupDialog()" style="flex:1;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:14px;padding:12px;font-weight:800;font-size:13px;cursor:pointer">+ צור קבוצה</button><button onclick="showTeacherGroupsPanel()" style="flex:1;background:rgba(20,184,166,0.1);color:#14B8A6;border-radius:14px;padding:12px;font-weight:800;font-size:13px;cursor:pointer">${icon("users",14)} הקבוצות שלי</button></div>`:currentUser?`<div style="margin-bottom:14px"><button onclick="showStudentGroupsPanel()" style="width:100%;background:rgba(20,184,166,0.08);color:#14B8A6;border-radius:14px;padding:11px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">${icon("users",14)} הקבוצות שלי${Object.keys(myGroupStatuses).length?' ('+Object.keys(myGroupStatuses).length+')':''}</button></div>`:'';const allSubjs=[...new Set(communityGroups.filter(g=>g.status==='open'&&g.subject).map(g=>g.subject))];const subjFilter=allSubjs.length>1?'<div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px">'+['<button onclick="S.groupSubj=null;render()" style="flex-shrink:0;padding:6px 14px;border-radius:50px;font-size:12px;font-weight:800;cursor:pointer;border:none;background:'+(S.groupSubj?'rgba(100,116,139,0.1)':'linear-gradient(135deg,#14B8A6,#06B6D4)')+';color:'+(S.groupSubj?'#64748B':'#fff')+'">הכל</button>',...allSubjs.map(sid=>{const c=catById(sid);const on=S.groupSubj===sid;return '<button onclick="S.groupSubj=\''+sid+'\';render()" style="flex-shrink:0;padding:6px 14px;border-radius:50px;font-size:12px;font-weight:800;cursor:pointer;border:none;background:'+(on?c.col:'rgba(100,116,139,0.1)')+';color:'+(on?'#fff':'#64748B')+'">'+catIcon(c,13)+' '+c.lbl+'</button>';})].join('')+'</div>':'';if(!openG.length&&groupsNeedVerified)return hdr+`<div style="text-align:center;padding:40px 20px"><div style="margin-bottom:16px">${miniBadge('shield','#14B8A6',90)}</div><h3 style="font-weight:900;font-size:18px;margin:0 0 8px">הקבוצות גלויות אחרי הרשמה ואישור</h3><p style="color:#64748B;font-size:13px;margin:0 0 18px">כדי לראות היכן ומתי הקבוצות נפגשות, נרשמים ומאשרים חשבון.</p>${currentUser?'':`<button onclick="go('safety')" style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:12px 26px;font-weight:800;font-size:13px;cursor:pointer">הרשמה</button>`}</div>`;
+    if(!openG.length&&groupsLoadFailed)return hdr+`<div style="text-align:center;padding:40px 20px"><div style="font-size:44px;margin-bottom:14px">📡</div><h3 style="font-weight:900;font-size:18px;margin:0 0 8px">לא הצלחנו לטעון את הקבוצות</h3><p style="color:#64748B;font-size:13px;margin:0 0 18px">בדוק את החיבור לאינטרנט ונסה שוב</p><button onclick="loadCommunityGroups().then(()=>render())" style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:12px 26px;font-weight:800;font-size:13px;cursor:pointer">נסה שוב</button></div>`;
+    if(!openG.length)return hdr+subjFilter+`<div style="text-align:center;padding:40px 20px"><div style="margin-bottom:16px">${miniBadge('home','#8B5CF6',90)}</div><h3 style="font-weight:900;font-size:18px;margin:0 0 8px">אין קבוצות פעילות</h3><p style="color:#64748B;font-size:13px">${S.groupSubj?'נסה לשנות את הסינון':_isTeacherU?'היה הראשון ליצור קבוצה!':'בקרוב יהיו קבוצות זמינות...'}</p></div>`;return hdr+subjFilter+openG.map(g=>{const cat=catById(g.subject);const spots=Math.max(0,(g.maxStudents||0)-(g.membersCount||0));const spotsHtml=(g.maxStudents||0)>0?spots>0?`<div style="text-align:center;background:rgba(16,185,129,0.1);border-radius:12px;padding:8px 12px;flex-shrink:0"><div style="font-weight:900;font-size:16px;color:#10B981">${spots}</div><div style="font-size:10px;color:#64748B">מקומות</div></div>`:`<div style="background:rgba(239,68,68,0.1);border-radius:12px;padding:8px 12px;flex-shrink:0"><div style="font-size:11px;font-weight:800;color:#EF4444">מלא</div></div>`:'';return `<div class="card" onclick="showGroupDetail('${jsAttrEscape(g.id)}')" style="cursor:pointer;margin-bottom:12px;padding:16px 18px"><div style="display:flex;gap:12px;align-items:center">${catBadge(cat,48)}<div style="flex:1;min-width:0"><div style="font-weight:900;font-size:15px;margin-bottom:3px">${escapeHtml(g.title)}</div><div style="font-size:12px;color:${cat.col};font-weight:700">${cat.lbl}${g.isMixed?' · 🌈 מעורבת':''}</div></div>${spotsHtml}</div>${g.desc?`<p style="margin:10px 0 0;font-size:13px;color:#64748B;line-height:1.5">${escapeHtml(g.desc.substring(0,100))}${g.desc.length>100?'...':''}</p>`:''}<div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">${g.day?`<span style="background:rgba(20,184,166,0.1);color:#14B8A6;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">📅 ${escapeHtml(g.day)}</span>`:''}${g.time?` <span style="background:rgba(20,184,166,0.1);color:#14B8A6;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">${icon("clock",14)} ${escapeHtml(g.time)}</span>`:''}${g.location?` <span style="background:rgba(20,184,166,0.1);color:#14B8A6;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">${icon("pin",14)} ${escapeHtml(g.location||'')}</span>`:''}${g.price?`<span style="background:rgba(20,184,166,0.1);color:#14B8A6;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">₪${escapeHtml(String(g.price))}</span>`:`<span style="background:rgba(16,185,129,0.1);color:#10B981;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">חינם!</span>`}</div></div>`;}).join('');})();
 
   const _briefsHtml=(()=>{
     const briefs=S.parentBriefs||[];
@@ -12124,7 +12162,7 @@ function Jobs(){
 
       <h3 style="font-weight:900;font-size:16px;margin:0 0 12px;color:#0F1A1F">למה לגייס דרך Drushe?</h3>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
-        ${[["zap",'#F59E0B',"אנרגיה ומוטיבציה","דור צעיר שרוצה להוכיח את עצמו"],["tag",'#8B5CF6',"מגוון כישרונות",CATS.length+" תחומים — מלימודים ועד טכנולוגיה"],["shield",'#10B981',"בפיקוח הורים",'כל קשר עובר דרכנו ובאישור הורה מפורש'],["clock",'#06B6D4',"זמינות גמישה","מתאימים את עצמם סביב הלימודים"]].map(([ic,col,t,d])=>`<div class="card" style="text-align:center;padding:16px;box-shadow:0 2px 10px rgba(0,0,0,.05)"><div style="margin-bottom:10px;display:flex;justify-content:center">${miniBadge(ic,col,44)}</div><div style="font-weight:800;font-size:13px;color:#0F1A1F">${t}</div><div style="font-size:11px;color:#64748B;margin-top:4px;line-height:1.4">${d}</div></div>`).join("")}
+        ${[["zap",'#F59E0B',"אנרגיה ומוטיבציה","דור צעיר שרוצה להוכיח את עצמו"],["tag",'#8B5CF6',"מגוון כישרונות",CATS.length+" תחומים — מלימודים ועד טכנולוגיה"],["shield",'#10B981',"בפיקוח הורים","הרשמה ואישור הורה לפני שמתחילים ללמד"],["clock",'#06B6D4',"זמינות גמישה","מתאימים את עצמם סביב הלימודים"]].map(([ic,col,t,d])=>`<div class="card" style="text-align:center;padding:16px;box-shadow:0 2px 10px rgba(0,0,0,.05)"><div style="margin-bottom:10px;display:flex;justify-content:center">${miniBadge(ic,col,44)}</div><div style="font-weight:800;font-size:13px;color:#0F1A1F">${t}</div><div style="font-size:11px;color:#64748B;margin-top:4px;line-height:1.4">${d}</div></div>`).join("")}
       </div>
 
       <h3 style="font-weight:900;font-size:16px;margin:0 0 12px;color:#0F1A1F">איך זה עובד</h3>
@@ -12451,7 +12489,7 @@ function About(){
       <button onclick="back()" style="background:rgba(255,255,255,.08);color:#fff;font-size:13px;cursor:pointer;border-radius:50px;padding:8px 16px;font-weight:700;margin-bottom:10px;display:block">← חזור</button>
       <div style="text-align:center;position:relative;z-index:1">
         <h1 style="font-size:28px;font-weight:900;margin:0 0 8px"><span style="color:#fff">Dru</span><span style="color:#A78BFA">s</span><span style="color:#5EEAD4">he</span></h1>
-        <p style="color:rgba(255,255,255,.5);font-size:14px;margin:0 0 12px;line-height:1.8;max-width:300px;margin-left:auto;margin-right:auto">ילדים מלמדים ילדים — בפיקוח הורים מלא</p>
+        <p style="color:rgba(255,255,255,.5);font-size:14px;margin:0 0 12px;line-height:1.8;max-width:300px;margin-left:auto;margin-right:auto">ילדים מלמדים ילדים — בפיקוח ואישור הורים</p>
         <button onclick="shareApp()" style="margin-top:4px;background:rgba(255,255,255,.1);color:#fff;border-radius:50px;padding:10px 22px;font-weight:700;cursor:pointer;font-size:13px">${icon("send",14)} שתף את Drushe</button>
       </div>
     </div>
@@ -13780,6 +13818,7 @@ async function _approveGroupMember(groupId,uid,wrap){
     if(idx>=0){communityGroups[idx].membersCount=newCnt;if(newCnt>=(g?.maxStudents||5))communityGroups[idx].status='full';}
     await db.ref('userGroups/'+uid+'/'+groupId+'/status').set('approved').catch(()=>{});
     notifyUser(uid,'groupApproved',{groupId,groupTitle:g?.title||''});
+    groupMail(groupId,uid,'approved');
     if(wrap)wrap.innerHTML=`<span style="font-size:11px;font-weight:800;padding:4px 10px;border-radius:50px;background:rgba(16,185,129,0.12);color:#10B981">✓ מאושר</span>`;
     showFireToast('✅ אושר!');
   }catch(e){showFireToast('❌ '+e.message);}
@@ -13790,6 +13829,7 @@ async function _rejectGroupMember(groupId,uid,wrap){
     const gTitleSnap=await db.ref('groups/'+groupId+'/title').get().catch(()=>null);
     await db.ref('userGroups/'+uid+'/'+groupId+'/status').set('rejected').catch(()=>{});
     notifyUser(uid,'groupRejected',{groupId,groupTitle:gTitleSnap?.val()||''});
+    groupMail(groupId,uid,'rejected');
     if(wrap)wrap.innerHTML=`<span style="font-size:11px;font-weight:800;padding:4px 10px;border-radius:50px;background:rgba(239,68,68,0.1);color:#EF4444">✗ נדחה</span>`;
     showFireToast('נדחה');
   }catch(e){showFireToast('❌ '+e.message);}
@@ -13913,6 +13953,7 @@ async function _loadConsentInfo(token){
             ${data.role==='teacher'
               ?`<li>אתם מאשרים לו/לה ללמד ילדים אחרים ב-Drushe — בפיקוח הורים, בלי תשלום דרך האפליקציה, ובשיחות שנשמרות לבדיקת הצוות</li>`
               :`<li>אתם מאשרים לו/לה להשתמש ב-Drushe וליצור קשר עם מורים דרך האפליקציה</li>`}
+            <li>${escapeHtml(GROUP_MEETUP_NOTICE)} באישור זה אתם מסכימים גם לכך.</li>
             <li>קראתם את <a href="/privacy.html" target="_blank" style="color:#0e7a72">מדיניות הפרטיות</a> ואת <a href="/terms.html" target="_blank" style="color:#0e7a72">תנאי השימוש</a></li>
           </ul>
         </div>
@@ -14476,7 +14517,9 @@ function _attachStudentApprovalListener(uid){
     } else if(d.verified===true&&S.screen==='studentPending'){
       currentUserData={...(currentUserData||{}),verified:true,rejected:false};
       if(S._firstApproval){S._firstApproval=false;showFireToast('🎉 ברוכים הבאים ל-Drushe!');}
-      go('home');
+      // בלי הטעינה הזו התלמיד שזה עתה אושר עדיין רואה "הקבוצות גלויות אחרי הרשמה ואישור" (groupsNeedVerified
+      // נשאר true מהניסיון שנכשל לפני האישור) עד שהאפליקציה נטענת מחדש — אותו תיקון שכבר קיים למורה שלוש שורות למעלה.
+      Promise.resolve(typeof loadRealTeachers==='function'?loadRealTeachers():null).catch(()=>{}).then(()=>go('home'));
     } else if(d.rejected===true&&S.screen==='studentPending'){
       currentUserData={...(currentUserData||{}),rejected:true};
       render();

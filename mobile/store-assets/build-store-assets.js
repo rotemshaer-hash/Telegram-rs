@@ -30,7 +30,7 @@ justify-content:center;gap:48px;position:relative;overflow:hidden">
   <div style="text-align:right;color:#fff;z-index:1">
     <div style="font-family:'Rubik';font-weight:900;font-size:104px;letter-spacing:-2px;line-height:1">Drushe</div>
     <div style="font-family:'Rubik';font-weight:900;font-size:52px;margin-top:6px;color:#fff">ילדים מלמדים ילדים</div>
-    <div style="font-size:28px;font-weight:500;margin-top:18px;color:rgba(255,255,255,.88)">שיעורים פרטיים בין ילדים · בפיקוח הורים מלא</div>
+    <div style="font-size:28px;font-weight:500;margin-top:18px;color:rgba(255,255,255,.88)">לומדים. נפגשים. מכירים חברים חדשים — בפיקוח ואישור הורים</div>
     <div style="display:inline-flex;gap:10px;margin-top:26px">
       <span style="background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.3);padding:8px 18px;border-radius:999px;font-size:22px;font-weight:700">🎓 למד</span>
       <span style="background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.3);padding:8px 18px;border-radius:999px;font-size:22px;font-weight:700">💸 הרווח</span>
@@ -107,7 +107,7 @@ const safeItem = (t)=>`<div style="display:flex;align-items:flex-start;gap:18px;
   justify-content:center;font-size:30px;flex-shrink:0">✓</div>
   <div style="font-size:32px;font-weight:600;color:#22332F;padding-top:6px">${t}</div></div>`;
 
-const screen2 = shot('בפיקוח הורים מלא','ההורים במרכז — בכל שלב',`
+const screen2 = shot('בפיקוח ואישור הורים','ההורים במרכז — בכל שלב',`
   ${card(`<div style="text-align:center">
     <div style="font-size:56px">🛡️</div>
     <div style="font-size:40px;font-weight:900;color:#0F1A1F;margin-top:10px">בטיחות לפני הכל</div>

@@ -12,7 +12,7 @@ Generated promotional assets for the Google Play listing.
 
 Copy in the listing:
 - **App name:** Drushe – ילדים מלמדים ילדים
-- **Short description:** פלטפורמת שיעורים פרטיים בין ילדים, בפיקוח הורים מלא ובאישור מנהל
+- **Short description:** לומדים. נפגשים. מכירים חברים חדשים — בפיקוח ואישור הורים ובאישור מנהל
 - **Full description:** see `../store-listing.txt`
 
 ## Regenerating
