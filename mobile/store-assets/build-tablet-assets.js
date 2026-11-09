@@ -81,7 +81,7 @@ const safeItem = (t)=>`<div style="display:flex;align-items:flex-start;gap:22px;
   justify-content:center;font-size:36px;flex-shrink:0">✓</div>
   <div style="font-size:38px;font-weight:600;color:#22332F;padding-top:8px">${t}</div></div>`;
 
-const screen2 = shot('בפיקוח הורים מלא','ההורים במרכז — בכל שלב',`
+const screen2 = shot('בפיקוח ואישור הורים','ההורים במרכז — בכל שלב',`
   ${card(`<div style="text-align:center">
     <div style="font-size:70px">🛡️</div>
     <div style="font-size:50px;font-weight:900;color:#0F1A1F;margin-top:14px">בטיחות לפני הכל</div>

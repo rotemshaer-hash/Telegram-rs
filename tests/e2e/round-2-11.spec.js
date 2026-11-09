@@ -131,3 +131,65 @@ test('native share, haptics and the offline bar', async ({ page }) => {
   expect(r.bar).toBe(true);
   expect(r.barGone).toBe(true);
 });
+
+// Security review 7.11.2026: groups are no longer readable by a guest/unverified account, and the empty-groups
+// screen tells "need to sign up" apart from "load failed" apart from "truly empty" (was a silent catch{}).
+test('a guest or unverified user sees a sign-up prompt, not "no groups yet"; a load failure shows retry', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof loadCommunityGroups === 'function');
+  const r = await page.evaluate(async () => {
+    const out = {};
+    db = { ref: () => ({ get: async () => { const e = new Error('x'); e.code = 'PERMISSION_DENIED'; throw e; } }) };
+    await loadCommunityGroups();
+    out.needVerified = groupsNeedVerified;
+    out.loadFailed1 = groupsLoadFailed;
+    db = { ref: () => ({ get: async () => { throw new Error('network'); } }) };
+    await loadCommunityGroups();
+    out.loadFailed2 = groupsLoadFailed;
+    out.needVerified2 = groupsNeedVerified;
+    return out;
+  });
+  expect(r.needVerified).toBe(true);
+  expect(r.loadFailed1).toBe(false);
+  expect(r.loadFailed2).toBe(true);
+  expect(r.needVerified2).toBe(false);
+});
+
+// The guest-facing "groups need sign-up" screen must actually show its sign-up button to a guest.
+// currentUser stays null for an anonymous (browse-as-guest) session by design — confirmed here, not assumed.
+test('an anonymous guest sees the sign-up button on the groups-need-verification screen', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof Community === 'function' || typeof go === 'function');
+  const r = await page.evaluate(() => {
+    currentUser = null; // the app's own invariant for an anonymous guest (see onAuthStateChanged)
+    currentUserData = null;
+    communityGroups = [];
+    groupsNeedVerified = true;
+    groupsLoadFailed = false;
+    S.comTab = 'groups';
+    go('community');
+    return { hasSignupBtn: document.body.innerText.includes('הרשמה'), hasGateMsg: document.body.innerText.includes('אחרי הרשמה ואישור') };
+  });
+  expect(r.hasGateMsg).toBe(true);
+  expect(r.hasSignupBtn).toBe(true);
+});
+
+// A student approved while the app is open must see groups immediately (same fix the teacher path already had).
+test('a newly approved student reloads groups, not stuck on the sign-up gate', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof _attachStudentApprovalListener === 'function' && typeof loadRealTeachers === 'function');
+  const r = await page.evaluate(async () => {
+    let groupsReloaded = false;
+    window.loadRealTeachers = async () => { groupsReloaded = true; groupsNeedVerified = false; };
+    currentUser = { uid: 'kid' };
+    currentUserData = { role: 'student', verified: false };
+    S.screen = 'studentPending';
+    db = { ref: () => ({ on: (ev, cb) => { cb({ exists: () => true, val: () => ({ verified: true }) }); } }) };
+    _studentApprovalListenerUID = null;
+    _attachStudentApprovalListener('kid');
+    await new Promise((r2) => setTimeout(r2, 50));
+    return { groupsReloaded, screen: S.screen };
+  });
+  expect(r.groupsReloaded).toBe(true);
+  expect(r.screen).toBe('home');
+});

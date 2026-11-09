@@ -696,7 +696,7 @@ describe('public text refuses links, handles and phone numbers', () => {
   beforeEach(async () => {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
       await set(ref(ctx.database(), `userRoles/${TEACHER}`), 'teacher');
-      await set(ref(ctx.database(), 'groups/gx'), { teacherId: TEACHER, title: 'G', location: 'x', status: 'open' });
+      await set(ref(ctx.database(), 'groups/gx'), { teacherId: TEACHER, title: 'G', location: 'x', status: 'pending' });
     });
   });
   it('a group field with a link, a @handle or a phone number is refused; a street address is fine', async () => {
@@ -725,6 +725,53 @@ describe('public text refuses links, handles and phone numbers', () => {
     await assertSucceeds(set(ref(asTeacher(), `teachers/${TEACHER}/desc`), 'מלמד מתמטיקה כבר 3 שנים, שיעורים כיפיים'));
     await assertFails(set(ref(asTeacher(), `teachers/${TEACHER}/desc`), 'התקשרו אליי 0501234567'));
     await assertFails(set(ref(asTeacher(), `teachers/${TEACHER}/desc`), 'instagram https://instagram.com/x'));
+  });
+});
+
+describe("groups: an approved group's meeting cannot move without the admin (security review 7.11.2026)", () => {
+  beforeEach(async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await set(ref(ctx.database(), `userRoles/${TEACHER}`), 'teacher');
+      await set(ref(ctx.database(), `users/${TEACHER}/verified`), true);
+      await set(ref(ctx.database(), 'groups/go1'), { teacherId: TEACHER, title: 'Chess', desc: 'fun', location: 'Herzl 1', day: 'ב', time: '17:00', status: 'open' });
+      await set(ref(ctx.database(), 'groups/go2'), { teacherId: TEACHER, title: 'Chess', desc: 'fun', location: 'Herzl 1', day: 'ב', time: '17:00', status: 'full' });
+    });
+  });
+  const ADMIN_DB = () => testEnv.authenticatedContext('admin-uid', { email: 'rotemshaer@gmail.com' }).database();
+  it('the teacher cannot relocate, reschedule or re-word an open or full group — only the admin can', async () => {
+    await assertFails(set(ref(asTeacher(), 'groups/go1/location'), 'Herzl 2'));
+    await assertFails(set(ref(asTeacher(), 'groups/go1/day'), 'ג'));
+    await assertFails(set(ref(asTeacher(), 'groups/go1/time'), '18:00'));
+    await assertFails(set(ref(asTeacher(), 'groups/go1/title'), 'New name'));
+    await assertFails(set(ref(asTeacher(), 'groups/go1/desc'), 'new text'));
+    await assertFails(set(ref(asTeacher(), 'groups/go2/location'), 'Herzl 2'));
+    await assertSucceeds(set(ref(ADMIN_DB(), 'groups/go1/location'), 'Herzl 2'));
+  });
+  it('once closed or cancelled (hidden from the public listing again) the teacher may edit freely', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => { await set(ref(ctx.database(), 'groups/go1/status'), 'cancelled'); });
+    await assertSucceeds(set(ref(asTeacher(), 'groups/go1/location'), 'Herzl 2'));
+  });
+});
+
+describe('groups: the listing is not readable by an anonymous guest or an unverified account (security review 7.11.2026)', () => {
+  const anon = () => testEnv.authenticatedContext('guest-uid', { firebase: { sign_in_provider: 'anonymous' } }).database();
+  const ADMIN_DB = () => testEnv.authenticatedContext('admin-uid', { email: 'rotemshaer@gmail.com' }).database();
+  beforeEach(async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await set(ref(ctx.database(), 'groups/gr1'), { teacherId: TEACHER, title: 'Chess', location: 'Herzl 1', status: 'open' });
+    });
+  });
+  it('an anonymous guest cannot read the exact meeting location/day/time of any group', async () => {
+    await assertFails(get(ref(anon(), 'groups')));
+    await assertFails(get(ref(anon(), 'groups/gr1')));
+  });
+  it('a signed-in but unverified (not yet parent/admin approved) account cannot read it either', async () => {
+    await assertFails(get(ref(asStranger(), 'groups')));
+  });
+  it('a verified account, and the admin, can read it', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => { await set(ref(ctx.database(), `users/${STUDENT}/verified`), true); });
+    await assertSucceeds(get(ref(asStudent(), 'groups')));
+    await assertSucceeds(get(ref(ADMIN_DB(), 'groups')));
   });
 });
 
