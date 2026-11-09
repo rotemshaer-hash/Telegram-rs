@@ -1206,7 +1206,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.75';
+const APP_VERSION='4.11.76';
 
 // ─── הודעות קוליות — כבויות ────────────────────────────────────────────────
 // הקלטה קולית היא הערוץ היחיד בין ילדים שאיש לא בודק: אין תמלול, אין סינון,
@@ -5379,6 +5379,20 @@ async function notifyUser(toUid,type,ctx={}){
     });
     if(!res.ok)console.warn('[notifyUser]',type,res.status);
   }catch(e){console.warn('[notifyUser]',type,e);}
+}
+
+// מייל להורה כשהילד מתקבל/נדחה לקבוצה ספציפית (location/day/time — חלקן נפגשות פיזית). אותו דפוס כמו lessonMail.
+async function groupMail(groupId,uid,event){
+  try{
+    if(!currentUser||!groupId||!uid)return;
+    const idToken=await currentUser.getIdToken();
+    const res=await fetch(API_BASE+'/api/group-mail',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({idToken,groupId,uid,event})
+    });
+    if(!res.ok)console.warn('[groupMail]',event,res.status);
+  }catch(e){console.warn('[groupMail]',event,e);}
 }
 
 // מייל על שיעור (requested → למורה; approved / rejected / completed → להורה). נשלח
@@ -13804,6 +13818,7 @@ async function _approveGroupMember(groupId,uid,wrap){
     if(idx>=0){communityGroups[idx].membersCount=newCnt;if(newCnt>=(g?.maxStudents||5))communityGroups[idx].status='full';}
     await db.ref('userGroups/'+uid+'/'+groupId+'/status').set('approved').catch(()=>{});
     notifyUser(uid,'groupApproved',{groupId,groupTitle:g?.title||''});
+    groupMail(groupId,uid,'approved');
     if(wrap)wrap.innerHTML=`<span style="font-size:11px;font-weight:800;padding:4px 10px;border-radius:50px;background:rgba(16,185,129,0.12);color:#10B981">✓ מאושר</span>`;
     showFireToast('✅ אושר!');
   }catch(e){showFireToast('❌ '+e.message);}
@@ -13814,6 +13829,7 @@ async function _rejectGroupMember(groupId,uid,wrap){
     const gTitleSnap=await db.ref('groups/'+groupId+'/title').get().catch(()=>null);
     await db.ref('userGroups/'+uid+'/'+groupId+'/status').set('rejected').catch(()=>{});
     notifyUser(uid,'groupRejected',{groupId,groupTitle:gTitleSnap?.val()||''});
+    groupMail(groupId,uid,'rejected');
     if(wrap)wrap.innerHTML=`<span style="font-size:11px;font-weight:800;padding:4px 10px;border-radius:50px;background:rgba(239,68,68,0.1);color:#EF4444">✗ נדחה</span>`;
     showFireToast('נדחה');
   }catch(e){showFireToast('❌ '+e.message);}
