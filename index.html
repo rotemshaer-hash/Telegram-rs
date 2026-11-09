@@ -1198,7 +1198,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.72';
+const APP_VERSION='4.11.73';
 
 // ─── הודעות קוליות — כבויות ────────────────────────────────────────────────
 // הקלטה קולית היא הערוץ היחיד בין ילדים שאיש לא בודק: אין תמלול, אין סינון,
@@ -1982,7 +1982,7 @@ function Splash(){
         <button class="btn bd" onclick="go('login')">${icon("key",14)} כבר רשום? התחבר</button>
         <button onclick="browseAsGuest()" style="background:none;border:none;color:#64748B;font-size:13px;font-weight:700;cursor:pointer;padding:6px">${icon("search",12)} עיין כאורח בלי להירשם</button>
       </div>
-      <p style="color:#64748B;font-size:11px;margin-top:24px">מיועד לילדים ${AGE_RANGE.student.min}–${AGE_RANGE.student.max} בליווי הורים</p>
+      <p style="color:#64748B;font-size:11px;margin-top:24px">מיועד לילדים ${AGE_RANGE.student.min}–${AGE_RANGE.student.max}, בפיקוח ואישור הורים, וחלק מהקבוצות נפגשות פיזית ללא נוכחות הורה</p>
       <p style="color:#6C7686;font-size:10px;margin-top:6px">v${APP_VERSION} · ${APP_BUILD}</p>
     </div>
   </div>`;
@@ -12465,7 +12465,7 @@ function About(){
       <button onclick="back()" style="background:rgba(255,255,255,.08);color:#fff;font-size:13px;cursor:pointer;border-radius:50px;padding:8px 16px;font-weight:700;margin-bottom:10px;display:block">← חזור</button>
       <div style="text-align:center;position:relative;z-index:1">
         <h1 style="font-size:28px;font-weight:900;margin:0 0 8px"><span style="color:#fff">Dru</span><span style="color:#A78BFA">s</span><span style="color:#5EEAD4">he</span></h1>
-        <p style="color:rgba(255,255,255,.5);font-size:14px;margin:0 0 12px;line-height:1.8;max-width:300px;margin-left:auto;margin-right:auto">ילדים מלמדים ילדים — בפיקוח הורים מלא</p>
+        <p style="color:rgba(255,255,255,.5);font-size:14px;margin:0 0 12px;line-height:1.8;max-width:300px;margin-left:auto;margin-right:auto">ילדים מלמדים ילדים — בפיקוח ואישור הורים</p>
         <button onclick="shareApp()" style="margin-top:4px;background:rgba(255,255,255,.1);color:#fff;border-radius:50px;padding:10px 22px;font-weight:700;cursor:pointer;font-size:13px">${icon("send",14)} שתף את Drushe</button>
       </div>
     </div>
