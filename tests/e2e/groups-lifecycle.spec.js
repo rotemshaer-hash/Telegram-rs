@@ -159,3 +159,51 @@ test('closing a group tells the members it is over, not that it is paused', asyn
   expect(r.told).toEqual([{ uid: 'kid1', type: 'groupClosed', ctx: { groupId: 'g1', groupTitle: 'חוג' } }]);
   expect(r.left).toBe(0);
 });
+
+// The teacher published a group and the same screen answered "no active groups · be the
+// first to create one", because the list only renders status 'open'. The tab counter had
+// the opposite problem: it counted every group in the node, including the ones the admin
+// has not approved, so a child was promised groups the list does not show (user test
+// 11.11.2026).
+test('a teacher sees their own group waiting for approval, and the counter counts only what is shown', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof Community === 'function');
+  const r = await page.evaluate(async () => {
+    currentUser = { uid: 't1', email: 't@example.com', emailVerified: true };
+    currentUserData = { name: 'מורה', role: 'teacher', verified: true };
+    communityGroups = [
+      { id: 'mine', status: 'pending', subject: 'chess', title: 'שחמט בפארק', location: 'פארק', day: 'יום ב', time: '17:00', maxStudents: 5, membersCount: 0, teacherId: 't1', teacherName: 'מורה', createdAt: 3 },
+      { id: 'other', status: 'pending', subject: 'math', title: 'של מישהו אחר', location: 'x', teacherId: 't9', createdAt: 2 },
+    ];
+    S.comTab = 'groups'; go('community');
+    await new Promise((res) => setTimeout(res, 300));
+    const txt = document.body.innerText;
+    return {
+      mine: txt.includes('שחמט בפארק'), waiting: txt.includes('ממתינה לאישור'),
+      others: txt.includes('של מישהו אחר'), counter: /קבוצות \(\d+\)/.test(txt),
+    };
+  });
+  expect(r.mine).toBe(true);
+  expect(r.waiting).toBe(true);
+  expect(r.others).toBe(false);   // another teacher's unapproved group is not shown
+  expect(r.counter).toBe(false);  // nothing is open, so no number is promised
+});
+
+// A refused approval ("the group is full") left both buttons disabled for good, and the
+// leader could not even reject the child without closing and reopening the panel.
+test('a refused approval gives the buttons back', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof _approveGroupMember === 'function');
+  const r = await page.evaluate(async () => {
+    db = { ref: () => ({ get: async () => ({ val: () => ({ teacherId: 'teach', maxStudents: 3, membersCount: 3, status: 'open' }) }), set: async () => {} }) };
+    currentUser = { uid: 'teach', email: 't@example.com', emailVerified: true };
+    currentUserData = { name: 'מורה', role: 'teacher', verified: true };
+    communityGroups = [{ id: 'g1', status: 'open', maxStudents: 3, membersCount: 3, teacherId: 'teach' }];
+    const wrap = document.createElement('div');
+    wrap.innerHTML = '<button>✓ אשר</button><button>✗ דחה</button>';
+    document.body.appendChild(wrap);
+    await _approveGroupMember('g1', 'kid', wrap);
+    return [...wrap.querySelectorAll('button')].map((b) => b.disabled);
+  });
+  expect(r).toEqual([false, false]);
+});
