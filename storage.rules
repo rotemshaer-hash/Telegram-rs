@@ -34,8 +34,15 @@ service firebase.storage {
     // סטוריז, מדיה של פוסטים בקהילה, ותיק עבודות של מורה — נועדו להיראות
     // למשתמשים מחוברים אחרים בתוך האפליקציה, ולכן הקריאה פתוחה לכל מחובר;
     // רק הבעלים מעלה, דורס ומוחק את שלו.
+    //
+    // סטוריז ומדיה של פוסטים — לא לאורח אנונימי. חוקי ה-RTDB כבר דורשים
+    // sign_in_provider != 'anonymous' כדי לקרוא את הרשומות עצמן (stories,
+    // communityPosts), אבל הקובץ עצמו היה פתוח לכל טוקן — כולל כזה ש-
+    // browseAsGuest מנפיק בלחיצה אחת. שתי השכבות אומרות עכשיו אותו דבר
+    // (ביקורת אבטחה 11.11.2026).
     match /stories/{uid}/{fileName} {
-      allow read: if request.auth != null;
+      allow read: if request.auth != null &&
+        request.auth.token.firebase.sign_in_provider != 'anonymous';
       allow create, update: if request.auth != null && request.auth.uid == uid &&
         request.resource.size < 15 * 1024 * 1024 &&
         request.resource.contentType.matches('image/.*');
@@ -43,7 +50,8 @@ service firebase.storage {
         (request.auth.uid == uid || request.auth.token.email == 'rotemshaer@gmail.com');
     }
     match /communityMedia/{uid}/{fileName} {
-      allow read: if request.auth != null;
+      allow read: if request.auth != null &&
+        request.auth.token.firebase.sign_in_provider != 'anonymous';
       allow create, update: if request.auth != null && request.auth.uid == uid &&
         request.resource.size < 25 * 1024 * 1024;
       allow delete: if request.auth != null &&

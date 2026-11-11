@@ -13776,26 +13776,35 @@ async function joinGroup(groupId){
 }
 async function leaveGroup(groupId){
   if(!currentUser)return;
+  // המונה יושב על רשומת הקבוצה, שרק המוביל רשאי לכתוב — ולכן עד עכשיו הוא ירד רק
+  // במשתנה המקומי, ובשרת קבוצה שהתמלאה נשארה 'full' לנצח ונעלמה מכולם. השרת סופר
+  // עכשיו מחדש מרשימת החברים (‎/api/group-leave): מקור אמת אחד, ובלי לתת לאף צד
+  // לכתוב מספר על רשומת הקבוצה של מישהו אחר.
   try{
-    // המונה שמור על רשומת הקבוצה, שרק המוביל יכול לכתוב — ולכן עד עכשיו הוא ירד
-    // רק במשתנה המקומי: בשרת קבוצה שהתמלאה נשארה 'full' לנצח, וה-UI מסנן
-    // status==='open', כך שהיא נעלמה לכולם. הכללים מתירים עכשיו לחבר קבוצה
-    // להוריד את המונה ב-1 ולהחזיר full→open, ולכן זה נעשה לפני הסרת החברות
-    // (אחרי ההסרה הוא כבר לא חבר ואין לו הרשאה).
-    const wasApproved=myGroupStatuses[groupId]?.status==='approved';
-    if(wasApproved){
-      const gRef=db.ref('groups/'+groupId);
-      const cur=Number((await gRef.child('membersCount').get().catch(()=>null))?.val())||0;
-      if(cur>0)await gRef.child('membersCount').set(cur-1).catch(()=>{});
-      if((await gRef.child('status').get().catch(()=>null))?.val()==='full')await gRef.child('status').set('open').catch(()=>{});
-      const idx=communityGroups.findIndex(x=>x.id===groupId);
-      if(idx>=0){if(communityGroups[idx].membersCount>0)communityGroups[idx].membersCount--;if(communityGroups[idx].status==='full')communityGroups[idx].status='open';}
+    const idToken=await currentUser.getIdToken();
+    const res=await fetch(API_BASE+'/api/group-leave',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({idToken,groupId})
+    });
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok)throw new Error(data.error||('שגיאה '+res.status));
+    const idx=communityGroups.findIndex(x=>x.id===groupId);
+    if(idx>=0){
+      if(typeof data.membersCount==='number')communityGroups[idx].membersCount=data.membersCount;
+      if(data.status)communityGroups[idx].status=data.status;
     }
-    await db.ref('groupMembers/'+groupId+'/'+currentUser.uid).remove();
-    await db.ref('userGroups/'+currentUser.uid+'/'+groupId).remove();
     delete myGroupStatuses[groupId];
     showFireToast('יצאת מהקבוצה');render();
-  }catch(e){showFireToast('❌ '+e.message);}
+  }catch(e){
+    // יציאה מקבוצה חייבת לעבוד גם כשהשרת לא זמין: החברות מוסרת מכאן, והמונה
+    // יתעדכן בפעם הבאה שמישהו יוצא או שהמוביל מאשר — עדיף מילד שנתקע בקבוצה.
+    try{
+      await db.ref('groupMembers/'+groupId+'/'+currentUser.uid).remove();
+      await db.ref('userGroups/'+currentUser.uid+'/'+groupId).remove();
+      delete myGroupStatuses[groupId];
+      showFireToast('יצאת מהקבוצה');render();
+    }catch(e2){showFireToast('❌ '+(e2.message||e.message));}
+  }
 }
 async function showStudentGroupsPanel(){
   if(!currentUser){showFireToast('❌ יש להתחבר');return;}

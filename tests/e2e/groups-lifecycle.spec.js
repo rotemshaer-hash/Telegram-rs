@@ -7,36 +7,49 @@ const { test, expect } = require('@playwright/test');
 //  * an approved group could not be stopped by the admin at all, and its members were
 //    told nothing when it was closed.
 
-test('leaving an approved membership frees the place on the server and reopens a full group', async ({ page }) => {
+test('leaving a group goes through the server, which recounts the places', async ({ page }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof leaveGroup === 'function');
   const r = await page.evaluate(async () => {
-    const writes = [], removed = [];
-    const server = { 'groups/g1/membersCount': 5, 'groups/g1/status': 'full' };
-    db = { ref: (p) => ({
-      get: async () => ({ exists: () => p in server, val: () => server[p], forEach: () => {} }),
-      set: async (v) => { writes.push([p, v]); server[p] = v; },
-      remove: async () => { removed.push(p); },
-      child: (c) => db.ref(p + '/' + c),
-    }) };
-    currentUser = { uid: 'kid', email: 'k@example.com', emailVerified: true };
+    const calls = [];
+    window.fetch = async (url, opts) => {
+      calls.push({ url, body: JSON.parse(opts.body) });
+      return { ok: true, status: 200, json: async () => ({ ok: true, left: true, membersCount: 4, status: 'open' }) };
+    };
+    currentUser = { uid: 'kid', email: 'k@example.com', emailVerified: true, getIdToken: async () => 'tok' };
     currentUserData = { name: 'ילד', role: 'student', verified: true };
     communityGroups = [{ id: 'g1', status: 'full', subject: 'chess', title: 'חוג', location: 'פארק', day: 'ב', time: '17:00', maxStudents: 5, membersCount: 5, teacherId: 't1', teacherName: 'מורה', createdAt: 1 }];
     myGroupStatuses = { g1: { status: 'approved' } };
+    db = { ref: () => ({ remove: async () => { throw new Error('the client must not write the group record'); } }) };
     await leaveGroup('g1');
-    const afterApproved = { writes: [...writes], removed: [...removed], local: { ...communityGroups[0] } };
-
-    writes.length = 0; removed.length = 0;
-    myGroupStatuses = { g1: { status: 'pending' } };
-    await leaveGroup('g1');
-    return { afterApproved, pendingWrites: writes };
+    return { calls, local: { ...communityGroups[0] }, left: !myGroupStatuses.g1 };
   });
-  expect(r.afterApproved.writes).toEqual([['groups/g1/membersCount', 4], ['groups/g1/status', 'open']]);
-  expect(r.afterApproved.removed).toEqual(['groupMembers/g1/kid', 'userGroups/kid/g1']);
-  expect(r.afterApproved.local.membersCount).toBe(4);
-  expect(r.afterApproved.local.status).toBe('open');
-  // a request that was never approved held no place, so it must not free one
-  expect(r.pendingWrites).toEqual([]);
+  expect(r.calls).toHaveLength(1);
+  expect(r.calls[0].url).toContain('/api/group-leave');
+  expect(r.calls[0].body).toEqual({ idToken: 'tok', groupId: 'g1' });
+  expect(r.local.membersCount).toBe(4);
+  expect(r.local.status).toBe('open');
+  expect(r.left).toBe(true);
+});
+
+// A child must be able to walk out of a physical meetup even when the server cannot be
+// reached; the counter catches up on the next leave or approval.
+test('if the server cannot be reached the child still leaves', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof leaveGroup === 'function');
+  const r = await page.evaluate(async () => {
+    const removed = [];
+    window.fetch = async () => { throw new Error('offline'); };
+    db = { ref: (p) => ({ remove: async () => { removed.push(p); } }) };
+    currentUser = { uid: 'kid', email: 'k@example.com', emailVerified: true, getIdToken: async () => 'tok' };
+    currentUserData = { name: 'ילד', role: 'student', verified: true };
+    communityGroups = [{ id: 'g1', status: 'open', title: 'חוג', teacherId: 't1', membersCount: 3, maxStudents: 5 }];
+    myGroupStatuses = { g1: { status: 'approved' } };
+    await leaveGroup('g1');
+    return { removed, left: !myGroupStatuses.g1 };
+  });
+  expect(r.removed).toEqual(['groupMembers/g1/kid', 'userGroups/kid/g1']);
+  expect(r.left).toBe(true);
 });
 
 test('a double click on "approve" counts one child, and the leader cannot pass the group size', async ({ page }) => {
