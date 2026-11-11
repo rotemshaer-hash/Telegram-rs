@@ -85,7 +85,7 @@
       ".indexOn": ["role", "verified", "email"],
       "$uid": {
         ".read": "auth != null && auth.uid == $uid",
-        ".write": "auth != null && auth.uid == $uid",
+        ".write": "auth != null && auth.uid == $uid && (!data.child('role').exists() || !newData.exists() || newData.child('role').exists())",
         "role": {
           ".validate": "auth.token.email == 'rotemshaer@gmail.com' || !data.exists()"
         },
@@ -235,7 +235,7 @@
         ".read": "auth != null && auth.uid == $uid",
         ".write": "auth != null && (auth.uid == $uid || auth.token.email == 'rotemshaer@gmail.com')",
         "$notifId": {
-          ".validate": "!newData.exists() || (data.exists() && newData.child('read').isBoolean()) || (!data.exists() && newData.hasChildren(['type', 'createdAt', 'read']) && newData.child('createdAt').isNumber() && newData.child('read').isBoolean() && (newData.child('type').val() == 'newBooking' || newData.child('type').val() == 'bookingApproved' || newData.child('type').val() == 'bookingRejected' || newData.child('type').val() == 'bookingCancelled' || newData.child('type').val() == 'newMessage' || newData.child('type').val() == 'lessonCompleted' || newData.child('type').val() == 'newReview' || newData.child('type').val() == 'newPost' || newData.child('type').val() == 'adminMessage' || newData.child('type').val() == 'accountApproved' || newData.child('type').val() == 'teacherApproved' || newData.child('type').val() == 'studentApproved' || newData.child('type').val() == 'groupJoin' || newData.child('type').val() == 'groupApproved' || newData.child('type').val() == 'groupRejected' || newData.child('type').val() == 'rateLesson' || newData.child('type').val() == 'lessonSummary' || newData.child('type').val() == 'newTeacher' || newData.child('type').val() == 'newUser' || newData.child('type').val() == 'newVideo' || newData.child('type').val() == 'newReport' || newData.child('type').val() == 'briefProposal' || newData.child('type').val() == 'briefAccepted' || newData.child('type').val() == 'newQuestion' || newData.child('type').val() == 'questionAnswered' || newData.child('type').val() == 'trialReminder' || newData.child('type').val() == 'referralJoined'))"
+          ".validate": "!newData.exists() || (data.exists() && newData.child('read').isBoolean()) || (!data.exists() && newData.hasChildren(['type', 'createdAt', 'read']) && newData.child('createdAt').isNumber() && newData.child('read').isBoolean() && (newData.child('type').val() == 'newBooking' || newData.child('type').val() == 'bookingApproved' || newData.child('type').val() == 'bookingRejected' || newData.child('type').val() == 'bookingCancelled' || newData.child('type').val() == 'newMessage' || newData.child('type').val() == 'lessonCompleted' || newData.child('type').val() == 'newReview' || newData.child('type').val() == 'newPost' || newData.child('type').val() == 'adminMessage' || newData.child('type').val() == 'accountApproved' || newData.child('type').val() == 'teacherApproved' || newData.child('type').val() == 'studentApproved' || newData.child('type').val() == 'groupJoin' || newData.child('type').val() == 'groupApproved' || newData.child('type').val() == 'groupRejected' || newData.child('type').val() == 'groupPublished' || newData.child('type').val() == 'groupDeclined' || newData.child('type').val() == 'groupSuspended' || newData.child('type').val() == 'rateLesson' || newData.child('type').val() == 'lessonSummary' || newData.child('type').val() == 'newTeacher' || newData.child('type').val() == 'newUser' || newData.child('type').val() == 'newVideo' || newData.child('type').val() == 'newReport' || newData.child('type').val() == 'briefProposal' || newData.child('type').val() == 'briefAccepted' || newData.child('type').val() == 'newQuestion' || newData.child('type').val() == 'questionAnswered' || newData.child('type').val() == 'trialReminder' || newData.child('type').val() == 'referralJoined'))"
         }
       }
     },
@@ -468,24 +468,46 @@
     },
     "groups": {
       ".read": "auth != null && (root.child('users').child(auth.uid).child('verified').val() == true || auth.token.email == 'rotemshaer@gmail.com')",
+      ".indexOn": ["status"],
       "$groupId": {
-        ".write": "auth != null && ((root.child('users').child(auth.uid).child('verified').val() == true && !root.child('userBlocks').child(auth.uid).exists() && (data.child('teacherId').val() == auth.uid || !data.exists())) || auth.token.email == 'rotemshaer@gmail.com')",
+        ".write": "auth != null && ((root.child('users').child(auth.uid).child('verified').val() == true && !root.child('userBlocks').child(auth.uid).exists() && ((data.exists() && data.child('teacherId').val() == auth.uid) || (!data.exists() && newData.child('teacherId').val() == auth.uid && root.child('users').child(auth.uid).child('role').val() == 'teacher'))) || auth.token.email == 'rotemshaer@gmail.com')",
+        "teacherId": { ".validate": "newData.isString() && (auth.token.email == 'rotemshaer@gmail.com' || newData.val() == auth.uid)" },
+        "teacherName": { ".validate": "newData.isString() && newData.val().length <= 60 && !newData.val().matches(/[<>`]/) && !newData.val().matches(/(https?:\\/\\/|www\\.|@[a-zA-Z0-9._]{3,}|0[0-9]{1,2}[- ]?[0-9]{3}[- ]?[0-9]{4})/) && (auth.token.email == 'rotemshaer@gmail.com' || (data.parent().child('status').val() != 'open' && data.parent().child('status').val() != 'full'))" },
+        "teacherPhoto": { ".validate": "newData.isString() && newData.val().length <= 2000" },
+        "subject": { ".validate": "newData.isString() && newData.val().matches(/^[a-zA-Z0-9_-]{1,40}$/) && (auth.token.email == 'rotemshaer@gmail.com' || (data.parent().child('status').val() != 'open' && data.parent().child('status').val() != 'full'))" },
+        "city": { ".validate": "newData.isString() && newData.val().length <= 60 && !newData.val().matches(/[<>`]/) && !newData.val().matches(/(https?:\\/\\/|www\\.|@[a-zA-Z0-9._]{3,}|0[0-9]{1,2}[- ]?[0-9]{3}[- ]?[0-9]{4})/) && (auth.token.email == 'rotemshaer@gmail.com' || (data.parent().child('status').val() != 'open' && data.parent().child('status').val() != 'full'))" },
         "title": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>`]/) && !newData.val().matches(/(https?:\\/\\/|www\\.|@[a-zA-Z0-9._]{3,}|0[0-9]{1,2}[- ]?[0-9]{3}[- ]?[0-9]{4})/) && (auth.token.email == 'rotemshaer@gmail.com' || (data.parent().child('status').val() != 'open' && data.parent().child('status').val() != 'full'))" },
         "desc": { ".validate": "newData.isString() && newData.val().length <= 2000 && !newData.val().matches(/[<>`]/) && !newData.val().matches(/(https?:\\/\\/|www\\.|@[a-zA-Z0-9._]{3,}|0[0-9]{1,2}[- ]?[0-9]{3}[- ]?[0-9]{4})/) && (auth.token.email == 'rotemshaer@gmail.com' || (data.parent().child('status').val() != 'open' && data.parent().child('status').val() != 'full'))" },
         "location": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>`]/) && !newData.val().matches(/(https?:\\/\\/|www\\.|@[a-zA-Z0-9._]{3,}|0[0-9]{1,2}[- ]?[0-9]{3}[- ]?[0-9]{4})/) && (auth.token.email == 'rotemshaer@gmail.com' || (data.parent().child('status').val() != 'open' && data.parent().child('status').val() != 'full'))" },
         "day": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>`]/) && (auth.token.email == 'rotemshaer@gmail.com' || (data.parent().child('status').val() != 'open' && data.parent().child('status').val() != 'full'))" },
         "time": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>`]/) && (auth.token.email == 'rotemshaer@gmail.com' || (data.parent().child('status').val() != 'open' && data.parent().child('status').val() != 'full'))" },
-        "status": { ".validate": "auth.token.email == 'rotemshaer@gmail.com' || (!data.exists() && newData.val() == 'pending') || (data.exists() && (newData.val() == data.val() || newData.val() == 'closed' || newData.val() == 'cancelled' || (data.val() == 'open' && newData.val() == 'full') || (data.val() == 'full' && newData.val() == 'open')))" }
+        "price": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000 && (auth.token.email == 'rotemshaer@gmail.com' || (data.parent().child('status').val() != 'open' && data.parent().child('status').val() != 'full'))" },
+        "maxStudents": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 30 && (auth.token.email == 'rotemshaer@gmail.com' || (data.parent().child('status').val() != 'open' && data.parent().child('status').val() != 'full'))" },
+        "isMixed": { ".validate": "newData.isBoolean()" },
+        "createdAt": { ".validate": "newData.isNumber()" },
+        "membersCount": {
+          ".write": "auth != null && root.child('groupMembers').child($groupId).child(auth.uid).exists()",
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= newData.parent().child('maxStudents').val() && (auth.token.email == 'rotemshaer@gmail.com' || newData.parent().child('teacherId').val() == auth.uid || newData.val() == data.val() - 1)"
+        },
+        "status": {
+          ".write": "auth != null && root.child('groupMembers').child($groupId).child(auth.uid).exists()",
+          ".validate": "auth.token.email == 'rotemshaer@gmail.com' || (!data.exists() && newData.val() == 'pending') || (data.exists() && newData.parent().child('teacherId').val() == auth.uid && (newData.val() == data.val() || newData.val() == 'closed' || newData.val() == 'cancelled' || (data.val() == 'open' && newData.val() == 'full') || (data.val() == 'full' && newData.val() == 'open'))) || (data.val() == 'full' && newData.val() == 'open')"
+        },
+        "$other": { ".validate": "auth.token.email == 'rotemshaer@gmail.com'" }
       }
     },
     "groupMembers": {
       "$groupId": {
-        ".read": "auth != null && root.child('users').child(auth.uid).child('verified').val() == true",
+        ".read": "auth != null && (root.child('groups').child($groupId).child('teacherId').val() == auth.uid || auth.token.email == 'rotemshaer@gmail.com')",
         "$uid": {
+          ".read": "auth != null && auth.uid == $uid",
           ".write": "auth != null && ((root.child('users').child(auth.uid).child('verified').val() == true && !root.child('userBlocks').child(auth.uid).exists() && (auth.uid == $uid || (data.exists() && root.child('groups').child($groupId).child('teacherId').val() == auth.uid))) || auth.token.email == 'rotemshaer@gmail.com')",
+          "name": { ".validate": "newData.isString() && newData.val().length <= 60 && !newData.val().matches(/[<>`]/)" },
+          "joinedAt": { ".validate": "newData.isNumber()" },
           "status": {
             ".validate": "auth.uid != $uid || auth.token.email == 'rotemshaer@gmail.com' || root.child('groups').child($groupId).child('teacherId').val() == auth.uid || newData.val() == 'pending'"
-          }
+          },
+          "$other": { ".validate": "auth.token.email == 'rotemshaer@gmail.com'" }
         }
       }
     },

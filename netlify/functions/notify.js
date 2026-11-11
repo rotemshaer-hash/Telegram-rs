@@ -44,7 +44,7 @@ const NUM_FIELDS = ['price', 'amount', 'daysLeft', 'stars', 'ts'];
 // סוגי התראה ש-preview שלהם מגיע מרשומה אמיתית שהשרת מאמת (הודעה אחרונה, שאלה, סיכום, בקשת הזמנה)
 const PREVIEW_TYPES = ['newMessage', 'lessonSummary', 'newQuestion', 'questionAnswered', 'newBooking'];
 const BOOKING_TYPES = ['newBooking', 'bookingApproved', 'bookingRejected', 'bookingCancelled', 'lessonSummary', 'rateLesson', 'lessonCompleted'];
-const GROUP_TYPES = ['groupJoin', 'groupApproved', 'groupRejected'];
+const GROUP_TYPES = ['groupJoin', 'groupApproved', 'groupRejected', 'groupSuspended'];
 const QA_TYPES = ['newQuestion', 'questionAnswered'];
 const BRIEF_TYPES = ['briefProposal', 'briefAccepted'];
 // אלה נשלחות רק על ידי המנהל. הן מדברות בשם הפלטפורמה, ולכן משתמש רגיל
@@ -107,6 +107,13 @@ async function verifyRelationship(db, { type, fromUid, toUid, ctx }) {
       if (!(await db.ref('groupMembers/' + ctx.groupId + '/' + fromUid).get()).exists()) {
         return 'you have not asked to join that group';
       }
+    } else if (type === 'groupSuspended') {
+      // "המפגש בוטל" — רק בעל הקבוצה, רק לחבר מאושר שלה, ורק אחרי שהקבוצה
+      // באמת נסגרה או בוטלה. בלי התנאי האחרון אפשר להפחיד חברים בקבוצה פעילה.
+      if (fromUid !== group.teacherId) return 'only the group owner may cancel a meetup';
+      if (group.status !== 'closed' && group.status !== 'cancelled') return 'that group is still active';
+      const member = (await db.ref('groupMembers/' + ctx.groupId + '/' + toUid).get()).val();
+      if (!member || member.status !== 'approved') return 'that user is not an approved member of that group';
     } else {
       // אישור/דחייה — רק בעל הקבוצה, ורק למי שביקש להצטרף ושהסטטוס שלו כבר
       // עודכן בהתאם. בלי זה בעל קבוצה יכול לשלוח "התקבלת/נדחית" לכל משתמש.

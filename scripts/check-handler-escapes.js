@@ -123,7 +123,29 @@ function fix(text) {
   }).join('\n');
 }
 
-module.exports = { scan, scanLine, fix };
+// ── מקרה שני: handler שנבנה בשרשור מחרוזות ולא בתבנית ────────────────────────
+// ה-walk מעלה מכיר רק ${...}. אבל '<button onclick="go(\''+id+'\')">' מסוכן בדיוק
+// באותה מידה, ושם ה-XSS שנמצא ב-subject של קבוצה (11.11.2026) חמק מהבדיקה.
+// כאן מחפשים: פתיחת handler, ובתוכו מרכאה של מחרוזת JS שאחריה + ביטוי.
+const CONCAT = /on[a-z]{3,}="[^"\n]{0,300}?\\?['"]\s*\+\s*([A-Za-z_$][\w$.]*(?:\([^()]*\))?)/g;
+const SAFE_CONCAT = /^(jsAttrEscape\(|Number\(|JSON\.stringify\()|^i$/;
+
+function scanConcat(text) {
+  const out = [];
+  text.split('\n').forEach((line, n) => {
+    CONCAT.lastIndex = 0;
+    let m;
+    while ((m = CONCAT.exec(line))) {
+      // משתנה שהוכרז בתוך ה-handler עצמו (var _p=this.value...) אינו נתון של
+      // משתמש אחר — הוא נגזר ממה שקרה בדפדפן ברגע הלחיצה.
+      const local = new RegExp('(?:var|let|const)\\s+' + m[1].replace(/[.$()\[\]]/g, '\\$&') + '\\s*=').test(line);
+      if (!SAFE_CONCAT.test(m[1]) && !local) out.push({ line: n + 1, expr: m[1] });
+    }
+  });
+  return out;
+}
+
+module.exports = { scan, scanLine, scanConcat, fix };
 
 if (require.main === module) {
   const file = path.join(__dirname, '..', 'index.html');
@@ -134,6 +156,12 @@ if (require.main === module) {
     console.log('wrapped', scan(text).length, 'interpolations; remaining', scan(out).length);
     process.exit(0);
   }
+  const concat = scanConcat(text);
+  if (concat.length) {
+    console.error('❌ ' + concat.length + " handler(s) built by string concatenation with an unescaped value (use jsAttrEscape):");
+    for (const f of concat.slice(0, 30)) console.error('   index.html:' + f.line + "  '+" + f.expr + "+'");
+    process.exit(1);
+  }
   const findings = scan(text);
   if (findings.length) {
     console.error('❌ ' + findings.length + ' unwrapped ${...} inside a JS string of an inline handler (use jsAttrEscape):');
@@ -142,4 +170,5 @@ if (require.main === module) {
     process.exit(1);
   }
   console.log('✅ every ${...} inside a JS string of an inline handler is escaped');
+  console.log('✅ every inline handler built by concatenation escapes its values');
 }
