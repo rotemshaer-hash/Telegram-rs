@@ -45,10 +45,25 @@ jobs:
           key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
       - name: Install Playwright browsers
         if: steps.pw-cache.outputs.cache-hit != 'true'
-        run: npx playwright install --with-deps chromium
+        run: |
+          # ההתקנה מושכת חבילות apt, ו-DNS של מראות אובונטו על הראנר נופל מדי פעם
+          # ("Temporary failure resolving 'archive.ubuntu.com'") — זה הפיל ריצה ב-11.11.2026
+          # על קוד שעבר. שלושה ניסיונות עם המתנה, ואז כישלון אמיתי.
+          for i in 1 2 3; do
+            npx playwright install --with-deps chromium && exit 0
+            echo "ניסיון $i נכשל — ממתין ומנסה שוב"
+            sleep $((i * 20))
+          done
+          exit 1
       - name: Install Playwright OS deps (cache hit)
         if: steps.pw-cache.outputs.cache-hit == 'true'
-        run: npx playwright install-deps chromium
+        run: |
+          for i in 1 2 3; do
+            npx playwright install-deps chromium && exit 0
+            echo "ניסיון $i נכשל — ממתין ומנסה שוב"
+            sleep $((i * 20))
+          done
+          exit 1
       - run: npm test
       - name: Upload Playwright report
         if: failure()
