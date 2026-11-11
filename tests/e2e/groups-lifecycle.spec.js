@@ -114,3 +114,48 @@ test('the admin can suspend a published group, and everyone in it is told', asyn
   expect(r.types).toEqual(['groupSuspended']);
   expect(r.stillListed).toBe(0);
 });
+
+// The screen where a child decides to go to an address is the one screen that has to
+// carry the physical-meetup disclosure; it was on the sign-up and the parent-consent
+// pages but not here (UX review 11.11.2026).
+test('the join screen carries the physical-meetup notice and says the parent is emailed', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof showGroupDetail === 'function');
+  const r = await page.evaluate(async () => {
+    currentUser = { uid: 'kid', email: 'k@example.com', emailVerified: true };
+    currentUserData = { name: 'ילד', role: 'student', verified: true };
+    myGroupStatuses = {};
+    communityGroups = [{ id: 'g1', status: 'open', subject: 'chess', title: 'חוג', desc: 'x', location: 'פארק', day: 'יום ב', time: '17:00', maxStudents: 5, membersCount: 1, teacherId: 't1', teacherName: 'מורה', createdAt: 1 }];
+    showGroupDetail('g1');
+    await new Promise((res) => setTimeout(res, 200));
+    const txt = document.getElementById('_gdOv').innerText;
+    return { notice: txt.includes(GROUP_MEETUP_NOTICE), parentMail: txt.includes('ההורה שלך יקבל'), join: txt.includes('הצטרף לקבוצה') };
+  });
+  expect(r.notice).toBe(true);
+  expect(r.parentMail).toBe(true);
+  expect(r.join).toBe(true);
+});
+
+// Closing a group for good and the admin suspending one used to send the same notice,
+// which told a child to wait for a meetup that was never coming back.
+test('closing a group tells the members it is over, not that it is paused', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof _closeGroup === 'function');
+  const r = await page.evaluate(async () => {
+    const told = [];
+    const members = { kid1: { status: 'approved' }, kid2: { status: 'pending' } };
+    db = { ref: (p) => ({
+      get: async () => ({ exists: () => p === 'groupMembers/g1', forEach: (cb) => Object.entries(members).forEach(([k, v]) => cb({ key: k, val: () => v })) }),
+      set: async () => {},
+    }) };
+    window._confirm = async () => true;
+    window.notifyUser = async (uid, type, ctx) => { told.push({ uid, type, ctx }); };
+    currentUser = { uid: 't1', email: 't@example.com', emailVerified: true };
+    currentUserData = { name: 'מורה', role: 'teacher', verified: true };
+    communityGroups = [{ id: 'g1', status: 'open', title: 'חוג', teacherId: 't1' }];
+    await _closeGroup('g1');
+    return { told, left: communityGroups.length };
+  });
+  expect(r.told).toEqual([{ uid: 'kid1', type: 'groupClosed', ctx: { groupId: 'g1', groupTitle: 'חוג' } }]);
+  expect(r.left).toBe(0);
+});
