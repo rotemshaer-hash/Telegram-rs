@@ -18,7 +18,8 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ID_RE = /^[-A-Za-z0-9_]{1,128}$/;
 const RATE_LIMIT_MAX = 60;
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
-const EVENTS = { approved: 'approved', rejected: 'rejected' };
+const EVENTS = { approved: 'approved', rejected: 'rejected', cancelled: 'approved' };
+const ADMIN_EMAIL = 'rotemshaer@gmail.com';
 
 const clip = (v, n) => String(v == null ? '' : v).replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, n);
 
@@ -33,6 +34,15 @@ function compose(event, g, child, parentName, link) {
     return {
       subject: `✅ ${kid} התקבל/ה לקבוצה "${title}" — Drushe`,
       body: `שלום ${parent} 👋\n\n${kid} התקבל/ה לקבוצה "${title}"${teacher ? ' של ' + teacher : ''}.\n\n${when ? '📅 ' + when + '\n' : ''}${where ? '📍 ' + where + '\n' : ''}\nחלק מהקבוצות נפגשות פיזית, ללא נוכחות הורים. כל קבוצה מאושרת על ידי צוות Drushe לפני שהיא מתפרסמת.\n\nניתן לעקוב באפליקציה:\n${link}\n\n– צוות Drushe 💙`,
+    };
+  }
+  if (event === 'cancelled') {
+    // ההורה כבר קיבל מייל עם המקום והשעה. בלי המייל הזה הילד עלול להגיע למקום
+    // ואף אחד לא יהיה שם, וההורה לא יידע שהמפגש בוטל (ביקורת רגולציה 11.11.2026).
+    const when = [clip(g.day, 40), clip(g.time, 20)].filter(Boolean).join(' בשעה ');
+    return {
+      subject: `חשוב: הקבוצה "${title}" בוטלה — Drushe`,
+      body: `שלום ${parent} 👋\n\nהקבוצה "${title}"${teacher ? ' של ' + teacher : ''}, ש-${kid} היה/תה רשום/ה אליה, בוטלה.\n\n${when ? '📅 המפגש ב' + when + ' לא יתקיים.\n' : 'המפגש הקרוב לא יתקיים.\n'}\nכדאי לוודא ש-${kid} יודע/ת, כדי שלא יגיע/תגיע למקום.\n\nאפשר למצוא קבוצות אחרות באפליקציה:\n${link}\n\n– צוות Drushe 💙`,
     };
   }
   return {
@@ -64,10 +74,11 @@ exports.handler = async (event) => {
   if (!kind || !ID_RE.test(groupId) || !ID_RE.test(childUid)) return reply(400, { error: 'Invalid request' });
   if (!body.idToken) return reply(401, { error: 'idToken is required' });
 
-  let uid;
+  let uid; let email;
   try {
     initAdmin();
-    uid = (await admin.auth().verifyIdToken(body.idToken)).uid;
+    const decoded = await admin.auth().verifyIdToken(body.idToken);
+    uid = decoded.uid; email = decoded.email;
   } catch (_e) {
     return reply(401, { error: 'invalid or expired session' });
   }
@@ -86,7 +97,12 @@ exports.handler = async (event) => {
 
     const g = (await db.ref('groups/' + groupId).get()).val();
     if (!g) return reply(403, { error: 'no such group' });
-    if (g.teacherId !== uid) return reply(403, { error: 'not your group' });
+    // ביטול יכול להגיע גם מהמנהל, שמשעה קבוצה שאינה שלו.
+    const isAdmin = String(email || '').toLowerCase() === ADMIN_EMAIL;
+    if (g.teacherId !== uid && !(kind === 'cancelled' && isAdmin)) return reply(403, { error: 'not your group' });
+    if (kind === 'cancelled' && g.status !== 'closed' && g.status !== 'cancelled') {
+      return reply(409, { error: 'that group is still active' });
+    }
 
     const memberStatus = (await db.ref('groupMembers/' + groupId + '/' + childUid + '/status').get()).val();
     if (memberStatus !== EVENTS[kind]) return reply(409, { error: 'member is not ' + EVENTS[kind] });

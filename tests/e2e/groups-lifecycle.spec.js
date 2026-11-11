@@ -150,13 +150,17 @@ test('closing a group tells the members it is over, not that it is paused', asyn
     }) };
     window._confirm = async () => true;
     window.notifyUser = async (uid, type, ctx) => { told.push({ uid, type, ctx }); };
+    window.__mailed = [];
+    window.groupMail = async (gid, uid, ev) => { window.__mailed.push([gid, uid, ev]); };
     currentUser = { uid: 't1', email: 't@example.com', emailVerified: true };
     currentUserData = { name: 'מורה', role: 'teacher', verified: true };
     communityGroups = [{ id: 'g1', status: 'open', title: 'חוג', teacherId: 't1' }];
     await _closeGroup('g1');
-    return { told, left: communityGroups.length };
+    return { told, left: communityGroups.length, mailed: window.__mailed };
   });
   expect(r.told).toEqual([{ uid: 'kid1', type: 'groupClosed', ctx: { groupId: 'g1', groupTitle: 'חוג' } }]);
+  // the parent was emailed the place and the hour, so they are told it is off
+  expect(r.mailed).toEqual([['g1', 'kid1', 'cancelled']]);
   expect(r.left).toBe(0);
 });
 
