@@ -140,6 +140,29 @@ describe('group notifications', () => {
     const r = await call(JOINER, { toUid: STRANGER, type: 'groupJoin', ctx: { groupId: 'g1' } });
     assert.equal(r.status, 403);
   });
+
+  // "המפגש בוטל" — the children were told nothing when a leader closed a group
+  // (child-safety review 10.11.2026). The message is only real once the group is
+  // actually closed, or it becomes a way to scare a live group's members.
+  it('the owner tells the members only after the group is really closed', async () => {
+    const live = await call(OWNER, { toUid: JOINER, type: 'groupSuspended', ctx: { groupId: 'g1' } });
+    assert.equal(live.status, 403);
+    data['groups/g1'] = { teacherId: OWNER, title: 'Chess club', status: 'closed' };
+    const r = await call(OWNER, { toUid: JOINER, type: 'groupSuspended', ctx: { groupId: 'g1' } });
+    assert.equal(r.status, 200);
+    assert.equal(pushed[0].value.groupTitle, 'Chess club');
+  });
+
+  it('only the owner cancels a meetup, and only to an approved member', async () => {
+    data['groups/g1'] = { teacherId: OWNER, title: 'Chess club', status: 'cancelled' };
+    const notOwner = await call(STRANGER, { toUid: JOINER, type: 'groupSuspended', ctx: { groupId: 'g1' } });
+    assert.equal(notOwner.status, 403);
+    const notMember = await call(OWNER, { toUid: STRANGER, type: 'groupSuspended', ctx: { groupId: 'g1' } });
+    assert.equal(notMember.status, 403);
+    data[`groupMembers/g1/${JOINER}`] = { status: 'pending' };
+    const pending = await call(OWNER, { toUid: JOINER, type: 'groupSuspended', ctx: { groupId: 'g1' } });
+    assert.equal(pending.status, 403);
+  });
 });
 
 // QA 29.10.2026: question and brief notifications only checked WHO the sender was,

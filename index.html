@@ -842,7 +842,7 @@ function showAskQuestionDialog(teacherUid){
   ov.innerHTML=`
     <div class="_qaDlg" style="background:var(--surface);border-radius:24px;padding:24px;width:100%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-        <button onclick="this.closest('._qaDlg').parentElement.remove()" style="background:rgba(20,184,166,0.1);border:none;color:#14B8A6;font-size:18px;cursor:pointer;border-radius:50%;width:32px;height:32px">&#x2715;</button>
+        <button onclick="this.closest('._qaDlg').parentElement.remove()" style="background:rgba(13,148,136,0.12);border:none;color:#0F766E;font-size:18px;cursor:pointer;border-radius:50%;width:44px;height:44px">&#x2715;</button>
         <h3 style="font-weight:900;font-size:18px;margin:0;color:#0F1A1F">${icon("chat",14)} שאל שאלה</h3>
       </div>
       <p style="color:#64748B;font-size:13px;margin:0 0 14px;line-height:1.6">שאלתך תפורסם בפרופיל של <b>${escapeHtml(teacherName)}</b> ותהיה גלויה לכולם.</p>
@@ -915,6 +915,8 @@ function _notifGoToQA(teacherUid){
 
 let communityGroups=[];
 let myGroupStatuses={};
+// נעילה לפעולה אחת של מוביל קבוצה בכל רגע (אישור/דחייה) — ראה _approveGroupMember
+let _groupActBusy=false;
 // true/false נקבעים בכל ניסיון; null = עוד לא נטען בכלל. מבדיל "אין קבוצות" מ"לא הצלחנו לטעון" מ"צריך להירשם ולהתאשר" —
 // בלי זה אורח או חשבון שממתין לאישור הורה רואה "בקרוב יהיו קבוצות זמינות", למרות שהקבוצות קיימות וזה פשוט לא פתוח לו עדיין.
 let groupsLoadFailed=false;
@@ -930,9 +932,23 @@ async function loadCommunityGroups(){
     communityGroups.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
     groupsLoadFailed=false;groupsNeedVerified=false;
   }catch(e){
+    // חובה לרוקן: בלי זה מי שהתנתק (או מי שהקריאה נדחתה לו) ממשיך לראות על המסך
+    // מיקומים ושעות של קבוצות שנטענו לחשבון הקודם באותו מכשיר.
+    communityGroups=[];myGroupStatuses={};
     if(e&&e.code==='PERMISSION_DENIED'){groupsNeedVerified=true;groupsLoadFailed=false;}
     else{groupsLoadFailed=true;groupsNeedVerified=false;}
   }
+}
+// "נסה שוב" במצב הכשל: בלי מצב ביניים הלחיצה נראתה כמו כפתור שבור.
+async function _retryGroups(btn){
+  if(btn){btn.disabled=true;btn.textContent='טוען…';}
+  await loadCommunityGroups();
+  if(groupsLoadFailed){
+    showFireToast('עדיין אין חיבור. נסה שוב בעוד רגע');
+    if(btn){btn.disabled=false;btn.textContent='נסה שוב';}
+    return;
+  }
+  render();
 }
 async function loadMyGroupStatuses(){
   if(!currentUser)return;
@@ -1206,7 +1222,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.76';
+const APP_VERSION='4.11.77';
 
 // ─── הודעות קוליות — כבויות ────────────────────────────────────────────────
 // הקלטה קולית היא הערוץ היחיד בין ילדים שאיש לא בודק: אין תמלול, אין סינון,
@@ -4011,9 +4027,9 @@ function showNotificationsPanel(){
   const items=notifications.length===0?
     `<div style="text-align:center;padding:40px 20px"><div style="margin-bottom:12px;display:flex;justify-content:center">${miniBadge('bell','#F59E0B',54)}</div><h3 style="font-weight:900;font-size:17px;margin:0 0 6px;color:#0F1A1F">אין התראות חדשות</h3><p style="color:#64748B;font-size:13px;margin:0">כשתקבל הזמנות או הודעות הן יופיעו כאן</p></div>`:
     notifications.map(n=>{
-      const icons={newBooking:'📚',bookingApproved:'✅',bookingRejected:'❌',bookingCancelled:'🚫',newMessage:'💬',newReview:'⭐',newVideo:'📹',newTeacher:'🎓',newReport:'🚨',newUser:'👋',groupJoin:'🙋',groupApproved:'🎉',groupRejected:'😔',rateLesson:'⭐',lessonSummary:'📖',accountApproved:'🎉',teacherApproved:'🎓',adminMessage:'📣',newPost:'📢',lessonCompleted:'✅',newStory:'📸',briefProposal:'💼',briefAccepted:'🤝',newQuestion:'❓',questionAnswered:'💡',trialReminder:'⏰',referralJoined:'🎁',emailFailed:'📧',chatDeliveryFailed:'⚠️',registrationFailed:'🚫',employerInquiry:'💼'};
-      const titles={newBooking:'הזמנת שיעור חדשה',bookingApproved:'ההזמנה אושרה!',bookingRejected:'ההזמנה נדחתה',bookingCancelled:'השיעור בוטל',newMessage:'הודעה חדשה',newReview:'דירוג חדש',newVideo:'סרטון חדש לאישור',newTeacher:'מורה חדש נרשם',newReport:'דיווח חדש!',newUser:'משתמש חדש',groupJoin:'בקשת הצטרפות לקבוצה',groupApproved:'התקבלת לקבוצה!',groupRejected:'הבקשה לא אושרה',rateLesson:'דרג את השיעור',lessonSummary:'סיכום שיעור חדש',accountApproved:'החשבון שלך אושר!',teacherApproved:'פרופיל המורה שלך אושר!',adminMessage:'הודעה מהמנהל',newPost:'פוסט חדש בקהילה',lessonCompleted:'השיעור הסתיים',newStory:'סטורי חדש לאישור',briefProposal:'הצעת מורה לדרוש שלך',briefAccepted:'ההצעה שלך התקבלה!',newQuestion:'שאלה חדשה על הפרופיל',questionAnswered:'המורה ענה על שאלתך',trialReminder:'תזכורת ניסיון חינם',referralJoined:'הפנייה נקלטה!',emailFailed:'שליחת מייל נכשלה',chatDeliveryFailed:'הודעת צאט לא הועברה',registrationFailed:'הרשמה נכשלה',employerInquiry:'פנייה חדשה מחברה — דרושים'};
-      const cols={newBooking:'#14B8A6',bookingApproved:'#10B981',bookingRejected:'#EF4444',bookingCancelled:'#F59E0B',newMessage:'#06B6D4',newReview:'#FBBF24',newVideo:'#06B6D4',newTeacher:'#14B8A6',newReport:'#E74C3C',newUser:'#0EA5E9',groupJoin:'#14B8A6',groupApproved:'#10B981',groupRejected:'#EF4444',rateLesson:'#FBBF24',lessonSummary:'#06B6D4',accountApproved:'#10B981',teacherApproved:'#14B8A6',adminMessage:'#06B6D4',newPost:'#F59E0B',lessonCompleted:'#10B981',newStory:'#8B5CF6',briefProposal:'#14B8A6',briefAccepted:'#10B981',newQuestion:'#14B8A6',questionAnswered:'#10B981',trialReminder:'#8B5CF6',referralJoined:'#10B981',emailFailed:'#EF4444',chatDeliveryFailed:'#EF4444',registrationFailed:'#EF4444',employerInquiry:'#8B5CF6'};
+      const icons={newBooking:'📚',bookingApproved:'✅',bookingRejected:'❌',bookingCancelled:'🚫',newMessage:'💬',newReview:'⭐',newVideo:'📹',newTeacher:'🎓',newReport:'🚨',newUser:'👋',groupJoin:'🙋',groupApproved:'🎉',groupRejected:'😔',groupPublished:'🎉',groupDeclined:'😔',groupSuspended:'🚫',groupClosed:'🔒',rateLesson:'⭐',lessonSummary:'📖',accountApproved:'🎉',teacherApproved:'🎓',adminMessage:'📣',newPost:'📢',lessonCompleted:'✅',newStory:'📸',briefProposal:'💼',briefAccepted:'🤝',newQuestion:'❓',questionAnswered:'💡',trialReminder:'⏰',referralJoined:'🎁',emailFailed:'📧',chatDeliveryFailed:'⚠️',registrationFailed:'🚫',employerInquiry:'💼'};
+      const titles={newBooking:'הזמנת שיעור חדשה',bookingApproved:'ההזמנה אושרה!',bookingRejected:'ההזמנה נדחתה',bookingCancelled:'השיעור בוטל',newMessage:'הודעה חדשה',newReview:'דירוג חדש',newVideo:'סרטון חדש לאישור',newTeacher:'מורה חדש נרשם',newReport:'דיווח חדש!',newUser:'משתמש חדש',groupJoin:'בקשת הצטרפות לקבוצה',groupApproved:'התקבלת לקבוצה!',groupRejected:'הבקשה לא אושרה',groupPublished:'הקבוצה שלך פורסמה!',groupDeclined:'הקבוצה שלך לא אושרה',groupSuspended:'מפגש הקבוצה בוטל',groupClosed:'הקבוצה נסגרה',rateLesson:'דרג את השיעור',lessonSummary:'סיכום שיעור חדש',accountApproved:'החשבון שלך אושר!',teacherApproved:'פרופיל המורה שלך אושר!',adminMessage:'הודעה מהמנהל',newPost:'פוסט חדש בקהילה',lessonCompleted:'השיעור הסתיים',newStory:'סטורי חדש לאישור',briefProposal:'הצעת מורה לדרוש שלך',briefAccepted:'ההצעה שלך התקבלה!',newQuestion:'שאלה חדשה על הפרופיל',questionAnswered:'המורה ענה על שאלתך',trialReminder:'תזכורת ניסיון חינם',referralJoined:'הפנייה נקלטה!',emailFailed:'שליחת מייל נכשלה',chatDeliveryFailed:'הודעת צאט לא הועברה',registrationFailed:'הרשמה נכשלה',employerInquiry:'פנייה חדשה מחברה — דרושים'};
+      const cols={newBooking:'#14B8A6',bookingApproved:'#10B981',bookingRejected:'#EF4444',bookingCancelled:'#F59E0B',newMessage:'#06B6D4',newReview:'#FBBF24',newVideo:'#06B6D4',newTeacher:'#14B8A6',newReport:'#E74C3C',newUser:'#0EA5E9',groupJoin:'#14B8A6',groupApproved:'#10B981',groupRejected:'#EF4444',groupPublished:'#10B981',groupDeclined:'#EF4444',groupSuspended:'#EF4444',groupClosed:'#64748B',rateLesson:'#FBBF24',lessonSummary:'#06B6D4',accountApproved:'#10B981',teacherApproved:'#14B8A6',adminMessage:'#06B6D4',newPost:'#F59E0B',lessonCompleted:'#10B981',newStory:'#8B5CF6',briefProposal:'#14B8A6',briefAccepted:'#10B981',newQuestion:'#14B8A6',questionAnswered:'#10B981',trialReminder:'#8B5CF6',referralJoined:'#10B981',emailFailed:'#EF4444',chatDeliveryFailed:'#EF4444',registrationFailed:'#EF4444',employerInquiry:'#8B5CF6'};
       const ico=icons[n.type]||'🔔';
       const ttl=titles[n.type]||'התראה';
       const col=cols[n.type]||'#14B8A6';
@@ -4029,6 +4045,10 @@ function showNotificationsPanel(){
       else if(n.type==='rateLesson')sub='איך היה השיעור עם '+(n.from||'המורה')+'?';
       else if(n.type==='groupJoin')sub=(n.studentName||'')+(n.groupTitle?' • '+n.groupTitle:'');
       else if(n.type==='groupApproved'||n.type==='groupRejected')sub=(n.groupTitle||'');
+      else if(n.type==='groupPublished')sub=(n.groupTitle||'')+' — היא גלויה עכשיו לכולם';
+      else if(n.type==='groupDeclined')sub=(n.groupTitle||'')+' — אפשר לתקן את הפרטים ולשלוח לאישור שוב';
+      else if(n.type==='groupSuspended')sub=(n.groupTitle||'')+' — אין מפגש עד להודעה חדשה';
+      else if(n.type==='groupClosed')sub=(n.groupTitle||'')+' — אין יותר מפגשים. אפשר למצוא קבוצה אחרת בלשונית קבוצות';
       else if(n.type==='accountApproved')sub=n.message||'ברוך הבא ל-Drushe 🎉';
       else if(n.type==='teacherApproved')sub='תוכל/י להתחיל לקבל הזמנות שיעור';
       else if(n.type==='adminMessage')sub=n.message||n.preview||'';
@@ -4061,7 +4081,7 @@ function showNotificationsPanel(){
   ov.innerHTML=`
     <div class="_notifPanel" style="background:linear-gradient(165deg,#F0FDFA 0%,#fff 100%);border-radius:24px;padding:18px;width:100%;max-width:380px;max-height:75vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-        <button onclick="this.closest('._notifPanel').parentElement.remove()" style="background:rgba(20,184,166,0.1);border:none;color:#14B8A6;font-size:18px;cursor:pointer;border-radius:50%;width:32px;height:32px">✕</button>
+        <button onclick="this.closest('._notifPanel').parentElement.remove()" style="background:rgba(13,148,136,0.12);border:none;color:#0F766E;font-size:18px;cursor:pointer;border-radius:50%;width:44px;height:44px">✕</button>
         <h3 style="font-weight:900;font-size:18px;margin:0;color:#0F1A1F">${icon("bell",14)} התראות${unreadCount>0?' ('+unreadCount+')':''}</h3>
       </div>
       ${unreadCount>0?'<button onclick="markAllNotificationsRead();this.closest(\'._notifPanel\').parentElement.remove()" style="width:100%;background:rgba(20,184,166,0.1);color:#14B8A6;border-radius:10px;padding:8px;font-size:12px;font-weight:700;cursor:pointer;margin-bottom:10px">✓ סמן הכל כנקרא</button>':''}
@@ -4149,7 +4169,7 @@ function showFiltersPanel(){
   ov.innerHTML=`
     <div class="_filtPanel" style="background:var(--surface);border-radius:24px 24px 0 0;padding:22px 20px 30px;width:100%;max-width:480px;max-height:85vh;overflow-y:auto;box-shadow:0 -10px 40px rgba(0,0,0,0.2);animation:fadeUp 0.3s ease">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
-        <button onclick="this.closest('._filtPanel').parentElement.remove()" style="background:rgba(20,184,166,0.1);border:none;color:#14B8A6;font-size:18px;cursor:pointer;border-radius:50%;width:32px;height:32px">✕</button>
+        <button onclick="this.closest('._filtPanel').parentElement.remove()" style="background:rgba(13,148,136,0.12);border:none;color:#0F766E;font-size:18px;cursor:pointer;border-radius:50%;width:44px;height:44px">✕</button>
         <h3 style="font-weight:900;font-size:20px;margin:0;color:#0F1A1F">${icon("target",14)} פילטרים מתקדמים</h3>
       </div>
 
@@ -5911,7 +5931,7 @@ if(typeof auth!=='undefined'&&auth&&!auth._pushSignOutWrapped){
   auth._pushSignOutWrapped=true;
 }
 
-let adminAllUsers=[],adminAllTeachers=[],adminAllVideos=[],adminAllReports=[],adminAllBookings=[],adminIncompleteTeachers=[],adminAllPosts=[],adminAllReviews=[],adminAllStories=[],adminAllClientErrors=[],adminAllGroups=[];
+let adminAllUsers=[],adminAllTeachers=[],adminAllVideos=[],adminAllReports=[],adminAllBookings=[],adminIncompleteTeachers=[],adminAllPosts=[],adminAllReviews=[],adminAllStories=[],adminAllClientErrors=[],adminAllGroups=[],adminOpenGroups=[],adminGroupsErr='';
 let adminAlertStudents=[],adminAlertPosts=[],adminAlertSubscriptions=[],adminContactMessages=[],adminAlertStoriesPending=0; // מקור ראשי לממתינים
 let adminTab='users';
 // מתג הכיבוי של עוזר ה-AI. ברירת המחדל "פועל" תואמת את השרת: רק false
@@ -6157,8 +6177,15 @@ async function loadAdminData(){
     if(storiesSnap.exists())storiesSnap.forEach(c=>adminAllStories.push({id:c.key,...c.val()}));
     adminAllStories.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
     // קבוצות שממתינות לאישור מנהל (מיקום פיזי עם ילדים — לא מתפרסם בלי בדיקה)
-    adminAllGroups=[];
-    try{(await db.ref('groups').orderByChild('status').equalTo('pending').get()).forEach(c=>{adminAllGroups.push({id:c.key,...c.val()});});}catch(_e){}
+    adminAllGroups=[];adminOpenGroups=[];adminGroupsErr='';
+    try{
+      // שאילתה אחת על כל הקבוצות (יש ".indexOn":"status" בכללים) — ממתינות לאישור
+      // וגם פעילות, כדי שאפשר יהיה להשעות קבוצה שכבר התפרסמה.
+      const gSnap=await db.ref('groups').get();
+      gSnap.forEach(c=>{const g={id:c.key,...c.val()};if(g.status==='pending')adminAllGroups.push(g);else if(g.status==='open'||g.status==='full')adminOpenGroups.push(g);});
+      adminAllGroups.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+      adminOpenGroups.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+    }catch(_e){adminGroupsErr=_e.message||'שגיאה';console.error('groups load error:',_e);}
   }catch(e){showFireToast('❌ שגיאה בטעינת נתונים: '+e.message);console.error('loadAdminData error:',e);}
   // טען פוסטים בנפרד — כשל כאן לא יחסום את שאר הנתונים
   try{
@@ -6983,10 +7010,33 @@ async function adminDecideGroup(id,ok){
   if(!g)return;
   try{
     await db.ref('groups/'+id+'/status').set(ok?'open':'cancelled');
-    if(g.teacherId)await db.ref('notifications/'+g.teacherId).push({type:ok?'groupApproved':'groupRejected',from:'Drushe',preview:g.title||'',read:false,createdAt:Date.now()}).catch(()=>{});
+    if(g.teacherId)await db.ref('notifications/'+g.teacherId).push({type:ok?'groupPublished':'groupDeclined',from:'Drushe',groupId:id,groupTitle:g.title||'',read:false,createdAt:Date.now()}).catch(()=>{});
     adminAllGroups=adminAllGroups.filter(x=>x.id!==id);
+    if(ok)adminOpenGroups.unshift({...g,status:'open'});
     const cg=communityGroups.find(x=>x.id===id);if(cg)cg.status=ok?'open':'cancelled';
     showFireToast(ok?'✅ הקבוצה פורסמה':'הקבוצה נדחתה');
+    renderAdminPanel();
+  }catch(e){showFireToast('❌ '+e.message);}
+}
+// השעיית קבוצה שכבר פורסמה — דיווח על מוביל ביום המפגש הוא בדיוק המקרה שבגללו
+// זה קיים. הקבוצה יוצאת מהרשימה לכולם, והמוביל וכל החברים המאושרים מקבלים התראה.
+async function adminSuspendGroup(id){
+  if(!isAdmin())return;
+  const g=adminOpenGroups.find(x=>x.id===id)||communityGroups.find(x=>x.id===id);
+  if(!g)return;
+  const cntSnap=await db.ref('groupMembers/'+id).get().catch(()=>null);
+  const pre=[];
+  if(cntSnap?.exists())cntSnap.forEach(c=>{if((c.val()||{}).status!=='rejected')pre.push(c.key);});
+  const kids=pre.length;
+  if(!await _confirm('להשעות את "'+(g.title||'הקבוצה')+'"?\nהקבוצה תיעלם מהאפליקציה, '+(kids===0?'מוביל הקבוצה יקבל הודעה':kids===1?'ילד אחד ומוביל הקבוצה יקבלו הודעה':kids+' ילדים ומוביל הקבוצה יקבלו הודעה')+' שהמפגש בוטל, והמוביל לא יוכל להחזיר אותה — רק אתה.',{confirmText:'השעה קבוצה',destructive:true}))return;
+  try{
+    await db.ref('groups/'+id+'/status').set('cancelled');
+    const uids=[...pre];
+    if(g.teacherId)uids.push(g.teacherId);
+    await Promise.all([...new Set(uids)].map(u=>db.ref('notifications/'+u).push({type:'groupSuspended',from:'Drushe',groupId:id,groupTitle:g.title||'',read:false,createdAt:Date.now()}).catch(()=>{})));
+    adminOpenGroups=adminOpenGroups.filter(x=>x.id!==id);
+    communityGroups=communityGroups.filter(x=>x.id!==id);
+    showFireToast('✅ הקבוצה הושעתה · '+(uids.length===1?'הודעה אחת נשלחה':uids.length+' הודעות נשלחו'));
     renderAdminPanel();
   }catch(e){showFireToast('❌ '+e.message);}
 }
@@ -6996,7 +7046,9 @@ async function adminViewReportedChat(reportId){
   if(!r||!r.reporterId||!r.targetId)return;
   try{
     const chatId=getChatId(r.reporterId,r.targetId);
-    const snap=await db.ref('messages/'+chatId).orderByChild('createdAt').limitToLast(60).get();
+    // limitToLast לבד ממיין לפי מפתח (תמיד מאונדקס); אין ".indexOn":"createdAt" ל-messages/$chatId,
+    // ו-orderByChild היה מפיל את השאילתה. המיון לפי createdAt נעשה בשורה הבאה בצד הלקוח.
+    const snap=await db.ref('messages/'+chatId).limitToLast(60).get();
     const msgs=[];snap.forEach(c=>{msgs.push(c.val()||{});});
     msgs.sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
     await db.ref('reports/'+reportId+'/audit').push({at:Date.now(),by:currentUser?.uid||'admin',byName:currentUserData?.name||'מנהל',action:'readChat',note:msgs.length+' הודעות'});
@@ -7111,7 +7163,7 @@ function showVideoUploadDialog(defaultCat=null){
     <div class="_vidUp" style="background:var(--surface);border-radius:24px 24px 0 0;padding:24px 20px 44px;width:100%;max-width:500px;max-height:92vh;overflow-y:auto">
       <div style="width:40px;height:4px;background:#E2E8F0;border-radius:50px;margin:0 auto 20px"></div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
-        <button onclick="document.getElementById('_vidUpOv')?.remove()" style="background:rgba(20,184,166,0.1);border:none;color:#14B8A6;font-size:18px;cursor:pointer;border-radius:50%;width:32px;height:32px">✕</button>
+        <button onclick="document.getElementById('_vidUpOv')?.remove()" style="background:rgba(13,148,136,0.12);border:none;color:#0F766E;font-size:18px;cursor:pointer;border-radius:50%;width:44px;height:44px">✕</button>
         <h3 style="font-weight:900;font-size:20px;margin:0;color:#0F1A1F;display:flex;align-items:center;gap:8px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>העלאת סרטון</h3>
       </div>
 
@@ -9058,8 +9110,23 @@ function renderAdminTab(){
     return html;
   }
   if(adminTab==='groups'){
-    if(!adminAllGroups.length)return '<div style="text-align:center;padding:40px;color:#64748B"><div style="font-size:48px;margin-bottom:10px">👥</div>אין קבוצות שממתינות לאישור</div>';
-    return adminAllGroups.map(g=>`
+    // הכשל שהיה כאן: הקריאה נכשלה, ה-catch היה ריק, והמסך אמר "אין קבוצות" —
+    // כך שאף קבוצה לא הייתה מתפרסמת ואי אפשר היה לדעת שמשהו נשבר.
+    const errHtml=adminGroupsErr?`<div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);border-radius:14px;padding:12px;margin-bottom:12px;color:#B91C1C;font-size:12px;font-weight:700">❌ טעינת הקבוצות נכשלה: ${escapeHtml(adminGroupsErr)} <button onclick="loadAdminData().then(()=>renderAdminPanel())" style="min-height:44px;margin-top:8px;width:100%;background:rgba(185,28,28,0.12);border:none;color:var(--no);border-radius:50px;font-weight:800;cursor:pointer;font-size:13px">נסה שוב</button></div>`:'';
+    const activeHtml=adminOpenGroups.length?`<h4 style="font-weight:900;font-size:14px;color:#0F1A1F;margin:20px 0 10px">קבוצות פעילות (${adminOpenGroups.length})</h4>`+adminOpenGroups.map(g=>`
+      <div style="background:linear-gradient(165deg,#ECFEFF 0%,#F0F9FF 50%,#EEF2FF 100%);border-radius:18px;padding:14px;margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+          <div style="min-width:0">
+            <div style="font-weight:900;font-size:14px;color:#0F1A1F">${escapeHtml(g.title||'')}</div>
+            <div style="font-size:12px;color:#475569;margin-top:3px">מוביל: <strong>${escapeHtml(g.teacherName||'')}</strong> · ${escapeHtml(g.day||'')} ${escapeHtml(g.time||'')}</div>
+            <div style="font-size:12px;color:#475569;margin-top:2px">📍 ${escapeHtml(g.location||'')} · ${Number(g.membersCount)||0}/${Number(g.maxStudents)||0} ילדים</div>
+          </div>
+          <span style="flex-shrink:0;font-size:10px;font-weight:800;padding:4px 9px;border-radius:50px;background:${g.status==='full'?'rgba(180,83,9,0.12)':'rgba(16,185,129,0.12)'};color:${g.status==='full'?'#B45309':'#047857'}">${g.status==='full'?'מלא':'פעיל'}</span>
+        </div>
+        <button onclick="adminSuspendGroup('${jsAttrEscape(g.id)}')" style="width:100%;min-height:44px;margin-top:10px;background:rgba(185,28,28,0.08);border:none;color:var(--no);border-radius:50px;padding:10px;font-size:13px;font-weight:800;cursor:pointer">🚫 השעה קבוצה</button>
+      </div>`).join(''):'';
+    if(!adminAllGroups.length)return errHtml+(activeHtml||'<div style="text-align:center;padding:40px;color:#64748B"><div style="font-size:48px;margin-bottom:10px">👥</div>אין קבוצות שממתינות לאישור</div>');
+    return errHtml+adminAllGroups.map(g=>`
       <div style="background:linear-gradient(165deg,#ECFEFF 0%,#F0F9FF 50%,#EEF2FF 100%);border-radius:18px;padding:14px;margin-bottom:12px">
         <div style="font-weight:900;font-size:15px;color:#0F1A1F">${escapeHtml(g.title||'')}</div>
         <div style="font-size:12px;color:#475569;margin-top:4px">מוביל: <strong>${escapeHtml(g.teacherName||'')}</strong> · ${escapeHtml(g.day||'')} ${escapeHtml(g.time||'')}</div>
@@ -9069,7 +9136,7 @@ function renderAdminTab(){
           <button class="act-btn act-no" onclick="adminDecideGroup('${jsAttrEscape(g.id)}',false)">✗ דחה</button>
           <button class="act-btn act-ok" onclick="adminDecideGroup('${jsAttrEscape(g.id)}',true)">✓ אשר ופרסם</button>
         </div>
-      </div>`).join('');
+      </div>`).join('')+activeHtml;
   }
   if(adminTab==='stories'){
     if(!adminAllStories.length)return `<div style="text-align:center;padding:40px 20px;color:#64748B"><div style="margin-bottom:12px;display:flex;justify-content:center">${miniBadge('camera','#8B5CF6',54)}</div><div style="font-weight:800;font-size:16px">אין סטוריז ממתינים</div></div>`;
@@ -9580,7 +9647,7 @@ function showAnalyticsPanel(){
     ov.innerHTML=`
       <div class="_anlPnl" style="background:linear-gradient(165deg,#F0FDFA,#fff);border-radius:24px;padding:22px 20px;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
-          <button onclick="this.closest('._anlPnl').parentElement.remove()" style="background:rgba(20,184,166,0.1);border:none;color:#14B8A6;font-size:18px;cursor:pointer;border-radius:50%;width:32px;height:32px">✕</button>
+          <button onclick="this.closest('._anlPnl').parentElement.remove()" style="background:rgba(13,148,136,0.12);border:none;color:#0F766E;font-size:18px;cursor:pointer;border-radius:50%;width:44px;height:44px">✕</button>
           <h3 style="font-weight:900;font-size:20px;margin:0;color:#0F1A1F">${icon("bar-chart",14)} הסטטיסטיקות שלי</h3>
         </div>
 
@@ -9744,7 +9811,7 @@ function showRanksPanel(){
   ov.innerHTML=`
     <div class="_rPnl" style="background:linear-gradient(165deg,#F0FDFA,#fff);border-radius:24px;padding:22px 20px;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
-        <button onclick="this.closest('._rPnl').parentElement.remove()" style="background:rgba(20,184,166,0.1);border:none;color:#14B8A6;font-size:18px;cursor:pointer;border-radius:50%;width:32px;height:32px">✕</button>
+        <button onclick="this.closest('._rPnl').parentElement.remove()" style="background:rgba(13,148,136,0.12);border:none;color:#0F766E;font-size:18px;cursor:pointer;border-radius:50%;width:44px;height:44px">✕</button>
         <h3 style="font-weight:900;font-size:20px;margin:0;color:#0F1A1F">🏅 מערכת דרגות</h3>
       </div>
 
@@ -11220,7 +11287,7 @@ function Profile(){
     </div>
     ${myPortfolio.length===0
       ?`<div style="background:transparent;backdrop-filter:blur(10px);border-radius:20px;padding:36px 20px;text-align:center"><div style="font-size:52px;margin-bottom:12px">🖼</div><h3 style="font-weight:900;font-size:16px;margin:0 0 8px;color:#0F1A1F">תיק עבודות ריק</h3><p style="color:#64748B;font-size:13px;margin:0;line-height:1.6">הוסף תמונות שמציגות את העבודה שלך</p></div>`
-      :`<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px">${myPortfolio.map((item,i)=>{const _ip=!!(item.isPdf);return '<div onclick="portfolioLightbox(\''+_portUid+'\','+i+')" style="cursor:pointer;border-radius:18px;overflow:hidden;box-shadow:0 4px 18px rgba(0,0,0,0.10);background:#fff"><div style="aspect-ratio:1;overflow:hidden">'+(_ip?'<div style="width:100%;height:100%;background:linear-gradient(135deg,#EF4444,#DC2626);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span style="color:#fff;font-weight:800;font-size:12px">PDF</span></div>':'<img src="'+escapeHtml(item.url)+'" loading="lazy" style="width:100%;height:100%;object-fit:cover">')+'</div><div style="padding:10px 12px"><div style="font-weight:800;font-size:13px;color:#0F1A1F;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">'+escapeHtml(item.title||'')+'</div>'+(item.desc?'<div style="font-size:11px;color:#64748B;margin-top:3px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">'+escapeHtml(item.desc)+'</div>':'')+'</div></div>';}).join('')}</div>`}`;  }
+      :`<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px">${myPortfolio.map((item,i)=>{const _ip=!!(item.isPdf);return '<div onclick="portfolioLightbox(\''+jsAttrEscape(_portUid)+'\','+i+')" style="cursor:pointer;border-radius:18px;overflow:hidden;box-shadow:0 4px 18px rgba(0,0,0,0.10);background:var(--surface)"><div style="aspect-ratio:1;overflow:hidden">'+(_ip?'<div style="width:100%;height:100%;background:linear-gradient(135deg,#EF4444,#DC2626);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span style="color:#fff;font-weight:800;font-size:12px">PDF</span></div>':'<img src="'+escapeHtml(item.url)+'" loading="lazy" style="width:100%;height:100%;object-fit:cover">')+'</div><div style="padding:10px 12px"><div style="font-weight:800;font-size:13px;color:#0F1A1F;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">'+escapeHtml(item.title||'')+'</div>'+(item.desc?'<div style="font-size:11px;color:#64748B;margin-top:3px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">'+escapeHtml(item.desc)+'</div>':'')+'</div></div>';}).join('')}</div>`}`;  }
   if(tab==="ach"){const achArr=isTeacher?ACHIEVEMENTS:STUDENT_ACHIEVEMENTS;content=`
     <p style="color:${C.muted};font-size:14px;margin:0 0 16px;line-height:1.7">הישגים שצברת:</p>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
@@ -11592,9 +11659,22 @@ function Community(){
     </div>
   </div>`:"";
   const _isTeacherU=currentUserData?.role==='teacher';
-  const _groupsHtml=(()=>{const openG=communityGroups.filter(g=>g.status==='open'&&(!S.groupSubj||g.subject===S.groupSubj));const hdr=_isTeacherU?`<div style="display:flex;gap:8px;margin-bottom:16px"><button onclick="showCreateGroupDialog()" style="flex:1;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:14px;padding:12px;font-weight:800;font-size:13px;cursor:pointer">+ צור קבוצה</button><button onclick="showTeacherGroupsPanel()" style="flex:1;background:rgba(20,184,166,0.1);color:#14B8A6;border-radius:14px;padding:12px;font-weight:800;font-size:13px;cursor:pointer">${icon("users",14)} הקבוצות שלי</button></div>`:currentUser?`<div style="margin-bottom:14px"><button onclick="showStudentGroupsPanel()" style="width:100%;background:rgba(20,184,166,0.08);color:#14B8A6;border-radius:14px;padding:11px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">${icon("users",14)} הקבוצות שלי${Object.keys(myGroupStatuses).length?' ('+Object.keys(myGroupStatuses).length+')':''}</button></div>`:'';const allSubjs=[...new Set(communityGroups.filter(g=>g.status==='open'&&g.subject).map(g=>g.subject))];const subjFilter=allSubjs.length>1?'<div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px">'+['<button onclick="S.groupSubj=null;render()" style="flex-shrink:0;padding:6px 14px;border-radius:50px;font-size:12px;font-weight:800;cursor:pointer;border:none;background:'+(S.groupSubj?'rgba(100,116,139,0.1)':'linear-gradient(135deg,#14B8A6,#06B6D4)')+';color:'+(S.groupSubj?'#64748B':'#fff')+'">הכל</button>',...allSubjs.map(sid=>{const c=catById(sid);const on=S.groupSubj===sid;return '<button onclick="S.groupSubj=\''+sid+'\';render()" style="flex-shrink:0;padding:6px 14px;border-radius:50px;font-size:12px;font-weight:800;cursor:pointer;border:none;background:'+(on?c.col:'rgba(100,116,139,0.1)')+';color:'+(on?'#fff':'#64748B')+'">'+catIcon(c,13)+' '+c.lbl+'</button>';})].join('')+'</div>':'';if(!openG.length&&groupsNeedVerified)return hdr+`<div style="text-align:center;padding:40px 20px"><div style="margin-bottom:16px">${miniBadge('shield','#14B8A6',90)}</div><h3 style="font-weight:900;font-size:18px;margin:0 0 8px">הקבוצות גלויות אחרי הרשמה ואישור</h3><p style="color:#64748B;font-size:13px;margin:0 0 18px">כדי לראות היכן ומתי הקבוצות נפגשות, נרשמים ומאשרים חשבון.</p>${currentUser?'':`<button onclick="go('safety')" style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:12px 26px;font-weight:800;font-size:13px;cursor:pointer">הרשמה</button>`}</div>`;
-    if(!openG.length&&groupsLoadFailed)return hdr+`<div style="text-align:center;padding:40px 20px"><div style="font-size:44px;margin-bottom:14px">📡</div><h3 style="font-weight:900;font-size:18px;margin:0 0 8px">לא הצלחנו לטעון את הקבוצות</h3><p style="color:#64748B;font-size:13px;margin:0 0 18px">בדוק את החיבור לאינטרנט ונסה שוב</p><button onclick="loadCommunityGroups().then(()=>render())" style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:12px 26px;font-weight:800;font-size:13px;cursor:pointer">נסה שוב</button></div>`;
-    if(!openG.length)return hdr+subjFilter+`<div style="text-align:center;padding:40px 20px"><div style="margin-bottom:16px">${miniBadge('home','#8B5CF6',90)}</div><h3 style="font-weight:900;font-size:18px;margin:0 0 8px">אין קבוצות פעילות</h3><p style="color:#64748B;font-size:13px">${S.groupSubj?'נסה לשנות את הסינון':_isTeacherU?'היה הראשון ליצור קבוצה!':'בקרוב יהיו קבוצות זמינות...'}</p></div>`;return hdr+subjFilter+openG.map(g=>{const cat=catById(g.subject);const spots=Math.max(0,(g.maxStudents||0)-(g.membersCount||0));const spotsHtml=(g.maxStudents||0)>0?spots>0?`<div style="text-align:center;background:rgba(16,185,129,0.1);border-radius:12px;padding:8px 12px;flex-shrink:0"><div style="font-weight:900;font-size:16px;color:#10B981">${spots}</div><div style="font-size:10px;color:#64748B">מקומות</div></div>`:`<div style="background:rgba(239,68,68,0.1);border-radius:12px;padding:8px 12px;flex-shrink:0"><div style="font-size:11px;font-weight:800;color:#EF4444">מלא</div></div>`:'';return `<div class="card" onclick="showGroupDetail('${jsAttrEscape(g.id)}')" style="cursor:pointer;margin-bottom:12px;padding:16px 18px"><div style="display:flex;gap:12px;align-items:center">${catBadge(cat,48)}<div style="flex:1;min-width:0"><div style="font-weight:900;font-size:15px;margin-bottom:3px">${escapeHtml(g.title)}</div><div style="font-size:12px;color:${cat.col};font-weight:700">${cat.lbl}${g.isMixed?' · 🌈 מעורבת':''}</div></div>${spotsHtml}</div>${g.desc?`<p style="margin:10px 0 0;font-size:13px;color:#64748B;line-height:1.5">${escapeHtml(g.desc.substring(0,100))}${g.desc.length>100?'...':''}</p>`:''}<div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">${g.day?`<span style="background:rgba(20,184,166,0.1);color:#14B8A6;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">📅 ${escapeHtml(g.day)}</span>`:''}${g.time?` <span style="background:rgba(20,184,166,0.1);color:#14B8A6;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">${icon("clock",14)} ${escapeHtml(g.time)}</span>`:''}${g.location?` <span style="background:rgba(20,184,166,0.1);color:#14B8A6;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">${icon("pin",14)} ${escapeHtml(g.location||'')}</span>`:''}${g.price?`<span style="background:rgba(20,184,166,0.1);color:#14B8A6;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">₪${escapeHtml(String(g.price))}</span>`:`<span style="background:rgba(16,185,129,0.1);color:#10B981;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">חינם!</span>`}</div></div>`;}).join('');})();
+  const _groupsHtml=(()=>{const openG=communityGroups.filter(g=>g.status==='open'&&(!S.groupSubj||g.subject===S.groupSubj));const hdr=_isTeacherU?`<div style="display:flex;gap:8px;margin-bottom:16px"><button onclick="showCreateGroupDialog()" style="flex:1;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:14px;padding:12px;font-weight:800;font-size:13px;cursor:pointer">+ צור קבוצה</button><button onclick="showTeacherGroupsPanel()" style="flex:1;background:rgba(20,184,166,0.1);color:#14B8A6;border-radius:14px;padding:12px;font-weight:800;font-size:13px;cursor:pointer">${icon("users",14)} הקבוצות שלי</button></div>`:currentUser?`<div style="margin-bottom:14px"><button onclick="showStudentGroupsPanel()" style="width:100%;background:rgba(20,184,166,0.08);color:#14B8A6;border-radius:14px;padding:11px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">${icon("users",14)} הקבוצות שלי${(()=>{const n=Object.keys(myGroupStatuses).filter(id=>communityGroups.some(g=>g.id===id)).length;return n?' ('+n+')':'';})()}</button></div>`:'';const allSubjs=[...new Set(communityGroups.filter(g=>g.status==='open'&&g.subject).map(g=>g.subject))];const subjFilter=allSubjs.length>1?'<div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px">'+['<button onclick="S.groupSubj=null;render()" style="flex-shrink:0;padding:6px 14px;border-radius:50px;font-size:12px;font-weight:800;cursor:pointer;border:none;background:'+(S.groupSubj?'rgba(100,116,139,0.1)':'linear-gradient(135deg,#14B8A6,#06B6D4)')+';color:'+(S.groupSubj?'#64748B':'#fff')+'">הכל</button>',...allSubjs.map(sid=>{const c=catById(sid);const on=S.groupSubj===sid;return '<button onclick="S.groupSubj=\''+jsAttrEscape(sid)+'\';render()" style="flex-shrink:0;padding:6px 14px;border-radius:50px;font-size:12px;font-weight:800;cursor:pointer;border:none;background:'+(on?c.col:'rgba(100,116,139,0.1)')+';color:'+(on?'#fff':'#64748B')+'">'+catIcon(c,13)+' '+c.lbl+'</button>';})].join('')+'</div>':'';if(!openG.length&&groupsNeedVerified)return hdr+`<div style="text-align:center;padding:40px 20px"><div style="margin-bottom:16px">${miniBadge('shield','#14B8A6',90)}</div><h3 style="font-weight:900;font-size:18px;margin:0 0 8px">הקבוצות גלויות אחרי הרשמה ואישור</h3><p style="color:#64748B;font-size:13px;margin:0 0 18px">כדי לראות היכן ומתי הקבוצות נפגשות, נרשמים ומאשרים חשבון.</p>${currentUser?`<button onclick="goStudentPending()" style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:12px 26px;font-weight:800;font-size:13px;cursor:pointer">בדיקת מצב האישור</button>`:`<button onclick="go('safety')" style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:12px 26px;font-weight:800;font-size:13px;cursor:pointer">הרשמה</button>`}</div>`;
+    if(!openG.length&&groupsLoadFailed)return hdr+`<div style="text-align:center;padding:40px 20px"><div style="font-size:44px;margin-bottom:14px">📡</div><h3 style="font-weight:900;font-size:18px;margin:0 0 8px">לא הצלחנו לטעון את הקבוצות</h3><p style="color:#64748B;font-size:13px;margin:0 0 18px">כדאי לבדוק את החיבור לאינטרנט ולנסות שוב</p><button onclick="_retryGroups(this)" style="background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;min-height:44px;padding:12px 26px;font-weight:800;font-size:13px;cursor:pointer">נסה שוב</button></div>`;
+    // קבוצה של המורה עצמו שממתינה לאישור הצוות — בלעדיה המסך סתר את הפעולה
+    // שהרגע הצליחה ואמר לו "תהיה/י הראשון/ה ליצור קבוצה".
+    const myPending=_isTeacherU&&currentUser?communityGroups.filter(g=>g.teacherId===currentUser.uid&&g.status==='pending'):[];
+    const pendingHtml=myPending.map(g=>`<div class="card" style="margin-bottom:12px;padding:14px 16px;opacity:.85">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+        <div style="min-width:0"><div style="font-weight:900;font-size:14px">${escapeHtml(g.title||'')}</div><div style="font-size:12px;color:#64748B;margin-top:3px">${escapeHtml(g.day||'')} ${escapeHtml(g.time||'')} · ${escapeHtml(g.location||'')}</div></div>
+        <span style="flex-shrink:0;font-size:11px;font-weight:800;padding:5px 10px;border-radius:50px;background:rgba(180,83,9,0.12);color:#B45309">ממתינה לאישור</span>
+      </div>
+      <p style="margin:10px 0 0;font-size:12px;color:#475569;line-height:1.5">צוות Drushe בודק את הקבוצה לפני שהיא מתפרסמת. נעדכן אותך ברגע שהיא באוויר.</p>
+    </div>`).join('');
+    // כשכבר יש לו קבוצה שממתינה לאישור, כרטיס ההמתנה הוא התשובה — "תהיה/י הראשון/ה
+    // ליצור קבוצה" מתחתיו סותר את מה שהוא הרגע עשה.
+    if(!openG.length&&pendingHtml)return hdr+subjFilter+pendingHtml;
+    if(!openG.length)return hdr+subjFilter+`<div style="text-align:center;padding:40px 20px"><div style="margin-bottom:16px">${miniBadge('home','#8B5CF6',90)}</div><h3 style="font-weight:900;font-size:18px;margin:0 0 8px">אין קבוצות פעילות</h3><p style="color:#64748B;font-size:13px">${S.groupSubj?'אפשר לשנות את הסינון ולראות עוד':_isTeacherU?'תהיה/י הראשון/ה ליצור קבוצה!':'אין עדיין קבוצות באזור שלך. אפשר לספר לחברים, או לבדוק שוב בעוד כמה ימים'}</p></div>`;return hdr+subjFilter+pendingHtml+openG.map(g=>{const cat=catById(g.subject);const spots=Math.max(0,(g.maxStudents||0)-(g.membersCount||0));const spotsHtml=(g.maxStudents||0)>0?spots>0?`<div style="text-align:center;background:rgba(16,185,129,0.1);border-radius:12px;padding:8px 12px;flex-shrink:0"><div style="font-weight:900;font-size:16px;color:#10B981">${spots}</div><div style="font-size:10px;color:#64748B">מקומות</div></div>`:`<div style="background:rgba(239,68,68,0.1);border-radius:12px;padding:8px 12px;flex-shrink:0"><div style="font-size:11px;font-weight:800;color:#EF4444">מלא</div></div>`:'';return `<div class="card" onclick="showGroupDetail('${jsAttrEscape(g.id)}')" style="cursor:pointer;margin-bottom:12px;padding:16px 18px"><div style="display:flex;gap:12px;align-items:center">${catBadge(cat,48)}<div style="flex:1;min-width:0"><div style="font-weight:900;font-size:15px;margin-bottom:3px">${escapeHtml(g.title)}</div><div style="font-size:12px;color:${cat.col};font-weight:700">${cat.lbl}${g.isMixed?' · 🌈 מעורבת':''}</div></div>${spotsHtml}</div>${g.desc?`<p style="margin:10px 0 0;font-size:13px;color:#64748B;line-height:1.5">${escapeHtml(g.desc.substring(0,100))}${g.desc.length>100?'...':''}</p>`:''}<div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">${g.day?`<span style="background:rgba(20,184,166,0.1);color:#14B8A6;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">📅 ${escapeHtml(g.day)}</span>`:''}${g.time?` <span style="background:rgba(20,184,166,0.1);color:#14B8A6;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">${icon("clock",14)} ${escapeHtml(g.time)}</span>`:''}${g.location?` <span style="background:rgba(20,184,166,0.1);color:#14B8A6;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">${icon("pin",14)} ${escapeHtml(g.location||'')}</span>`:''}${g.price?`<span style="background:rgba(20,184,166,0.1);color:#14B8A6;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">₪${escapeHtml(String(g.price))}</span>`:`<span style="background:rgba(16,185,129,0.1);color:#10B981;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700">חינם!</span>`}</div></div>`;}).join('');})();
 
   const _briefsHtml=(()=>{
     const briefs=S.parentBriefs||[];
@@ -11672,7 +11752,7 @@ function Community(){
       `:''}
       <div style="display:flex;gap:4px;background:rgba(255,255,255,0.12);border-radius:12px;padding:3px;margin-top:12px;position:relative;z-index:1">
         <button onclick="S.comTab='posts';render()" style="flex:1;padding:8px;border:none;border-radius:10px;font-weight:800;font-size:13px;cursor:pointer;transition:all .2s;background:${S.comTab!=='groups'&&S.comTab!=='briefs'?'rgba(255,255,255,0.9)':'transparent'};color:${S.comTab!=='groups'&&S.comTab!=='briefs'?'#0F1A1F':'rgba(255,255,255,0.85)'}">📝 פוסטים</button>
-        <button onclick="S.comTab='groups';render()" style="flex:1;padding:8px;border:none;border-radius:10px;font-weight:800;font-size:13px;cursor:pointer;transition:all .2s;background:${S.comTab==='groups'?'rgba(255,255,255,0.9)':'transparent'};color:${S.comTab==='groups'?'#0F1A1F':'rgba(255,255,255,0.85)'}">👥 קבוצות${communityGroups.length?' ('+communityGroups.length+')':''}</button>
+        <button onclick="S.comTab='groups';render()" style="flex:1;padding:8px;border:none;border-radius:10px;font-weight:800;font-size:13px;cursor:pointer;transition:all .2s;background:${S.comTab==='groups'?'rgba(255,255,255,0.9)':'transparent'};color:${S.comTab==='groups'?'#0F1A1F':'rgba(255,255,255,0.85)'}">👥 קבוצות${(()=>{const n=communityGroups.filter(g=>g.status==='open').length;return n?' ('+n+')':'';})()}</button>
         <button onclick="S.comTab='briefs';if(!(S.parentBriefs&&S.parentBriefs.length))loadParentBriefs();render()" style="flex:1;padding:8px;border:none;border-radius:10px;font-weight:800;font-size:13px;cursor:pointer;transition:all .2s;background:${S.comTab==='briefs'?'rgba(255,255,255,0.9)':'transparent'};color:${S.comTab==='briefs'?'#0F1A1F':'rgba(255,255,255,0.85)'}">💼 דרושים${(S.parentBriefs&&S.parentBriefs.length)?' ('+S.parentBriefs.length+')':''}</button>
       </div>
     </div>
@@ -13289,7 +13369,7 @@ function showEditSubjectDialog(catId){
     <div style="background:var(--surface);border-radius:24px 24px 0 0;padding:22px 18px 44px;width:100%;max-width:500px;max-height:92vh;overflow-y:auto">
       <div style="width:40px;height:4px;background:#E2E8F0;border-radius:50px;margin:0 auto 18px"></div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
-        <button onclick="document.getElementById('_esOv')?.remove()" style="background:rgba(20,184,166,0.1);border:none;color:#14B8A6;font-size:18px;cursor:pointer;border-radius:50%;width:32px;height:32px">✕</button>
+        <button onclick="document.getElementById('_esOv')?.remove()" style="background:rgba(13,148,136,0.12);border:none;color:#0F766E;font-size:18px;cursor:pointer;border-radius:50%;width:44px;height:44px">✕</button>
         <h3 style="font-weight:900;font-size:18px;margin:0;color:#0F1A1F;display:flex;align-items:center;gap:6px">${catIcon(catObj,18)} ערוך ${catObj.lbl}</h3>
       </div>
       <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">${icon("file-text",14)} תיאור</label>
@@ -13580,14 +13660,17 @@ function showCreateGroupDialog(){
   if(!currentUser){showFireToast('❌ יש להתחבר');return;}
   if(currentUserData?.role!=='teacher'){showFireToast('🎓 רק מורים יכולים ליצור קבוצות');return;}
   const myT=TEACHERS.find(x=>x.id===currentUser.uid);
-  const myCats=myT?.cats?.length?myT.cats:(myT?.cat?[myT.cat]:[]);
+  // כשרשומת המורה עוד לא נטענה (רשת איטית — אפשר להגיע לקהילה לפני
+  // loadRealTeachers) הרשימה הייתה ריקה, הקבוצה נשמרה עם subject ריק, והחוקים דחו
+  // אותה עם PERMISSION_DENIED באנגלית. נופלים לרשימת הקטגוריות המלאה.
+  const myCats=myT?.cats?.length?myT.cats:(myT?.cat?[myT.cat]:CATS.map(c=>c.id));
   const ov=document.createElement('div');
   ov.id='_cgOv';
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(8px);direction:rtl';
   ov.innerHTML=`<div style="background:var(--surface);border-radius:24px 24px 0 0;padding:22px 18px 44px;width:100%;max-width:500px;max-height:92vh;overflow-y:auto">
     <div style="width:40px;height:4px;background:#E2E8F0;border-radius:50px;margin:0 auto 18px"></div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
-      <button onclick="document.getElementById('_cgOv')?.remove()" style="background:rgba(20,184,166,0.1);border:none;color:#14B8A6;font-size:18px;cursor:pointer;border-radius:50%;width:32px;height:32px">✕</button>
+      <button onclick="document.getElementById('_cgOv')?.remove()" style="background:rgba(13,148,136,0.12);border:none;color:#0F766E;font-size:18px;cursor:pointer;border-radius:50%;width:44px;height:44px">✕</button>
       <h3 style="font-weight:900;font-size:18px;margin:0;display:flex;align-items:center;gap:8px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>צור קבוצה קהילתית</h3>
     </div>
     <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">${icon("tag",14)} מקצוע</label>
@@ -13634,13 +13717,14 @@ async function _saveNewGroup(){
   const maxStudents=parseInt(document.getElementById('_cgMax')?.value)||5;
   const price=parseInt(document.getElementById('_cgPrice')?.value)||25;
   const isMixed=document.getElementById('_cgMixed')?.checked||false;
+  if(!cat){showFireToast('❌ בחר מקצוע לקבוצה');return;}
   if(!title){showFireToast('❌ חסרה כותרת');return;}
   if(!location){showFireToast('❌ חסר מיקום');return;}
   if(rejectContactIn(title,desc,location))return;
   const myT=TEACHERS.find(x=>x.id===currentUser.uid);
   try{
     const ref=db.ref('groups').push();
-    const data={teacherId:currentUser.uid,teacherName:currentUserData?.name||'מורה',teacherPhoto:currentUserData?.photo||null,subject:cat,title,desc,day,time,location,maxStudents,price,isMixed,status:'pending',membersCount:0,createdAt:Date.now(),city:myT?.city||location};
+    const data={teacherId:currentUser.uid,teacherName:currentUserData?.name||'מורה',teacherPhoto:currentUserData?.photo||null,subject:cat,title,desc,day,time,location,maxStudents,price,isMixed,status:'pending',membersCount:0,createdAt:Date.now(),city:myT?.city||''};
     await ref.set(data);
     communityGroups.unshift({id:ref.key,...data});
     notifyAdmin({type:'newGroup',from:currentUserData?.name||'מורה',targetName:title,preview:location}).catch?.(()=>{});
@@ -13681,22 +13765,23 @@ function showGroupDetail(groupId){
       <div style="background:rgba(245,158,11,0.08);border-radius:14px;padding:12px;text-align:center"><div style="font-size:20px">${icon("shekel",14)}</div><div style="font-weight:800;font-size:13px;margin-top:4px">₪${escapeHtml(String(g.price))} לילד</div><div style="font-size:11px;color:#64748B">לפגישה</div></div>
     </div>
     <div style="display:flex;align-items:center;gap:10px;padding:12px;background:rgba(100,116,139,0.06);border-radius:14px;margin-bottom:16px">
-      <div style="width:42px;height:42px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">${g.teacherPhoto?`<img src="${escapeHtml(g.teacherPhoto)}" style="width:100%;height:100%;object-fit:cover" alt="">`:catIcon(catObj,22)}</div>
+      <div style="width:42px;height:42px;border-radius:50%;background:rgba(20,184,166,.09);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">${g.teacherPhoto?`<img src="${escapeHtml(g.teacherPhoto)}" style="width:100%;height:100%;object-fit:cover" alt="">`:catIcon(catObj,22)}</div>
       <div><div style="font-weight:800;font-size:14px">${escapeHtml(g.teacherName||'')}</div><div style="font-size:12px;color:#64748B">מוביל הקבוצה</div></div>${reportBtnHtml('group',g.teacherId,g.teacherName,g.title)}
     </div>
     ${g.isMixed?`<div style="background:rgba(20,184,166,0.06);border-radius:14px;padding:12px;margin-bottom:14px;display:flex;gap:10px;align-items:center"><span style="font-size:22px">🌈</span><div><div style="font-weight:800;font-size:13px">קבוצה מעורבת</div><div style="font-size:12px;color:#64748B">פתוח לילדים מכל רקע ואוכלוסייה. מצטרפים מקבלים תג קהילה מיוחד!</div></div></div>`:''}
+    ${isOwner||myStatus?'':`<div class="warn" style="margin-bottom:12px"><span>${icon("shield",14)}</span><span>${GROUP_MEETUP_NOTICE} כשהבקשה תאושר, גם ההורה שלך יקבל על כך מייל.</span></div>`}
     ${isOwner
       ?`<button onclick="showTeacherGroupsPanel();document.getElementById('_gdOv')?.remove()" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:14px;font-weight:900;font-size:15px;cursor:pointer;margin-bottom:8px">${icon("users",14)} נהל קבוצה</button>`
       :myStatus==='pending'
-        ?`<div style="text-align:center;padding:14px;background:rgba(245,158,11,0.08);border-radius:14px;color:#F59E0B;font-weight:800;margin-bottom:8px">⏳ ממתין לאישור המורה</div><button onclick="leaveGroup('${jsAttrEscape(g.id)}');delete myGroupStatuses['${jsAttrEscape(g.id)}'];document.getElementById('_gdOv')?.remove()" style="width:100%;background:rgba(239,68,68,0.07);color:#EF4444;border-radius:50px;padding:11px;font-weight:700;font-size:13px;cursor:pointer;margin-bottom:8px">ביטול בקשה</button>`
+        ?`<div style="text-align:center;padding:14px;background:rgba(245,158,11,0.08);border-radius:14px;color:#F59E0B;font-weight:800;margin-bottom:8px">⏳ הבקשה נשלחה למוביל/ת הקבוצה</div><button onclick="leaveGroup('${jsAttrEscape(g.id)}');delete myGroupStatuses['${jsAttrEscape(g.id)}'];document.getElementById('_gdOv')?.remove()" style="width:100%;background:rgba(239,68,68,0.07);color:#EF4444;border-radius:50px;padding:11px;font-weight:700;font-size:13px;cursor:pointer;margin-bottom:8px">ביטול בקשה</button>`
         :myStatus==='approved'
           ?`<div style="text-align:center;padding:14px;background:rgba(16,185,129,0.08);border-radius:14px;color:#10B981;font-weight:800;margin-bottom:8px">${icon("check-circle",14)} התקבלת! נפגשים ב${escapeHtml(g.day||'')} ${g.time?'בשעה '+escapeHtml(g.time):''}</div><button onclick="leaveGroup('${jsAttrEscape(g.id)}');delete myGroupStatuses['${jsAttrEscape(g.id)}'];document.getElementById('_gdOv')?.remove()" style="width:100%;background:rgba(239,68,68,0.07);color:#EF4444;border-radius:50px;padding:11px;font-weight:700;font-size:13px;cursor:pointer;margin-bottom:8px">יציאה מהקבוצה</button>`
           :myStatus==='rejected'
             ?`<div style="text-align:center;padding:14px;background:rgba(239,68,68,0.08);border-radius:14px;color:#EF4444;font-weight:800;margin-bottom:8px">😔 הבקשה לא אושרה</div>`
             :spotsLeft>0&&g.status==='open'
               ?`<button onclick="joinGroup('${jsAttrEscape(g.id)}');document.getElementById('_gdOv')?.remove()" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:14px;font-weight:900;font-size:15px;cursor:pointer;margin-bottom:8px;box-shadow:0 6px 20px rgba(20,184,166,0.3)">🙋 הצטרף לקבוצה</button>`
-              :`<div style="text-align:center;padding:14px;background:rgba(239,68,68,0.08);border-radius:14px;color:#EF4444;font-weight:800;margin-bottom:8px">${icon("x-circle",14)} הקבוצה מלאה</div>`}
-    <button onclick="document.getElementById('_gdOv')?.remove()" style="width:100%;background:rgba(100,116,139,0.1);border:none;border-radius:50px;padding:12px;font-weight:700;font-size:14px;cursor:pointer;color:#64748B">סגור</button>
+              :`<div style="text-align:center;padding:14px;background:rgba(239,68,68,0.08);border-radius:14px;color:#EF4444;font-weight:800;margin-bottom:8px">${icon("x-circle",14)} ${g.status==='open'?'הקבוצה מלאה':'הקבוצה עדיין ממתינה לאישור הצוות'}</div>`}
+    <button onclick="document.getElementById('_gdOv')?.remove()" style="width:100%;min-height:44px;background:rgba(100,116,139,0.1);border:none;border-radius:50px;padding:12px;font-weight:700;font-size:14px;cursor:pointer;color:#475569">סגור</button>
   </div>`;
   document.body.appendChild(ov);
 }
@@ -13707,7 +13792,8 @@ async function joinGroup(groupId){
   const g=communityGroups.find(x=>x.id===groupId);
   if(g?.status==='full'){showFireToast('❌ הקבוצה מלאה');return;}
   try{
-    await db.ref('groupMembers/'+groupId+'/'+currentUser.uid).set({name:currentUserData?.name||currentUser.email,joinedAt:Date.now(),status:'pending'});
+    // לא currentUser.email: השם הזה מוצג למוביל הקבוצה, ומייל של ילד אינו שם.
+    await db.ref('groupMembers/'+groupId+'/'+currentUser.uid).set({name:currentUserData?.name||'תלמיד',joinedAt:Date.now(),status:'pending'});
     await db.ref('userGroups/'+currentUser.uid+'/'+groupId).set({status:'pending',joinedAt:Date.now()});
     myGroupStatuses[groupId]={status:'pending',joinedAt:Date.now()};
     if(g?.teacherId)notifyUser(g.teacherId,'groupJoin',{groupId,groupTitle:g.title,studentName:currentUserData?.name||''});
@@ -13715,21 +13801,42 @@ async function joinGroup(groupId){
       const ub=currentUserData?.badges||[];
       if(!ub.includes('mixedGroup')){await db.ref('users/'+currentUser.uid+'/badges').set([...ub,'mixedGroup']).catch(()=>{});if(currentUserData)currentUserData.badges=[...ub,'mixedGroup'];}
     }
-    const idx=communityGroups.findIndex(x=>x.id===groupId);
-    if(idx>=0)communityGroups[idx].membersCount=(communityGroups[idx].membersCount||0)+1;
+    // המונה עולה רק כשהמוביל מאשר — בקשה ממתינה אינה תופסת מקום.
     showFireToast('✅ בקשת ההצטרפות נשלחה!');
     render();
   }catch(e){showFireToast('❌ '+e.message);}
 }
 async function leaveGroup(groupId){
   if(!currentUser)return;
+  // המונה יושב על רשומת הקבוצה, שרק המוביל רשאי לכתוב — ולכן עד עכשיו הוא ירד רק
+  // במשתנה המקומי, ובשרת קבוצה שהתמלאה נשארה 'full' לנצח ונעלמה מכולם. השרת סופר
+  // עכשיו מחדש מרשימת החברים (‎/api/group-leave): מקור אמת אחד, ובלי לתת לאף צד
+  // לכתוב מספר על רשומת הקבוצה של מישהו אחר.
   try{
-    await db.ref('groupMembers/'+groupId+'/'+currentUser.uid).remove();
-    await db.ref('userGroups/'+currentUser.uid+'/'+groupId).remove();
+    const idToken=await currentUser.getIdToken();
+    const res=await fetch(API_BASE+'/api/group-leave',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({idToken,groupId})
+    });
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok)throw new Error(data.error||('שגיאה '+res.status));
     const idx=communityGroups.findIndex(x=>x.id===groupId);
-    if(idx>=0&&communityGroups[idx].membersCount>0)communityGroups[idx].membersCount--;
+    if(idx>=0){
+      if(typeof data.membersCount==='number')communityGroups[idx].membersCount=data.membersCount;
+      if(data.status)communityGroups[idx].status=data.status;
+    }
+    delete myGroupStatuses[groupId];
     showFireToast('יצאת מהקבוצה');render();
-  }catch(e){showFireToast('❌ '+e.message);}
+  }catch(e){
+    // יציאה מקבוצה חייבת לעבוד גם כשהשרת לא זמין: החברות מוסרת מכאן, והמונה
+    // יתעדכן בפעם הבאה שמישהו יוצא או שהמוביל מאשר — עדיף מילד שנתקע בקבוצה.
+    try{
+      await db.ref('groupMembers/'+groupId+'/'+currentUser.uid).remove();
+      await db.ref('userGroups/'+currentUser.uid+'/'+groupId).remove();
+      delete myGroupStatuses[groupId];
+      showFireToast('יצאת מהקבוצה');render();
+    }catch(e2){console.warn('[leaveGroup]',e2);showFireToast('❌ לא הצלחנו להוציא אותך כרגע. נסה שוב בעוד רגע, ואם זה חוזר — כתוב לנו.');}
+  }
 }
 async function showStudentGroupsPanel(){
   if(!currentUser){showFireToast('❌ יש להתחבר');return;}
@@ -13739,9 +13846,12 @@ async function showStudentGroupsPanel(){
   ov.id='_sgOv';
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(8px);direction:rtl';
   let html='';
+  // קבוצה שנסגרה או הושעתה כבר לא ב-communityGroups: עד עכשיו השורה פשוט נעלמה
+  // והילד נשאר בלי הסבר למה הקבוצה שהוא היה בה איננה.
+  let gone=0;
   for(const gId of groupIds){
     const g=communityGroups.find(x=>x.id===gId);
-    if(!g)continue;
+    if(!g){gone++;continue;}
     const cat=catById(g.subject);
     const st=myGroupStatuses[gId]?.status||'pending';
     const stLabel=st==='approved'?'✅ אושרת':st==='rejected'?'❌ נדחתה':'⏳ ממתינה';
@@ -13755,10 +13865,11 @@ async function showStudentGroupsPanel(){
       <span style="font-size:11px;font-weight:800;padding:5px 11px;border-radius:50px;background:${stCol}18;color:${stCol};flex-shrink:0">${stLabel}</span>
     </div>`;
   }
+  if(gone)html+=`<div style="background:rgba(100,116,139,0.06);border-radius:14px;padding:12px;margin-bottom:10px;font-size:12px;color:#475569;text-align:center">${gone===1?'קבוצה אחת שהיית בה נסגרה והוסרה':gone+' קבוצות שהיית בהן נסגרו והוסרו'} מהרשימה.</div>`;
   ov.innerHTML=`<div style="background:var(--surface);border-radius:24px 24px 0 0;padding:22px 18px 44px;width:100%;max-width:500px;max-height:80vh;overflow-y:auto">
     <div style="width:40px;height:4px;background:#E2E8F0;border-radius:50px;margin:0 auto 16px"></div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-      <button onclick="document.getElementById('_sgOv')?.remove()" style="background:rgba(20,184,166,0.1);border:none;color:#14B8A6;font-size:18px;cursor:pointer;border-radius:50%;width:32px;height:32px">✕</button>
+      <button onclick="document.getElementById('_sgOv')?.remove()" style="background:rgba(13,148,136,0.12);border:none;color:#0F766E;font-size:18px;cursor:pointer;border-radius:50%;width:44px;height:44px">✕</button>
       <h3 style="font-weight:900;font-size:18px;margin:0">${icon("home",18)} הקבוצות שלי</h3>
     </div>
     ${html||`<div style="text-align:center;padding:32px 20px"><div style="margin-bottom:14px">${miniBadge('home','#8B5CF6',80)}</div><p style="color:#64748B;font-size:13px">עדיין לא הצטרפת לקבוצות</p></div>`}
@@ -13788,55 +13899,82 @@ async function showTeacherGroupsPanel(){
         <span style="font-size:11px;font-weight:800;padding:4px 10px;border-radius:50px;background:${g.status==='open'?'rgba(16,185,129,0.12)':g.status==='pending'?'rgba(180,83,9,0.12)':'rgba(239,68,68,0.1)'};color:${g.status==='open'?'#047857':g.status==='pending'?'#B45309':'#B91C1C'}">${g.status==='open'?'פעיל':g.status==='pending'?'ממתינה לאישור':'מלא'}</span>
       </div>
       <div style="font-size:12px;color:#64748B;margin-bottom:8px">${icon("users",14)} ${Number(g.membersCount)||0}/${Number(g.maxStudents)||0} • ₪${escapeHtml(String(g.price))} לילד${g.isMixed?' • 🌈 מעורבת':''}</div>
-      ${members.length===0?'<p style="text-align:center;color:#6C7686;font-size:12px;padding:6px 0">אין נרשמים עדיין</p>':members.map(m=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:#fff;border-radius:10px;margin-bottom:5px">
+      ${members.length===0?'<p style="text-align:center;color:#6C7686;font-size:12px;padding:6px 0">אין נרשמים עדיין</p>':members.map(m=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:rgba(20,184,166,0.07);border-radius:10px;margin-bottom:5px">
         <span style="font-weight:700;font-size:13px">${escapeHtml(m.name)}</span>
-        ${m.status==='pending'?`<div style="display:flex;gap:5px"><button onclick="_approveGroupMember('${jsAttrEscape(g.id)}','${jsAttrEscape(m.uid)}',this.parentElement)" style="background:rgba(16,185,129,0.12);border:none;color:#10B981;border-radius:50px;padding:5px 11px;font-size:11px;font-weight:800;cursor:pointer">✓ אשר</button><button onclick="_rejectGroupMember('${jsAttrEscape(g.id)}','${jsAttrEscape(m.uid)}',this.parentElement)" style="background:rgba(239,68,68,0.1);border:none;color:#EF4444;border-radius:50px;padding:5px 11px;font-size:11px;font-weight:800;cursor:pointer">✗ דחה</button></div>`:`<span style="font-size:11px;font-weight:800;padding:4px 10px;border-radius:50px;background:${m.status==='approved'?'rgba(16,185,129,0.12)':'rgba(239,68,68,0.1)'};color:${m.status==='approved'?'#10B981':'#EF4444'}">${m.status==='approved'?'✓ מאושר':'✗ נדחה'}</span>`}
+        ${m.status==='pending'?`<div style="display:flex;gap:6px;width:160px;flex-shrink:0"><button class="act-btn act-ok" style="font-size:12px;padding:8px" onclick="_approveGroupMember('${jsAttrEscape(g.id)}','${jsAttrEscape(m.uid)}',this.parentElement)">✓ אשר</button><button class="act-btn act-no" style="font-size:12px;padding:8px" onclick="_rejectGroupMember('${jsAttrEscape(g.id)}','${jsAttrEscape(m.uid)}',this.parentElement)">✗ דחה</button></div>`:`<span style="font-size:12px;font-weight:800;padding:5px 11px;border-radius:50px;background:${m.status==='approved'?'rgba(4,120,87,0.12)':'rgba(185,28,28,0.1)'};color:${m.status==='approved'?'var(--ok)':'var(--no)'}">${m.status==='approved'?'✓ מאושר':'✗ נדחה'}</span>`}
       </div>`).join('')}
-      <button onclick="_closeGroup('${jsAttrEscape(g.id)}')" style="width:100%;background:rgba(239,68,68,0.07);color:#EF4444;border-radius:50px;padding:8px;font-size:12px;font-weight:700;cursor:pointer;margin-top:8px">${icon("lock",14)} סגור קבוצה</button>
+      <button onclick="_closeGroup('${jsAttrEscape(g.id)}')" style="width:100%;min-height:44px;background:rgba(185,28,28,0.07);border:none;color:var(--no);border-radius:50px;padding:10px;font-size:13px;font-weight:800;cursor:pointer;margin-top:8px">${icon("lock",14)} סגור קבוצה</button>
     </div>`;
   }
   ov.innerHTML=`<div style="background:var(--surface);border-radius:24px 24px 0 0;padding:22px 18px 44px;width:100%;max-width:500px;max-height:88vh;overflow-y:auto">
     <div style="width:40px;height:4px;background:#E2E8F0;border-radius:50px;margin:0 auto 16px"></div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-      <button onclick="document.getElementById('_tgOv')?.remove()" style="background:rgba(20,184,166,0.1);border:none;color:#14B8A6;font-size:18px;cursor:pointer;border-radius:50%;width:32px;height:32px">✕</button>
+      <button onclick="document.getElementById('_tgOv')?.remove()" style="background:rgba(13,148,136,0.12);border:none;color:#0F766E;font-size:18px;cursor:pointer;border-radius:50%;width:44px;height:44px">✕</button>
       <h3 style="font-weight:900;font-size:18px;margin:0">${icon("home",18)} הקבוצות שלי (${myGroups.length})</h3>
     </div>
     ${myGroups.length===0?'<p style="text-align:center;color:#6C7686;padding:32px 0;font-size:14px">עדיין לא יצרת קבוצות</p>':membersHtml}
-    <button onclick="document.getElementById('_tgOv')?.remove();showCreateGroupDialog()" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:13px;font-weight:800;font-size:14px;cursor:pointer;margin-top:4px">+ צור קבוצה חדשה</button>
+    <button onclick="document.getElementById('_tgOv')?.remove();showCreateGroupDialog()" style="width:100%;min-height:44px;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:13px;font-weight:800;font-size:14px;cursor:pointer;margin-top:4px">+ צור קבוצה חדשה</button>
   </div>`;
   document.body.appendChild(ov);
 }
 async function _approveGroupMember(groupId,uid,wrap){
+  // נטרול לפני כל קריאת רשת: חמש קריאות טוריות הן כמה שניות שבהן הכפתור היה
+  // עוד לחיץ, ולחיצה שנייה העלתה את המונה פעמיים על אותו ילד.
+  if(_groupActBusy)return;_groupActBusy=true;
+  const _btns=wrap?[...wrap.querySelectorAll('button')]:[];
+  _btns.forEach(b=>{b.disabled=true;b.style.opacity='0.5';});
+  // ה-finally מחזיר גם את הכפתורים, לא רק את הדגל: אישור שנדחה ("הקבוצה מלאה")
+  // השאיר אותם מנוטרלים לנצח, והמורה לא יכול היה אפילו לדחות את הילד.
   try{
-    await db.ref('groupMembers/'+groupId+'/'+uid+'/status').set('approved');
     const snap=await db.ref('groups/'+groupId).get();
     const g=snap.val();
-    const newCnt=(g?.membersCount||0)+1;
+    const maxS=Number(g?.maxStudents)||5;
+    const cnt=Number(g?.membersCount)||0;
+    if(cnt>=maxS){showFireToast('❌ הקבוצה מלאה ('+cnt+'/'+maxS+')');return;}
+    await db.ref('groupMembers/'+groupId+'/'+uid+'/status').set('approved');
+    const newCnt=cnt+1;
     await db.ref('groups/'+groupId+'/membersCount').set(newCnt);
-    if(newCnt>=(g?.maxStudents||5))await db.ref('groups/'+groupId+'/status').set('full');
+    if(newCnt>=maxS)await db.ref('groups/'+groupId+'/status').set('full');
     const idx=communityGroups.findIndex(x=>x.id===groupId);
-    if(idx>=0){communityGroups[idx].membersCount=newCnt;if(newCnt>=(g?.maxStudents||5))communityGroups[idx].status='full';}
-    await db.ref('userGroups/'+uid+'/'+groupId+'/status').set('approved').catch(()=>{});
+    if(idx>=0){communityGroups[idx].membersCount=newCnt;if(newCnt>=maxS)communityGroups[idx].status='full';}
+    // כשל כאן השאיר את הילד 'approved' בקבוצה אבל 'pending' אצלו במסך — ועכשיו
+    // גם עוצר את הדיווח על הצלחה, כדי שהמוביל ידע שצריך לנסות שוב.
+    let userGroupOk=true;
+    await db.ref('userGroups/'+uid+'/'+groupId+'/status').set('approved').catch(()=>{userGroupOk=false;});
     notifyUser(uid,'groupApproved',{groupId,groupTitle:g?.title||''});
     groupMail(groupId,uid,'approved');
-    if(wrap)wrap.innerHTML=`<span style="font-size:11px;font-weight:800;padding:4px 10px;border-radius:50px;background:rgba(16,185,129,0.12);color:#10B981">✓ מאושר</span>`;
-    showFireToast('✅ אושר!');
+    if(wrap)wrap.innerHTML=`<span style="font-size:12px;font-weight:800;padding:5px 11px;border-radius:50px;background:rgba(4,120,87,0.12);color:var(--ok)">✓ מאושר</span>`;
+    showFireToast(userGroupOk?'✅ אושר! נשלח מייל להורה':'⚠️ אושר, אך העדכון אצל התלמיד נכשל — רענן ונסה שוב');
   }catch(e){showFireToast('❌ '+e.message);}
+  finally{_groupActBusy=false;_btns.forEach(b=>{if(b.isConnected){b.disabled=false;b.style.opacity='';}});}
 }
 async function _rejectGroupMember(groupId,uid,wrap){
+  if(_groupActBusy)return;_groupActBusy=true;
+  const _btns=wrap?[...wrap.querySelectorAll('button')]:[];
+  _btns.forEach(b=>{b.disabled=true;b.style.opacity='0.5';});
   try{
     await db.ref('groupMembers/'+groupId+'/'+uid+'/status').set('rejected');
     const gTitleSnap=await db.ref('groups/'+groupId+'/title').get().catch(()=>null);
     await db.ref('userGroups/'+uid+'/'+groupId+'/status').set('rejected').catch(()=>{});
     notifyUser(uid,'groupRejected',{groupId,groupTitle:gTitleSnap?.val()||''});
     groupMail(groupId,uid,'rejected');
-    if(wrap)wrap.innerHTML=`<span style="font-size:11px;font-weight:800;padding:4px 10px;border-radius:50px;background:rgba(239,68,68,0.1);color:#EF4444">✗ נדחה</span>`;
+    if(wrap)wrap.innerHTML=`<span style="font-size:12px;font-weight:800;padding:5px 11px;border-radius:50px;background:rgba(185,28,28,0.1);color:var(--no)">✗ נדחה</span>`;
     showFireToast('נדחה');
   }catch(e){showFireToast('❌ '+e.message);}
+  finally{_groupActBusy=false;_btns.forEach(b=>{if(b.isConnected){b.disabled=false;b.style.opacity='';}});}
 }
 async function _closeGroup(groupId){
+  const g=communityGroups.find(x=>x.id===groupId);
+  // סגירה היא חד-כיוונית בכללים (closed לא חוזר ל-open) והחברים מאבדים את
+  // הקבוצה מהמסך — לכן אישור לפני, והודעה לחברים אחרי.
+  if(!await _confirm('לסגור את "'+(g?.title||'הקבוצה')+'"?\nהמפגש הקרוב מתבטל, החברים יקבלו הודעה שאין יותר מפגשים, והקבוצה תיעלם מהאפליקציה. אי אפשר לפתוח אותה שוב.',{confirmText:'סגור קבוצה',destructive:true}))return;
   try{
     await db.ref('groups/'+groupId+'/status').set('closed');
+    const mSnap=await db.ref('groupMembers/'+groupId).get().catch(()=>null);
+    if(mSnap?.exists()){
+      const uids=[];mSnap.forEach(c=>{if((c.val()||{}).status==='approved')uids.push(c.key);});
+      await Promise.all(uids.map(u=>notifyUser(u,'groupClosed',{groupId,groupTitle:g?.title||''})));
+    }
     communityGroups=communityGroups.filter(x=>x.id!==groupId);
     document.getElementById('_tgOv')?.remove();
     showFireToast('✅ הקבוצה נסגרה');render();
@@ -14503,6 +14641,12 @@ async function refreshStudentCount(){
 
 // ── Student approval real-time listener ──────────────────────────────────────
 let _studentApprovalListenerUID=null;
+// כל מעבר למסך ההמתנה חייב לצרף קודם את המאזין (כלל בחוקה) — פונקציה אחת
+// שעושה את שניהם, כדי שכפתור חדש לא יוכל לדלג על זה.
+function goStudentPending(){
+  if(currentUser?.uid)_attachStudentApprovalListener(currentUser.uid);
+  go('studentPending');
+}
 function _attachStudentApprovalListener(uid){
   if(_studentApprovalListenerUID===uid)return;
   _studentApprovalListenerUID=uid;
@@ -15418,8 +15562,8 @@ function _confirm(msg,{confirmText='אישור',cancelText='ביטול',destruct
     ov.innerHTML=`<div style="background:linear-gradient(165deg,#ECFEFF 0%,#F0F9FF 50%,#EEF2FF 100%);border-radius:22px;padding:26px 20px 20px;max-width:340px;width:100%;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,.35);direction:rtl">
       <p style="font-size:15px;font-weight:600;color:#0F1A1F;margin:0 0 22px;line-height:1.6;white-space:pre-line">${escapeHtml(msg)}</p>
       <div style="display:flex;gap:10px">
-        <button id="_cnfNo" style="flex:1;background:#F1F5F9;border:none;border-radius:14px;padding:13px;font-weight:700;font-size:14px;cursor:pointer;color:#64748B">${cancelText}</button>
-        <button id="_cnfYes" style="flex:2;background:${destructive?'#EF4444':'linear-gradient(135deg,#14B8A6,#06B6D4)'};border:none;border-radius:14px;padding:13px;font-weight:900;font-size:14px;cursor:pointer;color:#fff">${confirmText}</button>
+        <button id="_cnfNo" style="flex:1;min-height:44px;background:#E2E8F0;border:none;border-radius:14px;padding:13px;font-weight:700;font-size:14px;cursor:pointer;color:#475569">${cancelText}</button>
+        <button id="_cnfYes" style="flex:2;min-height:44px;background:${destructive?'var(--no)':'linear-gradient(135deg,#14B8A6,#06B6D4)'};border:none;border-radius:14px;padding:13px;font-weight:900;font-size:14px;cursor:pointer;color:#fff">${confirmText}</button>
       </div>
     </div>`;
     document.body.appendChild(ov);

@@ -194,9 +194,9 @@ echo "-- Inline handlers escape their ids --"
 
 if command -v node >/dev/null 2>&1; then
   if node scripts/check-handler-escapes.js >/tmp/handler-escapes.out 2>&1; then
-    pass "every \${...} inside a JS string of an inline handler is escaped"
+    pass "every value inside an inline handler is escaped (\${...} and string concatenation)"
   else
-    fail "unescaped \${...} inside an inline handler (run: node scripts/check-handler-escapes.js --fix)"
+    fail "an inline handler carries an unescaped value — wrap it in jsAttrEscape (\${...} cases: node scripts/check-handler-escapes.js --fix)"
     head -12 /tmp/handler-escapes.out
   fi
 else

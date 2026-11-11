@@ -413,20 +413,20 @@ describe('external review: fields their own subject must not write', () => {
   });
 });
 
-describe('newConversationNotified: one parent-notification email per conversation', () => {
+// The flag that says "the parent has already been told about this conversation" is claimed
+// by conversation-mail.js in a transaction. While a participant could write it, the side
+// that wants to talk to a child without the parent hearing about it could claim the flag
+// BEFORE the first message and switch off the only email the parent ever gets about a new
+// contact (security review 11.11.2026). The client never wrote it; the server runs with the
+// admin SDK, which is not subject to these rules.
+describe('newConversationNotified: only the server may claim it', () => {
   const chatId = 'student-uid_teacher-uid';
 
-  it('a participant can flag a new conversation once', async () => {
-    await assertSucceeds(set(ref(asStudent(), `newConversationNotified/${chatId}`), Date.now()));
-  });
-
-  it('a participant cannot re-flag it and trigger a second email', async () => {
-    await assertSucceeds(set(ref(asStudent(), `newConversationNotified/${chatId}`), Date.now()));
+  it('neither participant can claim the flag, so the parent email cannot be pre-empted', async () => {
     await assertFails(set(ref(asStudent(), `newConversationNotified/${chatId}`), Date.now()));
-  });
-
-  it('a stranger to the conversation cannot flag it', async () => {
+    await assertFails(set(ref(asTeacher(), `newConversationNotified/${chatId}`), Date.now()));
     await assertFails(set(ref(asStranger(), `newConversationNotified/${chatId}`), Date.now()));
+    await assertFails(get(ref(asStudent(), `newConversationNotified/${chatId}`)));
   });
 });
 
@@ -620,21 +620,35 @@ describe('conversations: a teacher may only write where the child started, a chi
 // unapproved account must not be able to read them (1.11.2026).
 describe('children’s names in groups and briefs are readable only by verified users', () => {
   const anon = () => testEnv.authenticatedContext('guest-uid', { firebase: { sign_in_provider: 'anonymous' } }).database();
+  // A verified account used to be enough to read any group's member list — i.e. which
+  // child meets where and when, for every group in the app (child-safety review
+  // 10.11.2026). It is now the group's own leader, the child itself, and the admin.
+  const asOther = () => testEnv.authenticatedContext('other-uid', { email: 'other@example.com' }).database();
   beforeEach(async () => {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await set(ref(ctx.database(), 'users/other-uid'), { name: 'Other', role: 'student', verified: true });
+      await set(ref(ctx.database(), 'groups/g1'), { teacherId: TEACHER, title: 'G', location: 'Park', status: 'open' });
       await set(ref(ctx.database(), `groupMembers/g1/${STUDENT}`), { name: 'Minor', status: 'approved' });
       await set(ref(ctx.database(), 'parentBriefs/b1'), { parentUid: STUDENT, childName: 'Minor', status: 'open' });
       await set(ref(ctx.database(), `briefProposals/b1/${TEACHER}`), { price: 5 });
     });
   });
-  it('a verified user can read them', async () => {
-    await assertSucceeds(get(ref(asStudent(), 'groupMembers/g1')));
+  it('the group’s leader and the admin read the member list; the child reads its own row', async () => {
+    await assertSucceeds(get(ref(asTeacher(), 'groupMembers/g1')));
+    await assertSucceeds(get(ref(asAdmin(), 'groupMembers/g1')));
+    await assertSucceeds(get(ref(asStudent(), `groupMembers/g1/${STUDENT}`)));
     await assertSucceeds(get(ref(asTeacher(), 'parentBriefs')));
     await assertSucceeds(get(ref(asTeacher(), 'briefProposals/b1')));
+  });
+  it('another verified account cannot read the member list, nor the child’s row', async () => {
+    await assertFails(get(ref(asOther(), 'groupMembers/g1')));
+    await assertFails(get(ref(asOther(), `groupMembers/g1/${STUDENT}`)));
+    await assertFails(get(ref(asStudent(), 'groupMembers/g1')));
   });
   it('a guest or an unverified account cannot', async () => {
     for (const db of [anon(), asStranger()]) {
       await assertFails(get(ref(db, 'groupMembers/g1')));
+      await assertFails(get(ref(db, `groupMembers/g1/${STUDENT}`)));
       await assertFails(get(ref(db, 'parentBriefs')));
       await assertFails(get(ref(db, 'briefProposals/b1')));
     }
@@ -661,9 +675,13 @@ describe('role lock and group enrolment', () => {
     await testEnv.withSecurityRulesDisabled(async (ctx) => { await set(ref(ctx.database(), `userRoles/${TEACHER}`), 'teacher'); });
   });
 
-  it('a teacher who deletes and rewrites their role is still restricted', async () => {
-    await assertSucceeds(remove(ref(asTeacher(), `users/${TEACHER}/role`)));
-    await assertSucceeds(set(ref(asTeacher(), `users/${TEACHER}/role`), 'student'));
+  // The hole itself is closed now: users/$uid refuses a write that drops an existing
+  // role, so .validate ("only when it does not exist") can no longer be walked around
+  // by deleting the field first (security review 11.11.2026).
+  it('a user cannot delete their own role field, and the other restrictions still hold', async () => {
+    await assertFails(remove(ref(asTeacher(), `users/${TEACHER}/role`)));
+    await assertFails(set(ref(asTeacher(), `users/${TEACHER}/role`), 'student'));
+    await assertSucceeds(set(ref(asTeacher(), `users/${TEACHER}/name`), 'Teach 2'));
     await assertFails(set(ref(asTeacher(), `messages/${chat(STUDENT, TEACHER)}/x1`), { from: TEACHER, text: 'hi', createdAt: 1 }));
     await assertFails(set(ref(asTeacher(), `userChats/${STUDENT}/${TEACHER}`), { otherUid: TEACHER, lastMessage: 'hi' }));
   });
@@ -687,6 +705,166 @@ describe('role lock and group enrolment', () => {
     await assertSucceeds(set(ref(asStudent(), `userGroups/${STUDENT}/gx`), { status: 'pending' }));
     await assertSucceeds(set(ref(asTeacher(), `groupMembers/gx/${STUDENT}/status`), 'approved'));
     await assertSucceeds(set(ref(asTeacher(), `userGroups/${STUDENT}/gx/status`), 'approved'));
+  });
+});
+
+// ── A GROUP RECORD IS BOUND TO ITS LEADER, AND FROZEN ONCE PUBLISHED ──────
+// Three holes found on 10–11.11.2026, all in the same record: (a) .write allowed any
+// verified account to create a group carrying someone else's teacherId, so the admin
+// approved a meetup under a borrowed name; (b) only five fields were frozen after
+// approval, so teacherName/subject/price stayed editable and carried an address or a
+// phone number to the children and into the parent's email; (c) subject had no
+// .validate at all and is concatenated into an inline handler.
+describe('a group belongs to its leader and freezes when published', () => {
+  const group = (over = {}) => ({
+    teacherId: TEACHER, teacherName: 'Teach', subject: 'math', title: 'Chess club',
+    desc: 'we play', day: 'יום שני', time: '17:00', location: 'Park', city: 'TA',
+    maxStudents: 5, price: 25, isMixed: false, status: 'pending', membersCount: 0, createdAt: 1, ...over,
+  });
+  const open = async (over = {}) => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await set(ref(ctx.database(), 'groups/g9'), group({ status: 'open', ...over }));
+    });
+  };
+
+  it('a teacher creates a group only under their own uid', async () => {
+    await assertSucceeds(set(ref(asTeacher(), 'groups/g9'), group()));
+    await testEnv.withSecurityRulesDisabled(async (ctx) => { await remove(ref(ctx.database(), 'groups/g9')); });
+    await assertFails(set(ref(asTeacher(), 'groups/g9'), group({ teacherId: STUDENT })));
+  });
+
+  it('a verified student cannot create a group, under any uid', async () => {
+    await assertFails(set(ref(asStudent(), 'groups/g9'), group({ teacherId: STUDENT, teacherName: 'Minor' })));
+    await assertFails(set(ref(asStudent(), 'groups/g9'), group()));
+  });
+
+  it('subject must be a plain category id — no quote that breaks out of an inline handler', async () => {
+    await assertFails(set(ref(asTeacher(), 'groups/g9'), group({ subject: "math');alert(1);('" })));
+    await assertFails(set(ref(asTeacher(), 'groups/g9'), group({ subject: 'מתמטיקה' })));
+    await assertSucceeds(set(ref(asTeacher(), 'groups/g9'), group({ subject: 'coffeeDrinks' })));
+  });
+
+  it('the leader cannot smuggle a new field past the field rules', async () => {
+    await assertFails(set(ref(asTeacher(), 'groups/g9'), group({ note: '<b>call 052-1234567</b>' })));
+    await assertSucceeds(set(ref(asAdmin(), 'groups/g9'), group({ note: 'admin note' })));
+  });
+
+  it('once published, the leader can no longer change the name, subject, price or size', async () => {
+    await open();
+    for (const [field, value] of [['teacherName', 'Teach 050-1234567'], ['subject', 'chess'], ['price', 99], ['maxStudents', 12], ['title', 'X'], ['location', 'My flat'], ['day', 'יום שלישי'], ['time', '20:00']]) {
+      await assertFails(set(ref(asTeacher(), `groups/g9/${field}`), value));
+    }
+    await assertSucceeds(set(ref(asAdmin(), 'groups/g9/location'), 'Other park'));
+  });
+
+  it('a pending group is still editable by its leader', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => { await set(ref(ctx.database(), 'groups/g9'), group()); });
+    await assertSucceeds(set(ref(asTeacher(), 'groups/g9/title'), 'Chess club 2'));
+    await assertSucceeds(set(ref(asTeacher(), 'groups/g9/price'), 30));
+  });
+
+  // Known gap, deliberately not papered over here: the rules' contact pattern catches
+  // http(s)://, www., @handle and an Israeli phone number, but not a bare domain
+  // ("wa.me/972"), which the client's CONTACT_PATTERNS does catch. The two layers
+  // should say the same thing; aligning them touches every public-text rule in the
+  // file and is its own change.
+  it('a phone number or markup in the leader’s name is refused', async () => {
+    await assertFails(set(ref(asTeacher(), 'groups/g9'), group({ teacherName: 'Teach 052-1234567' })));
+    await assertFails(set(ref(asTeacher(), 'groups/g9'), group({ teacherName: 'Teach https://wa.me/972' })));
+    await assertFails(set(ref(asTeacher(), 'groups/g9'), group({ teacherName: 'Teach <b>' })));
+  });
+
+  // The counter lives on the group record, so a child who left never freed the place and
+  // the group stayed 'full' for good (bug hunt 10.11.2026). The first fix let a member
+  // lower it by one — but every verified account creates its own membership row by
+  // tapping "join", so a pending joiner could free place after place and reopen a full
+  // group, letting more children into a meetup than the admin approved (security review
+  // 11.11.2026). The counter is server state now: /api/group-leave recounts it from the
+  // member list, and no member writes on the group record at all.
+  it('no member may touch the counter or the status, approved or pending', async () => {
+    await open({ status: 'full', membersCount: 3 });
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await set(ref(ctx.database(), `groupMembers/g9/${STUDENT}`), { name: 'Minor', status: 'approved' });
+      await set(ref(ctx.database(), 'groupMembers/g9/other-uid'), { name: 'Other', status: 'pending' });
+    });
+    for (const value of [1, 2, 4]) await assertFails(set(ref(asStudent(), 'groups/g9/membersCount'), value));
+    await assertFails(set(ref(asStudent(), 'groups/g9/status'), 'open'));
+    await assertFails(set(ref(asStudent(), 'groups/g9/title'), 'X'));
+  });
+
+  it('a user who is not a member cannot touch the counter either', async () => {
+    await open({ membersCount: 3 });
+    await assertFails(set(ref(asStudent(), 'groups/g9/membersCount'), 2));
+  });
+
+  // .validate does not run on a delete, and every lock on the record reads
+  // data.parent().child('status') — so deleting the status unlocked title, location, day,
+  // time and the leader's name on an already-approved group, and the admin queue (which
+  // looks for status 'pending') never saw the edit. A physical meetup could be moved to a
+  // new address and hour that no adult approved (security review 11.11.2026).
+  it('the status cannot be deleted to unlock an approved group', async () => {
+    await open();
+    await assertFails(remove(ref(asTeacher(), 'groups/g9/status')));
+    await assertFails(set(ref(asTeacher(), 'groups/g9/status'), null));
+    await assertFails(set(ref(asTeacher(), 'groups/g9'), { teacherId: TEACHER, title: 'G', location: 'My flat' }));
+    await assertFails(remove(ref(asTeacher(), 'groups/g9/teacherId')));
+    await assertSucceeds(remove(ref(asTeacher(), 'groups/g9')));
+  });
+
+  it('the counter can never pass maxStudents, not even for the leader', async () => {
+    await open({ membersCount: 5, maxStudents: 5 });
+    await assertFails(set(ref(asTeacher(), 'groups/g9/membersCount'), 6));
+    await assertSucceeds(set(ref(asTeacher(), 'groups/g9/membersCount'), 4));
+    await assertFails(set(ref(asTeacher(), 'groups/g9/membersCount'), -1));
+  });
+
+  it('a member cannot close, cancel or reopen the group', async () => {
+    await open({ status: 'full', membersCount: 5 });
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await set(ref(ctx.database(), `groupMembers/g9/${STUDENT}`), { name: 'Minor', status: 'approved' });
+    });
+    for (const st of ['closed', 'cancelled', 'open', 'pending']) {
+      await assertFails(set(ref(asStudent(), 'groups/g9/status'), st));
+    }
+  });
+
+  it('the leader still moves the status, and the admin publishes', async () => {
+    await open({ membersCount: 5, maxStudents: 5 });
+    await assertSucceeds(set(ref(asTeacher(), 'groups/g9/status'), 'full'));
+    await assertSucceeds(set(ref(asTeacher(), 'groups/g9/status'), 'closed'));
+    await assertSucceeds(set(ref(asAdmin(), 'groups/g9/status'), 'open'));
+  });
+});
+
+// An anonymous guest session (browseAsGuest signs in anonymously in one tap) could write
+// teachers/<uid> — a public node — and thereby open schedules/<uid>, whose read rule only
+// asks whether a teachers record exists. A chat message could also carry any field a
+// hand-made client wanted, including an image blob, although the app has no media in chat
+// (security review 11.11.2026).
+describe('a public teacher record and a chat message carry only what they should', () => {
+  const anon = () => testEnv.authenticatedContext('anon-uid', { firebase: { sign_in_provider: 'anonymous' } }).database();
+  const chat = (a, b) => [a, b].sort().join('_');
+
+  it('an anonymous session cannot create a teacher record', async () => {
+    await assertFails(set(ref(anon(), 'teachers/anon-uid'), { name: 'Ghost', active: true }));
+    await assertFails(set(ref(anon(), 'teachers/anon-uid/name'), 'Ghost'));
+  });
+
+  it('an account whose role is not teacher cannot create one either', async () => {
+    await assertFails(set(ref(asStudent(), `teachers/${STUDENT}`), { name: 'Minor', active: true }));
+  });
+
+  it('a teacher still writes their own record', async () => {
+    await assertSucceeds(set(ref(asTeacher(), `teachers/${TEACHER}/bio`), 'אוהב ללמד'));
+  });
+
+  it('a message carries only its own fields, from the account that sent it', async () => {
+    const id = chat(STUDENT, TEACHER);
+    const msg = { from: STUDENT, fromName: 'Minor', to: TEACHER, toName: 'Teach', text: 'היי', createdAt: 1 };
+    await assertSucceeds(set(ref(asStudent(), `messages/${id}/ok1`), msg));
+    await assertFails(set(ref(asStudent(), `messages/${id}/x1`), { ...msg, img: 'data:image/png;base64,AAAA' }));
+    await assertFails(set(ref(asStudent(), `messages/${id}/x2`), { ...msg, from: TEACHER }));
+    await assertFails(set(ref(asStudent(), `messages/${id}/x3`), { ...msg, text: 'x'.repeat(2001) }));
   });
 });
 
@@ -892,7 +1070,10 @@ describe('approvedTeachers: the marker the rules trust is written by the admin',
       await set(ref(ctx.database(), `userRoles/${TEACHER}`), 'student');
       await set(ref(ctx.database(), `approvedTeachers/${TEACHER}`), true);
     });
-    await remove(ref(asTeacher(), `users/${TEACHER}/role`));
+    // The client can no longer delete the role at all; it is erased here with the rules
+    // off, so what is under test stays the downstream block and not the delete.
+    await assertFails(remove(ref(asTeacher(), `users/${TEACHER}/role`)));
+    await testEnv.withSecurityRulesDisabled(async (ctx) => { await remove(ref(ctx.database(), `users/${TEACHER}/role`)); });
     await assertFails(set(ref(asTeacher(), `messages/${chat(STUDENT, TEACHER)}/x`), { from: TEACHER, text: 'hi', createdAt: 1 }));
     await assertFails(set(ref(asTeacher(), `userChats/${STUDENT}/${TEACHER}`), { otherUid: TEACHER, lastMessage: 'hi' }));
   });
