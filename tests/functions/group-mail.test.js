@@ -24,7 +24,7 @@ const resolve = (rel) => require.resolve(path.join(__dirname, rel));
 require.cache[resolve('../../netlify/lib/firebase-admin-init.js')] = {
   exports: {
     initAdmin: () => {},
-    admin: { auth: () => ({ verifyIdToken: async (t) => { if (t === 'bad') throw new Error('x'); return { uid: t }; } }), database: () => fakeDb },
+    admin: { auth: () => ({ verifyIdToken: async (t) => { if (t === 'bad') throw new Error('x'); return { uid: t, email: t === 'admin-uid' ? 'rotemshaer@gmail.com' : t + '@example.com' }; } }), database: () => fakeDb },
   },
 };
 require.cache[resolve('../../netlify/lib/emailjs.js')] = {
@@ -89,6 +89,34 @@ describe('group-mail', () => {
     data[`users/${TEACHER}/verified`] = true;
     assert.equal((await call('bad', { groupId: 'g1', uid: KID, event: 'approved' })).status, 401);
     assert.equal(sent.length, 0);
+  });
+
+  // The parent was emailed the place and the hour. Until now nothing told them when the
+  // meetup was called off, so the child could turn up and find nobody there
+  // (regulation review 11.11.2026).
+  it('a cancelled group emails the parent, but only once the group is really closed', async () => {
+    const live = await call(TEACHER, { groupId: 'g1', uid: KID, event: 'cancelled' });
+    assert.equal(live.status, 409);
+    data['groups/g1'].status = 'closed';
+    const r = await call(TEACHER, { groupId: 'g1', uid: KID, event: 'cancelled' });
+    assert.equal(r.status, 200);
+    assert.equal(r.body.sent, true);
+    assert.match(sent[0].subject, /בוטלה/);
+    assert.match(sent[0].message, /לא יתקיים/);
+    // and only once
+    const again = await call(TEACHER, { groupId: 'g1', uid: KID, event: 'cancelled' });
+    assert.equal(again.body.duplicate, true);
+  });
+
+  it('the admin may cancel a group that is not theirs; another teacher may not', async () => {
+    data['groups/g1'].status = 'cancelled';
+    data['users/admin-uid/verified'] = true;
+    data[`users/${OTHER}/verified`] = true;
+    const stranger = await call(OTHER, { groupId: 'g1', uid: KID, event: 'cancelled' });
+    assert.equal(stranger.status, 403);
+    const admin = await call('admin-uid', { groupId: 'g1', uid: KID, event: 'cancelled' });
+    assert.equal(admin.status, 200);
+    assert.equal(admin.body.sent, true);
   });
 
   it('a made-up or fake-domain parent address is silently skipped, not an error', async () => {

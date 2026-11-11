@@ -1222,7 +1222,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.77';
+const APP_VERSION='4.11.78';
 
 // ─── הודעות קוליות — כבויות ────────────────────────────────────────────────
 // הקלטה קולית היא הערוץ היחיד בין ילדים שאיש לא בודק: אין תמלול, אין סינון,
@@ -7034,6 +7034,10 @@ async function adminSuspendGroup(id){
     const uids=[...pre];
     if(g.teacherId)uids.push(g.teacherId);
     await Promise.all([...new Set(uids)].map(u=>db.ref('notifications/'+u).push({type:'groupSuspended',from:'Drushe',groupId:id,groupTitle:g.title||'',read:false,createdAt:Date.now()}).catch(()=>{})));
+    // מייל להורה של כל ילד שאושר — הוא זה שקיבל את המקום והשעה
+    const approved=[];
+    if(cntSnap?.exists())cntSnap.forEach(c=>{if((c.val()||{}).status==='approved')approved.push(c.key);});
+    await Promise.all(approved.map(u=>groupMail(id,u,'cancelled')));
     adminOpenGroups=adminOpenGroups.filter(x=>x.id!==id);
     communityGroups=communityGroups.filter(x=>x.id!==id);
     showFireToast('✅ הקבוצה הושעתה · '+(uids.length===1?'הודעה אחת נשלחה':uids.length+' הודעות נשלחו'));
@@ -11027,7 +11031,7 @@ function Messages(){
               <div style="flex:1">
                 <div style="font-weight:800;font-size:15px;color:#0F1A1F">${escapeHtml((isTeacherRole?b.studentName:b.teacherName)||'')}</div>
                 <div style="font-size:12px;color:#F59E0B;font-weight:700;margin-top:3px">📅 יום ${escapeHtml(b.day)} • ${icon("clock",14)} ${escapeHtml(b.time)}</div>
-                <div style="font-size:11px;color:#64748B;margin-top:3px">${isTeacherRole?'בקשה חדשה — אשר או דחה':'המורה יאשר תוך 24 שעות'}</div>
+                <div style="font-size:11px;color:#64748B;margin-top:3px">${isTeacherRole?'בקשה חדשה — אשר או דחה':'ממתין לאישור המורה — תקבל/י הודעה'}</div>
               </div>
               <span style="background:rgba(245,158,11,0.15);color:#D97706;font-size:10px;font-weight:800;padding:4px 10px;border-radius:50px">⏳ ממתין</span>
             </div>
@@ -12242,7 +12246,7 @@ function Jobs(){
 
       <h3 style="font-weight:900;font-size:16px;margin:0 0 12px;color:#0F1A1F">למה לגייס דרך Drushe?</h3>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
-        ${[["zap",'#F59E0B',"אנרגיה ומוטיבציה","דור צעיר שרוצה להוכיח את עצמו"],["tag",'#8B5CF6',"מגוון כישרונות",CATS.length+" תחומים — מלימודים ועד טכנולוגיה"],["shield",'#10B981',"בפיקוח הורים","הרשמה ואישור הורה לפני שמתחילים ללמד"],["clock",'#06B6D4',"זמינות גמישה","מתאימים את עצמם סביב הלימודים"]].map(([ic,col,t,d])=>`<div class="card" style="text-align:center;padding:16px;box-shadow:0 2px 10px rgba(0,0,0,.05)"><div style="margin-bottom:10px;display:flex;justify-content:center">${miniBadge(ic,col,44)}</div><div style="font-weight:800;font-size:13px;color:#0F1A1F">${t}</div><div style="font-size:11px;color:#64748B;margin-top:4px;line-height:1.4">${d}</div></div>`).join("")}
+        ${[["zap",'#F59E0B',"אנרגיה ומוטיבציה","דור צעיר שרוצה להוכיח את עצמו"],["tag",'#8B5CF6',"מגוון כישרונות",CATS.length+" תחומים — מלימודים ועד טכנולוגיה"],["shield",'#10B981',"באישור הורים","הרשמה ואישור הורה לפני שמתחילים ללמד"],["clock",'#06B6D4',"זמינות גמישה","מתאימים את עצמם סביב הלימודים"]].map(([ic,col,t,d])=>`<div class="card" style="text-align:center;padding:16px;box-shadow:0 2px 10px rgba(0,0,0,.05)"><div style="margin-bottom:10px;display:flex;justify-content:center">${miniBadge(ic,col,44)}</div><div style="font-weight:800;font-size:13px;color:#0F1A1F">${t}</div><div style="font-size:11px;color:#64748B;margin-top:4px;line-height:1.4">${d}</div></div>`).join("")}
       </div>
 
       <h3 style="font-weight:900;font-size:16px;margin:0 0 12px;color:#0F1A1F">איך זה עובד</h3>
@@ -13973,7 +13977,9 @@ async function _closeGroup(groupId){
     const mSnap=await db.ref('groupMembers/'+groupId).get().catch(()=>null);
     if(mSnap?.exists()){
       const uids=[];mSnap.forEach(c=>{if((c.val()||{}).status==='approved')uids.push(c.key);});
+      // ההורה כבר קיבל מייל עם המקום והשעה — בלי המייל הזה הילד עלול להגיע לשם.
       await Promise.all(uids.map(u=>notifyUser(u,'groupClosed',{groupId,groupTitle:g?.title||''})));
+      await Promise.all(uids.map(u=>groupMail(groupId,u,'cancelled')));
     }
     communityGroups=communityGroups.filter(x=>x.id!==groupId);
     document.getElementById('_tgOv')?.remove();
@@ -14089,7 +14095,7 @@ async function _loadConsentInfo(token){
           <ul style="margin:0;padding-right:18px;font-size:13px;color:#475569;line-height:1.9">
             <li>אתם ההורה או האפוטרופוס של ${nm}</li>
             ${data.role==='teacher'
-              ?`<li>אתם מאשרים לו/לה ללמד ילדים אחרים ב-Drushe — בפיקוח הורים, בלי תשלום דרך האפליקציה, ובשיחות שנשמרות לבדיקת הצוות</li>`
+              ?`<li>אתם מאשרים לו/לה ללמד ילדים אחרים ב-Drushe — באישור הורים, בלי תשלום דרך האפליקציה, ובשיחות שנשמרות לבדיקת הצוות</li>`
               :`<li>אתם מאשרים לו/לה להשתמש ב-Drushe וליצור קשר עם מורים דרך האפליקציה</li>`}
             <li>${escapeHtml(GROUP_MEETUP_NOTICE)} באישור זה אתם מסכימים גם לכך.</li>
             <li>קראתם את <a href="/privacy.html" target="_blank" style="color:#0e7a72">מדיניות הפרטיות</a> ואת <a href="/terms.html" target="_blank" style="color:#0e7a72">תנאי השימוש</a></li>
