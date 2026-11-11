@@ -46,24 +46,21 @@ jobs:
       - name: Install Playwright browsers
         if: steps.pw-cache.outputs.cache-hit != 'true'
         run: |
-          # ההתקנה מושכת חבילות apt, ו-DNS של מראות אובונטו על הראנר נופל מדי פעם
-          # ("Temporary failure resolving 'archive.ubuntu.com'") — זה הפיל ריצה ב-11.11.2026
-          # על קוד שעבר. שלושה ניסיונות עם המתנה, ואז כישלון אמיתי.
+          # שני דברים נפרדים, ולא אחד: הדפדפן עצמו מגיע מ-CDN של Playwright, וחבילות
+          # ה-OS מגיעות מ-apt. ב-11.11.2026 ה-DNS של מראות אובונטו נפל על הראנר,
+          # ו-`install --with-deps` הפיל את כל הבדיקות על קוד תקין — שבע דקות של
+          # timeout לכל ניסיון. הדפדפן הוא מה שבאמת נדרש; חבילות ה-OS כבר מותקנות
+          # בתמונת הראנר, ולכן כישלון שלהן רק מודפס ולא עוצר. אם באמת תחסר ספרייה,
+          # הדפדפן לא יעלה והבדיקות ייכשלו עם שגיאה ברורה.
           for i in 1 2 3; do
-            npx playwright install --with-deps chromium && exit 0
-            echo "ניסיון $i נכשל — ממתין ומנסה שוב"
-            sleep $((i * 20))
+            npx playwright install chromium && break
+            echo "הורדת הדפדפן נכשלה (ניסיון $i) — ממתין ומנסה שוב"
+            sleep $((i * 10))
           done
-          exit 1
+          npx playwright install-deps chromium || echo "apt לא זמין על הראנר — ממשיכים עם מה שמותקן בתמונה"
       - name: Install Playwright OS deps (cache hit)
         if: steps.pw-cache.outputs.cache-hit == 'true'
-        run: |
-          for i in 1 2 3; do
-            npx playwright install-deps chromium && exit 0
-            echo "ניסיון $i נכשל — ממתין ומנסה שוב"
-            sleep $((i * 20))
-          done
-          exit 1
+        run: npx playwright install-deps chromium || echo "apt לא זמין על הראנר — ממשיכים עם מה שמותקן בתמונה"
       - run: npm test
       - name: Upload Playwright report
         if: failure()
