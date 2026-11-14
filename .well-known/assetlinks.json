@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.drushe.mobile",
+      "sha256_cert_fingerprints": [
+        "A8:0B:38:0D:CC:B5:F3:8B:A2:63:27:FA:3E:1D:D2:6D:58:E2:3B:E3:E1:AF:04:39:90:EF:9B:4F:F0:49:46:3B"
+      ]
+    }
+  }
+]
