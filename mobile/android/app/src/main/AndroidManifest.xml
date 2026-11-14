@@ -22,6 +22,19 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!-- Android App Links: קישור ל-Drushe שנפתח מוואטסאפ או מגוגל נפתח
+                 באפליקציה ולא בדפדפן. autoVerify שולח את אנדרואיד לאמת מול
+                 /.well-known/assetlinks.json באתר, שנושא את טביעת האצבע של
+                 מפתח החתימה. בלי שני הצדדים האלה הקישור ממשיך לדפדפן. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="kidemy-app.netlify.app" />
+                <data android:scheme="https" android:host="drushe.com" />
+                <data android:scheme="https" android:host="www.drushe.com" />
+            </intent-filter>
+
         </activity>
 
         <provider
