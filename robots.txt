@@ -1,0 +1,10 @@
+# Drushe — https://kidemy-app.netlify.app
+# אפליקציית עמוד אחד: אין כתובות פרטיות לחסום, והתוכן האישי יושב מאחורי התחברות.
+User-agent: *
+Allow: /
+
+# פונקציות השרת אינן דפים
+Disallow: /api/
+Disallow: /.netlify/
+
+Sitemap: https://kidemy-app.netlify.app/sitemap.xml
