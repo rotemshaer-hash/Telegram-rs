@@ -6,7 +6,7 @@ submitting — Apple changes the questionnaires. Paste the English block into "A
 
 --- 1. Notes for the reviewer (English, paste as is) ----------------------------------------------------------------
 
-Drushe is a peer-tutoring app in Hebrew: teenagers (14-18) teach younger children (9-18) under parental supervision.
+Drushe is a peer-tutoring app in Hebrew: teenagers (14-18) teach younger children (9-18) with verified parental approval. Private lessons are held over video; community groups also meet in person, without a parent present. Every group is reviewed and approved by Drushe before it is published, the parent is emailed the place, day and time when their child is accepted, and Drushe can suspend a published group at any time.
 Every account is reviewed before it is active:
 - A student registration requires the parent to click a consent link emailed to the parent, and then an administrator
   approves the account.

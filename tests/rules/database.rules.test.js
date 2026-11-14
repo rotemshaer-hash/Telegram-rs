@@ -657,7 +657,15 @@ describe('children’s names in groups and briefs are readable only by verified 
 
 describe('reports: only verified accounts file them (no flooding by guests)', () => {
   const anon = () => testEnv.authenticatedContext('guest-uid', { firebase: { sign_in_provider: 'anonymous' } }).database();
-  const rec = () => ({ targetType: 'user', targetId: TEACHER, reason: 'other', status: 'open', severity: 'medium', createdAt: Date.now(), slaDueAt: Date.now() + 172800000, reporterId: STUDENT, description: 'x' });
+  // One timestamp, not two — the same trap as in the suite below: the rules require
+  // slaDueAt == createdAt + the severity's window exactly, so two Date.now() calls that
+  // land a millisecond apart make the fixture invalid and the test fails for a reason
+  // that has nothing to do with what it checks. That is the flake that turned CI red on
+  // 11.11.2026 while the identical job on the same commit passed.
+  const rec = () => {
+    const createdAt = Date.now();
+    return { targetType: 'user', targetId: TEACHER, reason: 'other', status: 'open', severity: 'medium', createdAt, slaDueAt: createdAt + 172800000, reporterId: STUDENT, description: 'x' };
+  };
   it('a verified user can report; a guest and an unverified account cannot', async () => {
     await assertSucceeds(set(ref(asStudent(), 'reports/r1'), rec()));
     await assertFails(set(ref(anon(), 'reports/r2'), rec()));
