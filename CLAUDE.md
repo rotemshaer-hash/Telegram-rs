@@ -112,6 +112,8 @@ it never contradicts something another screen already tells the user.
 - After every fix, explain the root cause that was addressed, not just what changed.
 - Development happens on the `claude/*` branch the session is given; merges go
   to `main` only after approval.
+- **Start of every session: read the top of `HANDOFF.md` ("התחל כאן"), `LEGAL-EVIDENCE.md` and `git log --oneline -30`, then tell the owner in three lines what you
+  understand the state to be, before doing anything else.** The owner asked that nothing we did ever be lost between sessions: the repo is the memory.
 - **Check `HANDOFF.md` against the code before building from it.** Large parts
   of it have described work as open that had already shipped, and a session was
   spent re-investigating those. Verify, then build.
