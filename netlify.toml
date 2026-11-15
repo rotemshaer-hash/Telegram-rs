@@ -66,6 +66,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/team-roles"
+  to = "/.netlify/functions/team-roles"
+  status = 200
+
+[[redirects]]
   from = "/api/group-consent"
   to = "/.netlify/functions/group-consent"
   status = 200

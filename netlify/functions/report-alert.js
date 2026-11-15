@@ -61,8 +61,13 @@ exports.handler = async (event) => {
 
     let adminUid;
     try { adminUid = (await admin.auth().getUserByEmail(ADMIN_EMAIL)).uid; } catch (_e) { return reply(200, { sent: 0, reason: 'no admin' }); }
-    const snap = await db.ref('fcmTokens').orderByChild('uid').equalTo(adminUid).get();
-    const tokensVal = snap.exists() ? snap.val() : {};
+    // הבעלים וכל חברי הצוות: דיווח על בטיחות של ילד שצריך שהטלפון יצלצל לא יכול לחכות לאדם אחד
+    const teamUids = Object.keys((await db.ref('team').get()).val() || {});
+    const tokensVal = {};
+    for (const u of [adminUid, ...teamUids]) {
+      const snap = await db.ref('fcmTokens').orderByChild('uid').equalTo(u).get();
+      if (snap.exists()) Object.assign(tokensVal, snap.val());
+    }
     if (!Object.keys(tokensVal).length) return reply(200, { sent: 0, reason: 'No registered devices' });
 
     const r = await pushToTokens(admin, db, tokensVal, {

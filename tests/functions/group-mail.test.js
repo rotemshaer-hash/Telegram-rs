@@ -126,6 +126,17 @@ describe('group-mail', () => {
     assert.equal(admin.body.sent, true);
   });
 
+  it('a team member may cancel a group that is not theirs, until they are removed', async () => {
+    data['groups/g1'].status = 'cancelled';
+    data['users/team-uid/verified'] = true;
+    data['team/team-uid'] = true;
+    const ok = await call('team-uid', { groupId: 'g1', uid: KID, event: 'cancelled' });
+    assert.equal(ok.status, 200);
+    delete data['team/team-uid'];
+    data['groupMailSent/g1_' + KID + '_cancelled'] = undefined;
+    assert.equal((await call('team-uid', { groupId: 'g1', uid: KID, event: 'cancelled' })).status, 403);
+  });
+
   it('a made-up or fake-domain parent address is silently skipped, not an error', async () => {
     data[`users/${KID}/parentEmail`] = 'kid@kidemy.app';
     const r = await call(TEACHER, { groupId: 'g1', uid: KID, event: 'approved' });

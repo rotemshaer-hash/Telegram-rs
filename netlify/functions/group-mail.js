@@ -15,6 +15,7 @@ const { FAKE_DOMAIN } = require('../lib/internal-email');
 const { withinWindowLimit } = require('../lib/rate-limit');
 const { GROUP_EMERGENCY_PHONE } = require('../lib/safety-contact');
 const { ADMIN_EMAIL } = require('../lib/admin-email');
+const { isTeamMember } = require('../lib/team');
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ID_RE = /^[-A-Za-z0-9_]{1,128}$/;
@@ -99,7 +100,7 @@ exports.handler = async (event) => {
     const g = (await db.ref('groups/' + groupId).get()).val();
     if (!g) return reply(403, { error: 'no such group' });
     // ביטול יכול להגיע גם מהמנהל, שמשעה קבוצה שאינה שלו.
-    const isAdmin = String(email || '').toLowerCase() === ADMIN_EMAIL;
+    const isAdmin = String(email || '').toLowerCase() === ADMIN_EMAIL || (await isTeamMember(db, uid));
     if (g.teacherId !== uid && !(kind === 'cancelled' && isAdmin)) return reply(403, { error: 'not your group' });
     if (kind === 'cancelled' && g.status !== 'closed' && g.status !== 'cancelled') {
       return reply(409, { error: 'that group is still active' });

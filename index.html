@@ -5833,6 +5833,20 @@ async function checkTeacherTrialReminder(){
     await db.ref('notifications/'+currentUser.uid).push({type:'trialReminder',read:false,createdAt:Date.now(),daysLeft}).catch(()=>{});
   }catch(e){console.warn('[trialReminder] failed:',e);}
 }
+// חבר צוות: מי שהבעלים הוסיף (netlify/functions/team-roles.js). הדגל נקרא מ-team/<uid> — אותו ערך שהחוקים בודקים, ולכן
+// הסרה חלה בבקשה הבאה. החבר מבצע עבודת בדיקה (לאשר ילדים ומורים, לטפל בקבוצות ובדיווחים, לנהל תוכן) ולא מגדיר את הכללים:
+// לא מסד הנתונים כולו, לא הגדרות, לא תשלומים ולא רשימת הצוות. isAdmin() נשאר הבעלים בלבד — 60 מקומות תלויים בו.
+let _isTeamMember=false;
+function isTeam(){return _isTeamMember===true;}
+function isStaff(){return isAdmin()||isTeam();}
+async function _loadTeamFlag(){
+  _isTeamMember=false;
+  if(!currentUser||isAdmin())return;
+  try{_isTeamMember=(await db.ref('team/'+currentUser.uid).get()).val()===true;}catch(_e){}
+}
+// מה שנשאר לבעלים בלבד בפאנל: הלשוניות וההפעולות שהחוקים והשרת ממילא לא מתירים לצוות. נסתרים כדי שלא יוצגו כפתורים שנכשלים.
+const ADMIN_OWNER_ONLY_TABS=['bookings','subscriptions','messages','stats','team'];
+const ADMIN_OWNER_ONLY_ACTIONS=['adminDeleteUser','adminDeleteDuplicate','adminSearchAllFirebase','adminDeleteGhostRecords','adminDeleteAllStudents','adminRestoreStudents','adminDeleteOldUsers','resetSystem','adminMigrateIdPhotos','adminDeleteErrorGroup','adminClearAllErrors','adminSendTestEmail','adminToggleAi'];
 function isAdmin(){
   return currentUser&&ADMIN_EMAILS.includes(currentUser.email?.toLowerCase());
 }
@@ -5991,6 +6005,7 @@ if(typeof auth!=='undefined'&&auth&&!auth._pushSignOutWrapped){
   auth._pushSignOutWrapped=true;
 }
 
+let adminTeamList=[];
 let adminAllUsers=[],adminAllTeachers=[],adminAllVideos=[],adminAllReports=[],adminAllBookings=[],adminIncompleteTeachers=[],adminAllPosts=[],adminAllReviews=[],adminAllStories=[],adminAllClientErrors=[],adminAllGroups=[],adminOpenGroups=[],adminGroupsErr='';
 let adminAlertStudents=[],adminAlertPosts=[],adminAlertSubscriptions=[],adminContactMessages=[],adminAlertStoriesPending=0; // מקור ראשי לממתינים
 let adminTab='users';
@@ -6034,7 +6049,7 @@ let _adminActionInProgress=false; // מנגנון נגד race-condition בזמן
 // האזן לכל הממתינים בזמן אמת דרך נתיב adminAlerts
 let _adminDataLoading=false; // מנע listener מלאפס נתונים בזמן טעינה
 function _startAdminAlertsListener(){
-  if(!isAdmin())return;
+  if(!isStaff())return;
   const _rebadge=()=>{
     _updateAdminBadge(_adminPending().total);
     if(document.getElementById('_adminPanel')&&!_adminActionInProgress)renderAdminPanel();
@@ -6073,7 +6088,7 @@ function _startAdminAlertsListener(){
 }
 
 async function _checkAdminBadge(){
-  if(!isAdmin())return;
+  if(!isStaff())return;
   try{
     // ספירה מהירה לפני שפאנל הניהול נטען במלואו. היא ממלאת את אותם משתנים
     // ש-_adminPending קורא, ולכן היא לא נוסחה חמישית אלא אותה הגדרה.
@@ -6093,7 +6108,7 @@ async function _checkAdminBadge(){
 let _adminCommunityOrphans=[]; // משתמשים שפרסמו בקהילה אך אין להם רשומה מאושרת
 
 async function loadAdminData(){
-  if(!isAdmin()){showFireToast('🚫 אין הרשאת מנהל');return;}
+  if(!isStaff()){showFireToast('🚫 אין הרשאת מנהל');return;}
   _adminDataLoading=true; // נעל listener
   try{
     // קרא users דרך REST API (עוקף קאש SDK) + adminAlerts במקביל
@@ -6102,7 +6117,7 @@ async function loadAdminData(){
       fetch('https://kidemy-83a17-default-rtdb.firebaseio.com/users.json?auth='+token,{cache:'no-store'}),
       db.ref('adminAlerts/students').get(),
       db.ref('adminAlerts/subscriptions').get(),
-      db.ref('contactMessages').get(),
+      isAdmin()?db.ref('contactMessages').get():Promise.resolve({exists:()=>false,forEach:()=>{},val:()=>null}),
       db.ref('userBlocks').get()
     ]);
     const usersData=await usersRes.json();
@@ -6174,7 +6189,7 @@ async function loadAdminData(){
       db.ref('videos').get(),
       db.ref('reports').get(),
       db.ref('clientErrors').limitToLast(300).get(),
-      db.ref('teacherBookings').get(),
+      isAdmin()?db.ref('teacherBookings').get():Promise.resolve({exists:()=>false,forEach:()=>{},val:()=>null}),
       db.ref('reviews').get(),
       db.ref('pendingReviews').get(),
       db.ref('stories').orderByChild('status').equalTo('pending').get(),
@@ -6341,8 +6356,13 @@ async function adminVerifyStudent(uid){
     const baseData={...alertData,...existing};
     // שלב 2: בנה אובייקט מעודכן
     const updatedUser={...baseData,uid,verified:true,role:'student',rejected:false,verifiedAt:Date.now()};
-    // שלב 3: כתוב ל-Firebase (set כדי ליצור רשומה מלאה אם לא קיימת)
-    await db.ref('users/'+uid).set(updatedUser);
+    // שלב 3: כתוב ל-Firebase. רשומה קיימת מקבלת רק את שדות ההחלטה (כך גם חבר צוות רשאי, והחוקים אוסרים עליו לגעת בכל השאר);
+    // רשומה שלא קיימת נוצרת במלואה — וזה לבעלים בלבד.
+    if(existingSnap.exists()&&existing.role){
+      await db.ref('users/'+uid).update({verified:true,rejected:false,verifiedAt:updatedUser.verifiedAt,verifiedBy:currentUser?.uid||'admin'});
+    }else{
+      await db.ref('users/'+uid).set(updatedUser);
+    }
     await scheduleIdPurge(uid);
     await db.ref('adminAlerts/students/'+uid).remove().catch(()=>{});
     await db.ref('notifications/'+uid).push({type:'studentApproved',read:false,createdAt:Date.now()}).catch(()=>{});
@@ -6946,7 +6966,7 @@ async function adminApprovePost(postId){
   }catch(e){showFireToast('❌ '+e.message);}
 }
 async function adminApproveAllPosts(){
-  if(!isAdmin())return;
+  if(!isStaff())return;
   try{
     const snap=await db.ref('communityPosts').get();
     if(!snap.exists()){showFireToast('אין פוסטים');return;}
@@ -7071,7 +7091,7 @@ async function adminCloseReport(id){return adminResolveReport(id,'dismissed');}
 // המנהל קורא שיחה רק כשיש עליה דיווח, וכל קריאה נרשמת ב-audit של הדיווח.
 // חוקי messages כבר מתירים קריאה למנהל; עד עכשיו פשוט לא היה מסך.
 async function adminDecideGroup(id,ok){
-  if(!isAdmin())return;
+  if(!isStaff())return;
   const g=adminAllGroups.find(x=>x.id===id);
   if(!g)return;
   try{
@@ -7087,7 +7107,7 @@ async function adminDecideGroup(id,ok){
 // השעיית קבוצה שכבר פורסמה — דיווח על מוביל ביום המפגש הוא בדיוק המקרה שבגללו
 // זה קיים. הקבוצה יוצאת מהרשימה לכולם, והמוביל וכל החברים המאושרים מקבלים התראה.
 async function adminSuspendGroup(id){
-  if(!isAdmin())return;
+  if(!isStaff())return;
   const g=adminOpenGroups.find(x=>x.id===id)||communityGroups.find(x=>x.id===id);
   if(!g)return;
   const cntSnap=await db.ref('groupMembers/'+id).get().catch(()=>null);
@@ -7111,7 +7131,7 @@ async function adminSuspendGroup(id){
   }catch(e){showFireToast('❌ '+e.message);}
 }
 async function adminViewReportedChat(reportId){
-  if(!isAdmin())return;
+  if(!isStaff())return;
   const r=adminAllReports.find(x=>x.id===reportId);
   if(!r||!r.reporterId||!r.targetId)return;
   try{
@@ -8457,7 +8477,7 @@ async function adminSendTestEmail(){
 let _adminPinVerified=false;
 
 async function _verifyAdminPin(onSuccess){
-  if(_adminPinVerified){onSuccess();return;}
+  if(_adminPinVerified||!isAdmin()){onSuccess();return;}   // קוד ה-PIN הוא של הבעלים (adminConfig, שהצוות לא קורא)
   // בדוק אם קיים PIN שמור ב-Firebase
   let storedHash=null;
   try{
@@ -8512,7 +8532,7 @@ async function _verifyAdminPin(onSuccess){
 }
 
 function showAdminPanel(forceTab=null){
-  if(!isAdmin()){showFireToast('🚫 אין הרשאת מנהל');return;}
+  if(!isStaff()){showFireToast('🚫 אין הרשאת מנהל');return;}
   // משוב מיידי — טעינת כל נתוני הניהול לוקחת כמה שניות, ובלי זה נראה שהלחיצה
   // לא נקלטה והמנהל לוחץ כמה פעמים / מרענן.
   if(!document.getElementById('_adminPanel'))showFireToast('⏳ טוען פאנל ניהול...');
@@ -8561,6 +8581,7 @@ async function adminToggleAi(){
 
 async function adminSwitchTab(id){
   adminTab=id;
+  if(id==='team'&&isAdmin())await adminLoadTeam();
   if(id==='messages'){
     // auto-mark all contact messages as read so the badge clears
     const unreadMsgs=adminContactMessages.filter(m=>!m.read);
@@ -8634,7 +8655,7 @@ async function recomputeTeacherRating(teacherId){
 }
 
 async function adminApproveReview(reviewId,teacherId){
-  if(!isAdmin())return;
+  if(!isStaff())return;
   try{
     await db.ref('reviews/'+teacherId+'/'+reviewId+'/approved').set(true);
     // clean matching entry in pendingReviews backup queue
@@ -8648,7 +8669,7 @@ async function adminApproveReview(reviewId,teacherId){
 }
 
 async function adminRejectReview(reviewId,teacherId){
-  if(!isAdmin())return;
+  if(!isStaff())return;
   if(!await _confirm('למחוק את הביקורת?',{confirmText:'מחק',cancelText:'ביטול',destructive:true}))return;
   try{
     await db.ref('reviews/'+teacherId+'/'+reviewId).remove();
@@ -8663,6 +8684,12 @@ async function adminRejectReview(reviewId,teacherId){
   }catch(e){showFireToast('❌ '+e.message);}
 }
 
+// הצוות לא רואה כפתורים שהחוקים והשרת ממילא יסרבו להם. זו נוחות בלבד — האכיפה היא ב-database.rules.json ובפונקציות.
+function _adminHideOwnerOnly(root){
+  if(isAdmin()||!root)return;
+  const re=new RegExp('\\b('+ADMIN_OWNER_ONLY_ACTIONS.join('|')+')\\(');
+  root.querySelectorAll('[onclick]').forEach(el=>{if(re.test(el.getAttribute('onclick')||''))el.remove();});
+}
 function renderAdminPanel(){
   const _prevPanel=document.getElementById('_adminPanel');
   const _prevScroll=_prevPanel?_prevPanel.scrollTop:0;
@@ -8728,12 +8755,12 @@ function renderAdminPanel(){
         const worst=breached.filter(r=>reportEffectiveSeverity(r)==='critical').length;
         return `<div onclick="adminSwitchTab('reports')" style="margin-top:10px;background:#DC2626;border-radius:12px;padding:11px 14px;font-size:13px;font-weight:900;cursor:pointer;display:flex;align-items:center;gap:8px;position:relative;z-index:2">⏰ <span>${breached.length} דיווחים חרגו מיעד הטיפול${worst?` (${worst} קריטיים)`:''} — לחץ</span></div>`;
       })()}
-      <div style="margin-top:8px;background:${_adminAiEnabled?'rgba(15,26,31,0.35)':'rgba(239,68,68,0.85)'};border-radius:12px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;position:relative;z-index:2">
+      ${isAdmin()?`<div style="margin-top:8px;background:${_adminAiEnabled?'rgba(15,26,31,0.35)':'rgba(239,68,68,0.85)'};border-radius:12px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;position:relative;z-index:2">
         <span style="font-size:12px;font-weight:800;color:#fff">🤖 עוזר AI — ${_adminAiEnabled?'פעיל':'מושבת'}</span>
         <button onclick="adminToggleAi()" style="background:${_adminAiEnabled?'rgba(239,68,68,0.9)':'rgba(16,185,129,0.95)'};border:none;color:#fff;border-radius:50px;padding:6px 14px;font-size:12px;font-weight:900;cursor:pointer">${_adminAiEnabled?'כבה עכשיו':'הפעל'}</button>
-      </div>
+      </div>`:''}
     </div>
-    ${!adminAllTeachers.find(t=>t.uid===currentUser?.uid)?`
+    ${isAdmin()&&!adminAllTeachers.find(t=>t.uid===currentUser?.uid)?`
     <div style="margin:12px 16px 0;background:linear-gradient(135deg,rgba(245,158,11,0.12),rgba(239,68,68,0.1));border:2px solid rgba(245,158,11,0.5);border-radius:16px;padding:14px">
       <div style="font-weight:900;font-size:14px;color:#F59E0B;margin-bottom:6px">${icon("alert-triangle",14)} פרופיל המורה שלך לא הוגדר</div>
       <div style="font-size:12px;color:#64748B;margin-bottom:10px">אתה לא מופיע ברשימת המורים. לחץ להגדרת פרופיל מורה.</div>
@@ -8754,8 +8781,9 @@ function renderAdminPanel(){
            ['stories','סטוריז','#F59E0B','<rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>',adminAllStories.length,adminAllStories.length>0?adminAllStories.length:null],
            ['subscriptions','מנויים','#8B5CF6','<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>',adminAlertSubscriptions.length,adminAlertSubscriptions.length>0?adminAlertSubscriptions.length:null],
            ['stats','סטטיסטיקות','#10B981','<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>',null,null],
+           ['team','צוות','#8B5CF6','<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',(adminTeamList||[]).length,0],
            ['errors','שגיאות אפליקציה','#EF4444','<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>',adminAllClientErrors.length,adminAllClientErrors.filter(e=>Date.now()-(e.createdAt||0)<24*3600*1000).length]
-          ].map(([id,lbl,col,svg,num,badge])=>`
+          ].filter(t=>isAdmin()||!ADMIN_OWNER_ONLY_TABS.includes(t[0])).map(([id,lbl,col,svg,num,badge])=>`
           <div onclick="adminSwitchTab('${jsAttrEscape(id)}')" style="background:${adminTab===id?col+'14':'#fff'};border:1.5px solid ${adminTab===id?col:'transparent'};border-radius:20px;padding:16px;display:flex;align-items:center;gap:12px;box-shadow:0 2px 10px rgba(0,0,0,0.05);cursor:pointer;position:relative">
             <div style="width:46px;height:46px;border-radius:14px;background:${col}1F;display:flex;align-items:center;justify-content:center;flex-shrink:0">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="${col}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${svg}</svg>
@@ -8769,6 +8797,7 @@ function renderAdminPanel(){
       </div>
     </div>
     <div style="padding:16px;background:transparent;min-height:calc(100vh - 280px)">${renderAdminTab()}</div>`;
+  _adminHideOwnerOnly(ov);
   document.body.appendChild(ov);
   if(_prevScroll)requestAnimationFrame(()=>{ov.scrollTop=_prevScroll;});
 }
@@ -8782,6 +8811,55 @@ async function adminMarkMessageRead(id){
   }catch(e){showFireToast('❌ '+e.message);}
 }
 
+// ── צוות: הבעלים מוסיף ומסיר חברים. הכל דרך השרת (team-roles.js) — הוא בודק שהקורא הוא הבעלים ושהחשבון של מבוגר ──
+async function _teamApi(body){
+  const idToken=await currentUser.getIdToken();
+  const res=await fetch(API_BASE+'/api/team-roles',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({idToken,...body})});
+  let data={};try{data=await res.json();}catch(_e){}
+  return {ok:res.ok,status:res.status,data};
+}
+async function adminLoadTeam(){
+  try{const r=await _teamApi({action:'list'});adminTeamList=r.ok?(r.data.members||[]):[];}catch(_e){adminTeamList=[];}
+  renderAdminPanel();
+}
+async function adminAddTeamMember(){
+  const email=(document.getElementById('_teamEmail')?.value||'').trim();
+  const adult=document.getElementById('_teamAdult')?.checked===true;
+  if(!email){showFireToast('❌ הכנס כתובת מייל');return;}
+  if(!adult){showFireToast('❌ סמן שזה מבוגר — חברי צוות רואים מידע על ילדים');return;}
+  if(!await _confirm('להוסיף את '+email+' לצוות?\n\nהם יוכלו לאשר ולדחות ילדים ומורים, לטפל בדיווחים ובקבוצות, ולראות מסמכי זהות בזמן הבדיקה.',{confirmText:'הוסף',cancelText:'ביטול'}))return;
+  try{
+    const r=await _teamApi({action:'add',email,confirmAdult:true});
+    if(!r.ok){showFireToast('❌ '+({child_account:'החשבון הזה שייך לילד',owner:'זה חשבון הבעלים',bad_email:'כתובת לא תקינה',rate:'יותר מדי ניסיונות'}[r.data.error]||'ההוספה נכשלה'));return;}
+    showFireToast(r.data.created?'✅ נוסף. נשלח אליהם מייל להגדרת סיסמה':'✅ נוסף לצוות');
+    await adminLoadTeam();
+  }catch(e){showFireToast('❌ '+e.message);}
+}
+async function adminRemoveTeamMember(uid){
+  if(!await _confirm('להסיר מהצוות?\n\nההרשאות נעלמות מיד.',{confirmText:'הסר',cancelText:'ביטול',destructive:true}))return;
+  try{
+    const r=await _teamApi({action:'remove',uid});
+    showFireToast(r.ok?'✅ הוסר מהצוות':'❌ ההסרה נכשלה');
+    await adminLoadTeam();
+  }catch(e){showFireToast('❌ '+e.message);}
+}
+function _adminTeamTabHtml(){
+  const rows=(adminTeamList||[]).map(m=>`<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px;background:rgba(139,92,246,0.07);border-radius:14px;margin-bottom:8px">
+      <div style="min-width:0"><div style="font-weight:800;font-size:13px;color:#0F1A1F">${escapeHtml(m.name||'')}</div><div style="font-size:12px;color:#475569;word-break:break-all">${escapeHtml(m.email||'')}</div></div>
+      <button onclick="adminRemoveTeamMember('${jsAttrEscape(m.uid)}')" style="background:rgba(185,28,28,0.07);color:#B91C1C;border:none;border-radius:50px;padding:8px 14px;font-size:12px;font-weight:800;cursor:pointer;flex-shrink:0">הסר</button>
+    </div>`).join('');
+  return `<div>
+    <h3 style="font-weight:900;font-size:16px;margin:0 0 6px;color:#8B5CF6">👥 צוות Drushe (${(adminTeamList||[]).length})</h3>
+    <p style="font-size:12px;color:#475569;line-height:1.7;margin:0 0 14px">חבר צוות מאשר ודוחה ילדים ומורים, מטפל בדיווחים, בקבוצות ובתוכן, ורואה מסמכי זהות בזמן הבדיקה. הוא <b>לא</b> רואה תשלומים, הגדרות, ולא יכול למחוק משתמשים, לשנות תפקידים או להוסיף אנשים. אפשר להסיר אותו בכל רגע, וזה חל מיד.</p>
+    ${rows||'<div style="text-align:center;padding:20px;color:#64748B;font-size:13px">עדיין אין חברי צוות</div>'}
+    <div style="background:linear-gradient(165deg,#ECFEFF 0%,#F0F9FF 50%,#EEF2FF 100%);border-radius:16px;padding:14px;margin-top:12px">
+      <div style="font-weight:800;font-size:13px;color:#0F1A1F;margin-bottom:8px">הוספת חבר צוות</div>
+      <input id="_teamEmail" type="email" dir="ltr" placeholder="כתובת המייל שלו" class="inp" style="margin-bottom:10px">
+      <label style="display:flex;gap:10px;align-items:flex-start;font-size:12px;color:#475569;line-height:1.6;margin-bottom:12px;cursor:pointer"><input id="_teamAdult" type="checkbox" style="width:20px;height:20px;flex-shrink:0;accent-color:#8B5CF6"><span>זה מבוגר שאני מכיר ואני סומך עליו עם מידע על ילדים</span></label>
+      <button onclick="adminAddTeamMember()" style="width:100%;background:var(--grad-main);border:none;color:#fff;border-radius:50px;padding:13px;font-weight:900;font-size:14px;cursor:pointer">הוסף לצוות</button>
+    </div>
+  </div>`;
+}
 function renderAdminTab(){
   // כפתור איפוס מערכת
   const resetBtn=`
@@ -9466,6 +9544,7 @@ function renderAdminTab(){
       </div>
       ${resetBtn}`;
   }
+  if(adminTab==='team'&&isAdmin())return _adminTeamTabHtml();
   if(adminTab==='errors'){
     if(adminAllClientErrors.length===0)return '<div style="text-align:center;padding:40px;color:#64748B">אין שגיאות client-side שנתפסו (עדיין)</div>';
     // קיבוץ לפי הודעה+מקור — כל רשומה גולמית היא מופע אחד (מוגבל לפעם אחת לכל סשן,
@@ -11505,7 +11584,7 @@ function Profile(){
           <div style="font-size:10px;color:#64748B;margin-top:2px">נותרו ${foundingSlotsLeft()}</div>
         </div>
       </div>`:''}
-      ${isAdmin()?`<button onclick="showAdminPanel()" style="width:100%;background:linear-gradient(135deg,#0F1A1F,#0e7a72);border:none;color:#fff;border-radius:16px;padding:13px;font-weight:900;font-size:13px;cursor:pointer;box-shadow:0 4px 14px rgba(14,122,114,0.4);position:relative;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:16px">${icon('shield',15)} פאנל מנהל<span id="_adminPendingBadge" style="display:${_adminPendingCount>0?'inline-flex':'none'};position:absolute;top:-7px;left:14px;background:#EF4444;color:#fff;border-radius:50px;min-width:20px;height:20px;font-size:11px;font-weight:900;align-items:center;justify-content:center;padding:0 4px;border:2px solid #fff;animation:pulse 1.2s infinite">${_adminPendingCount}</span></button>`:''}
+      ${isStaff()?`<button onclick="showAdminPanel()" style="width:100%;background:linear-gradient(135deg,#0F1A1F,#0e7a72);border:none;color:#fff;border-radius:16px;padding:13px;font-weight:900;font-size:13px;cursor:pointer;box-shadow:0 4px 14px rgba(14,122,114,0.4);position:relative;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:16px">${icon('shield',15)} פאנל מנהל<span id="_adminPendingBadge" style="display:${_adminPendingCount>0?'inline-flex':'none'};position:absolute;top:-7px;left:14px;background:#EF4444;color:#fff;border-radius:50px;min-width:20px;height:20px;font-size:11px;font-weight:900;align-items:center;justify-content:center;padding:0 4px;border:2px solid #fff;animation:pulse 1.2s infinite">${_adminPendingCount}</span></button>`:''}
       `:''}
       <div style="display:flex;gap:10px;margin-bottom:18px">
         ${(()=>{const a=teacherAnalytics;const stats=[["<polygon points=\"12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2\"/>",'#FBBF24',a?.avgRating||"0","דירוג",null],["<path d=\"M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z\"/><path d=\"M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z\"/>",'#14B8A6',a?.completed||"0","שיעורים",null],["<path d=\"M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2\"/><circle cx=\"12\" cy=\"7\" r=\"4\"/>",'#3B82F6',a?.uniqueStudentsCount||"0","תלמידים","showMyStudents()"],["<rect x=\"3\" y=\"4\" width=\"18\" height=\"18\" rx=\"2\" ry=\"2\"/><line x1=\"16\" y1=\"2\" x2=\"16\" y2=\"6\"/><line x1=\"8\" y1=\"2\" x2=\"8\" y2=\"6\"/><line x1=\"3\" y1=\"10\" x2=\"21\" y2=\"10\"/>",'#8B5CF6',a?.lessonsThisMonth||"0","החודש",null]];return stats.map(([icon,col,v,l,action])=>`<div class="card-sm" ${action?`onclick="${action}" style="flex:1;text-align:center;padding:12px 5px;margin-bottom:0;cursor:pointer"`:'style="flex:1;text-align:center;padding:12px 5px;margin-bottom:0"'}><div style="width:34px;height:34px;border-radius:42% 58% 63% 37%/45% 40% 60% 55%;background:linear-gradient(135deg,${col}CC,${col});display:flex;align-items:center;justify-content:center;margin:0 auto 5px;box-shadow:0 3px 8px ${col}40"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round">${icon}</svg></div><div style="font-weight:900;font-size:15px;color:#0F1A1F">${v}</div><div style="font-size:9px;color:${C.muted}">${l}</div></div>`).join("");})()}
@@ -14534,7 +14613,7 @@ function render(){
   // NaN, ההתאמה נכשלת, ונופלת ל-TEACHERS[0] — כלומר כל כרטיס פתח את המורה
   // הראשון ברשימה. הוסר; ה-onclick המוטבע לבדו הוא הנכון.
   if(S.screen==="chat"){const el=document.getElementById("chatMsgs");if(el)setTimeout(()=>el.scrollTop=el.scrollHeight,50);}
-  if(S.screen==="profile"&&isAdmin())setTimeout(_checkAdminBadge,200);
+  if(S.screen==="profile"&&isStaff())setTimeout(_checkAdminBadge,200);
   if(S.screen==='teacher'&&S.teacher?.id&&currentUser?.uid!==S.teacher.id&&db){
     const _vk='_pv_'+S.teacher.id;
     if(!_ssGet(_vk)){_ssSet(_vk,'1');db.ref('teachers/'+S.teacher.id+'/views').transaction(v=>(v||0)+1).catch(()=>{});}
@@ -14913,6 +14992,7 @@ auth&&auth.onAuthStateChanged(async user=>{
       });
     }
     currentUser=user;
+    await _loadTeamFlag();
     refreshStudentCount(); // auth is confirmed, token always available here
     try{
       const snap=await db.ref('users/'+user.uid).get();
@@ -15072,7 +15152,8 @@ auth&&auth.onAuthStateChanged(async user=>{
       pollForNewMessages().catch(()=>{});
 
       // האזנה בזמן אמת להתראות + לאישור מנהל
-      if(isAdmin()){_requestBrowserNotifPermission();_startAdminAlertsListener();}
+      await _loadTeamFlag();
+      if(isStaff()){_requestBrowserNotifPermission();_startAdminAlertsListener();}
       // רישום להתראות נייטיב — רק באפליקציה המותקנת, ורק אחרי שיש משתמש מחובר
       // (הטוקן נשמר תחת ה-uid שלו). בדפדפן הפונקציה יוצאת מיד.
       _registerNativePush().catch(()=>{});
@@ -15118,7 +15199,7 @@ auth&&auth.onAuthStateChanged(async user=>{
         else if(!['register','parentReg','safety','teacherSetup'].includes(S.screen))_refreshMsgBadge();
       });
       // האזנה ל-adminNotifs (מורים חדשים, סרטונים, משתמשים) – ללא חיפוש UID
-      if(isAdmin()){
+      if(isStaff()){
         const _adminNotifListenStart=Date.now();
         db.ref('adminNotifs').on('child_added',snap=>{
           const n=snap.val();

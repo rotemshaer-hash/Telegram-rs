@@ -21,6 +21,7 @@ const { admin, initAdmin } = require('../lib/firebase-admin-init');
 const ALLOWED_ORIGINS = require('../lib/allowed-origins');
 
 const { ADMIN_EMAIL } = require('../lib/admin-email');
+const { isTeamMember } = require('../lib/team');
 
 // נדיב לשימוש אמיתי (כל הודעה בצ'אט מייצרת התראה), נמוך מספיק כדי שהצפה
 // של פיד של מישהו אחר תיעצר.
@@ -254,7 +255,7 @@ exports.handler = async (event) => {
 
     // המנהל עובר את בדיקת היחסים — הוא הצד שמאשר, דוחה ומודיע בשם
     // הפלטפורמה, ואין רשומת "יחסים" שמתארת את זה.
-    const isAdminCaller = callerEmail === ADMIN_EMAIL;
+    const isAdminCaller = callerEmail === ADMIN_EMAIL || (await isTeamMember(db, fromUid));
     if (!isAdminCaller) {
       // אותו תנאי כמו בחוקי הנתונים: רק משתמש מאושר ולא חסום מתריע למשתמש אחר
       const [verified, blocked] = await Promise.all([

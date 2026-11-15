@@ -2217,3 +2217,132 @@ describe('idPurgeDue: only the admin schedules or reads the deletion of ID photo
     await assertFails(remove(ref(asStudent(), `idPurgeDue/${STUDENT}`)));
   });
 });
+
+
+// ── The team: several people review, one person owns (15.11.2026) ───────────────────────────────
+// A team member is a flag at team/<uid>, written only by the server (netlify/functions/team-roles.js). Rules read
+// the flag, so removing it takes effect on the next request — no token to wait out. A member can do the review work
+// (approve or reject children and teachers, decide on groups and reports, moderate content) and nothing that makes
+// the platform's rules: not the database root, not the configuration, not payments, not the team list itself.
+describe('team members review; only the owner owns', () => {
+  const TEAM_UID = 'team-uid';
+  const asTeam = () => testEnv.authenticatedContext(TEAM_UID, { email: 'team@example.com' }).database();
+  const setTeam = (on) => testEnv.withSecurityRulesDisabled(async (ctx) => {
+    if (on) await set(ref(ctx.database(), `team/${TEAM_UID}`), true); else await remove(ref(ctx.database(), `team/${TEAM_UID}`));
+  });
+  beforeEach(async () => {
+    await setTeam(true);
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.database();
+      await set(ref(db, 'users/kid2'), { name: 'Kid Two', role: 'student', verified: false, age: 12, createdAt: 1, parentIdPhoto: 'data:image/png;base64,AA' });
+      await set(ref(db, 'teachers/t2'), { name: 'T2', verified: false, rating: 4, reviews: 3, lessons: 2 });
+      await set(ref(db, 'reports/r1'), { reporterId: STUDENT, status: 'open', severity: 'high', createdAt: 1 });
+      await set(ref(db, 'groups/gt'), { teacherId: TEACHER, title: 'G', location: 'Park', day: 'ב', time: '17:00', status: 'pending', minAge: 12, maxAge: 14 });
+      await set(ref(db, `groupMembers/gt/${STUDENT}`), { name: 'Minor', status: 'pending', joinedAt: 1 });
+      await set(ref(db, 'adminConfig/x'), 1);
+      await set(ref(db, 'fcmTokens/tok'), { uid: STUDENT });
+      await set(ref(db, 'contactMessages/m1'), { name: 'x' });
+    });
+  });
+
+  it('can read the users, the reports, the pending groups and the ID photos it needs to decide', async () => {
+    await assertSucceeds(get(ref(asTeam(), 'users')));
+    await assertSucceeds(get(ref(asTeam(), 'reports')));
+    await assertSucceeds(get(ref(asTeam(), 'groups')));
+    await assertSucceeds(get(ref(asTeam(), 'adminAlerts')));
+    await assertSucceeds(get(ref(asTeam(), 'teacherVerification')));
+  });
+
+  it('cannot read the database root, the configuration, push tokens, analytics or contact forms', async () => {
+    await assertFails(get(ref(asTeam())));
+    for (const p of ['adminConfig', 'fcmTokens', '_analytics', 'parentConsentLog', 'contactMessages', 'teamInfo', 'bookings', 'idPurgeDue']) {
+      await assertFails(get(ref(asTeam(), p)));
+    }
+  });
+
+  it('approves and rejects a child', async () => {
+    await assertSucceeds(set(ref(asTeam(), 'users/kid2/verified'), true));
+    await assertSucceeds(set(ref(asTeam(), 'users/kid2/verifiedAt'), Date.now()));
+    await assertSucceeds(set(ref(asTeam(), 'users/kid2/verifiedBy'), TEAM_UID));
+    await assertSucceeds(set(ref(asTeam(), 'users/kid2/rejected'), true));
+    await assertSucceeds(set(ref(asTeam(), 'users/kid2/rejectedAt'), Date.now()));
+  });
+
+  it('cannot rewrite who a user is: role, age, creation date, subscription, the parent’s consent or ID photo', async () => {
+    for (const [f, v] of [['role', 'teacher'], ['age', 18], ['createdAt', 5], ['subscription', { active: true }], ['foundingMember', true],
+      ['parentConsentAt', Date.now()], ['parentConsentEmail', 'x@y.z'], ['parentIdPhoto', 'data:image/png;base64,ZZ']]) {
+      await assertFails(set(ref(asTeam(), `users/kid2/${f}`), v));
+    }
+  });
+
+  it('cannot delete a user, or invent one', async () => {
+    await assertFails(remove(ref(asTeam(), 'users/kid2')));
+    await assertFails(set(ref(asTeam(), 'users/kid2/role'), null));
+    await assertFails(set(ref(asTeam(), 'users/brand-new'), { name: 'x', role: 'student', verified: true }));
+  });
+
+  it('approves a teacher but cannot touch the rating, reviews or lessons that make a teacher look good', async () => {
+    await assertSucceeds(set(ref(asTeam(), 'teachers/t2/verified'), true));
+    await assertSucceeds(set(ref(asTeam(), 'teachers/t2/active'), true));
+    await assertSucceeds(set(ref(asTeam(), 'teachers/t2/ageVerification/status'), 'verified'));
+    await assertSucceeds(set(ref(asTeam(), 'approvedTeachers/t2'), true));
+    await assertFails(set(ref(asTeam(), 'teachers/t2/rating'), 5));
+    await assertFails(set(ref(asTeam(), 'teachers/t2/reviews'), 99));
+    await assertFails(set(ref(asTeam(), 'teachers/t2/lessons'), 99));
+  });
+
+  it('decides on a group — but can never write the parent’s approval, nor approve a child without it', async () => {
+    await assertSucceeds(set(ref(asTeam(), 'groups/gt/status'), 'open'));
+    await assertFails(set(ref(asTeam(), `groupMembers/gt/${STUDENT}/parentApprovedAt`), Date.now()));
+    await assertFails(set(ref(asTeam(), `groupMembers/gt/${STUDENT}/status`), 'approved'));
+    await assertSucceeds(set(ref(asTeam(), `groupMembers/gt/${STUDENT}/status`), 'rejected'));
+  });
+
+  it('cannot sign anyone out — the client answers that signal by deleting the account', async () => {
+    await assertFails(set(ref(asTeam(), `forceSignout/${STUDENT}`), { ts: Date.now() }));
+    await assertSucceeds(set(ref(asAdmin(), `forceSignout/${STUDENT}`), { ts: Date.now() }));
+  });
+
+  it('handles a report', async () => {
+    await assertSucceeds(set(ref(asTeam(), 'reports/r1/status'), 'resolved'));
+    await assertSucceeds(set(ref(asTeam(), 'reports/r1/handledBy'), TEAM_UID));
+  });
+
+  it('cannot write the configuration, the team list, or grant itself or anyone the role', async () => {
+    await assertFails(set(ref(asTeam(), 'adminConfig/x'), 2));
+    await assertFails(set(ref(asTeam(), `team/${TEAM_UID}`), true));
+    await assertFails(set(ref(asTeam(), 'team/someone-else'), true));
+    await assertFails(set(ref(asTeam(), 'teamInfo/someone-else'), { email: 'x' }));
+    await assertFails(set(ref(asTeam(), 'stats/students'), 5));
+  });
+
+  it('schedules the deletion of ID photos, with a number and nothing else', async () => {
+    await assertSucceeds(set(ref(asTeam(), 'idPurgeDue/kid2'), Date.now() + 1000));
+    await assertFails(set(ref(asTeam(), 'idPurgeDue/kid2'), 'never'));
+  });
+
+  it('loses everything the moment the flag is removed — no token to wait out', async () => {
+    await assertSucceeds(get(ref(asTeam(), 'users')));
+    await setTeam(false);
+    await assertFails(get(ref(asTeam(), 'users')));
+    await assertFails(set(ref(asTeam(), 'users/kid2/verified'), true));
+    await assertFails(set(ref(asTeam(), 'groups/gt/status'), 'open'));
+    await assertFails(get(ref(asTeam(), 'reports')));
+  });
+
+  it('nobody else gets any of it: a child, a teacher, a stranger or a guest', async () => {
+    for (const who of [asStudent, asTeacher, asStranger, asGuest]) {
+      await assertFails(get(ref(who(), 'users')));
+      await assertFails(set(ref(who(), `team/${STRANGER}`), true));
+      await assertFails(get(ref(who(), 'teamInfo')));
+    }
+    await assertSucceeds(get(ref(asTeam(), `team/${TEAM_UID}`)));
+    await assertFails(get(ref(asStranger(), `team/${TEAM_UID}`)));
+  });
+
+  it('the owner is unchanged: still everything', async () => {
+    await assertSucceeds(get(ref(asAdmin())));
+    await assertSucceeds(set(ref(asAdmin(), 'adminConfig/x'), 3));
+    await assertSucceeds(set(ref(asAdmin(), 'users/kid2/role'), 'student'));
+  });
+});

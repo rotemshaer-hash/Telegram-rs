@@ -47,6 +47,15 @@ describe('report-alert', () => {
     assert.equal((await call('kid', { reportId: 'r1' })).body.duplicate, true);
     assert.equal(pushes.length, 1);
   });
+  it('also rings every team member’s phone, not only the owner’s', async () => {
+    data.team = { t1: true, t2: true };
+    data['fcmTokens/tokT1'] = { uid: 't1' };
+    data['fcmTokens/tokT2'] = { uid: 't2' };
+    data['fcmTokens/tokOther'] = { uid: 'someone-else' };
+    const r = await call('kid', { reportId: 'r1' });
+    assert.equal(r.body.sent, 3);
+    assert.deepEqual(pushes[0].tokens.sort(), ['tok1', 'tokT1', 'tokT2']);
+  });
   it('does not push a low-severity report, someone else\'s report, or a bad session', async () => {
     assert.equal((await call('kid', { reportId: 'r2' })).body.sent, 0);
     assert.equal((await call('stranger', { reportId: 'r1' })).status, 403);
