@@ -12,7 +12,7 @@
 const { admin, initAdmin } = require('../lib/firebase-admin-init');
 const ALLOWED_ORIGINS = require('../lib/allowed-origins');
 
-const ADMIN_EMAIL = 'rotemshaer@gmail.com';
+const { ADMIN_EMAIL } = require('../lib/admin-email');
 const UID_RE = /^[A-Za-z0-9_-]{1,128}$/;
 
 exports.handler = async (event) => {

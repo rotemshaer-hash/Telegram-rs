@@ -95,7 +95,9 @@ if(IS_STAGING){
 // עד עכשיו הדרך היחידה לדעת שמשהו נשבר אצל משתמש הייתה שהוא יספר לנו.
 // זה תופס כל שגיאת JS/Promise שלא נתפסה בכל האפליקציה ושולח לוג ל-DB, מוגבל
 // לפעם אחת לכל שגיאה ייחודית בכל טעינת דף (כדי לא להציף בכתיבות אם שגיאה
-// חוזרת בלולאה). נצפה בפאנל הניהול תחת "שגיאות אפליקציה".
+// חוזרת בלולאה). נצפה בפאנל הניהול תחת "שגיאות אפליקציה" — וגם *מתריע*: אחרי
+// הכתיבה יוצאת קריאה ל-/api/error-alert, ששולח מייל למנהל על שגיאה חדשה. עד
+// 15.11.2026 הלוג נכתב ואף אחד לא ידע עליו עד שנפתח הפאנל.
 (function(){
   var _seen={};
   function _hash(s){var h=0;for(var i=0;i<s.length;i++){h=((h<<5)-h+s.charCodeAt(i))|0;}return String(h);}
@@ -106,7 +108,7 @@ if(IS_STAGING){
       if(_seen[key])return;
       _seen[key]=true;
       if(typeof db==='undefined'||!db)return;
-      db.ref('clientErrors').push({
+      var _ref=db.ref('clientErrors').push({
         message:String(message||'').slice(0,500),
         stack:String(extra.stack||'').slice(0,1000),
         source:String(extra.source||''),
@@ -115,6 +117,19 @@ if(IS_STAGING){
         uid:(typeof currentUser!=='undefined'&&currentUser)?currentUser.uid:null,
         userAgent:navigator.userAgent,
         createdAt:Date.now()
+      });
+      // אחרי שהכתיבה אושרה — קריאה לשרת שישלח מייל למנהל (error-alert.js). השרת
+      // קורא את הרשומה מהמסד לפי המזהה, ולכן לא נשלח כאן שום טקסט. keepalive כדי
+      // שגם שגיאה בזמן יציאה מהדף תספיק לצאת. הפונקציה לא מתריעה פעמיים על אותה
+      // שגיאה ביום, ויש לה תקרה יומית — ראה הקובץ.
+      //
+      // API_BASE מוגדר הרבה אחרי ה-IIFE הזה, אבל db מוגדר לפניו: שגיאה בשנייה
+      // הראשונה של הטעינה תגיע לכאן בלי API_BASE. בדפדפן נתיב יחסי הוא בדיוק מה
+      // ש-API_BASE היה נותן; במעטפת הנייטיב אין בסיס לנחש, והשגיאה נשארת במסד.
+      _ref.then(function(){
+        var base=(typeof API_BASE==='string')?API_BASE:(location.protocol.indexOf('http')===0?'':null);
+        if(base===null)return;
+        fetch(base+'/api/error-alert',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({errorId:_ref.key}),keepalive:true}).catch(function(){});
       }).catch(function(){});
     }catch(_e){}
   };

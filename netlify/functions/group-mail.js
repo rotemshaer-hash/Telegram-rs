@@ -13,13 +13,13 @@ const { sendViaEmailJS } = require('../lib/emailjs');
 const ALLOWED_ORIGINS = require('../lib/allowed-origins');
 const { FAKE_DOMAIN } = require('../lib/internal-email');
 const { withinWindowLimit } = require('../lib/rate-limit');
+const { ADMIN_EMAIL } = require('../lib/admin-email');
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ID_RE = /^[-A-Za-z0-9_]{1,128}$/;
 const RATE_LIMIT_MAX = 60;
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
 const EVENTS = { approved: 'approved', rejected: 'rejected', cancelled: 'approved' };
-const ADMIN_EMAIL = 'rotemshaer@gmail.com';
 
 const clip = (v, n) => String(v == null ? '' : v).replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, n);
 

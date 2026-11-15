@@ -11,7 +11,7 @@ const ALLOWED_ORIGINS = require('../lib/allowed-origins');
 const { withinWindowLimit } = require('../lib/rate-limit');
 const { pushToTokens } = require('../lib/push');
 
-const ADMIN_EMAIL = 'rotemshaer@gmail.com';
+const { ADMIN_EMAIL } = require('../lib/admin-email');
 const ID_RE = /^[A-Za-z0-9_-]{1,128}$/;
 const PUSH_SEVERITIES = ['critical', 'high'];
 const RATE_LIMIT_MAX = 10;

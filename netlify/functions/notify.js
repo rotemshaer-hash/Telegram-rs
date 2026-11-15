@@ -20,7 +20,7 @@
 const { admin, initAdmin } = require('../lib/firebase-admin-init');
 const ALLOWED_ORIGINS = require('../lib/allowed-origins');
 
-const ADMIN_EMAIL = 'rotemshaer@gmail.com';
+const { ADMIN_EMAIL } = require('../lib/admin-email');
 
 // נדיב לשימוש אמיתי (כל הודעה בצ'אט מייצרת התראה), נמוך מספיק כדי שהצפה
 // של פיד של מישהו אחר תיעצר.
