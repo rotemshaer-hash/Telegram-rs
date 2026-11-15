@@ -10,7 +10,7 @@ test('a new group is written as pending and the admin is told', async ({ page })
     db = { ref: (p) => mk(p) };
     currentUser = { uid: 'teach', email: 't@example.com', emailVerified: true };
     currentUserData = { name: 'מורה', role: 'teacher', verified: true };
-    document.body.insertAdjacentHTML('beforeend', '<input id="_cgTitle" value="שחמט"><input id="_cgLocation" value="הרצל 15, תל אביב"><input id="_cgDesc" value="כיף"><select id="_cgCat"><option value="x" selected>x</option></select>');
+    document.body.insertAdjacentHTML('beforeend', '<input id="_cgTitle" value="שחמט"><input id="_cgLocation" value="הרצל 15, תל אביב"><input id="_cgDesc" value="כיף"><select id="_cgCat"><option value="x" selected>x</option></select><select id="_cgMinAge"><option value="10" selected>10</option></select><select id="_cgMaxAge"><option value="12" selected>12</option></select>');
     await _saveNewGroup();
     const group = writes.find((w) => w[0] === 'groups' || (w[1] && w[1].teacherId === 'teach'));
     const notified = writes.some((w) => w[0] === 'adminNotifs' && w[1].type === 'newGroup');

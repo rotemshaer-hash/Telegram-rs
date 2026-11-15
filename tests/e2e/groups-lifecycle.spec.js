@@ -57,7 +57,9 @@ test('a double click on "approve" counts one child, and the leader cannot pass t
   await page.waitForFunction(() => typeof _approveGroupMember === 'function');
   const r = await page.evaluate(async () => {
     const counts = [];
-    const server = { 'groups/g1': { teacherId: 'teach', title: 'חוג', maxStudents: 3, membersCount: 2, status: 'open' } };
+    // the parent's approval is what the server writes after the parent's click; without it the leader cannot approve
+    const server = { 'groups/g1': { teacherId: 'teach', title: 'חוג', maxStudents: 3, membersCount: 2, status: 'open' },
+      'groupMembers/g1/kid': { status: 'pending', parentApprovedAt: 1 }, 'groupMembers/g1/kid2': { status: 'pending', parentApprovedAt: 1 } };
     db = { ref: (p) => ({
       get: async () => ({ exists: () => p in server, val: () => server[p], forEach: () => {} }),
       set: async (v) => { if (p === 'groups/g1/membersCount') { counts.push(v); server['groups/g1'].membersCount = v; } },
@@ -123,13 +125,13 @@ test('the join screen carries the physical-meetup notice and says the parent is 
   await page.waitForFunction(() => typeof showGroupDetail === 'function');
   const r = await page.evaluate(async () => {
     currentUser = { uid: 'kid', email: 'k@example.com', emailVerified: true };
-    currentUserData = { name: 'ילד', role: 'student', verified: true };
+    currentUserData = { name: 'ילד', role: 'student', verified: true, age: 12 };
     myGroupStatuses = {};
-    communityGroups = [{ id: 'g1', status: 'open', subject: 'chess', title: 'חוג', desc: 'x', location: 'פארק', day: 'יום ב', time: '17:00', maxStudents: 5, membersCount: 1, teacherId: 't1', teacherName: 'מורה', createdAt: 1 }];
+    communityGroups = [{ id: 'g1', status: 'open', subject: 'chess', title: 'חוג', desc: 'x', location: 'פארק', day: 'יום ב', time: '17:00', maxStudents: 5, membersCount: 1, teacherId: 't1', teacherName: 'מורה', createdAt: 1, minAge: 10, maxAge: 13 }];
     showGroupDetail('g1');
     await new Promise((res) => setTimeout(res, 200));
     const txt = document.getElementById('_gdOv').innerText;
-    return { notice: txt.includes(GROUP_MEETUP_NOTICE), parentMail: txt.includes('ההורה שלך יקבל'), join: txt.includes('הצטרף לקבוצה') };
+    return { notice: txt.includes(GROUP_MEETUP_NOTICE), parentMail: txt.includes('ההורה שלך יקבל מייל') && txt.includes('רק אחרי שהוא יאשר'), join: txt.includes('הצטרף לקבוצה') };
   });
   expect(r.notice).toBe(true);
   expect(r.parentMail).toBe(true);

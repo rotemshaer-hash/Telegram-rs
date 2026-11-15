@@ -62,6 +62,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/group-consent"
+  to = "/.netlify/functions/group-consent"
+  status = 200
+
+[[redirects]]
   from = "/api/account-cleanup"
   to = "/.netlify/functions/account-cleanup"
   status = 200

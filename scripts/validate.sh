@@ -50,6 +50,36 @@ ssot_check "go('discover') call site (only inside openDiscover())" "go('discover
 # ממחיקה המונית. SSOT הוא על הערך, ולכן הוא נבדק כאן על הערך עצמו.
 ssot_check "ADMIN_EMAIL value" "rotemshaer@gmail.com"
 
+# מספר החירום של קבוצות (15.11.2026): הערך כתוב בקובץ הלקוח פעם אחת. עותק השרת (netlify/lib/safety-contact.js) נבדק
+# מול הלקוח ב-tests/functions/group-consent.test.js; המסמך ש-Google Play מקבל (child-safety.html) לא יכול לייבא
+# קבוע, ולכן נבדק כאן שהוא מחזיק בדיוק את אותו מספר.
+# (נספר ההגדרה ולא הערך: אותו מספר משמש כרגע גם כ-Bit/PayBox של המנהל, שני תפקידים נפרדים שיתפצלו כשיהיה קו ייעודי)
+ssot_check "GROUP_EMERGENCY_PHONE" "const GROUP_EMERGENCY_PHONE="
+_phone=$(grep -o "const GROUP_EMERGENCY_PHONE='[0-9]*'" index.html | grep -o "[0-9]\{9,\}" || true)
+if [ -n "$_phone" ] && grep -q "tel:$_phone" child-safety.html; then
+  pass "child-safety.html carries the same emergency number as index.html"
+else
+  fail "child-safety.html does not carry GROUP_EMERGENCY_PHONE ($_phone) — the document submitted to Google Play would name a different number or none"
+fi
+
+# אישור הורה לקבוצה (15.11.2026): ילד לא מתקבל בלי parentApprovedAt, והשדה נכתב רק בשרת. אם החוק הזה יוסר, "ההורים
+# ידעו" חוזר להיות הצהרה בלי כיסוי — LEGAL-EVIDENCE.md מצטט אותו.
+if grep -q "newData.parent().child('parentApprovedAt').isNumber()" database.rules.json \
+   && grep -q '"parentApprovedAt": { ".validate": "newData.isNumber() && auth.token.email' database.rules.json; then
+  pass "database.rules.json: a group member is approved only with the parent's approval, written by the server alone"
+else
+  fail "database.rules.json lost the parentApprovedAt gate on groupMembers/status"
+fi
+# טווח הגילים של קבוצה חייב להישאר בתוך טווח הילדים של האפליקציה (AGE_RANGE.student ב-index.html)
+_min=$(grep -o "student:{min:[0-9]*" index.html | grep -o "[0-9]*$" | head -1)
+_max=$(grep -o "student:{min:[0-9]*,max:[0-9]*" index.html | grep -o "[0-9]*$" | head -1)
+if grep -q "newData.val() >= $_min && newData.val() <= $_max && newData.val() <= newData.parent().child('maxAge')" database.rules.json \
+   && grep -q "\"maxAge\": { \".validate\": \"newData.isNumber() && newData.val() % 1 == 0 && newData.val() >= $_min && newData.val() <= $_max" database.rules.json; then
+  pass "database.rules.json: a group's age range is bounded by AGE_RANGE.student ($_min–$_max)"
+else
+  fail "database.rules.json group minAge/maxAge bounds differ from AGE_RANGE.student ($_min–$_max) in index.html"
+fi
+
 # מחיקת משתמש נכשלה שלוש פעמים מאותה סיבה: כל מסלול מחיקה החזיק רשימת
 # נתיבים משלו. הרשימות סטו, ו-teacherVerification — תמונת תעודת הזהות של
 # הקטין — נשארה במסד אחרי "אפס מערכת" ואחרי מחיקה המונית. הרשימה חיה עכשיו

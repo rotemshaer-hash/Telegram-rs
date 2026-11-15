@@ -53,6 +53,13 @@ beforeEach(() => {
 });
 
 describe('group-mail', () => {
+  it('the approval email gives the parent a number to call during a meetup', async () => {
+    const { GROUP_EMERGENCY_PHONE } = require('../../netlify/lib/safety-contact');
+    await call(TEACHER, { groupId: 'g1', uid: KID, event: 'approved' });
+    assert.ok(sent[0].message.includes(GROUP_EMERGENCY_PHONE));
+    assert.match(sent[0].message, /משטרה 100/);
+  });
+
   it('prefers the parent address the server locked over the one the child can edit', async () => {
     data[`parentContact/${KID}/email`] = 'real-mom@example.org';
     const r = await call(TEACHER, { groupId: 'g1', uid: KID, event: 'approved' });

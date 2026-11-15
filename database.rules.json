@@ -472,6 +472,7 @@
       ".read": "auth != null && (root.child('users').child(auth.uid).child('verified').val() == true || auth.token.email == 'rotemshaer@gmail.com')",
       ".indexOn": ["status"],
       "$groupId": {
+        ".validate": "data.exists() || auth.token.email == 'rotemshaer@gmail.com' || newData.hasChildren(['minAge', 'maxAge'])",
         ".write": "auth != null && (!newData.exists() || (newData.child('status').exists() && newData.child('teacherId').exists())) && ((root.child('users').child(auth.uid).child('verified').val() == true && !root.child('userBlocks').child(auth.uid).exists() && ((data.exists() && data.child('teacherId').val() == auth.uid) || (!data.exists() && newData.child('teacherId').val() == auth.uid && root.child('users').child(auth.uid).child('role').val() == 'teacher'))) || auth.token.email == 'rotemshaer@gmail.com')",
         "teacherId": { ".validate": "newData.isString() && (auth.token.email == 'rotemshaer@gmail.com' || newData.val() == auth.uid)" },
         "teacherName": { ".validate": "newData.isString() && newData.val().length <= 60 && !newData.val().matches(/[<>`]/) && !newData.val().matches(/(https?:\\/\\/|www\\.|@[a-zA-Z0-9._]{3,}|0[0-9]{1,2}[- ]?[0-9]{3}[- ]?[0-9]{4})/) && (auth.token.email == 'rotemshaer@gmail.com' || (data.parent().child('status').val() != 'open' && data.parent().child('status').val() != 'full'))" },
@@ -485,6 +486,8 @@
         "time": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>`]/) && (auth.token.email == 'rotemshaer@gmail.com' || (data.parent().child('status').val() != 'open' && data.parent().child('status').val() != 'full'))" },
         "price": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000 && (auth.token.email == 'rotemshaer@gmail.com' || (data.parent().child('status').val() != 'open' && data.parent().child('status').val() != 'full'))" },
         "maxStudents": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 30 && (auth.token.email == 'rotemshaer@gmail.com' || (data.parent().child('status').val() != 'open' && data.parent().child('status').val() != 'full'))" },
+        "minAge": { ".validate": "newData.isNumber() && newData.val() % 1 == 0 && newData.val() >= 9 && newData.val() <= 18 && newData.val() <= newData.parent().child('maxAge').val() && (auth.token.email == 'rotemshaer@gmail.com' || (data.parent().child('status').val() != 'open' && data.parent().child('status').val() != 'full'))" },
+        "maxAge": { ".validate": "newData.isNumber() && newData.val() % 1 == 0 && newData.val() >= 9 && newData.val() <= 18 && (auth.token.email == 'rotemshaer@gmail.com' || (data.parent().child('status').val() != 'open' && data.parent().child('status').val() != 'full'))" },
         "isMixed": { ".validate": "newData.isBoolean()" },
         "createdAt": { ".validate": "newData.isNumber()" },
         "membersCount": {
@@ -505,8 +508,9 @@
           "name": { ".validate": "newData.isString() && newData.val().length <= 60 && !newData.val().matches(/[<>`]/)" },
           "joinedAt": { ".validate": "newData.isNumber()" },
           "status": {
-            ".validate": "auth.uid != $uid || auth.token.email == 'rotemshaer@gmail.com' || root.child('groups').child($groupId).child('teacherId').val() == auth.uid || newData.val() == 'pending'"
+            ".validate": "(newData.val() != 'approved' || newData.parent().child('parentApprovedAt').isNumber()) && (auth.uid != $uid || auth.token.email == 'rotemshaer@gmail.com' || root.child('groups').child($groupId).child('teacherId').val() == auth.uid || newData.val() == 'pending')"
           },
+          "parentApprovedAt": { ".validate": "newData.isNumber() && auth.token.email == 'rotemshaer@gmail.com'" },
           "$other": { ".validate": "auth.token.email == 'rotemshaer@gmail.com'" }
         }
       }
