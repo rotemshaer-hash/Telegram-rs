@@ -68,13 +68,20 @@ const firebaseConfig = {
   appId: "1:799651449632:web:3e16d3e8e28029f58aa545",
   measurementId: "G-9S1J6XPL8B"
 };
-firebase.initializeApp(firebaseConfig);
 // var (not const/let) prevents TDZ issues if Firebase CDN fails to load
 var auth=null,db=null,storage=null,analytics=null;
 // analytics לא מאותחל כאן בכוונה — ראה initAnalyticsIfConsented(). קריאה
 // ל-firebase.analytics() היא מה שמזריק את gtag.js ומציב את עוגיית _ga, ולכן
 // עצם הדחייה שלה היא מה שמונע איסוף לפני שיש הסכמת הורה.
-try{auth=firebase.auth();db=firebase.database();storage=firebase.storage();}catch(e){console.error('Firebase init failed:',e);}
+//
+// initializeApp חייב להיות באותו try: אם ה-CDN של Firebase לא נטען (חוסם
+// רשת, ad-blocker, ניתוק), `firebase` עצמו לא מוגדר, וקריאה אליו מחוץ ל-try
+// הייתה זורקת שגיאה לא-תפוסה שעוצרת את בלוק ה-script כולו באמצעו — כולל
+// הדיווח על שגיאות client-side שמוגדר כמה שורות מתחת, וכל מה שבא אחריו.
+try{
+  firebase.initializeApp(firebaseConfig);
+  auth=firebase.auth();db=firebase.database();storage=firebase.storage();
+}catch(e){console.error('Firebase init failed:',e);}
 
 // באנר קבוע כשהדף מדבר עם מסד הבדיקות. בלעדיו preview נראה זהה לייצור,
 // ומי שפותח אותו רואה נתונים שנראים אמיתיים — או, גרוע יותר, **לא** רואה
@@ -198,7 +205,7 @@ if(IS_STAGING){
    גדולות, אין עולים גבוהים), וריווח שלילי דוחס אותה ופוגע בקריאות. הוסר
    משלושת הכללים הגלובליים האלה; הערכים השליליים שעל הלוגו "Drushe"
    עצמו (טקסט לטיני) נשארו בכוונה — inline וגוברים ממילא על הכלל הגלובלי. */
-html,body{height:100%;background:#ECFEFF;font-family:var(--font);overflow-x:hidden;overscroll-behavior:none;-webkit-overflow-scrolling:touch}
+html,body{height:100%;background:#ECFEFF;font-family:var(--font);overflow-x:clip;overscroll-behavior:none;-webkit-overflow-scrolling:touch}
 ::-webkit-scrollbar{display:none}
 
 h1,h2,h3,h4{font-family:var(--font)}
@@ -280,6 +287,7 @@ input,textarea,select{font-family:inherit;-webkit-appearance:none;appearance:non
 .support-ticker{background:linear-gradient(90deg,#3B82F6,#8B5CF6);overflow:hidden;white-space:nowrap;padding:5px 0 max(5px,env(safe-area-inset-bottom));cursor:pointer;direction:ltr}
 .support-ticker-track{display:inline-flex;animation:supportMarquee 28s linear infinite reverse}
 .support-ticker-track span{color:#fff;font-weight:800;font-size:11.5px;direction:rtl}
+.support-ticker:hover .support-ticker-track,.support-ticker:focus-within .support-ticker-track{animation-play-state:paused}
 @keyframes supportMarquee{from{transform:translateX(0)}to{transform:translateX(-25%)}}
 @media (prefers-reduced-motion:reduce){.support-ticker-track{animation:none}}
 
@@ -347,7 +355,7 @@ input,textarea,select{font-family:inherit;-webkit-appearance:none;appearance:non
 /* OTP */
 .otp{display:flex;gap:8px;justify-content:center;margin-bottom:20px}
 .otp input{width:44px;height:52px;text-align:center;font-size:22px;font-weight:900;border-radius:12px;border:2px solid rgba(20,184,166,.15);outline:none;background:rgba(20,184,166,.03);color:var(--text)}
-.otp input:focus{border-color:var(--s)}
+.otp input:focus{border-color:var(--s);outline:2px solid var(--s);outline-offset:2px}
 
 /* SLIDER */
 .slider{width:100%;-webkit-appearance:none;height:6px;border-radius:3px;background:rgba(20,184,166,.15);outline:none}
@@ -398,7 +406,7 @@ button[onclick*="back()"]{min-height:44px;min-width:44px}
 .bbl-other{color:#fff;border-radius:18px 18px 4px 18px}
 .chat-bar{background:rgba(255,255,255,.96);backdrop-filter:blur(20px);padding:11px 14px;padding-bottom:max(14px,env(safe-area-inset-bottom));border-top:1px solid rgba(0,0,0,.05);display:flex;gap:9px;align-items:center}
 .chat-bar input{flex:1;border:2px solid rgba(20,184,166,.12);border-radius:50px;padding:11px 16px;font-size:14px;outline:none;direction:rtl;background:rgba(20,184,166,.03)}
-.chat-bar input:focus{border-color:var(--s)}
+.chat-bar input:focus{border-color:var(--s);outline:2px solid var(--s);outline-offset:2px}
 
 /* LEADERBOARD */
 .lb-row{background:var(--card);border-radius:var(--radius-sm);padding:13px 16px;margin-bottom:10px;display:flex;align-items:center;gap:13px;box-shadow:var(--shadow)}
@@ -524,14 +532,14 @@ body.dark .online-dot{border-color:#0D1117 !important}
 <body>
 <!-- Mobile-only notice for desktop users -->
 <div id="_desktopWarn" style="display:none;position:fixed;inset:0;background:linear-gradient(165deg,#ECFEFF 0%,#F0F9FF 50%,#EEF2FF 100%);z-index:99999;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:40px;color:#0F1A1F">
-  <div style="font-size:80px;margin-bottom:20px">📱</div>
+  <div style="margin-bottom:20px"><svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg></div>
   <h1 style="font-size:28px;font-weight:900;margin:0 0 12px">Drushe</h1>
   <p style="font-size:16px;color:#0F1A1F;margin:0 0 8px">ילדים מלמדים ילדים</p>
   <div style="background:rgba(255,255,255,0.7);border-radius:20px;padding:24px 32px;max-width:360px;margin-top:24px">
-    <div style="font-size:32px;margin-bottom:12px">🚫💻</div>
+    <div style="margin-bottom:12px"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/><line x1="1" y1="1" x2="23" y2="23"/></svg></div>
     <p style="font-size:15px;font-weight:700;margin:0 0 10px;color:#0F1A1F">האפליקציה מיועדת לשימוש בסלולרי בלבד</p>
     <p style="font-size:13px;color:#64748B;margin:0 0 18px;line-height:1.6">סרוק את הקוד עם הטלפון שלך<br>או גש לאפליקציה ישירות מהדפדפן הנייד</p>
-    <canvas id="_qrCanvas" style="border-radius:12px;background:#fff;padding:8px"></canvas>
+    <canvas id="_qrCanvas" aria-hidden="true" style="border-radius:12px;background:#fff;padding:8px"></canvas>
   </div>
   <button onclick="document.getElementById('_desktopWarn').style.display='none'" style="margin-top:16px;background:rgba(20,184,166,0.12);color:#14B8A6;border-radius:50px;padding:8px 20px;font-size:12px;cursor:pointer">כניסת מנהל 🔑</button>
 </div>
@@ -1257,7 +1265,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.80';
+const APP_VERSION='4.11.81';
 
 // ─── הודעות קוליות — כבויות ────────────────────────────────────────────────
 // הקלטה קולית היא הערוץ היחיד בין ילדים שאיש לא בודק: אין תמלול, אין סינון,
@@ -1407,10 +1415,11 @@ _restoreRegSession();
 // שמור קוד הפניה מ-URL לסשן (לפני כל דבר אחר)
 (function(){try{const ref=new URLSearchParams(window.location.search).get('ref');if(ref)sessionStorage.setItem('_kidRefCode',ref);}catch(_){}})();
 // ─── ROUTER ───────────────────────────────────────────────────────────────────
-// html,body{overflow-x:hidden} עם overflow-y לא מוגדר גורם לדפדפן לחשב
-// overflow-y כ-auto (כלל ה-CSS: אם ציר אחד לא visible, הציר השני הופך מ-visible ל-auto) —
-// כלומר body עצמו הופך למיכל הגלילה בפועל, לא window/documentElement. לכן איפוס גלילה
-// בניווט חייב לאפס גם את body.scrollTop, אחרת מסך חדש "יורש" את מיקום הגלילה מהמסך הקודם.
+// עד 15.11.2026 html,body{overflow-x:hidden} עם overflow-y לא מוגדר גרם לדפדפן לחשב overflow-y
+// כ-auto (כלל ה-CSS: hidden על ציר אחד הופך visible בציר השני ל-auto, מה ש-clip לא עושה) —
+// כלומר body עצמו הפך למיכל הגלילה בפועל, לא window/documentElement. הכלל הוחלף ל-
+// overflow-x:clip בדיוק כדי למנוע את זה, אבל האיפוס כאן נשאר מאפס את כל המועמדים האפשריים
+// (window, documentElement, body, #app) בכוונה — הוא לא תלוי במי מהם בפועל מיכל הגלילה.
 function _resetScroll(){
   window.scrollTo(0,0);
   document.documentElement.scrollTop=0;
@@ -5918,7 +5927,7 @@ window.addEventListener('load',_initNetworkBanner);
 function _sendBrowserNotif(title,body){
   if(!('Notification' in window))return;
   if(Notification.permission==='granted'){
-    new Notification(title,{body,icon:'https://kidemy-app.netlify.app/favicon.ico',dir:'rtl',lang:'he'});
+    new Notification(title,{body,icon:'/icon-192.png',dir:'rtl',lang:'he'});
   }
 }
 async function _requestBrowserNotifPermission(){
