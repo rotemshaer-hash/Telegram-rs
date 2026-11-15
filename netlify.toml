@@ -6,6 +6,10 @@
 [functions]
   directory = "netlify/functions"
 
+# מחיקת צילומי תעודות זהות 30 יום אחרי ההחלטה (id-photo-purge.js). רצה פעם ביום, 03:17 UTC.
+[functions."id-photo-purge"]
+  schedule = "17 3 * * *"
+
 [[redirects]]
   from = "/api/ai-assistant"
   to = "/.netlify/functions/ai-assistant"

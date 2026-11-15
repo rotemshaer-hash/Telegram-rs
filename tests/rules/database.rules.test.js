@@ -2197,3 +2197,23 @@ describe('a group cannot be aimed at children much younger than its leader', () 
     await assertSucceeds(set(ref(ADMIN_DB(), 'groups/gap8'), base({ minAge: 9, maxAge: 12 })));
   });
 });
+
+
+// ── The deletion queue for ID photos is the owner's alone (15.11.2026) ───────────────────────
+describe('idPurgeDue: only the admin schedules or reads the deletion of ID photos', () => {
+  it('a child, a teacher, a stranger and a guest can neither write nor read it', async () => {
+    for (const who of [asStudent, asTeacher, asStranger, asGuest]) {
+      await assertFails(set(ref(who(), `idPurgeDue/${STUDENT}`), Date.now() + 1000));
+      await assertFails(get(ref(who(), `idPurgeDue/${STUDENT}`)));
+    }
+  });
+  it('the admin can', async () => {
+    await assertSucceeds(set(ref(asAdmin(), `idPurgeDue/${STUDENT}`), Date.now() + 1000));
+    await assertSucceeds(get(ref(asAdmin(), 'idPurgeDue')));
+  });
+  it('a user cannot push their own deletion date further out', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => { await set(ref(ctx.database(), `idPurgeDue/${STUDENT}`), 1); });
+    await assertFails(set(ref(asStudent(), `idPurgeDue/${STUDENT}`), Date.now() + 99 * 86400000));
+    await assertFails(remove(ref(asStudent(), `idPurgeDue/${STUDENT}`)));
+  });
+});

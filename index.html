@@ -3776,6 +3776,14 @@ const GROUP_EMERGENCY_PHONE='0542020812';
 // הילד הצעיר בקבוצה יכול להיות צעיר מהמוביל ב-3 שנים לכל היותר (החלטת הבעלים, 15.11.2026). המוביל בן 14–18; מוביל בן 14
 // שמוביל ילדים בני 9, לבד וללא מבוגר, היה הפער הראשון שעו"ד או מבטח היו מצביעים עליו. אותו מספר בחוקים: groups/$groupId/minAge.
 const GROUP_MAX_AGE_GAP=3;
+// כמה ימים נשמר צילום תעודת זהות אחרי שהצוות הכריע (החלטת הבעלים, 15.11.2026). עד אז הוא נשמר עד מחיקת החשבון. המחיקה עצמה
+// רצה בשרת (netlify/functions/id-photo-purge.js); כאן רק נרשם *מתי* — בכל אישור או דחייה. אותו מספר ב-netlify/lib/retention.js
+// ובנוסח ב-privacy.html; tests/functions/id-photo-purge.test.js נכשל אם הם סוטים.
+const ID_PHOTO_RETENTION_DAYS=30;
+async function scheduleIdPurge(uid){
+  try{await db.ref('idPurgeDue/'+uid).set(Date.now()+ID_PHOTO_RETENTION_DAYS*86400000);}
+  catch(e){console.warn('[idPurge]',e);showFireToast('⚠️ ההחלטה נשמרה, אבל מחיקת התעודה לא תוזמנה. הודע לי');}
+}
 function groupMinAgeFloor(){
   const a=Number(currentUserData?.age);
   return Math.max(AGE_RANGE.student.min,Number.isFinite(a)?a-GROUP_MAX_AGE_GAP:AGE_RANGE.student.max);
@@ -6335,6 +6343,7 @@ async function adminVerifyStudent(uid){
     const updatedUser={...baseData,uid,verified:true,role:'student',rejected:false,verifiedAt:Date.now()};
     // שלב 3: כתוב ל-Firebase (set כדי ליצור רשומה מלאה אם לא קיימת)
     await db.ref('users/'+uid).set(updatedUser);
+    await scheduleIdPurge(uid);
     await db.ref('adminAlerts/students/'+uid).remove().catch(()=>{});
     await db.ref('notifications/'+uid).push({type:'studentApproved',read:false,createdAt:Date.now()}).catch(()=>{});
     // שלב 4: עדכן זיכרון מיד — ללא loadAdminData (למנוע race condition)
@@ -6409,7 +6418,9 @@ async function adminRejectStudent(uid){
     await Promise.allSettled([
       db.ref('users/'+uid+'/rejected').set(true),
       db.ref('users/'+uid+'/verified').set(false),
+      db.ref('users/'+uid+'/rejectedAt').set(Date.now()),
     ]);
+    await scheduleIdPurge(uid);
     await db.ref('adminAlerts/students/'+uid).remove().catch(()=>{});
     showFireToast('🚫 הבקשה נדחתה');
     await loadAdminData();renderAdminPanel();
@@ -6529,6 +6540,7 @@ async function adminApproveTeacher(uid){
     await db.ref('teachers/'+uid+'/verified').set(true);
     await db.ref('teachers/'+uid+'/active').set(true);
     await db.ref('users/'+uid+'/verified').set(true);
+    await scheduleIdPurge(uid);
     // שלח הודעה למורה
     await db.ref('notifications/'+uid).push({type:'teacherApproved',read:false,createdAt:Date.now()});
     // מייל למנהל
@@ -6573,7 +6585,9 @@ async function adminRejectTeacher(uid){
     await Promise.allSettled([
       db.ref('users/'+uid+'/rejected').set(true),
       db.ref('users/'+uid+'/verified').set(false),
+      db.ref('users/'+uid+'/rejectedAt').set(Date.now()),
     ]);
+    await scheduleIdPurge(uid);
     await db.ref('teachers/'+uid).remove().catch(()=>{});
     showFireToast('🚫 המורה נדחה');
     await loadAdminData();renderAdminPanel();

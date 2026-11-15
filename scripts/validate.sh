@@ -70,6 +70,9 @@ if grep -q "newData.parent().child('parentApprovedAt').isNumber()" database.rule
 else
   fail "database.rules.json lost the parentApprovedAt gate on groupMembers/status"
 fi
+# תקופת השמירה של צילומי תעודות: הגדרה אחת בלקוח, העותק בשרת והנוסח ב-privacy.html נבדקים מולה ב-tests/functions.
+ssot_check "ID_PHOTO_RETENTION_DAYS" "const ID_PHOTO_RETENTION_DAYS="
+
 # פער הגילים מול המוביל: אותו מספר בלקוח (GROUP_MAX_AGE_GAP) ובחוקים (minAge מול users/<מוביל>/age). אם הם סוטים, הטופס
 # מציע למוביל גיל שהחוק ידחה — או גרוע מזה, החוק מתיר יותר ממה שהטופס מבטיח.
 ssot_check "GROUP_MAX_AGE_GAP" "const GROUP_MAX_AGE_GAP="
