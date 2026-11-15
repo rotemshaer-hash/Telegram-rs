@@ -109,7 +109,18 @@ exports.handler = async (event) => {
       'כל השגיאות: ' + SITE_URL + ' ← פאנל ניהול ← שגיאות אפליקציה',
       'מייל אחד לכל שגיאה ייחודית ב-24 שעות, עד ' + MAX_EMAILS_PER_DAY + ' מיילים ביום.',
     ];
-    await sendViaEmailJS(ADMIN_EMAIL, '🐞 שגיאה חדשה ב-Drushe: ' + clip(err.message, 70), lines.join('\n'));
+    try {
+      await sendViaEmailJS(ADMIN_EMAIL, '🐞 שגיאה חדשה ב-Drushe: ' + clip(err.message, 70), lines.join('\n'));
+    } catch (mailErr) {
+      // מייל שלא יצא לא "בזבז" כלום: החתימה והמכסה היומית משוחררות, כך שהשגיאה הזו תוכל להתריע שוב כשהמייל יתוקן. קודם הן
+      // נשארו תפוסות ל-24 שעות — כלומר תקלה ב-EmailJS הייתה גם מעלימה את ההתראה, וגם שורפת את המכסה, בשקט.
+      console.error('[error-alert] mail failed:', mailErr.message);
+      await db.ref('errorAlertSent/' + sig).remove().catch(() => {});
+      await db.ref('errorAlertRateLimit/global').transaction((cur) => (cur && cur.count > 0 ? { start: cur.start, count: cur.count - 1 } : cur)).catch(() => {});
+      await db.ref('adminNotifs').push({ type: 'emailFailed', from: 'error-alert', error: clip(mailErr.message, 200), read: false, createdAt: Date.now() }).catch(() => {});
+      // הסיבה (מקוצרת) חוזרת גם בתגובה: היא טקסט שגיאה של EmailJS ולא סוד, וכך כשל במייל נראה מיד לבדיקה ולא רק בלוגים שאין גישה אליהם
+      return reply(502, { error: 'mail_failed', detail: clip(mailErr.message, 160) });
+    }
 
     return reply(200, { sent: 1, signature: sig });
   } catch (e) {

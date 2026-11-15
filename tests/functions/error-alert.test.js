@@ -15,6 +15,7 @@ const NOW = Date.now();
 
 const fakeDb = {
   ref: (p) => ({
+    push: async (v) => { data['push:' + p] = v; },
     get: async () => ({ val: () => data[p], exists: () => data[p] !== undefined }),
     remove: async () => { delete data[p]; },
     transaction: async (fn) => {
@@ -31,7 +32,7 @@ require.cache[resolve('../../netlify/lib/firebase-admin-init.js')] = {
   exports: { initAdmin: () => {}, admin: { database: () => fakeDb } },
 };
 require.cache[resolve('../../netlify/lib/emailjs.js')] = {
-  exports: { sendViaEmailJS: async (to, subject, message) => { emails.push({ to, subject, message }); return true; } },
+  exports: { sendViaEmailJS: async (to, subject, message) => { if (global.__mailFails) throw new Error('EmailJS 400: bad template'); emails.push({ to, subject, message }); return true; } },
 };
 const { handler } = require('../../netlify/functions/error-alert.js');
 
@@ -139,5 +140,18 @@ describe('error-alert', () => {
     }
     assert.equal((await call({ errorId: 'e1' }, { ip: '9.9.9.9' })).status, 429);
     assert.equal((await call({ errorId: 'e1' }, { ip: '8.8.8.8' })).body.sent, 1);
+  });
+
+  it('a failed email frees the signature and the daily slot, tells the owner, and the same error can alert again', async () => {
+    global.__mailFails = true;
+    const r = await call({ errorId: 'e1' });
+    assert.equal(r.status, 502);
+    assert.equal(r.body.error, 'mail_failed');
+    assert.match(r.body.detail, /EmailJS 400/, 'the reason is visible to whoever is diagnosing');
+    assert.ok(!Object.keys(data).some((k) => k.startsWith('errorAlertSent/')), 'the signature is released');
+    assert.equal(data['errorAlertRateLimit/global'].count, 0, 'the daily slot is given back');
+    assert.equal(data['push:adminNotifs'].type, 'emailFailed');
+    global.__mailFails = false;
+    assert.equal((await call({ errorId: 'e1' })).body.sent, 1, 'once the mail works, the same error alerts');
   });
 });
