@@ -3773,6 +3773,13 @@ const GROUP_MEETUP_NOTICE='חלק מהקבוצות נפגשות פיזית, לל
 // מספר לפניות דחופות בזמן מפגש — זמני (החלטת הבעלים, 15.11.2026), יוחלף במספר ייעודי לפני ההשקה. עד אז לא היה לאף הורה ולאף
 // מוביל למי להתקשר. העותק של השרת: netlify/lib/safety-contact.js; tests/functions/group-consent.test.js נכשל אם הם סוטים.
 const GROUP_EMERGENCY_PHONE='0542020812';
+// הילד הצעיר בקבוצה יכול להיות צעיר מהמוביל ב-3 שנים לכל היותר (החלטת הבעלים, 15.11.2026). המוביל בן 14–18; מוביל בן 14
+// שמוביל ילדים בני 9, לבד וללא מבוגר, היה הפער הראשון שעו"ד או מבטח היו מצביעים עליו. אותו מספר בחוקים: groups/$groupId/minAge.
+const GROUP_MAX_AGE_GAP=3;
+function groupMinAgeFloor(){
+  const a=Number(currentUserData?.age);
+  return Math.max(AGE_RANGE.student.min,Number.isFinite(a)?a-GROUP_MAX_AGE_GAP:AGE_RANGE.student.max);
+}
 function emergencyLineHtml(){
   return `<div class="warn" style="margin-bottom:12px"><span>🆘</span><span>לפניות דחופות בזמן מפגש: <a href="tel:${GROUP_EMERGENCY_PHONE}" dir="ltr" style="color:inherit;font-weight:800">${GROUP_EMERGENCY_PHONE}</a>. בסכנה מיידית — משטרה 100, מד"א 101.</span></div>`;
 }
@@ -13750,10 +13757,10 @@ function showCreateGroupDialog(){
     </div>
     <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">🎂 טווח גילים של הילדים בקבוצה</label>
     <div style="display:flex;gap:10px;margin-bottom:6px">
-      <div style="flex:1"><select id="_cgMinAge" style="width:100%;background:rgba(20,184,166,0.06);border:1.5px solid rgba(20,184,166,0.25);border-radius:12px;padding:11px;font-size:13px;font-family:inherit;direction:rtl;outline:none;box-sizing:border-box"><option value="">מגיל</option>${Array.from({length:AGE_RANGE.student.max-AGE_RANGE.student.min+1},(_,i)=>AGE_RANGE.student.min+i).map(n=>`<option value="${n}">${n}</option>`).join('')}</select></div>
+      <div style="flex:1"><select id="_cgMinAge" style="width:100%;background:rgba(20,184,166,0.06);border:1.5px solid rgba(20,184,166,0.25);border-radius:12px;padding:11px;font-size:13px;font-family:inherit;direction:rtl;outline:none;box-sizing:border-box"><option value="">מגיל</option>${Array.from({length:AGE_RANGE.student.max-groupMinAgeFloor()+1},(_,i)=>groupMinAgeFloor()+i).map(n=>`<option value="${n}">${n}</option>`).join('')}</select></div>
       <div style="flex:1"><select id="_cgMaxAge" style="width:100%;background:rgba(20,184,166,0.06);border:1.5px solid rgba(20,184,166,0.25);border-radius:12px;padding:11px;font-size:13px;font-family:inherit;direction:rtl;outline:none;box-sizing:border-box"><option value="">עד גיל</option>${Array.from({length:AGE_RANGE.student.max-AGE_RANGE.student.min+1},(_,i)=>AGE_RANGE.student.min+i).map(n=>`<option value="${n}">${n}</option>`).join('')}</select></div>
     </div>
-    <p style="font-size:11px;color:#64748B;margin:0 0 14px;line-height:1.6">ההורים רואים את הטווח לפני שהם מאשרים, ולא ניתן לשנות אותו אחרי שהקבוצה פורסמה. ילד מחוץ לטווח לא יכול לבקש להצטרף.</p>
+    <p style="font-size:11px;color:#64748B;margin:0 0 14px;line-height:1.6">ההורים רואים את הטווח לפני שהם מאשרים, ולא ניתן לשנות אותו אחרי שהקבוצה פורסמה. ילד מחוץ לטווח לא יכול לבקש להצטרף. בגילך אפשר להוביל ילדים מגיל ${groupMinAgeFloor()} ומעלה — לא צעירים יותר, כדי שתמיד יהיה פער סביר ביניכם.</p>
     <label onclick="document.getElementById('_cgMixed').click()" style="display:flex;align-items:center;gap:12px;padding:14px;background:rgba(20,184,166,0.06);border-radius:16px;cursor:pointer;margin-bottom:18px">
       <input type="checkbox" id="_cgMixed" style="width:20px;height:20px;accent-color:#14B8A6;flex-shrink:0">
       <div><div style="font-weight:800;font-size:14px">🌈 קבוצה מעורבת</div><div style="font-size:12px;color:#64748B;margin-top:2px">פתוח לילדים מכל רקע ואוכלוסייה — מקבלים תג קהילה מיוחד 🏅</div></div>
@@ -13779,6 +13786,7 @@ async function _saveNewGroup(){
   if(!location){showFireToast('❌ חסר מיקום');return;}
   if(!Number.isFinite(minAge)||!Number.isFinite(maxAge)){showFireToast('❌ בחר טווח גילים לקבוצה');return;}
   if(minAge>maxAge){showFireToast('❌ הגיל המינימלי גבוה מהמקסימלי');return;}
+  if(minAge<groupMinAgeFloor()){showFireToast('❌ אפשר להוביל ילדים מגיל '+groupMinAgeFloor()+' ומעלה בלבד');return;}
   if(rejectContactIn(title,desc,location))return;
   const myT=TEACHERS.find(x=>x.id===currentUser.uid);
   try{

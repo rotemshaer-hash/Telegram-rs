@@ -71,7 +71,7 @@ beforeEach(async () => {
     const approvedBooking = { ...booking, status: 'approved' };
     await update(ref(db), {
       'users/student-uid': { name: 'Minor', role: 'student', verified: true },
-      'users/teacher-uid': { name: 'Teach', role: 'teacher', verified: true },
+      'users/teacher-uid': { name: 'Teach', role: 'teacher', verified: true, age: 15 },
       'teachers/teacher-uid': { name: 'Teach', verified: true, active: true },
       'teacherVerification/teacher-uid': { idPhoto: 'data:image/png;base64,AAAA' },
       'bookings/b1': booking,
@@ -2130,17 +2130,18 @@ describe('a group declares an age range, inside the app’s own child range, and
 
   it('a new group without an age range is refused; with one it is created', async () => {
     await assertFails(set(ref(asTeacher(), 'groups/ag1'), base()));
-    await assertFails(set(ref(asTeacher(), 'groups/ag1'), base({ minAge: 10 })));
-    await assertSucceeds(set(ref(asTeacher(), 'groups/ag1'), base({ minAge: 10, maxAge: 12 })));
+    await assertFails(set(ref(asTeacher(), 'groups/ag1'), base({ minAge: 12 })));
+    await assertSucceeds(set(ref(asTeacher(), 'groups/ag1'), base({ minAge: 12, maxAge: 14 })));
   });
 
   it('the range stays inside 9–18 and runs the right way round', async () => {
     await assertFails(set(ref(asTeacher(), 'groups/ag2'), base({ minAge: 7, maxAge: 12 })));
-    await assertFails(set(ref(asTeacher(), 'groups/ag2'), base({ minAge: 10, maxAge: 19 })));
+    await assertFails(set(ref(asTeacher(), 'groups/ag2'), base({ minAge: 12, maxAge: 19 })));
     await assertFails(set(ref(asTeacher(), 'groups/ag2'), base({ minAge: 14, maxAge: 10 })));
-    await assertFails(set(ref(asTeacher(), 'groups/ag2'), base({ minAge: 10.5, maxAge: 12 })));
-    await assertFails(set(ref(asTeacher(), 'groups/ag2'), base({ minAge: '10', maxAge: 12 })));
-    await assertSucceeds(set(ref(asTeacher(), 'groups/ag2'), base({ minAge: 9, maxAge: 18 })));
+    await assertFails(set(ref(asTeacher(), 'groups/ag2'), base({ minAge: 12.5, maxAge: 14 })));
+    await assertFails(set(ref(asTeacher(), 'groups/ag2'), base({ minAge: '12', maxAge: 14 })));
+    await assertSucceeds(set(ref(asTeacher(), 'groups/ag2'), base({ minAge: 12, maxAge: 18 })));
+    await assertSucceeds(set(ref(ADMIN_DB(), 'groups/ag2b'), base({ minAge: 9, maxAge: 18 })));
   });
 
   it('once the group is published the leader cannot widen the range the parents saw', async () => {
@@ -2153,5 +2154,46 @@ describe('a group declares an age range, inside the app’s own child range, and
   it('an old group with no range can still be closed by its leader', async () => {
     await testEnv.withSecurityRulesDisabled(async (ctx) => { await set(ref(ctx.database(), 'groups/ag4'), base({ status: 'open' })); });
     await assertSucceeds(set(ref(asTeacher(), 'groups/ag4/status'), 'closed'));
+  });
+});
+
+
+// ── A group's youngest child may be at most 3 years younger than its leader (owner's decision 15.11.2026) ──
+// The leaders are 14-18. A 14-year-old leading nine-year-olds, alone and unsupervised, was the gap a lawyer or an
+// insurer would name first. The rule is measured against the age on the leader's own record.
+describe('a group cannot be aimed at children much younger than its leader', () => {
+  const ADMIN_DB = () => testEnv.authenticatedContext('admin-uid', { email: 'rotemshaer@gmail.com' }).database();
+  const base = (over = {}) => ({
+    teacherId: TEACHER, teacherName: 'Teach', subject: 'math', title: 'Chess club', desc: 'we play', day: 'ב', time: '17:00',
+    location: 'Park', city: 'TA', maxStudents: 5, price: 25, isMixed: false, status: 'pending', membersCount: 0, createdAt: 1, ...over,
+  });
+  const leaderIs = (age) => testEnv.withSecurityRulesDisabled(async (ctx) => { await set(ref(ctx.database(), `users/${TEACHER}/age`), age); });
+
+  it('a 15-year-old may lead from age 12, not from 11', async () => {
+    await assertSucceeds(set(ref(asTeacher(), 'groups/gap1'), base({ minAge: 12, maxAge: 14 })));
+    await assertFails(set(ref(asTeacher(), 'groups/gap2'), base({ minAge: 11, maxAge: 14 })));
+  });
+
+  it('a 14-year-old may lead from age 11, and never nine-year-olds', async () => {
+    await leaderIs(14);
+    await assertSucceeds(set(ref(asTeacher(), 'groups/gap3'), base({ minAge: 11, maxAge: 13 })));
+    await assertFails(set(ref(asTeacher(), 'groups/gap4'), base({ minAge: 9, maxAge: 12 })));
+    await assertFails(set(ref(asTeacher(), 'groups/gap4'), base({ minAge: 10, maxAge: 12 })));
+  });
+
+  it('an 18-year-old may lead anyone from 15, but not younger', async () => {
+    await leaderIs(18);
+    await assertSucceeds(set(ref(asTeacher(), 'groups/gap5'), base({ minAge: 15, maxAge: 18 })));
+    await assertFails(set(ref(asTeacher(), 'groups/gap6'), base({ minAge: 14, maxAge: 18 })));
+  });
+
+  it('a leader with no age on record cannot create a group at all', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => { await remove(ref(ctx.database(), `users/${TEACHER}/age`)); });
+    await assertFails(set(ref(asTeacher(), 'groups/gap7'), base({ minAge: 12, maxAge: 14 })));
+  });
+
+  it('only the admin can set a range outside the rule, for an exceptional group', async () => {
+    await leaderIs(14);
+    await assertSucceeds(set(ref(ADMIN_DB(), 'groups/gap8'), base({ minAge: 9, maxAge: 12 })));
   });
 });

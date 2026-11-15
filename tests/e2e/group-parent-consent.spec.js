@@ -185,7 +185,7 @@ test.describe('a new group must declare an age range', () => {
       db = { ref: (p) => ({ push: () => ({ key: 'g1', set: async (v) => { writes.push(v); } }), set: async () => {}, update: async () => {} }) };
       window.notifyAdmin = async () => {};
       currentUser = { uid: 'teach', email: 't@example.com', emailVerified: true };
-      currentUserData = { name: 'מורה', role: 'teacher', verified: true };
+      currentUserData = { name: 'מורה', role: 'teacher', verified: true, age: 15 };
       document.body.insertAdjacentHTML('beforeend', `<input id="_cgTitle" value="שחמט"><input id="_cgLocation" value="הרצל 15, תל אביב"><input id="_cgDesc" value="כיף"><select id="_cgCat"><option value="x" selected>x</option></select><select id="_cgMinAge"><option value="${min}" selected>${min}</option></select><select id="_cgMaxAge"><option value="${max}" selected>${max}</option></select>`);
       await _saveNewGroup();
       return writes;
@@ -194,33 +194,38 @@ test.describe('a new group must declare an age range', () => {
 
   test('the range is written with the group', async ({ page }) => {
     await boot(page);
-    const w = await saveWith(page, 10, 13);
+    const w = await saveWith(page, 12, 14);
     expect(w).toHaveLength(1);
-    expect(w[0].minAge).toBe(10);
-    expect(w[0].maxAge).toBe(13);
+    expect(w[0].minAge).toBe(12);
+    expect(w[0].maxAge).toBe(14);
   });
 
   test('a range that runs backwards, or no range, is not saved', async ({ page }) => {
     await boot(page);
-    expect(await saveWith(page, 15, 11)).toEqual([]);
+    expect(await saveWith(page, 15, 12)).toEqual([]);
     await page.evaluate(() => document.querySelectorAll('input[id^="_cg"],select[id^="_cg"]').forEach((e) => e.remove()));
     expect(await saveWith(page, '', '')).toEqual([]);
   });
 
-  test('the create form offers an unchosen range, not a default that is the widest one', async ({ page }) => {
+  test('a leader cannot aim a group at children more than 3 years younger — the form and the save agree', async ({ page }) => {
     await boot(page);
+    expect(await saveWith(page, 11, 14)).toEqual([]);          // a 15-year-old, minimum 11: refused before any write
     const r = await page.evaluate(() => {
       currentUser = { uid: 'teach', email: 't@example.com', emailVerified: true };
-      currentUserData = { name: 'מורה', role: 'teacher', verified: true, categories: ['chess'] };
       TEACHERS.push({ id: 'teach', name: 'מורה', cats: ['chess'], city: 'תל אביב' });
-      showCreateGroupDialog();
-      const min = document.getElementById('_cgMinAge'), max = document.getElementById('_cgMaxAge');
-      return min && max ? { minDefault: min.value, maxDefault: max.value, first: min.options[1].value, last: max.options[max.options.length - 1].value } : null;
+      const out = {};
+      for (const age of [14, 15, 18]) {
+        currentUserData = { name: 'מורה', role: 'teacher', verified: true, categories: ['chess'], age };
+        document.getElementById('_cgOv')?.remove();
+        document.querySelectorAll('body > input[id^="_cg"], body > select[id^="_cg"]').forEach((e) => e.remove());
+        showCreateGroupDialog();
+        const min = document.getElementById('_cgMinAge'), max = document.getElementById('_cgMaxAge');
+        out[age] = { minDefault: min.value, maxDefault: max.value, first: min.options[1].value, last: min.options[min.options.length - 1].value, maxFirst: max.options[1].value };
+      }
+      return out;
     });
-    expect(r).not.toBeNull();
-    expect(r.minDefault).toBe('');
-    expect(r.maxDefault).toBe('');
-    expect(r.first).toBe('9');
-    expect(r.last).toBe('18');
+    expect(r[14]).toEqual({ minDefault: '', maxDefault: '', first: '11', last: '18', maxFirst: '9' });
+    expect(r[15].first).toBe('12');
+    expect(r[18].first).toBe('15');
   });
 });

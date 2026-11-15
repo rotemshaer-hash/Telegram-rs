@@ -70,6 +70,15 @@ if grep -q "newData.parent().child('parentApprovedAt').isNumber()" database.rule
 else
   fail "database.rules.json lost the parentApprovedAt gate on groupMembers/status"
 fi
+# פער הגילים מול המוביל: אותו מספר בלקוח (GROUP_MAX_AGE_GAP) ובחוקים (minAge מול users/<מוביל>/age). אם הם סוטים, הטופס
+# מציע למוביל גיל שהחוק ידחה — או גרוע מזה, החוק מתיר יותר ממה שהטופס מבטיח.
+ssot_check "GROUP_MAX_AGE_GAP" "const GROUP_MAX_AGE_GAP="
+_gap=$(grep -o "const GROUP_MAX_AGE_GAP=[0-9]*" index.html | grep -o "[0-9]*$")
+if [ -n "$_gap" ] && grep -q "child('age').val() - $_gap)" database.rules.json; then
+  pass "database.rules.json: a group's youngest child is at most $_gap years younger than its leader (same as GROUP_MAX_AGE_GAP)"
+else
+  fail "GROUP_MAX_AGE_GAP ($_gap) in index.html does not match the age-gap rule in database.rules.json"
+fi
 # טווח הגילים של קבוצה חייב להישאר בתוך טווח הילדים של האפליקציה (AGE_RANGE.student ב-index.html)
 _min=$(grep -o "student:{min:[0-9]*" index.html | grep -o "[0-9]*$" | head -1)
 _max=$(grep -o "student:{min:[0-9]*,max:[0-9]*" index.html | grep -o "[0-9]*$" | head -1)
