@@ -22,8 +22,10 @@ service firebase.storage {
     // תמונות תעודת זהות ואימות גיל — התוכן הרגיש ביותר באפליקציה. הבעלים
     // והמנהל בלבד, לעולם לא ציבורי.
     match /id-photos/{uid}/{fileName} {
+      // חבר צוות (claim 'team', נקבע ב-team-roles.js) קורא כדי להכריע באימות; מחיקה נשארת לבעלים ולבעל החשבון.
+      // ב-Storage אין גישה ל-RTDB, ולכן כאן זה claim: הוא נמחק בהסרה, והטוקנים מבוטלים.
       allow read: if request.auth != null &&
-        (request.auth.uid == uid || request.auth.token.email == 'rotemshaer@gmail.com');
+        (request.auth.uid == uid || request.auth.token.email == 'rotemshaer@gmail.com' || request.auth.token.team == true);
       allow create, update: if request.auth != null && request.auth.uid == uid &&
         request.resource.size < 15 * 1024 * 1024 &&
         request.resource.contentType.matches('image/.*');

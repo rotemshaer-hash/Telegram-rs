@@ -13,13 +13,15 @@ const { sendViaEmailJS } = require('../lib/emailjs');
 const ALLOWED_ORIGINS = require('../lib/allowed-origins');
 const { FAKE_DOMAIN } = require('../lib/internal-email');
 const { withinWindowLimit } = require('../lib/rate-limit');
+const { GROUP_EMERGENCY_PHONE } = require('../lib/safety-contact');
+const { ADMIN_EMAIL } = require('../lib/admin-email');
+const { isTeamMember } = require('../lib/team');
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ID_RE = /^[-A-Za-z0-9_]{1,128}$/;
 const RATE_LIMIT_MAX = 60;
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
 const EVENTS = { approved: 'approved', rejected: 'rejected', cancelled: 'approved' };
-const ADMIN_EMAIL = 'rotemshaer@gmail.com';
 
 const clip = (v, n) => String(v == null ? '' : v).replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, n);
 
@@ -33,7 +35,7 @@ function compose(event, g, child, parentName, link) {
     const when = [clip(g.day, 40), clip(g.time, 20)].filter(Boolean).join(' בשעה ');
     return {
       subject: `✅ ${kid} התקבל/ה לקבוצה "${title}" — Drushe`,
-      body: `שלום ${parent} 👋\n\n${kid} התקבל/ה לקבוצה "${title}"${teacher ? ' של ' + teacher : ''}.\n\n${when ? '📅 ' + when + '\n' : ''}${where ? '📍 ' + where + '\n' : ''}\nחלק מהקבוצות נפגשות פיזית, ללא נוכחות הורים. כל קבוצה מאושרת על ידי צוות Drushe לפני שהיא מתפרסמת.\n\nניתן לעקוב באפליקציה:\n${link}\n\n– צוות Drushe 💙`,
+      body: `שלום ${parent} 👋\n\n${kid} התקבל/ה לקבוצה "${title}"${teacher ? ' של ' + teacher : ''}.\n\n${when ? '📅 ' + when + '\n' : ''}${where ? '📍 ' + where + '\n' : ''}\nחלק מהקבוצות נפגשות פיזית, ללא נוכחות הורים. כל קבוצה מאושרת על ידי צוות Drushe לפני שהיא מתפרסמת.\n\nבזמן מפגש אפשר לפנות לפניות דחופות: ${GROUP_EMERGENCY_PHONE}. בסכנה מיידית — משטרה 100, מד"א 101.\n\nניתן לעקוב באפליקציה:\n${link}\n\n– צוות Drushe 💙`,
     };
   }
   if (event === 'cancelled') {
@@ -98,7 +100,7 @@ exports.handler = async (event) => {
     const g = (await db.ref('groups/' + groupId).get()).val();
     if (!g) return reply(403, { error: 'no such group' });
     // ביטול יכול להגיע גם מהמנהל, שמשעה קבוצה שאינה שלו.
-    const isAdmin = String(email || '').toLowerCase() === ADMIN_EMAIL;
+    const isAdmin = String(email || '').toLowerCase() === ADMIN_EMAIL || (await isTeamMember(db, uid));
     if (g.teacherId !== uid && !(kind === 'cancelled' && isAdmin)) return reply(403, { error: 'not your group' });
     if (kind === 'cancelled' && g.status !== 'closed' && g.status !== 'cancelled') {
       return reply(409, { error: 'that group is still active' });

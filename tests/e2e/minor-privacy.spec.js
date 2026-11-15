@@ -172,19 +172,20 @@ test.describe('analytics is not collected from a minor before consent', () => {
 test.describe('a student cannot be approved before the parent clicked', () => {
   async function approveStudent(page, consentAt) {
     return page.evaluate(async (consent) => {
-      const toasts = []; const writes = []; let confirms = 0;
+      const toasts = []; const writes = []; const updates = {}; let confirms = 0;
       window.showFireToast = (m) => toasts.push(m);
       window._confirm = async () => { confirms++; return true; };
       const vals = { 'users/s1/parentConsentAt': consent, 'users/s1': { name: 'ילד', role: 'student' } };
       db = { ref: (p) => ({
         get: () => Promise.resolve({ val: () => vals[p] ?? null, exists: () => vals[p] !== undefined }),
         set: () => { writes.push(p); return Promise.resolve(); },
+        update: (v) => { writes.push(p); updates[p] = v; return Promise.resolve(); },
         push: () => Promise.resolve(),
         remove: () => Promise.resolve(),
       }) };
       window.loadAdminData = () => Promise.resolve(); window.renderAdminPanel = () => {};
       await adminVerifyStudent('s1');
-      return { toasts, writes, confirms };
+      return { toasts, writes, updates, confirms };
     }, consentAt);
   }
 
@@ -203,5 +204,8 @@ test.describe('a student cannot be approved before the parent clicked', () => {
     const r = await approveStudent(page, 1760000000000);
     expect(r.confirms).toBe(1);
     expect(r.writes).toContain('users/s1');
+    // only the decision fields are written, so a team member's write is allowed and nothing else on the record is rewritten
+    expect(Object.keys(r.updates['users/s1']).sort()).toEqual(['rejected', 'verified', 'verifiedAt', 'verifiedBy']);
+    expect(r.updates['users/s1'].verified).toBe(true);
   });
 });

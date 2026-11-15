@@ -76,6 +76,21 @@ describe('only an approved, unblocked account can notify another user', () => {
     assert.equal(pushed[0].value.message, undefined);
   });
 
+  it('a team member may send what only the platform sends — a stranger may not', async () => {
+    data['team/team-uid'] = true;
+    const ok = await call('team-uid', { toUid: JOINER, type: 'studentApproved' });
+    assert.equal(ok.status, 200);
+    const no = await call(STRANGER, { toUid: JOINER, type: 'studentApproved' });
+    assert.equal(no.status, 403);
+  });
+
+  it('a team member removed a moment ago is an ordinary user again', async () => {
+    data['team/team-uid'] = true;
+    assert.equal((await call('team-uid', { toUid: JOINER, type: 'studentApproved' })).status, 200);
+    delete data['team/team-uid'];
+    assert.equal((await call('team-uid', { toUid: JOINER, type: 'studentApproved' })).status, 403);
+  });
+
   it('an unverified sender is refused', async () => {
     delete data[`users/${OWNER}/verified`];
     const r = await call(OWNER, { toUid: JOINER, type: 'groupApproved', ctx: { groupId: 'g1' } });

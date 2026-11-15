@@ -7,15 +7,15 @@
       ".read": "auth != null",
       ".indexOn": ["cat", "city", "verified"],
       "$teacherUid": {
-        ".write": "auth != null && ((auth.uid == $teacherUid && auth.token.firebase.sign_in_provider != 'anonymous' && root.child('users').child(auth.uid).child('role').val() == 'teacher') || auth.token.email == 'rotemshaer@gmail.com')",
+        ".write": "auth != null && ((auth.uid == $teacherUid && auth.token.firebase.sign_in_provider != 'anonymous' && root.child('users').child(auth.uid).child('role').val() == 'teacher') || (auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true))",
         "desc": {
           ".validate": "newData.isString() && newData.val().length <= 2000 && !newData.val().matches(/[<>`]/) && !newData.val().matches(/(https?:\\/\\/|www\\.|@[a-zA-Z0-9._]{3,}|0[0-9]{1,2}[- ]?[0-9]{3}[- ]?[0-9]{4})/)"
         },
         "verified": {
-          ".validate": "auth.token.email == 'rotemshaer@gmail.com' || newData.val() == false"
+          ".validate": "(auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true) || newData.val() == false"
         },
         "active": {
-          ".validate": "auth.token.email == 'rotemshaer@gmail.com' || newData.val() == false"
+          ".validate": "(auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true) || newData.val() == false"
         },
         "rating": {
           ".validate": "auth.token.email == 'rotemshaer@gmail.com' || newData.val() == 0 || newData.val() == data.val()"
@@ -45,22 +45,22 @@
         },
         "ageVerification": {
           "age": {
-            ".validate": "auth.token.email == 'rotemshaer@gmail.com' || (newData.isNumber() && newData.val() >= 14 && newData.val() <= 18)"
+            ".validate": "(auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true) || (newData.isNumber() && newData.val() >= 14 && newData.val() <= 18)"
           },
           "status": {
-            ".validate": "auth.token.email == 'rotemshaer@gmail.com' || newData.val() != 'verified'"
+            ".validate": "(auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true) || newData.val() != 'verified'"
           },
           "verifiedAt": {
-            ".validate": "auth.token.email == 'rotemshaer@gmail.com'"
+            ".validate": "(auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true)"
           },
           "verifiedBy": {
-            ".validate": "auth.token.email == 'rotemshaer@gmail.com'"
+            ".validate": "(auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true)"
           },
           "verifiedWithoutDoc": {
-            ".validate": "auth.token.email == 'rotemshaer@gmail.com'"
+            ".validate": "(auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true)"
           },
           "idPhoto": {
-            ".validate": "auth.token.email == 'rotemshaer@gmail.com' || (newData.isString() && (newData.val().beginsWith('https://') || newData.val().beginsWith('data:image/')) && !newData.val().contains('\"') && !newData.val().contains(\"'\") && !newData.val().contains('<') && !newData.val().contains('>'))"
+            ".validate": "(auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true) || (newData.isString() && (newData.val().beginsWith('https://') || newData.val().beginsWith('data:image/')) && !newData.val().contains('\"') && !newData.val().contains(\"'\") && !newData.val().contains('<') && !newData.val().contains('>'))"
           }
         }
       }
@@ -72,17 +72,19 @@
     },
 
     "teacherVerification": {
+      ".read": "auth != null && root.child('team').child(auth.uid).val() == true",
       "$uid": {
         ".read": "auth != null && auth.uid == $uid",
         ".write": "auth != null && auth.uid == $uid",
         "idPhoto": {
-          ".validate": "auth.token.email == 'rotemshaer@gmail.com' || (newData.isString() && (newData.val().beginsWith('https://') || newData.val().beginsWith('data:image/')) && !newData.val().contains('\"') && !newData.val().contains(\"'\") && !newData.val().contains('<') && !newData.val().contains('>'))"
+          ".validate": "(auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true) || (newData.isString() && (newData.val().beginsWith('https://') || newData.val().beginsWith('data:image/')) && !newData.val().contains('\"') && !newData.val().contains(\"'\") && !newData.val().contains('<') && !newData.val().contains('>'))"
         }
       }
     },
 
     "users": {
       ".indexOn": ["role", "verified", "email"],
+      ".read": "auth != null && root.child('team').child(auth.uid).val() == true",
       "$uid": {
         ".read": "auth != null && auth.uid == $uid",
         ".write": "auth != null && auth.uid == $uid && (!data.child('role').exists() || !newData.exists() || newData.child('role').exists())",
@@ -92,8 +94,13 @@
         "age": {
           ".validate": "auth.token.email == 'rotemshaer@gmail.com' || (newData.isNumber() && (newData.parent().child('role').val() == 'teacher' ? (newData.val() >= 14 && newData.val() <= 18) : (newData.val() >= 9 && newData.val() <= 18)))"
         },
+        "verifiedAt": { ".write": "auth != null && root.child('team').child(auth.uid).val() == true", ".validate": "newData.isNumber()" },
+        "verifiedBy": { ".write": "auth != null && root.child('team').child(auth.uid).val() == true", ".validate": "newData.isString() && newData.val().length <= 128" },
+        "rejected": { ".write": "auth != null && root.child('team').child(auth.uid).val() == true", ".validate": "newData.isBoolean()" },
+        "rejectedAt": { ".write": "auth != null && root.child('team').child(auth.uid).val() == true", ".validate": "newData.isNumber()" },
         "verified": {
-          ".validate": "auth.token.email == 'rotemshaer@gmail.com' || newData.val() == false"
+          ".write": "auth != null && root.child('team').child(auth.uid).val() == true",
+          ".validate": "(auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true) || newData.val() == false"
         },
         "createdAt": {
           ".validate": "auth.token.email == 'rotemshaer@gmail.com' || !data.exists()"
@@ -233,7 +240,7 @@
     "notifications": {
       "$uid": {
         ".read": "auth != null && auth.uid == $uid",
-        ".write": "auth != null && (auth.uid == $uid || auth.token.email == 'rotemshaer@gmail.com')",
+        ".write": "auth != null && (auth.uid == $uid || (auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true))",
         "$notifId": {
           ".validate": "!newData.exists() || (data.exists() && newData.child('read').isBoolean()) || (!data.exists() && newData.hasChildren(['type', 'createdAt', 'read']) && newData.child('createdAt').isNumber() && newData.child('read').isBoolean() && (newData.child('type').val() == 'newBooking' || newData.child('type').val() == 'bookingApproved' || newData.child('type').val() == 'bookingRejected' || newData.child('type').val() == 'bookingCancelled' || newData.child('type').val() == 'newMessage' || newData.child('type').val() == 'lessonCompleted' || newData.child('type').val() == 'newReview' || newData.child('type').val() == 'newPost' || newData.child('type').val() == 'adminMessage' || newData.child('type').val() == 'accountApproved' || newData.child('type').val() == 'teacherApproved' || newData.child('type').val() == 'studentApproved' || newData.child('type').val() == 'groupJoin' || newData.child('type').val() == 'groupApproved' || newData.child('type').val() == 'groupRejected' || newData.child('type').val() == 'groupPublished' || newData.child('type').val() == 'groupDeclined' || newData.child('type').val() == 'groupSuspended' || newData.child('type').val() == 'groupClosed' || newData.child('type').val() == 'rateLesson' || newData.child('type').val() == 'lessonSummary' || newData.child('type').val() == 'newTeacher' || newData.child('type').val() == 'newUser' || newData.child('type').val() == 'newVideo' || newData.child('type').val() == 'newReport' || newData.child('type').val() == 'briefProposal' || newData.child('type').val() == 'briefAccepted' || newData.child('type').val() == 'newQuestion' || newData.child('type').val() == 'questionAnswered' || newData.child('type').val() == 'trialReminder' || newData.child('type').val() == 'referralJoined'))"
         }
@@ -241,9 +248,9 @@
     },
     "messages": {
       "$chatId": {
-        ".read": "auth != null && ($chatId.beginsWith(auth.uid + '_') || $chatId.endsWith('_' + auth.uid) || auth.token.email == 'rotemshaer@gmail.com')",
+        ".read": "auth != null && ($chatId.beginsWith(auth.uid + '_') || $chatId.endsWith('_' + auth.uid) || (auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true))",
         "$msgId": {
-          ".write": "auth != null && ($chatId.beginsWith(auth.uid + '_') || $chatId.endsWith('_' + auth.uid)) && root.child('users').child(auth.uid).child('verified').val() == true && !root.child('userBlocks').child(auth.uid).exists() && ((root.child('userRoles').child(auth.uid).val() != 'teacher' && root.child('users').child(auth.uid).child('role').val() != 'teacher' && !root.child('approvedTeachers').child(auth.uid).exists()) || root.child('chatStarters').child($chatId.replace(auth.uid + '_', '').replace('_' + auth.uid, '')).child(auth.uid).exists() || auth.token.email == 'rotemshaer@gmail.com') && !root.child('userBlockedUsers').child($chatId.replace(auth.uid + '_', '').replace('_' + auth.uid, '')).child(auth.uid).exists() && (!data.exists() && newData.child('from').val() == auth.uid && newData.child('text').isString() && newData.child('createdAt').isNumber())",
+          ".write": "auth != null && ($chatId.beginsWith(auth.uid + '_') || $chatId.endsWith('_' + auth.uid)) && root.child('users').child(auth.uid).child('verified').val() == true && !root.child('userBlocks').child(auth.uid).exists() && ((root.child('userRoles').child(auth.uid).val() != 'teacher' && root.child('users').child(auth.uid).child('role').val() != 'teacher' && !root.child('approvedTeachers').child(auth.uid).exists()) || root.child('chatStarters').child($chatId.replace(auth.uid + '_', '').replace('_' + auth.uid, '')).child(auth.uid).exists() || (auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true)) && !root.child('userBlockedUsers').child($chatId.replace(auth.uid + '_', '').replace('_' + auth.uid, '')).child(auth.uid).exists() && (!data.exists() && newData.child('from').val() == auth.uid && newData.child('text').isString() && newData.child('createdAt').isNumber())",
           "audioData": { ".validate": false },
           "type": { ".validate": "newData.val() != 'audio'" },
           "from": { ".validate": "newData.isString() && newData.val() == auth.uid" },
@@ -252,25 +259,25 @@
           "toName": { ".validate": "newData.isString() && newData.val().length <= 60" },
           "text": { ".validate": "newData.isString() && newData.val().length <= 2000" },
           "createdAt": { ".validate": "newData.isNumber()" },
-          "$other": { ".validate": "auth.token.email == 'rotemshaer@gmail.com'" }
+          "$other": { ".validate": "(auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true)" }
         }
       }
     },
     "approvedTeachers": {
-      ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'",
+      ".read": "auth != null && (auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true)",
       "$uid": {
-        ".write": "auth != null && auth.token.email == 'rotemshaer@gmail.com'"
+        ".write": "auth != null && (auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true)"
       }
     },
     "userRoles": {
       "$uid": {
-        ".read": "auth != null && (auth.uid == $uid || auth.token.email == 'rotemshaer@gmail.com')",
-        ".write": "auth != null && ((auth.uid == $uid && !data.exists()) || auth.token.email == 'rotemshaer@gmail.com')",
+        ".read": "auth != null && (auth.uid == $uid || (auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true))",
+        ".write": "auth != null && ((auth.uid == $uid && !data.exists()) || (auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true))",
         ".validate": "newData.val() == 'teacher' || newData.val() == 'student' || newData.val() == 'parent'"
       }
     },
     "messageArchive": {
-      ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'"
+      ".read": "auth != null && (auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true)"
     },
     "chatStarters": {
       "$studentUid": {
@@ -298,13 +305,13 @@
         ".read": "auth != null && auth.uid == $uid",
         ".write": "auth != null && auth.uid == $uid",
         "$otherUid": {
-          ".write": "auth != null && (auth.uid == $uid || (auth.uid == $otherUid && root.child('users').child(auth.uid).child('verified').val() == true && !root.child('userBlocks').child(auth.uid).exists() && !root.child('userBlockedUsers').child($uid).child(auth.uid).exists() && ((root.child('userRoles').child(auth.uid).val() != 'teacher' && root.child('users').child(auth.uid).child('role').val() != 'teacher' && !root.child('approvedTeachers').child(auth.uid).exists()) || root.child('chatStarters').child($uid).child(auth.uid).exists() || auth.token.email == 'rotemshaer@gmail.com')))"
+          ".write": "auth != null && (auth.uid == $uid || (auth.uid == $otherUid && root.child('users').child(auth.uid).child('verified').val() == true && !root.child('userBlocks').child(auth.uid).exists() && !root.child('userBlockedUsers').child($uid).child(auth.uid).exists() && ((root.child('userRoles').child(auth.uid).val() != 'teacher' && root.child('users').child(auth.uid).child('role').val() != 'teacher' && !root.child('approvedTeachers').child(auth.uid).exists()) || root.child('chatStarters').child($uid).child(auth.uid).exists() || (auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true))))"
         }
       }
     },
     "adminAlerts": {
-      ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'",
-      ".write": "auth != null && auth.token.email == 'rotemshaer@gmail.com'",
+      ".read": "auth != null && (auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true)",
+      ".write": "auth != null && (auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true)",
       "students": {
         "$uid": { ".write": "auth != null && auth.uid == $uid" }
       },
@@ -314,17 +321,17 @@
       "subscriptions": {
         "$subId": {
           ".write": "auth != null && !data.exists()",
-          "status": { ".validate": "auth.token.email == 'rotemshaer@gmail.com' || newData.val() != 'approved'" }
+          "status": { ".validate": "(auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true) || newData.val() != 'approved'" }
         }
       }
     },
     "adminNotifs": {
-      ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'",
-      ".write": "auth != null && auth.token.email == 'rotemshaer@gmail.com'",
+      ".read": "auth != null && (auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true)",
+      ".write": "auth != null && (auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true)",
       "$notifId": { ".write": "auth != null && !data.exists()" }
     },
     "clientErrors": {
-      ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'",
+      ".read": "auth != null && (auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true)",
       "$errorId": { ".write": "auth != null && !data.exists()" }
     },
     "parentTokens": {
@@ -353,15 +360,15 @@
       "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth != null && auth.uid == $uid" }
     },
     "bannedUsers": {
-      ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'",
-      ".write": "auth != null && auth.token.email == 'rotemshaer@gmail.com'"
+      ".read": "auth != null && (auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true)",
+      ".write": "auth != null && (auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true)"
     },
     "userBlocks": {
       "$uid": {
-        ".read": "auth != null && (auth.uid == $uid || auth.token.email == 'rotemshaer@gmail.com')",
-        ".write": "auth != null && auth.token.email == 'rotemshaer@gmail.com'"
+        ".read": "auth != null && (auth.uid == $uid || (auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true))",
+        ".write": "auth != null && (auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true)"
       },
-      ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'"
+      ".read": "auth != null && (auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true)"
     },
     "teacherPrivate": {
       "$uid": {
@@ -377,9 +384,9 @@
       "$targetId": {
         ".indexOn": ["from"],
         "$bookingId": {
-          ".write": "auth.token.email == 'rotemshaer@gmail.com' || (auth != null && ((data.exists() && data.child('from').val() == auth.uid && !newData.exists()) || (!data.exists() && newData.child('from').val() == auth.uid && newData.child('to').val() == $targetId && auth.uid != $targetId && (root.child('bookings').child($bookingId).child('status').val() == 'approved' || root.child('bookings').child($bookingId).child('status').val() == 'completed') && ((root.child('bookings').child($bookingId).child('studentId').val() == auth.uid && root.child('bookings').child($bookingId).child('teacherId').val() == $targetId) || (root.child('bookings').child($bookingId).child('teacherId').val() == auth.uid && root.child('bookings').child($bookingId).child('studentId').val() == $targetId)))))",
+          ".write": "(auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true) || (auth != null && ((data.exists() && data.child('from').val() == auth.uid && !newData.exists()) || (!data.exists() && newData.child('from').val() == auth.uid && newData.child('to').val() == $targetId && auth.uid != $targetId && (root.child('bookings').child($bookingId).child('status').val() == 'approved' || root.child('bookings').child($bookingId).child('status').val() == 'completed') && ((root.child('bookings').child($bookingId).child('studentId').val() == auth.uid && root.child('bookings').child($bookingId).child('teacherId').val() == $targetId) || (root.child('bookings').child($bookingId).child('teacherId').val() == auth.uid && root.child('bookings').child($bookingId).child('studentId').val() == $targetId)))))",
           "approved": {
-            ".validate": "auth.token.email == 'rotemshaer@gmail.com' || newData.val() != true"
+            ".validate": "(auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true) || newData.val() != true"
           },
           "stars": {
             ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 5"
@@ -387,14 +394,14 @@
         }
       }
     },
-    "pendingReviews": { ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'", "$reviewId": { ".write": "auth != null && ((!data.exists() && newData.exists()) || data.child('from').val() == auth.uid || auth.token.email == 'rotemshaer@gmail.com')" } },
+    "pendingReviews": { ".read": "auth != null && (auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true)", "$reviewId": { ".write": "auth != null && ((!data.exists() && newData.exists()) || data.child('from').val() == auth.uid || (auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true))" } },
     "videos": {
       ".read": "auth != null",
       "$teacherId": {
-        ".write": "auth.uid == $teacherId || auth.token.email == 'rotemshaer@gmail.com'",
+        ".write": "auth.uid == $teacherId || (auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true)",
         "$videoId": {
           "approved": {
-            ".validate": "auth.token.email == 'rotemshaer@gmail.com' || newData.val() != true"
+            ".validate": "(auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true) || newData.val() != true"
           }
         }
       }
@@ -402,11 +409,11 @@
     "communityPosts": {
       ".read": "auth != null && auth.token.firebase.sign_in_provider != 'anonymous'",
       "$postId": {
-        ".write": "auth != null && ((root.child('users').child(auth.uid).child('verified').val() == true && !root.child('userBlocks').child(auth.uid).exists() && (!data.exists() && newData.child('authUid').val() == auth.uid || data.child('authUid').val() == auth.uid)) || auth.token.email == 'rotemshaer@gmail.com')",
+        ".write": "auth != null && ((root.child('users').child(auth.uid).child('verified').val() == true && !root.child('userBlocks').child(auth.uid).exists() && (!data.exists() && newData.child('authUid').val() == auth.uid || data.child('authUid').val() == auth.uid)) || (auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true))",
         "text": { ".validate": "newData.isString() && newData.val().length <= 2000 && !newData.val().matches(/[<>`]/) && !newData.val().matches(/(https?:\\/\\/|www\\.|@[a-zA-Z0-9._]{3,}|0[0-9]{1,2}[- ]?[0-9]{3}[- ]?[0-9]{4})/)" },
         ".validate": "!newData.exists() || (newData.hasChildren(['authUid', 'author', 'createdAt']) && (newData.child('text').isString() || newData.child('mediaUrl').isString()))",
         "status": {
-          ".validate": "auth.token.email == 'rotemshaer@gmail.com' || newData.val() != 'approved'"
+          ".validate": "(auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true) || newData.val() != 'approved'"
         },
         "likes": {
           ".write": "auth != null && root.child('users').child(auth.uid).child('verified').val() == true && !root.child('userBlocks').child(auth.uid).exists()",
@@ -431,7 +438,7 @@
         ".read": "auth != null && auth.token.firebase.sign_in_provider != 'anonymous'",
         ".indexOn": ["askedAt"],
         "$qaId": {
-          ".write": "auth != null && ((root.child('users').child(auth.uid).child('verified').val() == true && !root.child('userBlocks').child(auth.uid).exists() && (!data.exists() && newData.child('askerUid').val() == auth.uid || (data.exists() && auth.uid == $teacherUid) || data.child('askerUid').val() == auth.uid)) || auth.token.email == 'rotemshaer@gmail.com')",
+          ".write": "auth != null && ((root.child('users').child(auth.uid).child('verified').val() == true && !root.child('userBlocks').child(auth.uid).exists() && (!data.exists() && newData.child('askerUid').val() == auth.uid || (data.exists() && auth.uid == $teacherUid) || data.child('askerUid').val() == auth.uid)) || (auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true))",
           "question": { ".validate": "newData.isString() && newData.val().length <= 1000 && !newData.val().matches(/[<>`]/) && !newData.val().matches(/(https?:\\/\\/|www\\.|@[a-zA-Z0-9._]{3,}|0[0-9]{1,2}[- ]?[0-9]{3}[- ]?[0-9]{4})/)" },
           "answer": { ".validate": "newData.isString() && newData.val().length <= 2000 && !newData.val().matches(/[<>`]/) && !newData.val().matches(/(https?:\\/\\/|www\\.|@[a-zA-Z0-9._]{3,}|0[0-9]{1,2}[- ]?[0-9]{3}[- ]?[0-9]{4})/)" }
         }
@@ -465,49 +472,53 @@
     "posts": {
       ".read": "auth != null && auth.token.firebase.sign_in_provider != 'anonymous'",
       "$postId": {
-        ".write": "auth != null && ((root.child('users').child(auth.uid).child('verified').val() == true && !root.child('userBlocks').child(auth.uid).exists() && (!data.exists() && newData.child('authUid').val() == auth.uid || data.child('authUid').val() == auth.uid)) || auth.token.email == 'rotemshaer@gmail.com')"
+        ".write": "auth != null && ((root.child('users').child(auth.uid).child('verified').val() == true && !root.child('userBlocks').child(auth.uid).exists() && (!data.exists() && newData.child('authUid').val() == auth.uid || data.child('authUid').val() == auth.uid)) || (auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true))"
       }
     },
     "groups": {
-      ".read": "auth != null && (root.child('users').child(auth.uid).child('verified').val() == true || auth.token.email == 'rotemshaer@gmail.com')",
+      ".read": "auth != null && (root.child('users').child(auth.uid).child('verified').val() == true || (auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true))",
       ".indexOn": ["status"],
       "$groupId": {
-        ".write": "auth != null && (!newData.exists() || (newData.child('status').exists() && newData.child('teacherId').exists())) && ((root.child('users').child(auth.uid).child('verified').val() == true && !root.child('userBlocks').child(auth.uid).exists() && ((data.exists() && data.child('teacherId').val() == auth.uid) || (!data.exists() && newData.child('teacherId').val() == auth.uid && root.child('users').child(auth.uid).child('role').val() == 'teacher'))) || auth.token.email == 'rotemshaer@gmail.com')",
-        "teacherId": { ".validate": "newData.isString() && (auth.token.email == 'rotemshaer@gmail.com' || newData.val() == auth.uid)" },
-        "teacherName": { ".validate": "newData.isString() && newData.val().length <= 60 && !newData.val().matches(/[<>`]/) && !newData.val().matches(/(https?:\\/\\/|www\\.|@[a-zA-Z0-9._]{3,}|0[0-9]{1,2}[- ]?[0-9]{3}[- ]?[0-9]{4})/) && (auth.token.email == 'rotemshaer@gmail.com' || (data.parent().child('status').val() != 'open' && data.parent().child('status').val() != 'full'))" },
+        ".validate": "data.exists() || (auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true) || newData.hasChildren(['minAge', 'maxAge'])",
+        ".write": "auth != null && (!newData.exists() || (newData.child('status').exists() && newData.child('teacherId').exists())) && ((root.child('users').child(auth.uid).child('verified').val() == true && !root.child('userBlocks').child(auth.uid).exists() && ((data.exists() && data.child('teacherId').val() == auth.uid) || (!data.exists() && newData.child('teacherId').val() == auth.uid && root.child('users').child(auth.uid).child('role').val() == 'teacher'))) || (auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true))",
+        "teacherId": { ".validate": "newData.isString() && ((auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true) || newData.val() == auth.uid)" },
+        "teacherName": { ".validate": "newData.isString() && newData.val().length <= 60 && !newData.val().matches(/[<>`]/) && !newData.val().matches(/(https?:\\/\\/|www\\.|@[a-zA-Z0-9._]{3,}|0[0-9]{1,2}[- ]?[0-9]{3}[- ]?[0-9]{4})/) && ((auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true) || (data.parent().child('status').val() != 'open' && data.parent().child('status').val() != 'full'))" },
         "teacherPhoto": { ".validate": "newData.isString() && newData.val().length <= 2000" },
-        "subject": { ".validate": "newData.isString() && newData.val().matches(/^[a-zA-Z0-9_-]{1,40}$/) && (auth.token.email == 'rotemshaer@gmail.com' || (data.parent().child('status').val() != 'open' && data.parent().child('status').val() != 'full'))" },
-        "city": { ".validate": "newData.isString() && newData.val().length <= 60 && !newData.val().matches(/[<>`]/) && !newData.val().matches(/(https?:\\/\\/|www\\.|@[a-zA-Z0-9._]{3,}|0[0-9]{1,2}[- ]?[0-9]{3}[- ]?[0-9]{4})/) && (auth.token.email == 'rotemshaer@gmail.com' || (data.parent().child('status').val() != 'open' && data.parent().child('status').val() != 'full'))" },
-        "title": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>`]/) && !newData.val().matches(/(https?:\\/\\/|www\\.|@[a-zA-Z0-9._]{3,}|0[0-9]{1,2}[- ]?[0-9]{3}[- ]?[0-9]{4})/) && (auth.token.email == 'rotemshaer@gmail.com' || (data.parent().child('status').val() != 'open' && data.parent().child('status').val() != 'full'))" },
-        "desc": { ".validate": "newData.isString() && newData.val().length <= 2000 && !newData.val().matches(/[<>`]/) && !newData.val().matches(/(https?:\\/\\/|www\\.|@[a-zA-Z0-9._]{3,}|0[0-9]{1,2}[- ]?[0-9]{3}[- ]?[0-9]{4})/) && (auth.token.email == 'rotemshaer@gmail.com' || (data.parent().child('status').val() != 'open' && data.parent().child('status').val() != 'full'))" },
-        "location": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>`]/) && !newData.val().matches(/(https?:\\/\\/|www\\.|@[a-zA-Z0-9._]{3,}|0[0-9]{1,2}[- ]?[0-9]{3}[- ]?[0-9]{4})/) && (auth.token.email == 'rotemshaer@gmail.com' || (data.parent().child('status').val() != 'open' && data.parent().child('status').val() != 'full'))" },
-        "day": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>`]/) && (auth.token.email == 'rotemshaer@gmail.com' || (data.parent().child('status').val() != 'open' && data.parent().child('status').val() != 'full'))" },
-        "time": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>`]/) && (auth.token.email == 'rotemshaer@gmail.com' || (data.parent().child('status').val() != 'open' && data.parent().child('status').val() != 'full'))" },
-        "price": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000 && (auth.token.email == 'rotemshaer@gmail.com' || (data.parent().child('status').val() != 'open' && data.parent().child('status').val() != 'full'))" },
-        "maxStudents": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 30 && (auth.token.email == 'rotemshaer@gmail.com' || (data.parent().child('status').val() != 'open' && data.parent().child('status').val() != 'full'))" },
+        "subject": { ".validate": "newData.isString() && newData.val().matches(/^[a-zA-Z0-9_-]{1,40}$/) && ((auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true) || (data.parent().child('status').val() != 'open' && data.parent().child('status').val() != 'full'))" },
+        "city": { ".validate": "newData.isString() && newData.val().length <= 60 && !newData.val().matches(/[<>`]/) && !newData.val().matches(/(https?:\\/\\/|www\\.|@[a-zA-Z0-9._]{3,}|0[0-9]{1,2}[- ]?[0-9]{3}[- ]?[0-9]{4})/) && ((auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true) || (data.parent().child('status').val() != 'open' && data.parent().child('status').val() != 'full'))" },
+        "title": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>`]/) && !newData.val().matches(/(https?:\\/\\/|www\\.|@[a-zA-Z0-9._]{3,}|0[0-9]{1,2}[- ]?[0-9]{3}[- ]?[0-9]{4})/) && ((auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true) || (data.parent().child('status').val() != 'open' && data.parent().child('status').val() != 'full'))" },
+        "desc": { ".validate": "newData.isString() && newData.val().length <= 2000 && !newData.val().matches(/[<>`]/) && !newData.val().matches(/(https?:\\/\\/|www\\.|@[a-zA-Z0-9._]{3,}|0[0-9]{1,2}[- ]?[0-9]{3}[- ]?[0-9]{4})/) && ((auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true) || (data.parent().child('status').val() != 'open' && data.parent().child('status').val() != 'full'))" },
+        "location": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>`]/) && !newData.val().matches(/(https?:\\/\\/|www\\.|@[a-zA-Z0-9._]{3,}|0[0-9]{1,2}[- ]?[0-9]{3}[- ]?[0-9]{4})/) && ((auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true) || (data.parent().child('status').val() != 'open' && data.parent().child('status').val() != 'full'))" },
+        "day": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>`]/) && ((auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true) || (data.parent().child('status').val() != 'open' && data.parent().child('status').val() != 'full'))" },
+        "time": { ".validate": "newData.isString() && newData.val().length <= 300 && !newData.val().matches(/[<>`]/) && ((auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true) || (data.parent().child('status').val() != 'open' && data.parent().child('status').val() != 'full'))" },
+        "price": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000 && ((auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true) || (data.parent().child('status').val() != 'open' && data.parent().child('status').val() != 'full'))" },
+        "maxStudents": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 30 && ((auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true) || (data.parent().child('status').val() != 'open' && data.parent().child('status').val() != 'full'))" },
+        "minAge": { ".validate": "newData.isNumber() && newData.val() % 1 == 0 && newData.val() >= 9 && newData.val() <= 18 && newData.val() <= newData.parent().child('maxAge').val() && ((auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true) || newData.val() >= root.child('users').child(auth.uid).child('age').val() - 3) && ((auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true) || (data.parent().child('status').val() != 'open' && data.parent().child('status').val() != 'full'))" },
+        "maxAge": { ".validate": "newData.isNumber() && newData.val() % 1 == 0 && newData.val() >= 9 && newData.val() <= 18 && ((auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true) || (data.parent().child('status').val() != 'open' && data.parent().child('status').val() != 'full'))" },
         "isMixed": { ".validate": "newData.isBoolean()" },
         "createdAt": { ".validate": "newData.isNumber()" },
         "membersCount": {
-          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= newData.parent().child('maxStudents').val() && (auth.token.email == 'rotemshaer@gmail.com' || newData.parent().child('teacherId').val() == auth.uid)"
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= newData.parent().child('maxStudents').val() && ((auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true) || newData.parent().child('teacherId').val() == auth.uid)"
         },
         "status": {
-          ".validate": "auth.token.email == 'rotemshaer@gmail.com' || (!data.exists() && newData.val() == 'pending') || (data.exists() && newData.parent().child('teacherId').val() == auth.uid && (newData.val() == data.val() || newData.val() == 'closed' || newData.val() == 'cancelled' || (data.val() == 'open' && newData.val() == 'full') || (data.val() == 'full' && newData.val() == 'open')))"
+          ".validate": "(auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true) || (!data.exists() && newData.val() == 'pending') || (data.exists() && newData.parent().child('teacherId').val() == auth.uid && (newData.val() == data.val() || newData.val() == 'closed' || newData.val() == 'cancelled' || (data.val() == 'open' && newData.val() == 'full') || (data.val() == 'full' && newData.val() == 'open')))"
         },
-        "$other": { ".validate": "auth.token.email == 'rotemshaer@gmail.com'" }
+        "$other": { ".validate": "(auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true)" }
       }
     },
     "groupMembers": {
       "$groupId": {
-        ".read": "auth != null && (root.child('groups').child($groupId).child('teacherId').val() == auth.uid || auth.token.email == 'rotemshaer@gmail.com')",
+        ".read": "auth != null && (root.child('groups').child($groupId).child('teacherId').val() == auth.uid || (auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true))",
         "$uid": {
           ".read": "auth != null && auth.uid == $uid",
-          ".write": "auth != null && ((root.child('users').child(auth.uid).child('verified').val() == true && !root.child('userBlocks').child(auth.uid).exists() && (auth.uid == $uid || (data.exists() && root.child('groups').child($groupId).child('teacherId').val() == auth.uid))) || auth.token.email == 'rotemshaer@gmail.com')",
+          ".write": "auth != null && ((root.child('users').child(auth.uid).child('verified').val() == true && !root.child('userBlocks').child(auth.uid).exists() && (auth.uid == $uid || (data.exists() && root.child('groups').child($groupId).child('teacherId').val() == auth.uid))) || (auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true))",
           "name": { ".validate": "newData.isString() && newData.val().length <= 60 && !newData.val().matches(/[<>`]/)" },
           "joinedAt": { ".validate": "newData.isNumber()" },
           "status": {
-            ".validate": "auth.uid != $uid || auth.token.email == 'rotemshaer@gmail.com' || root.child('groups').child($groupId).child('teacherId').val() == auth.uid || newData.val() == 'pending'"
+            ".validate": "(newData.val() != 'approved' || newData.parent().child('parentApprovedAt').isNumber()) && (auth.uid != $uid || (auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true) || root.child('groups').child($groupId).child('teacherId').val() == auth.uid || newData.val() == 'pending')"
           },
-          "$other": { ".validate": "auth.token.email == 'rotemshaer@gmail.com'" }
+          "parentApprovedAt": { ".validate": "newData.isNumber() && auth.token.email == 'rotemshaer@gmail.com'" },
+          "$other": { ".validate": "(auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true)" }
         }
       }
     },
@@ -516,33 +527,33 @@
         ".read": "auth != null && auth.uid == $uid",
         ".write": "auth != null && auth.uid == $uid",
         "$groupId": {
-          ".write": "auth != null && (auth.uid == $uid || (root.child('users').child(auth.uid).child('verified').val() == true && !root.child('userBlocks').child(auth.uid).exists() && data.exists() && root.child('groups').child($groupId).child('teacherId').val() == auth.uid) || auth.token.email == 'rotemshaer@gmail.com')"
+          ".write": "auth != null && (auth.uid == $uid || (root.child('users').child(auth.uid).child('verified').val() == true && !root.child('userBlocks').child(auth.uid).exists() && data.exists() && root.child('groups').child($groupId).child('teacherId').val() == auth.uid) || (auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true))"
         }
       }
     },
     "reports": {
-      ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'",
+      ".read": "auth != null && (auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true)",
       ".indexOn": ["status"],
       "$reportId": {
-        ".write": "auth != null && ((root.child('users').child(auth.uid).child('verified').val() == true && !root.child('userBlocks').child(auth.uid).exists() && !data.exists() && newData.exists()) || auth.token.email == 'rotemshaer@gmail.com')",
+        ".write": "auth != null && ((root.child('users').child(auth.uid).child('verified').val() == true && !root.child('userBlocks').child(auth.uid).exists() && !data.exists() && newData.exists()) || (auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true))",
         "description": { ".validate": "newData.isString() && newData.val().length <= 2000" },
-        "reporterId": { ".validate": "auth.token.email == 'rotemshaer@gmail.com' || newData.val() == auth.uid || newData.val() == 'system'" },
+        "reporterId": { ".validate": "(auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true) || newData.val() == auth.uid || newData.val() == 'system'" },
         "severity": {
-          ".validate": "auth.token.email == 'rotemshaer@gmail.com' || newData.val() == ((newData.parent().child('reason').val() == 'safety' || newData.parent().child('reason').val() == 'auto') ? 'critical' : ((newData.parent().child('reason').val() == 'harassment' || newData.parent().child('reason').val() == 'inappropriate') ? 'high' : (newData.parent().child('reason').val() == 'spam' ? 'low' : 'medium')))"
+          ".validate": "(auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true) || newData.val() == ((newData.parent().child('reason').val() == 'safety' || newData.parent().child('reason').val() == 'auto') ? 'critical' : ((newData.parent().child('reason').val() == 'harassment' || newData.parent().child('reason').val() == 'inappropriate') ? 'high' : (newData.parent().child('reason').val() == 'spam' ? 'low' : 'medium')))"
         },
         "createdAt": {
-          ".validate": "auth.token.email == 'rotemshaer@gmail.com' || (newData.isNumber() && newData.val() <= now + 300000 && newData.val() > now - 300000)"
+          ".validate": "(auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true) || (newData.isNumber() && newData.val() <= now + 300000 && newData.val() > now - 300000)"
         },
         "slaDueAt": {
-          ".validate": "auth.token.email == 'rotemshaer@gmail.com' || newData.val() == newData.parent().child('createdAt').val() + ((newData.parent().child('severity').val() == 'critical' ? 7200000 : (newData.parent().child('severity').val() == 'high' ? 43200000 : (newData.parent().child('severity').val() == 'medium' ? 172800000 : 604800000))))"
+          ".validate": "(auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true) || newData.val() == newData.parent().child('createdAt').val() + ((newData.parent().child('severity').val() == 'critical' ? 7200000 : (newData.parent().child('severity').val() == 'high' ? 43200000 : (newData.parent().child('severity').val() == 'medium' ? 172800000 : 604800000))))"
         },
         "status": {
-          ".validate": "auth.token.email == 'rotemshaer@gmail.com' || newData.val() == 'open'"
+          ".validate": "(auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true) || newData.val() == 'open'"
         },
-        "handledBy": { ".validate": "auth.token.email == 'rotemshaer@gmail.com'" },
-        "handledAt": { ".validate": "auth.token.email == 'rotemshaer@gmail.com'" },
-        "resolution": { ".validate": "auth.token.email == 'rotemshaer@gmail.com'" },
-        "audit": { ".write": "auth.token.email == 'rotemshaer@gmail.com'" }
+        "handledBy": { ".validate": "(auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true)" },
+        "handledAt": { ".validate": "(auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true)" },
+        "resolution": { ".validate": "(auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true)" },
+        "audit": { ".write": "(auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true)" }
       }
     },
     "favorites": {
@@ -567,16 +578,25 @@
     },
     "contactMessages": { ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'", "$msgId": { ".write": "auth != null && !data.exists()" } },
     "employerInquiries": { ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'", "$inquiryId": { ".write": "auth != null && !data.exists()" } },
-    "pendingCategories": { ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'", "$suggestionId": { ".write": "auth != null && ((!data.exists() && newData.exists()) || auth.token.email == 'rotemshaer@gmail.com')" } },
+    "pendingCategories": { ".read": "auth != null && (auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true)", "$suggestionId": { ".write": "auth != null && ((!data.exists() && newData.exists()) || (auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true))" } },
     "stories": {
       ".read": "auth != null && auth.token.firebase.sign_in_provider != 'anonymous'",
       ".indexOn": ["status", "uid", "expiresAt"],
       "$storyId": {
-        ".write": "auth != null && ((!data.exists() && newData.child('uid').val() == auth.uid && root.child('users').child(auth.uid).child('verified').val() == true && !root.child('userBlocks').child(auth.uid).exists()) || data.child('uid').val() == auth.uid || auth.token.email == 'rotemshaer@gmail.com')",
+        ".write": "auth != null && ((!data.exists() && newData.child('uid').val() == auth.uid && root.child('users').child(auth.uid).child('verified').val() == true && !root.child('userBlocks').child(auth.uid).exists()) || data.child('uid').val() == auth.uid || (auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true))",
         "status": {
-          ".validate": "auth.token.email == 'rotemshaer@gmail.com' || newData.val() != 'approved'"
+          ".validate": "(auth.token.email == 'rotemshaer@gmail.com' || root.child('team').child(auth.uid).val() == true) || newData.val() != 'approved'"
         }
       }
+    },
+    "idPurgeDue": {
+      "$uid": { ".write": "auth != null && root.child('team').child(auth.uid).val() == true", ".validate": "newData.isNumber()" }
+    },
+    "team": {
+      "$uid": { ".read": "auth != null && auth.uid == $uid" }
+    },
+    "teamInfo": {
+      ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'"
     },
     "adminConfig": {
       ".read": "auth != null && auth.token.email == 'rotemshaer@gmail.com'",

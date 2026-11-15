@@ -11,7 +11,7 @@ const ALLOWED_ORIGINS = require('../lib/allowed-origins');
 const { withinWindowLimit } = require('../lib/rate-limit');
 const { pushToTokens } = require('../lib/push');
 
-const ADMIN_EMAIL = 'rotemshaer@gmail.com';
+const { ADMIN_EMAIL } = require('../lib/admin-email');
 const ID_RE = /^[A-Za-z0-9_-]{1,128}$/;
 const PUSH_SEVERITIES = ['critical', 'high'];
 const RATE_LIMIT_MAX = 10;
@@ -61,8 +61,13 @@ exports.handler = async (event) => {
 
     let adminUid;
     try { adminUid = (await admin.auth().getUserByEmail(ADMIN_EMAIL)).uid; } catch (_e) { return reply(200, { sent: 0, reason: 'no admin' }); }
-    const snap = await db.ref('fcmTokens').orderByChild('uid').equalTo(adminUid).get();
-    const tokensVal = snap.exists() ? snap.val() : {};
+    // הבעלים וכל חברי הצוות: דיווח על בטיחות של ילד שצריך שהטלפון יצלצל לא יכול לחכות לאדם אחד
+    const teamUids = Object.keys((await db.ref('team').get()).val() || {});
+    const tokensVal = {};
+    for (const u of [adminUid, ...teamUids]) {
+      const snap = await db.ref('fcmTokens').orderByChild('uid').equalTo(u).get();
+      if (snap.exists()) Object.assign(tokensVal, snap.val());
+    }
     if (!Object.keys(tokensVal).length) return reply(200, { sent: 0, reason: 'No registered devices' });
 
     const r = await pushToTokens(admin, db, tokensVal, {

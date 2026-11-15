@@ -6,6 +6,10 @@
 [functions]
   directory = "netlify/functions"
 
+# מחיקת צילומי תעודות זהות 30 יום אחרי ההחלטה (id-photo-purge.js). רצה פעם ביום, 03:17 UTC.
+[functions."id-photo-purge"]
+  schedule = "17 3 * * *"
+
 [[redirects]]
   from = "/api/ai-assistant"
   to = "/.netlify/functions/ai-assistant"
@@ -42,6 +46,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/error-alert"
+  to = "/.netlify/functions/error-alert"
+  status = 200
+
+[[redirects]]
   from = "/api/claim-founding"
   to = "/.netlify/functions/claim-founding"
   status = 200
@@ -54,6 +63,16 @@
 [[redirects]]
   from = "/api/group-leave"
   to = "/.netlify/functions/group-leave"
+  status = 200
+
+[[redirects]]
+  from = "/api/team-roles"
+  to = "/.netlify/functions/team-roles"
+  status = 200
+
+[[redirects]]
+  from = "/api/group-consent"
+  to = "/.netlify/functions/group-consent"
   status = 200
 
 [[redirects]]

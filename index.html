@@ -95,7 +95,9 @@ if(IS_STAGING){
 // עד עכשיו הדרך היחידה לדעת שמשהו נשבר אצל משתמש הייתה שהוא יספר לנו.
 // זה תופס כל שגיאת JS/Promise שלא נתפסה בכל האפליקציה ושולח לוג ל-DB, מוגבל
 // לפעם אחת לכל שגיאה ייחודית בכל טעינת דף (כדי לא להציף בכתיבות אם שגיאה
-// חוזרת בלולאה). נצפה בפאנל הניהול תחת "שגיאות אפליקציה".
+// חוזרת בלולאה). נצפה בפאנל הניהול תחת "שגיאות אפליקציה" — וגם *מתריע*: אחרי
+// הכתיבה יוצאת קריאה ל-/api/error-alert, ששולח מייל למנהל על שגיאה חדשה. עד
+// 15.11.2026 הלוג נכתב ואף אחד לא ידע עליו עד שנפתח הפאנל.
 (function(){
   var _seen={};
   function _hash(s){var h=0;for(var i=0;i<s.length;i++){h=((h<<5)-h+s.charCodeAt(i))|0;}return String(h);}
@@ -106,7 +108,7 @@ if(IS_STAGING){
       if(_seen[key])return;
       _seen[key]=true;
       if(typeof db==='undefined'||!db)return;
-      db.ref('clientErrors').push({
+      var _ref=db.ref('clientErrors').push({
         message:String(message||'').slice(0,500),
         stack:String(extra.stack||'').slice(0,1000),
         source:String(extra.source||''),
@@ -115,6 +117,19 @@ if(IS_STAGING){
         uid:(typeof currentUser!=='undefined'&&currentUser)?currentUser.uid:null,
         userAgent:navigator.userAgent,
         createdAt:Date.now()
+      });
+      // אחרי שהכתיבה אושרה — קריאה לשרת שישלח מייל למנהל (error-alert.js). השרת
+      // קורא את הרשומה מהמסד לפי המזהה, ולכן לא נשלח כאן שום טקסט. keepalive כדי
+      // שגם שגיאה בזמן יציאה מהדף תספיק לצאת. הפונקציה לא מתריעה פעמיים על אותה
+      // שגיאה ביום, ויש לה תקרה יומית — ראה הקובץ.
+      //
+      // API_BASE מוגדר הרבה אחרי ה-IIFE הזה, אבל db מוגדר לפניו: שגיאה בשנייה
+      // הראשונה של הטעינה תגיע לכאן בלי API_BASE. בדפדפן נתיב יחסי הוא בדיוק מה
+      // ש-API_BASE היה נותן; במעטפת הנייטיב אין בסיס לנחש, והשגיאה נשארת במסד.
+      _ref.then(function(){
+        var base=(typeof API_BASE==='string')?API_BASE:(location.protocol.indexOf('http')===0?'':null);
+        if(base===null)return;
+        fetch(base+'/api/error-alert',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({errorId:_ref.key}),keepalive:true}).catch(function(){});
       }).catch(function(){});
     }catch(_e){}
   };
@@ -138,6 +153,24 @@ if(IS_STAGING){
 <!-- PWA Manifest -->
 <link rel="manifest" href="/manifest.json">
 <link rel="canonical" href="https://kidemy-app.netlify.app/">
+
+<!-- כרטיס שיתוף: בלי אלה, קישור שנשלח בוואטסאפ או באינסטגרם מופיע כשורת טקסט
+     ריקה. ההפצה של Drushe היא בדיוק שם, ולכן זה לא קישוט. התמונה היא הגרפיקה
+     של חנות Play, 1024x500, שכבר נשלחת מהאתר. -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Drushe">
+<meta property="og:locale" content="he_IL">
+<meta property="og:url" content="https://kidemy-app.netlify.app/">
+<meta property="og:title" content="Drushe – ילדים מלמדים ילדים">
+<meta property="og:description" content="לומדים. נפגשים. מכירים חברים חדשים — עם מורים בני נוער מאושרים, באישור הורים.">
+<meta property="og:image" content="https://kidemy-app.netlify.app/mobile/store-assets/feature-graphic.png">
+<meta property="og:image:width" content="1024">
+<meta property="og:image:height" content="500">
+<meta property="og:image:alt" content="Drushe – ילדים מלמדים ילדים">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Drushe – ילדים מלמדים ילדים">
+<meta name="twitter:description" content="לומדים. נפגשים. מכירים חברים חדשים — עם מורים בני נוער מאושרים, באישור הורים.">
+<meta name="twitter:image" content="https://kidemy-app.netlify.app/mobile/store-assets/feature-graphic.png">
 
 <!-- iOS Apple Touch Icon -->
 <link rel="apple-touch-icon" href="/icon-180.png">
@@ -1223,7 +1256,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.78';
+const APP_VERSION='4.11.79';
 
 // ─── הודעות קוליות — כבויות ────────────────────────────────────────────────
 // הקלטה קולית היא הערוץ היחיד בין ילדים שאיש לא בודק: אין תמלול, אין סינון,
@@ -3737,6 +3770,32 @@ async function deleteStudentBooking(bookingId){
 // מארחים מוכרים בלבד: קישור חופשי הוא דרך להוציא ילד מהאפליקציה (אתר זר, קבוצת צ'אט). אותה רשימה בחוקי jitsiUrl.
 // גילוי נאות על מפגשי קבוצה פיזיים — מוצג לילד בהרשמה ולהורה באישור (הוא ממקום אחד; נוסח המייל בשרת חייב להיות זהה, נבדק ב-tests/functions).
 const GROUP_MEETUP_NOTICE='חלק מהקבוצות נפגשות פיזית, ללא נוכחות הורים. כל קבוצה מאושרת על ידי צוות Drushe לפני שהיא מתפרסמת.';
+// מספר לפניות דחופות בזמן מפגש — זמני (החלטת הבעלים, 15.11.2026), יוחלף במספר ייעודי לפני ההשקה. עד אז לא היה לאף הורה ולאף
+// מוביל למי להתקשר. העותק של השרת: netlify/lib/safety-contact.js; tests/functions/group-consent.test.js נכשל אם הם סוטים.
+const GROUP_EMERGENCY_PHONE='0542020812';
+// הילד הצעיר בקבוצה יכול להיות צעיר מהמוביל ב-3 שנים לכל היותר (החלטת הבעלים, 15.11.2026). המוביל בן 14–18; מוביל בן 14
+// שמוביל ילדים בני 9, לבד וללא מבוגר, היה הפער הראשון שעו"ד או מבטח היו מצביעים עליו. אותו מספר בחוקים: groups/$groupId/minAge.
+const GROUP_MAX_AGE_GAP=3;
+// כמה ימים נשמר צילום תעודת זהות אחרי שהצוות הכריע (החלטת הבעלים, 15.11.2026). עד אז הוא נשמר עד מחיקת החשבון. המחיקה עצמה
+// רצה בשרת (netlify/functions/id-photo-purge.js); כאן רק נרשם *מתי* — בכל אישור או דחייה. אותו מספר ב-netlify/lib/retention.js
+// ובנוסח ב-privacy.html; tests/functions/id-photo-purge.test.js נכשל אם הם סוטים.
+const ID_PHOTO_RETENTION_DAYS=30;
+async function scheduleIdPurge(uid){
+  try{await db.ref('idPurgeDue/'+uid).set(Date.now()+ID_PHOTO_RETENTION_DAYS*86400000);}
+  catch(e){console.warn('[idPurge]',e);showFireToast('⚠️ ההחלטה נשמרה, אבל מחיקת התעודה לא תוזמנה. הודע לי');}
+}
+function groupMinAgeFloor(){
+  const a=Number(currentUserData?.age);
+  return Math.max(AGE_RANGE.student.min,Number.isFinite(a)?a-GROUP_MAX_AGE_GAP:AGE_RANGE.student.max);
+}
+function emergencyLineHtml(){
+  return `<div class="warn" style="margin-bottom:12px"><span>🆘</span><span>לפניות דחופות בזמן מפגש: <a href="tel:${GROUP_EMERGENCY_PHONE}" dir="ltr" style="color:inherit;font-weight:800">${GROUP_EMERGENCY_PHONE}</a>. בסכנה מיידית — משטרה 100, מד"א 101.</span></div>`;
+}
+// הילד בטווח הגילים של הקבוצה? קבוצה בלי טווח (ישנה) — לא ניתן להצטרף אליה, כמו בשרת (group_no_age_range).
+function ageInGroupRange(g){
+  const a=Number(currentUserData?.age),lo=Number(g?.minAge),hi=Number(g?.maxAge);
+  return Number.isFinite(a)&&Number.isFinite(lo)&&Number.isFinite(hi)&&a>=lo&&a<=hi;
+}
 const MEETING_HOSTS=['zoom.us','meet.google.com','teams.microsoft.com','teams.live.com','whereby.com','meet.jit.si'];
 function meetingLinkClean(v){
   const u=String(v||'').trim();
@@ -5774,6 +5833,20 @@ async function checkTeacherTrialReminder(){
     await db.ref('notifications/'+currentUser.uid).push({type:'trialReminder',read:false,createdAt:Date.now(),daysLeft}).catch(()=>{});
   }catch(e){console.warn('[trialReminder] failed:',e);}
 }
+// חבר צוות: מי שהבעלים הוסיף (netlify/functions/team-roles.js). הדגל נקרא מ-team/<uid> — אותו ערך שהחוקים בודקים, ולכן
+// הסרה חלה בבקשה הבאה. החבר מבצע עבודת בדיקה (לאשר ילדים ומורים, לטפל בקבוצות ובדיווחים, לנהל תוכן) ולא מגדיר את הכללים:
+// לא מסד הנתונים כולו, לא הגדרות, לא תשלומים ולא רשימת הצוות. isAdmin() נשאר הבעלים בלבד — 60 מקומות תלויים בו.
+let _isTeamMember=false;
+function isTeam(){return _isTeamMember===true;}
+function isStaff(){return isAdmin()||isTeam();}
+async function _loadTeamFlag(){
+  _isTeamMember=false;
+  if(!currentUser||isAdmin())return;
+  try{_isTeamMember=(await db.ref('team/'+currentUser.uid).get()).val()===true;}catch(_e){}
+}
+// מה שנשאר לבעלים בלבד בפאנל: הלשוניות וההפעולות שהחוקים והשרת ממילא לא מתירים לצוות. נסתרים כדי שלא יוצגו כפתורים שנכשלים.
+const ADMIN_OWNER_ONLY_TABS=['bookings','subscriptions','messages','stats','team'];
+const ADMIN_OWNER_ONLY_ACTIONS=['adminDeleteUser','adminDeleteDuplicate','adminSearchAllFirebase','adminDeleteGhostRecords','adminDeleteAllStudents','adminRestoreStudents','adminDeleteOldUsers','resetSystem','adminMigrateIdPhotos','adminDeleteErrorGroup','adminClearAllErrors','adminSendTestEmail','adminToggleAi'];
 function isAdmin(){
   return currentUser&&ADMIN_EMAILS.includes(currentUser.email?.toLowerCase());
 }
@@ -5932,6 +6005,7 @@ if(typeof auth!=='undefined'&&auth&&!auth._pushSignOutWrapped){
   auth._pushSignOutWrapped=true;
 }
 
+let adminTeamList=[];
 let adminAllUsers=[],adminAllTeachers=[],adminAllVideos=[],adminAllReports=[],adminAllBookings=[],adminIncompleteTeachers=[],adminAllPosts=[],adminAllReviews=[],adminAllStories=[],adminAllClientErrors=[],adminAllGroups=[],adminOpenGroups=[],adminGroupsErr='';
 let adminAlertStudents=[],adminAlertPosts=[],adminAlertSubscriptions=[],adminContactMessages=[],adminAlertStoriesPending=0; // מקור ראשי לממתינים
 let adminTab='users';
@@ -5975,7 +6049,7 @@ let _adminActionInProgress=false; // מנגנון נגד race-condition בזמן
 // האזן לכל הממתינים בזמן אמת דרך נתיב adminAlerts
 let _adminDataLoading=false; // מנע listener מלאפס נתונים בזמן טעינה
 function _startAdminAlertsListener(){
-  if(!isAdmin())return;
+  if(!isStaff())return;
   const _rebadge=()=>{
     _updateAdminBadge(_adminPending().total);
     if(document.getElementById('_adminPanel')&&!_adminActionInProgress)renderAdminPanel();
@@ -6014,7 +6088,7 @@ function _startAdminAlertsListener(){
 }
 
 async function _checkAdminBadge(){
-  if(!isAdmin())return;
+  if(!isStaff())return;
   try{
     // ספירה מהירה לפני שפאנל הניהול נטען במלואו. היא ממלאת את אותם משתנים
     // ש-_adminPending קורא, ולכן היא לא נוסחה חמישית אלא אותה הגדרה.
@@ -6034,7 +6108,7 @@ async function _checkAdminBadge(){
 let _adminCommunityOrphans=[]; // משתמשים שפרסמו בקהילה אך אין להם רשומה מאושרת
 
 async function loadAdminData(){
-  if(!isAdmin()){showFireToast('🚫 אין הרשאת מנהל');return;}
+  if(!isStaff()){showFireToast('🚫 אין הרשאת מנהל');return;}
   _adminDataLoading=true; // נעל listener
   try{
     // קרא users דרך REST API (עוקף קאש SDK) + adminAlerts במקביל
@@ -6043,7 +6117,7 @@ async function loadAdminData(){
       fetch('https://kidemy-83a17-default-rtdb.firebaseio.com/users.json?auth='+token,{cache:'no-store'}),
       db.ref('adminAlerts/students').get(),
       db.ref('adminAlerts/subscriptions').get(),
-      db.ref('contactMessages').get(),
+      isAdmin()?db.ref('contactMessages').get():Promise.resolve({exists:()=>false,forEach:()=>{},val:()=>null}),
       db.ref('userBlocks').get()
     ]);
     const usersData=await usersRes.json();
@@ -6115,7 +6189,7 @@ async function loadAdminData(){
       db.ref('videos').get(),
       db.ref('reports').get(),
       db.ref('clientErrors').limitToLast(300).get(),
-      db.ref('teacherBookings').get(),
+      isAdmin()?db.ref('teacherBookings').get():Promise.resolve({exists:()=>false,forEach:()=>{},val:()=>null}),
       db.ref('reviews').get(),
       db.ref('pendingReviews').get(),
       db.ref('stories').orderByChild('status').equalTo('pending').get(),
@@ -6282,8 +6356,14 @@ async function adminVerifyStudent(uid){
     const baseData={...alertData,...existing};
     // שלב 2: בנה אובייקט מעודכן
     const updatedUser={...baseData,uid,verified:true,role:'student',rejected:false,verifiedAt:Date.now()};
-    // שלב 3: כתוב ל-Firebase (set כדי ליצור רשומה מלאה אם לא קיימת)
-    await db.ref('users/'+uid).set(updatedUser);
+    // שלב 3: כתוב ל-Firebase. רשומה קיימת מקבלת רק את שדות ההחלטה (כך גם חבר צוות רשאי, והחוקים אוסרים עליו לגעת בכל השאר);
+    // רשומה שלא קיימת נוצרת במלואה — וזה לבעלים בלבד.
+    if(existingSnap.exists()&&existing.role){
+      await db.ref('users/'+uid).update({verified:true,rejected:false,verifiedAt:updatedUser.verifiedAt,verifiedBy:currentUser?.uid||'admin'});
+    }else{
+      await db.ref('users/'+uid).set(updatedUser);
+    }
+    await scheduleIdPurge(uid);
     await db.ref('adminAlerts/students/'+uid).remove().catch(()=>{});
     await db.ref('notifications/'+uid).push({type:'studentApproved',read:false,createdAt:Date.now()}).catch(()=>{});
     // שלב 4: עדכן זיכרון מיד — ללא loadAdminData (למנוע race condition)
@@ -6358,7 +6438,9 @@ async function adminRejectStudent(uid){
     await Promise.allSettled([
       db.ref('users/'+uid+'/rejected').set(true),
       db.ref('users/'+uid+'/verified').set(false),
+      db.ref('users/'+uid+'/rejectedAt').set(Date.now()),
     ]);
+    await scheduleIdPurge(uid);
     await db.ref('adminAlerts/students/'+uid).remove().catch(()=>{});
     showFireToast('🚫 הבקשה נדחתה');
     await loadAdminData();renderAdminPanel();
@@ -6478,6 +6560,7 @@ async function adminApproveTeacher(uid){
     await db.ref('teachers/'+uid+'/verified').set(true);
     await db.ref('teachers/'+uid+'/active').set(true);
     await db.ref('users/'+uid+'/verified').set(true);
+    await scheduleIdPurge(uid);
     // שלח הודעה למורה
     await db.ref('notifications/'+uid).push({type:'teacherApproved',read:false,createdAt:Date.now()});
     // מייל למנהל
@@ -6522,7 +6605,9 @@ async function adminRejectTeacher(uid){
     await Promise.allSettled([
       db.ref('users/'+uid+'/rejected').set(true),
       db.ref('users/'+uid+'/verified').set(false),
+      db.ref('users/'+uid+'/rejectedAt').set(Date.now()),
     ]);
+    await scheduleIdPurge(uid);
     await db.ref('teachers/'+uid).remove().catch(()=>{});
     showFireToast('🚫 המורה נדחה');
     await loadAdminData();renderAdminPanel();
@@ -6881,7 +6966,7 @@ async function adminApprovePost(postId){
   }catch(e){showFireToast('❌ '+e.message);}
 }
 async function adminApproveAllPosts(){
-  if(!isAdmin())return;
+  if(!isStaff())return;
   try{
     const snap=await db.ref('communityPosts').get();
     if(!snap.exists()){showFireToast('אין פוסטים');return;}
@@ -7006,7 +7091,7 @@ async function adminCloseReport(id){return adminResolveReport(id,'dismissed');}
 // המנהל קורא שיחה רק כשיש עליה דיווח, וכל קריאה נרשמת ב-audit של הדיווח.
 // חוקי messages כבר מתירים קריאה למנהל; עד עכשיו פשוט לא היה מסך.
 async function adminDecideGroup(id,ok){
-  if(!isAdmin())return;
+  if(!isStaff())return;
   const g=adminAllGroups.find(x=>x.id===id);
   if(!g)return;
   try{
@@ -7022,7 +7107,7 @@ async function adminDecideGroup(id,ok){
 // השעיית קבוצה שכבר פורסמה — דיווח על מוביל ביום המפגש הוא בדיוק המקרה שבגללו
 // זה קיים. הקבוצה יוצאת מהרשימה לכולם, והמוביל וכל החברים המאושרים מקבלים התראה.
 async function adminSuspendGroup(id){
-  if(!isAdmin())return;
+  if(!isStaff())return;
   const g=adminOpenGroups.find(x=>x.id===id)||communityGroups.find(x=>x.id===id);
   if(!g)return;
   const cntSnap=await db.ref('groupMembers/'+id).get().catch(()=>null);
@@ -7046,7 +7131,7 @@ async function adminSuspendGroup(id){
   }catch(e){showFireToast('❌ '+e.message);}
 }
 async function adminViewReportedChat(reportId){
-  if(!isAdmin())return;
+  if(!isStaff())return;
   const r=adminAllReports.find(x=>x.id===reportId);
   if(!r||!r.reporterId||!r.targetId)return;
   try{
@@ -8392,7 +8477,7 @@ async function adminSendTestEmail(){
 let _adminPinVerified=false;
 
 async function _verifyAdminPin(onSuccess){
-  if(_adminPinVerified){onSuccess();return;}
+  if(_adminPinVerified||!isAdmin()){onSuccess();return;}   // קוד ה-PIN הוא של הבעלים (adminConfig, שהצוות לא קורא)
   // בדוק אם קיים PIN שמור ב-Firebase
   let storedHash=null;
   try{
@@ -8447,7 +8532,7 @@ async function _verifyAdminPin(onSuccess){
 }
 
 function showAdminPanel(forceTab=null){
-  if(!isAdmin()){showFireToast('🚫 אין הרשאת מנהל');return;}
+  if(!isStaff()){showFireToast('🚫 אין הרשאת מנהל');return;}
   // משוב מיידי — טעינת כל נתוני הניהול לוקחת כמה שניות, ובלי זה נראה שהלחיצה
   // לא נקלטה והמנהל לוחץ כמה פעמים / מרענן.
   if(!document.getElementById('_adminPanel'))showFireToast('⏳ טוען פאנל ניהול...');
@@ -8496,6 +8581,7 @@ async function adminToggleAi(){
 
 async function adminSwitchTab(id){
   adminTab=id;
+  if(id==='team'&&isAdmin())await adminLoadTeam();
   if(id==='messages'){
     // auto-mark all contact messages as read so the badge clears
     const unreadMsgs=adminContactMessages.filter(m=>!m.read);
@@ -8569,7 +8655,7 @@ async function recomputeTeacherRating(teacherId){
 }
 
 async function adminApproveReview(reviewId,teacherId){
-  if(!isAdmin())return;
+  if(!isStaff())return;
   try{
     await db.ref('reviews/'+teacherId+'/'+reviewId+'/approved').set(true);
     // clean matching entry in pendingReviews backup queue
@@ -8583,7 +8669,7 @@ async function adminApproveReview(reviewId,teacherId){
 }
 
 async function adminRejectReview(reviewId,teacherId){
-  if(!isAdmin())return;
+  if(!isStaff())return;
   if(!await _confirm('למחוק את הביקורת?',{confirmText:'מחק',cancelText:'ביטול',destructive:true}))return;
   try{
     await db.ref('reviews/'+teacherId+'/'+reviewId).remove();
@@ -8598,6 +8684,12 @@ async function adminRejectReview(reviewId,teacherId){
   }catch(e){showFireToast('❌ '+e.message);}
 }
 
+// הצוות לא רואה כפתורים שהחוקים והשרת ממילא יסרבו להם. זו נוחות בלבד — האכיפה היא ב-database.rules.json ובפונקציות.
+function _adminHideOwnerOnly(root){
+  if(isAdmin()||!root)return;
+  const re=new RegExp('\\b('+ADMIN_OWNER_ONLY_ACTIONS.join('|')+')\\(');
+  root.querySelectorAll('[onclick]').forEach(el=>{if(re.test(el.getAttribute('onclick')||''))el.remove();});
+}
 function renderAdminPanel(){
   const _prevPanel=document.getElementById('_adminPanel');
   const _prevScroll=_prevPanel?_prevPanel.scrollTop:0;
@@ -8663,12 +8755,12 @@ function renderAdminPanel(){
         const worst=breached.filter(r=>reportEffectiveSeverity(r)==='critical').length;
         return `<div onclick="adminSwitchTab('reports')" style="margin-top:10px;background:#DC2626;border-radius:12px;padding:11px 14px;font-size:13px;font-weight:900;cursor:pointer;display:flex;align-items:center;gap:8px;position:relative;z-index:2">⏰ <span>${breached.length} דיווחים חרגו מיעד הטיפול${worst?` (${worst} קריטיים)`:''} — לחץ</span></div>`;
       })()}
-      <div style="margin-top:8px;background:${_adminAiEnabled?'rgba(15,26,31,0.35)':'rgba(239,68,68,0.85)'};border-radius:12px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;position:relative;z-index:2">
+      ${isAdmin()?`<div style="margin-top:8px;background:${_adminAiEnabled?'rgba(15,26,31,0.35)':'rgba(239,68,68,0.85)'};border-radius:12px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;position:relative;z-index:2">
         <span style="font-size:12px;font-weight:800;color:#fff">🤖 עוזר AI — ${_adminAiEnabled?'פעיל':'מושבת'}</span>
         <button onclick="adminToggleAi()" style="background:${_adminAiEnabled?'rgba(239,68,68,0.9)':'rgba(16,185,129,0.95)'};border:none;color:#fff;border-radius:50px;padding:6px 14px;font-size:12px;font-weight:900;cursor:pointer">${_adminAiEnabled?'כבה עכשיו':'הפעל'}</button>
-      </div>
+      </div>`:''}
     </div>
-    ${!adminAllTeachers.find(t=>t.uid===currentUser?.uid)?`
+    ${isAdmin()&&!adminAllTeachers.find(t=>t.uid===currentUser?.uid)?`
     <div style="margin:12px 16px 0;background:linear-gradient(135deg,rgba(245,158,11,0.12),rgba(239,68,68,0.1));border:2px solid rgba(245,158,11,0.5);border-radius:16px;padding:14px">
       <div style="font-weight:900;font-size:14px;color:#F59E0B;margin-bottom:6px">${icon("alert-triangle",14)} פרופיל המורה שלך לא הוגדר</div>
       <div style="font-size:12px;color:#64748B;margin-bottom:10px">אתה לא מופיע ברשימת המורים. לחץ להגדרת פרופיל מורה.</div>
@@ -8689,8 +8781,9 @@ function renderAdminPanel(){
            ['stories','סטוריז','#F59E0B','<rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>',adminAllStories.length,adminAllStories.length>0?adminAllStories.length:null],
            ['subscriptions','מנויים','#8B5CF6','<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>',adminAlertSubscriptions.length,adminAlertSubscriptions.length>0?adminAlertSubscriptions.length:null],
            ['stats','סטטיסטיקות','#10B981','<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>',null,null],
+           ['team','צוות','#8B5CF6','<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',(adminTeamList||[]).length,0],
            ['errors','שגיאות אפליקציה','#EF4444','<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>',adminAllClientErrors.length,adminAllClientErrors.filter(e=>Date.now()-(e.createdAt||0)<24*3600*1000).length]
-          ].map(([id,lbl,col,svg,num,badge])=>`
+          ].filter(t=>isAdmin()||!ADMIN_OWNER_ONLY_TABS.includes(t[0])).map(([id,lbl,col,svg,num,badge])=>`
           <div onclick="adminSwitchTab('${jsAttrEscape(id)}')" style="background:${adminTab===id?col+'14':'#fff'};border:1.5px solid ${adminTab===id?col:'transparent'};border-radius:20px;padding:16px;display:flex;align-items:center;gap:12px;box-shadow:0 2px 10px rgba(0,0,0,0.05);cursor:pointer;position:relative">
             <div style="width:46px;height:46px;border-radius:14px;background:${col}1F;display:flex;align-items:center;justify-content:center;flex-shrink:0">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="${col}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${svg}</svg>
@@ -8704,6 +8797,7 @@ function renderAdminPanel(){
       </div>
     </div>
     <div style="padding:16px;background:transparent;min-height:calc(100vh - 280px)">${renderAdminTab()}</div>`;
+  _adminHideOwnerOnly(ov);
   document.body.appendChild(ov);
   if(_prevScroll)requestAnimationFrame(()=>{ov.scrollTop=_prevScroll;});
 }
@@ -8717,6 +8811,55 @@ async function adminMarkMessageRead(id){
   }catch(e){showFireToast('❌ '+e.message);}
 }
 
+// ── צוות: הבעלים מוסיף ומסיר חברים. הכל דרך השרת (team-roles.js) — הוא בודק שהקורא הוא הבעלים ושהחשבון של מבוגר ──
+async function _teamApi(body){
+  const idToken=await currentUser.getIdToken();
+  const res=await fetch(API_BASE+'/api/team-roles',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({idToken,...body})});
+  let data={};try{data=await res.json();}catch(_e){}
+  return {ok:res.ok,status:res.status,data};
+}
+async function adminLoadTeam(){
+  try{const r=await _teamApi({action:'list'});adminTeamList=r.ok?(r.data.members||[]):[];}catch(_e){adminTeamList=[];}
+  renderAdminPanel();
+}
+async function adminAddTeamMember(){
+  const email=(document.getElementById('_teamEmail')?.value||'').trim();
+  const adult=document.getElementById('_teamAdult')?.checked===true;
+  if(!email){showFireToast('❌ הכנס כתובת מייל');return;}
+  if(!adult){showFireToast('❌ סמן שזה מבוגר — חברי צוות רואים מידע על ילדים');return;}
+  if(!await _confirm('להוסיף את '+email+' לצוות?\n\nהם יוכלו לאשר ולדחות ילדים ומורים, לטפל בדיווחים ובקבוצות, ולראות מסמכי זהות בזמן הבדיקה.',{confirmText:'הוסף',cancelText:'ביטול'}))return;
+  try{
+    const r=await _teamApi({action:'add',email,confirmAdult:true});
+    if(!r.ok){showFireToast('❌ '+({child_account:'החשבון הזה שייך לילד',owner:'זה חשבון הבעלים',bad_email:'כתובת לא תקינה',rate:'יותר מדי ניסיונות'}[r.data.error]||'ההוספה נכשלה'));return;}
+    showFireToast(r.data.created?'✅ נוסף. נשלח אליהם מייל להגדרת סיסמה':'✅ נוסף לצוות');
+    await adminLoadTeam();
+  }catch(e){showFireToast('❌ '+e.message);}
+}
+async function adminRemoveTeamMember(uid){
+  if(!await _confirm('להסיר מהצוות?\n\nההרשאות נעלמות מיד.',{confirmText:'הסר',cancelText:'ביטול',destructive:true}))return;
+  try{
+    const r=await _teamApi({action:'remove',uid});
+    showFireToast(r.ok?'✅ הוסר מהצוות':'❌ ההסרה נכשלה');
+    await adminLoadTeam();
+  }catch(e){showFireToast('❌ '+e.message);}
+}
+function _adminTeamTabHtml(){
+  const rows=(adminTeamList||[]).map(m=>`<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px;background:rgba(139,92,246,0.07);border-radius:14px;margin-bottom:8px">
+      <div style="min-width:0"><div style="font-weight:800;font-size:13px;color:#0F1A1F">${escapeHtml(m.name||'')}</div><div style="font-size:12px;color:#475569;word-break:break-all">${escapeHtml(m.email||'')}</div></div>
+      <button onclick="adminRemoveTeamMember('${jsAttrEscape(m.uid)}')" style="background:rgba(185,28,28,0.07);color:#B91C1C;border:none;border-radius:50px;padding:8px 14px;font-size:12px;font-weight:800;cursor:pointer;flex-shrink:0">הסר</button>
+    </div>`).join('');
+  return `<div>
+    <h3 style="font-weight:900;font-size:16px;margin:0 0 6px;color:#8B5CF6">👥 צוות Drushe (${(adminTeamList||[]).length})</h3>
+    <p style="font-size:12px;color:#475569;line-height:1.7;margin:0 0 14px">חבר צוות מאשר ודוחה ילדים ומורים, מטפל בדיווחים, בקבוצות ובתוכן, ורואה מסמכי זהות בזמן הבדיקה. הוא <b>לא</b> רואה תשלומים, הגדרות, ולא יכול למחוק משתמשים, לשנות תפקידים או להוסיף אנשים. אפשר להסיר אותו בכל רגע, וזה חל מיד.</p>
+    ${rows||'<div style="text-align:center;padding:20px;color:#64748B;font-size:13px">עדיין אין חברי צוות</div>'}
+    <div style="background:linear-gradient(165deg,#ECFEFF 0%,#F0F9FF 50%,#EEF2FF 100%);border-radius:16px;padding:14px;margin-top:12px">
+      <div style="font-weight:800;font-size:13px;color:#0F1A1F;margin-bottom:8px">הוספת חבר צוות</div>
+      <input id="_teamEmail" type="email" dir="ltr" placeholder="כתובת המייל שלו" class="inp" style="margin-bottom:10px">
+      <label style="display:flex;gap:10px;align-items:flex-start;font-size:12px;color:#475569;line-height:1.6;margin-bottom:12px;cursor:pointer"><input id="_teamAdult" type="checkbox" style="width:20px;height:20px;flex-shrink:0;accent-color:#8B5CF6"><span>זה מבוגר שאני מכיר ואני סומך עליו עם מידע על ילדים</span></label>
+      <button onclick="adminAddTeamMember()" style="width:100%;background:var(--grad-main);border:none;color:#fff;border-radius:50px;padding:13px;font-weight:900;font-size:14px;cursor:pointer">הוסף לצוות</button>
+    </div>
+  </div>`;
+}
 function renderAdminTab(){
   // כפתור איפוס מערכת
   const resetBtn=`
@@ -9401,6 +9544,7 @@ function renderAdminTab(){
       </div>
       ${resetBtn}`;
   }
+  if(adminTab==='team'&&isAdmin())return _adminTeamTabHtml();
   if(adminTab==='errors'){
     if(adminAllClientErrors.length===0)return '<div style="text-align:center;padding:40px;color:#64748B">אין שגיאות client-side שנתפסו (עדיין)</div>';
     // קיבוץ לפי הודעה+מקור — כל רשומה גולמית היא מופע אחד (מוגבל לפעם אחת לכל סשן,
@@ -11440,7 +11584,7 @@ function Profile(){
           <div style="font-size:10px;color:#64748B;margin-top:2px">נותרו ${foundingSlotsLeft()}</div>
         </div>
       </div>`:''}
-      ${isAdmin()?`<button onclick="showAdminPanel()" style="width:100%;background:linear-gradient(135deg,#0F1A1F,#0e7a72);border:none;color:#fff;border-radius:16px;padding:13px;font-weight:900;font-size:13px;cursor:pointer;box-shadow:0 4px 14px rgba(14,122,114,0.4);position:relative;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:16px">${icon('shield',15)} פאנל מנהל<span id="_adminPendingBadge" style="display:${_adminPendingCount>0?'inline-flex':'none'};position:absolute;top:-7px;left:14px;background:#EF4444;color:#fff;border-radius:50px;min-width:20px;height:20px;font-size:11px;font-weight:900;align-items:center;justify-content:center;padding:0 4px;border:2px solid #fff;animation:pulse 1.2s infinite">${_adminPendingCount}</span></button>`:''}
+      ${isStaff()?`<button onclick="showAdminPanel()" style="width:100%;background:linear-gradient(135deg,#0F1A1F,#0e7a72);border:none;color:#fff;border-radius:16px;padding:13px;font-weight:900;font-size:13px;cursor:pointer;box-shadow:0 4px 14px rgba(14,122,114,0.4);position:relative;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:16px">${icon('shield',15)} פאנל מנהל<span id="_adminPendingBadge" style="display:${_adminPendingCount>0?'inline-flex':'none'};position:absolute;top:-7px;left:14px;background:#EF4444;color:#fff;border-radius:50px;min-width:20px;height:20px;font-size:11px;font-weight:900;align-items:center;justify-content:center;padding:0 4px;border:2px solid #fff;animation:pulse 1.2s infinite">${_adminPendingCount}</span></button>`:''}
       `:''}
       <div style="display:flex;gap:10px;margin-bottom:18px">
         ${(()=>{const a=teacherAnalytics;const stats=[["<polygon points=\"12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2\"/>",'#FBBF24',a?.avgRating||"0","דירוג",null],["<path d=\"M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z\"/><path d=\"M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z\"/>",'#14B8A6',a?.completed||"0","שיעורים",null],["<path d=\"M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2\"/><circle cx=\"12\" cy=\"7\" r=\"4\"/>",'#3B82F6',a?.uniqueStudentsCount||"0","תלמידים","showMyStudents()"],["<rect x=\"3\" y=\"4\" width=\"18\" height=\"18\" rx=\"2\" ry=\"2\"/><line x1=\"16\" y1=\"2\" x2=\"16\" y2=\"6\"/><line x1=\"8\" y1=\"2\" x2=\"8\" y2=\"6\"/><line x1=\"3\" y1=\"10\" x2=\"21\" y2=\"10\"/>",'#8B5CF6',a?.lessonsThisMonth||"0","החודש",null]];return stats.map(([icon,col,v,l,action])=>`<div class="card-sm" ${action?`onclick="${action}" style="flex:1;text-align:center;padding:12px 5px;margin-bottom:0;cursor:pointer"`:'style="flex:1;text-align:center;padding:12px 5px;margin-bottom:0"'}><div style="width:34px;height:34px;border-radius:42% 58% 63% 37%/45% 40% 60% 55%;background:linear-gradient(135deg,${col}CC,${col});display:flex;align-items:center;justify-content:center;margin:0 auto 5px;box-shadow:0 3px 8px ${col}40"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round">${icon}</svg></div><div style="font-weight:900;font-size:15px;color:#0F1A1F">${v}</div><div style="font-size:9px;color:${C.muted}">${l}</div></div>`).join("");})()}
@@ -13704,6 +13848,12 @@ function showCreateGroupDialog(){
       <div style="flex:1"><label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">${icon("shekel",14)} מחיר לילד (₪)</label>
         <input id="_cgPrice" type="number" value="25" min="0" style="width:100%;background:rgba(16,185,129,0.06);border:1.5px solid rgba(16,185,129,0.25);border-radius:12px;padding:11px;font-size:13px;outline:none;box-sizing:border-box"></div>
     </div>
+    <label style="display:block;font-size:12px;color:#64748B;font-weight:700;margin-bottom:5px">🎂 טווח גילים של הילדים בקבוצה</label>
+    <div style="display:flex;gap:10px;margin-bottom:6px">
+      <div style="flex:1"><select id="_cgMinAge" style="width:100%;background:rgba(20,184,166,0.06);border:1.5px solid rgba(20,184,166,0.25);border-radius:12px;padding:11px;font-size:13px;font-family:inherit;direction:rtl;outline:none;box-sizing:border-box"><option value="">מגיל</option>${Array.from({length:AGE_RANGE.student.max-groupMinAgeFloor()+1},(_,i)=>groupMinAgeFloor()+i).map(n=>`<option value="${n}">${n}</option>`).join('')}</select></div>
+      <div style="flex:1"><select id="_cgMaxAge" style="width:100%;background:rgba(20,184,166,0.06);border:1.5px solid rgba(20,184,166,0.25);border-radius:12px;padding:11px;font-size:13px;font-family:inherit;direction:rtl;outline:none;box-sizing:border-box"><option value="">עד גיל</option>${Array.from({length:AGE_RANGE.student.max-AGE_RANGE.student.min+1},(_,i)=>AGE_RANGE.student.min+i).map(n=>`<option value="${n}">${n}</option>`).join('')}</select></div>
+    </div>
+    <p style="font-size:11px;color:#64748B;margin:0 0 14px;line-height:1.6">ההורים רואים את הטווח לפני שהם מאשרים, ולא ניתן לשנות אותו אחרי שהקבוצה פורסמה. ילד מחוץ לטווח לא יכול לבקש להצטרף. בגילך אפשר להוביל ילדים מגיל ${groupMinAgeFloor()} ומעלה — לא צעירים יותר, כדי שתמיד יהיה פער סביר ביניכם.</p>
     <label onclick="document.getElementById('_cgMixed').click()" style="display:flex;align-items:center;gap:12px;padding:14px;background:rgba(20,184,166,0.06);border-radius:16px;cursor:pointer;margin-bottom:18px">
       <input type="checkbox" id="_cgMixed" style="width:20px;height:20px;accent-color:#14B8A6;flex-shrink:0">
       <div><div style="font-weight:800;font-size:14px">🌈 קבוצה מעורבת</div><div style="font-size:12px;color:#64748B;margin-top:2px">פתוח לילדים מכל רקע ואוכלוסייה — מקבלים תג קהילה מיוחד 🏅</div></div>
@@ -13722,14 +13872,19 @@ async function _saveNewGroup(){
   const maxStudents=parseInt(document.getElementById('_cgMax')?.value)||5;
   const price=parseInt(document.getElementById('_cgPrice')?.value)||25;
   const isMixed=document.getElementById('_cgMixed')?.checked||false;
+  const minAge=parseInt(document.getElementById('_cgMinAge')?.value);
+  const maxAge=parseInt(document.getElementById('_cgMaxAge')?.value);
   if(!cat){showFireToast('❌ בחר מקצוע לקבוצה');return;}
   if(!title){showFireToast('❌ חסרה כותרת');return;}
   if(!location){showFireToast('❌ חסר מיקום');return;}
+  if(!Number.isFinite(minAge)||!Number.isFinite(maxAge)){showFireToast('❌ בחר טווח גילים לקבוצה');return;}
+  if(minAge>maxAge){showFireToast('❌ הגיל המינימלי גבוה מהמקסימלי');return;}
+  if(minAge<groupMinAgeFloor()){showFireToast('❌ אפשר להוביל ילדים מגיל '+groupMinAgeFloor()+' ומעלה בלבד');return;}
   if(rejectContactIn(title,desc,location))return;
   const myT=TEACHERS.find(x=>x.id===currentUser.uid);
   try{
     const ref=db.ref('groups').push();
-    const data={teacherId:currentUser.uid,teacherName:currentUserData?.name||'מורה',teacherPhoto:currentUserData?.photo||null,subject:cat,title,desc,day,time,location,maxStudents,price,isMixed,status:'pending',membersCount:0,createdAt:Date.now(),city:myT?.city||''};
+    const data={teacherId:currentUser.uid,teacherName:currentUserData?.name||'מורה',teacherPhoto:currentUserData?.photo||null,subject:cat,title,desc,day,time,location,maxStudents,price,isMixed,minAge,maxAge,status:'pending',membersCount:0,createdAt:Date.now(),city:myT?.city||''};
     await ref.set(data);
     communityGroups.unshift({id:ref.key,...data});
     notifyAdmin({type:'newGroup',from:currentUserData?.name||'מורה',targetName:title,preview:location}).catch?.(()=>{});
@@ -13749,6 +13904,7 @@ function showGroupDetail(groupId){
   const catObj=catById(g.subject);
   const spotsLeft=(g.maxStudents||5)-(g.membersCount||0);
   const myStatus=myGroupStatuses[groupId]?.status||null;
+  const parentOk=!!myGroupStatuses[groupId]?.parentApprovedAt;
   const isOwner=currentUser?.uid===g.teacherId;
   const ov=document.createElement('div');
   ov.id='_gdOv';
@@ -13759,7 +13915,7 @@ function showGroupDetail(groupId){
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
         ${catIcon(catObj,36)}
         <div><div style="font-weight:900;font-size:17px;color:#0F1A1F">${escapeHtml(g.title)}</div>
-        <div style="font-size:12px;color:${catObj.col};font-weight:700">${catObj.lbl}${g.isMixed?' • 🌈 קבוצה מעורבת':''}</div></div>
+        <div style="font-size:12px;color:${catObj.col};font-weight:700">${catObj.lbl}${g.isMixed?' • 🌈 קבוצה מעורבת':''}${Number.isFinite(Number(g.minAge))&&Number.isFinite(Number(g.maxAge))?' • גילאים '+Number(g.minAge)+'–'+Number(g.maxAge):''}</div></div>
       </div>
       ${g.desc?`<p style="margin:0;font-size:13px;color:#64748B;line-height:1.6">${escapeHtml(g.desc)}</p>`:''}
     </div>
@@ -13774,15 +13930,18 @@ function showGroupDetail(groupId){
       <div><div style="font-weight:800;font-size:14px">${escapeHtml(g.teacherName||'')}</div><div style="font-size:12px;color:#64748B">מוביל הקבוצה</div></div>${reportBtnHtml('group',g.teacherId,g.teacherName,g.title)}
     </div>
     ${g.isMixed?`<div style="background:rgba(20,184,166,0.06);border-radius:14px;padding:12px;margin-bottom:14px;display:flex;gap:10px;align-items:center"><span style="font-size:22px">🌈</span><div><div style="font-weight:800;font-size:13px">קבוצה מעורבת</div><div style="font-size:12px;color:#64748B">פתוח לילדים מכל רקע ואוכלוסייה. מצטרפים מקבלים תג קהילה מיוחד!</div></div></div>`:''}
-    ${isOwner||myStatus?'':`<div class="warn" style="margin-bottom:12px"><span>${icon("shield",14)}</span><span>${GROUP_MEETUP_NOTICE} כשהבקשה תאושר, גם ההורה שלך יקבל על כך מייל.</span></div>`}
+    ${isOwner||myStatus?'':`<div class="warn" style="margin-bottom:12px"><span>${icon("shield",14)}</span><span>${GROUP_MEETUP_NOTICE} ההורה שלך יקבל מייל עם פרטי הקבוצה — ורק אחרי שהוא יאשר אותה, המוביל/ה יוכלו לקבל אותך.</span></div>`}
+    ${isOwner||myStatus==='approved'?emergencyLineHtml():''}
     ${isOwner
       ?`<button onclick="showTeacherGroupsPanel();document.getElementById('_gdOv')?.remove()" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:14px;font-weight:900;font-size:15px;cursor:pointer;margin-bottom:8px">${icon("users",14)} נהל קבוצה</button>`
       :myStatus==='pending'
-        ?`<div style="text-align:center;padding:14px;background:rgba(245,158,11,0.08);border-radius:14px;color:#F59E0B;font-weight:800;margin-bottom:8px">⏳ הבקשה נשלחה למוביל/ת הקבוצה</div><button onclick="leaveGroup('${jsAttrEscape(g.id)}');delete myGroupStatuses['${jsAttrEscape(g.id)}'];document.getElementById('_gdOv')?.remove()" style="width:100%;background:rgba(239,68,68,0.07);color:#EF4444;border-radius:50px;padding:11px;font-weight:700;font-size:13px;cursor:pointer;margin-bottom:8px">ביטול בקשה</button>`
+        ?`<div style="text-align:center;padding:14px;background:rgba(245,158,11,0.08);border-radius:14px;color:#B45309;font-weight:800;margin-bottom:8px">${parentOk?'⏳ ההורה אישר. ממתין לאישור המוביל/ת':'⏳ ממתין לאישור ההורה — שלחנו להם מייל'}</div>${parentOk?'':`<button onclick="resendGroupConsent('${jsAttrEscape(g.id)}')" style="width:100%;background:rgba(20,184,166,0.1);color:#0F766E;border:none;border-radius:50px;padding:11px;font-weight:800;font-size:13px;cursor:pointer;margin-bottom:8px">✉️ שלח שוב את המייל להורה</button>`}<button onclick="leaveGroup('${jsAttrEscape(g.id)}');delete myGroupStatuses['${jsAttrEscape(g.id)}'];document.getElementById('_gdOv')?.remove()" style="width:100%;background:rgba(239,68,68,0.07);color:#EF4444;border-radius:50px;padding:11px;font-weight:700;font-size:13px;cursor:pointer;margin-bottom:8px">ביטול בקשה</button>`
         :myStatus==='approved'
           ?`<div style="text-align:center;padding:14px;background:rgba(16,185,129,0.08);border-radius:14px;color:#10B981;font-weight:800;margin-bottom:8px">${icon("check-circle",14)} התקבלת! נפגשים ב${escapeHtml(g.day||'')} ${g.time?'בשעה '+escapeHtml(g.time):''}</div><button onclick="leaveGroup('${jsAttrEscape(g.id)}');delete myGroupStatuses['${jsAttrEscape(g.id)}'];document.getElementById('_gdOv')?.remove()" style="width:100%;background:rgba(239,68,68,0.07);color:#EF4444;border-radius:50px;padding:11px;font-weight:700;font-size:13px;cursor:pointer;margin-bottom:8px">יציאה מהקבוצה</button>`
           :myStatus==='rejected'
             ?`<div style="text-align:center;padding:14px;background:rgba(239,68,68,0.08);border-radius:14px;color:#EF4444;font-weight:800;margin-bottom:8px">😔 הבקשה לא אושרה</div>`
+            :spotsLeft>0&&g.status==='open'&&!ageInGroupRange(g)
+              ?`<div style="text-align:center;padding:14px;background:rgba(100,116,139,0.08);border-radius:14px;color:#475569;font-weight:800;margin-bottom:8px">🎂 הקבוצה מיועדת לגילאים ${Number(g.minAge)||'?'}–${Number(g.maxAge)||'?'}</div>`
             :spotsLeft>0&&g.status==='open'
               ?`<button onclick="joinGroup('${jsAttrEscape(g.id)}');document.getElementById('_gdOv')?.remove()" style="width:100%;background:linear-gradient(135deg,#14B8A6,#06B6D4);border:none;color:#fff;border-radius:50px;padding:14px;font-weight:900;font-size:15px;cursor:pointer;margin-bottom:8px;box-shadow:0 6px 20px rgba(20,184,166,0.3)">🙋 הצטרף לקבוצה</button>`
               :`<div style="text-align:center;padding:14px;background:rgba(239,68,68,0.08);border-radius:14px;color:#EF4444;font-weight:800;margin-bottom:8px">${icon("x-circle",14)} ${g.status==='open'?'הקבוצה מלאה':'הקבוצה עדיין ממתינה לאישור הצוות'}</div>`}
@@ -13796,20 +13955,43 @@ async function joinGroup(groupId){
   if(snap?.exists()){showFireToast('כבר נרשמת לקבוצה זו');return;}
   const g=communityGroups.find(x=>x.id===groupId);
   if(g?.status==='full'){showFireToast('❌ הקבוצה מלאה');return;}
+  if(!ageInGroupRange(g)){showFireToast('❌ הקבוצה מיועדת לגילאים '+(g?.minAge||'?')+'–'+(g?.maxAge||'?'));return;}
   try{
     // לא currentUser.email: השם הזה מוצג למוביל הקבוצה, ומייל של ילד אינו שם.
     await db.ref('groupMembers/'+groupId+'/'+currentUser.uid).set({name:currentUserData?.name||'תלמיד',joinedAt:Date.now(),status:'pending'});
     await db.ref('userGroups/'+currentUser.uid+'/'+groupId).set({status:'pending',joinedAt:Date.now()});
     myGroupStatuses[groupId]={status:'pending',joinedAt:Date.now()};
+    const cr=await requestGroupConsent(groupId);
+    if(!cr.ok&&cr.status!==502&&cr.status!==0){
+      // בלי הורה שאפשר לפנות אליו אין בקשה: שורה ממתינה שאיש לא יאשר רק תטעה את המוביל.
+      await db.ref('groupMembers/'+groupId+'/'+currentUser.uid).remove().catch(()=>{});
+      await db.ref('userGroups/'+currentUser.uid+'/'+groupId).remove().catch(()=>{});
+      delete myGroupStatuses[groupId];
+      showFireToast(cr.data?.error==='no_parent_email'?'❌ אין כתובת מייל תקינה של הורה בחשבון שלך. אפשר לעדכן בפרופיל':cr.data?.error==='age_out_of_range'?'❌ הגיל שלך מחוץ לטווח הקבוצה':'❌ לא ניתן לבקש הצטרפות לקבוצה הזו כרגע');
+      render();return;
+    }
     if(g?.teacherId)notifyUser(g.teacherId,'groupJoin',{groupId,groupTitle:g.title,studentName:currentUserData?.name||''});
     if(g?.isMixed){
       const ub=currentUserData?.badges||[];
       if(!ub.includes('mixedGroup')){await db.ref('users/'+currentUser.uid+'/badges').set([...ub,'mixedGroup']).catch(()=>{});if(currentUserData)currentUserData.badges=[...ub,'mixedGroup'];}
     }
     // המונה עולה רק כשהמוביל מאשר — בקשה ממתינה אינה תופסת מקום.
-    showFireToast('✅ בקשת ההצטרפות נשלחה!');
+    showFireToast(cr.ok?'✅ שלחנו להורה שלך מייל לאישור הקבוצה':'⚠️ הבקשה נשמרה, אבל המייל להורה לא יצא. אפשר לשלוח שוב מהקבוצה');
     render();
   }catch(e){showFireToast('❌ '+e.message);}
+}
+// בקשת אישור הורה לקבוצה מסוימת (ראה netlify/functions/group-consent.js). השרת שולח את המייל ושומר את הטוקן; הילד לא רואה אותו.
+async function requestGroupConsent(groupId){
+  try{
+    const idToken=await currentUser.getIdToken();
+    const res=await fetch(API_BASE+'/api/group-consent',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'request',idToken,groupId})});
+    let data={};try{data=await res.json();}catch(_e){}
+    return {ok:res.ok,status:res.status,data};
+  }catch(_e){return {ok:false,status:0,data:{}};}
+}
+async function resendGroupConsent(groupId){
+  const r=await requestGroupConsent(groupId);
+  showFireToast(r.ok?'✅ שלחנו שוב מייל להורה':r.status===429?'❌ נשלחו הרבה מיילים. נסה שוב בעוד שעה':'❌ המייל לא יצא. נסה שוב בעוד רגע');
 }
 async function leaveGroup(groupId){
   if(!currentUser)return;
@@ -13906,8 +14088,9 @@ async function showTeacherGroupsPanel(){
       <div style="font-size:12px;color:#64748B;margin-bottom:8px">${icon("users",14)} ${Number(g.membersCount)||0}/${Number(g.maxStudents)||0} • ₪${escapeHtml(String(g.price))} לילד${g.isMixed?' • 🌈 מעורבת':''}</div>
       ${members.length===0?'<p style="text-align:center;color:#6C7686;font-size:12px;padding:6px 0">אין נרשמים עדיין</p>':members.map(m=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:rgba(20,184,166,0.07);border-radius:10px;margin-bottom:5px">
         <span style="font-weight:700;font-size:13px">${escapeHtml(m.name)}</span>
-        ${m.status==='pending'?`<div style="display:flex;gap:6px;width:160px;flex-shrink:0"><button class="act-btn act-ok" style="font-size:12px;padding:8px" onclick="_approveGroupMember('${jsAttrEscape(g.id)}','${jsAttrEscape(m.uid)}',this.parentElement)">✓ אשר</button><button class="act-btn act-no" style="font-size:12px;padding:8px" onclick="_rejectGroupMember('${jsAttrEscape(g.id)}','${jsAttrEscape(m.uid)}',this.parentElement)">✗ דחה</button></div>`:`<span style="font-size:12px;font-weight:800;padding:5px 11px;border-radius:50px;background:${m.status==='approved'?'rgba(4,120,87,0.12)':'rgba(185,28,28,0.1)'};color:${m.status==='approved'?'var(--ok)':'var(--no)'}">${m.status==='approved'?'✓ מאושר':'✗ נדחה'}</span>`}
+        ${m.status==='pending'?`<div style="display:flex;gap:6px;width:160px;flex-shrink:0">${m.parentApprovedAt?`<button class="act-btn act-ok" style="font-size:12px;padding:8px" onclick="_approveGroupMember('${jsAttrEscape(g.id)}','${jsAttrEscape(m.uid)}',this.parentElement)">✓ אשר</button>`:`<span style="flex:1;font-size:11px;font-weight:800;color:#B45309;align-self:center;line-height:1.3">⏳ ממתין לאישור ההורה</span>`}<button class="act-btn act-no" style="font-size:12px;padding:8px" onclick="_rejectGroupMember('${jsAttrEscape(g.id)}','${jsAttrEscape(m.uid)}',this.parentElement)">✗ דחה</button></div>`:`<span style="font-size:12px;font-weight:800;padding:5px 11px;border-radius:50px;background:${m.status==='approved'?'rgba(4,120,87,0.12)':'rgba(185,28,28,0.1)'};color:${m.status==='approved'?'var(--ok)':'var(--no)'}">${m.status==='approved'?'✓ מאושר':'✗ נדחה'}</span>`}
       </div>`).join('')}
+      ${emergencyLineHtml()}
       <button onclick="_closeGroup('${jsAttrEscape(g.id)}')" style="width:100%;min-height:44px;background:rgba(185,28,28,0.07);border:none;color:var(--no);border-radius:50px;padding:10px;font-size:13px;font-weight:800;cursor:pointer;margin-top:8px">${icon("lock",14)} סגור קבוצה</button>
     </div>`;
   }
@@ -13936,6 +14119,9 @@ async function _approveGroupMember(groupId,uid,wrap){
     const maxS=Number(g?.maxStudents)||5;
     const cnt=Number(g?.membersCount)||0;
     if(cnt>=maxS){showFireToast('❌ הקבוצה מלאה ('+cnt+'/'+maxS+')');return;}
+    // החוקים אוכפים את זה גם בלי הבדיקה הזו; היא רק נותנת הסבר במקום "permission_denied".
+    const mem=(await db.ref('groupMembers/'+groupId+'/'+uid).get()).val();
+    if(!mem?.parentApprovedAt){showFireToast('⏳ ההורה עוד לא אישר את הקבוצה הזו');return;}
     await db.ref('groupMembers/'+groupId+'/'+uid+'/status').set('approved');
     const newCnt=cnt+1;
     await db.ref('groups/'+groupId+'/membersCount').set(newCnt);
@@ -14098,7 +14284,7 @@ async function _loadConsentInfo(token){
             ${data.role==='teacher'
               ?`<li>אתם מאשרים לו/לה ללמד ילדים אחרים ב-Drushe — באישור הורים, בלי תשלום דרך האפליקציה, ובשיחות שנשמרות לבדיקת הצוות</li>`
               :`<li>אתם מאשרים לו/לה להשתמש ב-Drushe וליצור קשר עם מורים דרך האפליקציה</li>`}
-            <li>${escapeHtml(GROUP_MEETUP_NOTICE)} באישור זה אתם מסכימים גם לכך.</li>
+            <li>${escapeHtml(GROUP_MEETUP_NOTICE)} אישור ההרשמה אינו אישור לקבוצה: על כל קבוצה ש${nm} יבקש/תבקש להצטרף אליה תקבלו מייל נפרד, והוא/היא לא יתקבלו בלי אישורכם.</li>
             <li>קראתם את <a href="/privacy.html" target="_blank" style="color:#0e7a72">מדיניות הפרטיות</a> ואת <a href="/terms.html" target="_blank" style="color:#0e7a72">תנאי השימוש</a></li>
           </ul>
         </div>
@@ -14124,6 +14310,67 @@ async function _approveConsent(token){
       <p style="color:#64748B;font-size:14px;margin:0;line-height:1.7">צוות Drushe עובר על כל הרשמה לפני פתיחת החשבון.<br>${escapeHtml(data.studentName||'ילדך')} יקבל/תקבל הודעה כשהחשבון ייפתח.<br><br>אפשר לסגור את הדף.</p>`;
   }catch(_e){
     if(btn){btn.disabled=false;btn.textContent='✅ אני מאשר/ת';btn.style.opacity='1';}
+    showFireToast('❌ שגיאת רשת — נסו שוב');
+  }
+}
+
+// אישור הורה לקבוצה מסוימת: ?groupConsent=<token>. אותו מסך כמו אישור ההרשמה (ParentConsent), תוכן אחר.
+async function _groupConsentApi(token,action){
+  const res=await fetch(API_BASE+'/api/group-consent',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,action})});
+  let data={};try{data=await res.json();}catch(_e){}
+  return {ok:res.ok,status:res.status,data};
+}
+async function _loadGroupConsentInfo(token){
+  const el=document.getElementById('_pcContent');
+  if(!el)return;
+  const fail=(t,s)=>{el.innerHTML=`<div style="font-size:34px;margin-bottom:10px">${t}</div><p style="color:#EF4444;font-weight:800;font-size:16px">${s}</p>`;};
+  try{
+    const {ok,status,data}=await _groupConsentApi(token,'info');
+    if(!ok){
+      if(status===404)return fail('🔗','קישור לא תקף');
+      if(status===410)return fail('⏳','הקישור פג תוקף');
+      return fail('⚠️','שגיאה בטעינה');
+    }
+    const nm=escapeHtml(data.childName||'ילדך'),gr=data.group||{};
+    if(data.status!=='pending'){
+      el.innerHTML=`<div style="font-size:44px;margin-bottom:10px">${data.status==='approved'?'✅':'🚫'}</div>
+        <p style="font-weight:900;font-size:18px;color:#0F1A1F;margin:0 0 6px">${data.status==='approved'?'כבר אישרת את הקבוצה':'כבר סירבת לבקשה'}</p>
+        <p style="color:#64748B;font-size:14px;margin:0;line-height:1.7">ההחלטה שלך נרשמה. אפשר לסגור את הדף.</p>`;
+      return;
+    }
+    el.innerHTML=`
+      <div style="background:linear-gradient(165deg,#ECFEFF 0%,#F0F9FF 50%,#EEF2FF 100%);border-radius:20px;padding:22px 18px;text-align:right;box-shadow:0 6px 24px rgba(15,26,31,.07)">
+        <p style="font-size:15px;color:#0F1A1F;margin:0 0 14px;line-height:1.7"><b>${nm}</b> ביקש/ה להצטרף לקבוצה הזו, ולא יתקבל/תתקבל בלי אישורכם:</p>
+        <div style="background:rgba(20,184,166,.07);border-radius:14px;padding:14px;margin-bottom:14px;font-size:14px;color:#0F1A1F;line-height:2">
+          <div><b>${escapeHtml(gr.title||'')}</b></div>
+          <div>👤 מוביל/ה: ${escapeHtml(gr.teacherName||'')} (נער או נערה בגילאי 14–18)</div>
+          <div>📅 ${escapeHtml([gr.day,gr.time].filter(Boolean).join(' בשעה '))}</div>
+          <div>📍 ${escapeHtml(gr.location||'')}</div>
+          <div>🎂 גילאים ${Number(gr.minAge)||'?'}–${Number(gr.maxAge)||'?'}</div>
+        </div>
+        <div class="warn" style="margin-bottom:12px"><span>${icon("shield",14)}</span><span>${escapeHtml(GROUP_MEETUP_NOTICE)} האישור הזה תקף לקבוצה הזו בלבד.</span></div>
+        <div class="warn" style="margin-bottom:16px"><span>🆘</span><span>לפניות דחופות בזמן מפגש: <a href="tel:${escapeHtml(data.emergencyPhone||GROUP_EMERGENCY_PHONE)}" dir="ltr" style="color:inherit;font-weight:800">${escapeHtml(data.emergencyPhone||GROUP_EMERGENCY_PHONE)}</a>. בסכנה מיידית — משטרה 100, מד"א 101.</span></div>
+        <button id="_gcOk" onclick="_decideGroupConsent('${jsAttrEscape(token)}','approve')" style="width:100%;background:linear-gradient(135deg,#0F766E,#0E7490);border:none;color:#fff;border-radius:16px;padding:16px;font-size:16px;font-weight:900;cursor:pointer;margin-bottom:10px">✅ אני מאשר/ת את הקבוצה</button>
+        <button id="_gcNo" onclick="_decideGroupConsent('${jsAttrEscape(token)}','decline')" style="width:100%;background:rgba(185,28,28,0.07);border:none;color:#B91C1C;border-radius:16px;padding:14px;font-size:14px;font-weight:800;cursor:pointer">אני לא מאשר/ת</button>
+      </div>`;
+  }catch(_e){fail('⚠️','שגיאת רשת — נסו שוב');}
+}
+async function _decideGroupConsent(token,action){
+  const ok=document.getElementById('_gcOk'),no=document.getElementById('_gcNo');
+  [ok,no].forEach(b=>{if(b){b.disabled=true;b.style.opacity='.6';}});
+  const el=document.getElementById('_pcContent');
+  try{
+    const {ok:good,status,data}=await _groupConsentApi(token,action);
+    if(!good){
+      [ok,no].forEach(b=>{if(b){b.disabled=false;b.style.opacity='1';}});
+      showFireToast(status===409&&data.error==='group_changed'?'❌ פרטי הקבוצה השתנו מאז. בקשו מהילד לשלוח בקשה חדשה':status===409?'ההחלטה כבר נרשמה':status===410?'❌ הקישור פג תוקף או שהקבוצה נסגרה':'❌ הפעולה נכשלה — נסו שוב');
+      return;
+    }
+    if(el)el.innerHTML=action==='approve'
+      ?`<div style="font-size:52px;margin-bottom:12px">🎉</div><p style="font-weight:900;font-size:20px;color:#0F1A1F;margin:0 0 8px">תודה, האישור נרשם</p><p style="color:#64748B;font-size:14px;margin:0;line-height:1.7">עכשיו המוביל/ה יכולים לקבל את ${escapeHtml(data.childName||'ילדך')} לקבוצה. תקבלו מייל נוסף כשזה יקרה.<br><br>אפשר לסגור את הדף.</p>`
+      :`<div style="font-size:52px;margin-bottom:12px">🚫</div><p style="font-weight:900;font-size:20px;color:#0F1A1F;margin:0 0 8px">הבקשה נדחתה</p><p style="color:#64748B;font-size:14px;margin:0;line-height:1.7">${escapeHtml(data.childName||'ילדך')} לא יתקבל/תתקבל לקבוצה.<br><br>אפשר לסגור את הדף.</p>`;
+  }catch(_e){
+    [ok,no].forEach(b=>{if(b){b.disabled=false;b.style.opacity='1';}});
     showFireToast('❌ שגיאת רשת — נסו שוב');
   }
 }
@@ -14366,7 +14613,7 @@ function render(){
   // NaN, ההתאמה נכשלת, ונופלת ל-TEACHERS[0] — כלומר כל כרטיס פתח את המורה
   // הראשון ברשימה. הוסר; ה-onclick המוטבע לבדו הוא הנכון.
   if(S.screen==="chat"){const el=document.getElementById("chatMsgs");if(el)setTimeout(()=>el.scrollTop=el.scrollHeight,50);}
-  if(S.screen==="profile"&&isAdmin())setTimeout(_checkAdminBadge,200);
+  if(S.screen==="profile"&&isStaff())setTimeout(_checkAdminBadge,200);
   if(S.screen==='teacher'&&S.teacher?.id&&currentUser?.uid!==S.teacher.id&&db){
     const _vk='_pv_'+S.teacher.id;
     if(!_ssGet(_vk)){_ssSet(_vk,'1');db.ref('teachers/'+S.teacher.id+'/views').transaction(v=>(v||0)+1).catch(()=>{});}
@@ -14405,6 +14652,9 @@ render();
   // כל מה שיש לו, ולכן המסך הזה חייב לעבוד לגמרי בלי התחברות.
   const _cToken=new URLSearchParams(window.location.search).get('consent');
   if(_cToken){S.consentToken=_cToken;go('parentConsent');setTimeout(()=>_loadConsentInfo(_cToken),200);}
+  // אישור הורה לקבוצה מסוימת: ?groupConsent=<token>, אותו מסך ואותו עיקרון — ההורה בלי חשבון, הטוקן הוא כל מה שיש לו.
+  const _gcToken=new URLSearchParams(window.location.search).get('groupConsent');
+  if(_gcToken){S.consentToken=_gcToken;go('parentConsent');setTimeout(()=>_loadGroupConsentInfo(_gcToken),200);}
   // deep link לפרופיל מורה: ?t=teacherId
   const _tid=new URLSearchParams(window.location.search).get('t');
   if(_tid){
@@ -14742,6 +14992,7 @@ auth&&auth.onAuthStateChanged(async user=>{
       });
     }
     currentUser=user;
+    await _loadTeamFlag();
     refreshStudentCount(); // auth is confirmed, token always available here
     try{
       const snap=await db.ref('users/'+user.uid).get();
@@ -14901,7 +15152,8 @@ auth&&auth.onAuthStateChanged(async user=>{
       pollForNewMessages().catch(()=>{});
 
       // האזנה בזמן אמת להתראות + לאישור מנהל
-      if(isAdmin()){_requestBrowserNotifPermission();_startAdminAlertsListener();}
+      await _loadTeamFlag();
+      if(isStaff()){_requestBrowserNotifPermission();_startAdminAlertsListener();}
       // רישום להתראות נייטיב — רק באפליקציה המותקנת, ורק אחרי שיש משתמש מחובר
       // (הטוקן נשמר תחת ה-uid שלו). בדפדפן הפונקציה יוצאת מיד.
       _registerNativePush().catch(()=>{});
@@ -14947,7 +15199,7 @@ auth&&auth.onAuthStateChanged(async user=>{
         else if(!['register','parentReg','safety','teacherSetup'].includes(S.screen))_refreshMsgBadge();
       });
       // האזנה ל-adminNotifs (מורים חדשים, סרטונים, משתמשים) – ללא חיפוש UID
-      if(isAdmin()){
+      if(isStaff()){
         const _adminNotifListenStart=Date.now();
         db.ref('adminNotifs').on('child_added',snap=>{
           const n=snap.val();

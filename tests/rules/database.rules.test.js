@@ -30,6 +30,11 @@ let testEnv;
 
 const asStudent = () => testEnv.authenticatedContext(STUDENT, { email: 'student@example.com' }).database();
 const asTeacher = () => testEnv.authenticatedContext(TEACHER, { email: 'teacher@example.com' }).database();
+// The parent's approval of one group is written only by netlify/functions/group-consent.js through
+// firebase-admin, which bypasses the rules. A test stands in for the server the same way.
+const parentApproves = (groupId, uid) => testEnv.withSecurityRulesDisabled(async (ctx) => {
+  await set(ref(ctx.database(), `groupMembers/${groupId}/${uid}/parentApprovedAt`), Date.now());
+});
 const asStranger = () => testEnv.authenticatedContext(STRANGER, { email: 'stranger@example.com' }).database();
 const asAdmin = () => testEnv.authenticatedContext('admin-uid', { email: ADMIN_EMAIL }).database();
 const asGuest = () => testEnv.unauthenticatedContext().database();
@@ -66,7 +71,7 @@ beforeEach(async () => {
     const approvedBooking = { ...booking, status: 'approved' };
     await update(ref(db), {
       'users/student-uid': { name: 'Minor', role: 'student', verified: true },
-      'users/teacher-uid': { name: 'Teach', role: 'teacher', verified: true },
+      'users/teacher-uid': { name: 'Teach', role: 'teacher', verified: true, age: 15 },
       'teachers/teacher-uid': { name: 'Teach', verified: true, active: true },
       'teacherVerification/teacher-uid': { idPhoto: 'data:image/png;base64,AAAA' },
       'bookings/b1': booking,
@@ -518,7 +523,7 @@ describe('gates: only a verified, unblocked user reaches another user', () => {
 // text was rendered unescaped on every home screen).
 describe('gates: groups, posts, questions and briefs need a verified, unblocked user', () => {
   const anon = () => testEnv.authenticatedContext('guest-uid', { firebase: { sign_in_provider: 'anonymous' } }).database();
-  const group = (over = {}) => ({ teacherId: TEACHER, title: 'Chess', desc: 'fun', location: 'Tel Aviv', day: 'ב', time: '17:00', status: 'pending', ...over });
+  const group = (over = {}) => ({ teacherId: TEACHER, title: 'Chess', desc: 'fun', location: 'Tel Aviv', day: 'ב', time: '17:00', status: 'pending', minAge: 12, maxAge: 14, ...over });
 
   it('a verified teacher creates a group; an unverified user or a guest cannot', async () => {
     await assertSucceeds(set(ref(asTeacher(), 'groups/gg1'), group()));
@@ -542,6 +547,7 @@ describe('gates: groups, posts, questions and briefs need a verified, unblocked 
     await assertSucceeds(set(ref(asStudent(), `groupMembers/gm1/${STUDENT}`), { status: 'pending', name: 'Minor' }));
     await assertFails(set(ref(asStranger(), `groupMembers/gm1/${STRANGER}`), { status: 'pending', name: 'X' }));
     await assertFails(set(ref(anon(), 'groupMembers/gm1/guest-uid'), { status: 'pending', name: 'G' }));
+    await parentApproves('gm1', STUDENT);
     await assertSucceeds(set(ref(asTeacher(), `groupMembers/gm1/${STUDENT}/status`), 'approved'));
   });
 
@@ -711,6 +717,7 @@ describe('role lock and group enrolment', () => {
     await assertFails(set(ref(asTeacher(), `userGroups/${STUDENT}/gx`), { status: 'approved' }));
     await assertSucceeds(set(ref(asStudent(), `groupMembers/gx/${STUDENT}`), { status: 'pending', name: 'Minor' }));
     await assertSucceeds(set(ref(asStudent(), `userGroups/${STUDENT}/gx`), { status: 'pending' }));
+    await parentApproves('gx', STUDENT);
     await assertSucceeds(set(ref(asTeacher(), `groupMembers/gx/${STUDENT}/status`), 'approved'));
     await assertSucceeds(set(ref(asTeacher(), `userGroups/${STUDENT}/gx/status`), 'approved'));
   });
@@ -727,7 +734,7 @@ describe('a group belongs to its leader and freezes when published', () => {
   const group = (over = {}) => ({
     teacherId: TEACHER, teacherName: 'Teach', subject: 'math', title: 'Chess club',
     desc: 'we play', day: 'יום שני', time: '17:00', location: 'Park', city: 'TA',
-    maxStudents: 5, price: 25, isMixed: false, status: 'pending', membersCount: 0, createdAt: 1, ...over,
+    maxStudents: 5, price: 25, isMixed: false, status: 'pending', membersCount: 0, createdAt: 1, minAge: 12, maxAge: 14, ...over,
   });
   const open = async (over = {}) => {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
@@ -963,7 +970,7 @@ describe('groups: the listing is not readable by an anonymous guest or an unveri
 
 describe('groups: a new group waits for the admin before anyone can see it open', () => {
   const ADMIN_DB = () => testEnv.authenticatedContext('admin-uid', { email: 'rotemshaer@gmail.com' }).database();
-  const g = (status) => ({ teacherId: TEACHER, title: 'Chess', desc: 'fun', location: 'Tel Aviv', day: 'ב', time: '17:00', status });
+  const g = (status) => ({ teacherId: TEACHER, title: 'Chess', desc: 'fun', location: 'Tel Aviv', day: 'ב', time: '17:00', status, minAge: 12, maxAge: 14 });
   beforeEach(async () => {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
       await set(ref(ctx.database(), `userRoles/${TEACHER}`), 'teacher');
@@ -2066,5 +2073,276 @@ describe('contract: teacher registration and profile edit pass the rules', () =>
       payment: null, meetingLink: null, notificationEmail: null, email: null,
     }));
     await assertSucceeds(update(ref(asTeacher(), `teachers/${TEACHER}/catProfiles`), { chess: { desc: 'x', tags: [] } }));
+  });
+});
+
+
+// ── Parent approval of a specific group, and the group's age range (15.11.2026) ───────────────
+// The legal question this answers: "the parent approved the app in general, never this group".
+// A child is approved only if the server recorded that the parent approved *this* group, and the
+// leader cannot write that record, so no route through the database skips the parent.
+describe('a child cannot be approved into a group the parent has not approved', () => {
+  const ADMIN_DB = () => testEnv.authenticatedContext('admin-uid', { email: 'rotemshaer@gmail.com' }).database();
+  beforeEach(async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await set(ref(ctx.database(), 'groups/gp'), { teacherId: TEACHER, title: 'G', location: 'Park', day: 'ב', time: '17:00', status: 'open', minAge: 12, maxAge: 14 });
+      await set(ref(ctx.database(), `groupMembers/gp/${STUDENT}`), { name: 'Minor', status: 'pending', joinedAt: 1 });
+    });
+  });
+
+  it('the leader cannot approve a child whose parent has not approved this group', async () => {
+    await assertFails(set(ref(asTeacher(), `groupMembers/gp/${STUDENT}/status`), 'approved'));
+    await assertFails(set(ref(asTeacher(), `groupMembers/gp/${STUDENT}`), { name: 'Minor', status: 'approved', joinedAt: 1 }));
+  });
+
+  it('even the admin cannot skip it by writing the status alone', async () => {
+    await assertFails(set(ref(ADMIN_DB(), `groupMembers/gp/${STUDENT}/status`), 'approved'));
+  });
+
+  it('once the server recorded the parent approval, the leader can approve', async () => {
+    await parentApproves('gp', STUDENT);
+    await assertSucceeds(set(ref(asTeacher(), `groupMembers/gp/${STUDENT}/status`), 'approved'));
+  });
+
+  it('nobody but the admin can write the parent approval — not the child, not the leader', async () => {
+    await assertFails(set(ref(asStudent(), `groupMembers/gp/${STUDENT}/parentApprovedAt`), Date.now()));
+    await assertFails(set(ref(asTeacher(), `groupMembers/gp/${STUDENT}/parentApprovedAt`), Date.now()));
+    await assertFails(set(ref(asStudent(), `groupMembers/gp/${STUDENT}`), { name: 'Minor', status: 'pending', joinedAt: 1, parentApprovedAt: Date.now() }));
+    await assertFails(set(ref(asTeacher(), `groupMembers/gp/${STUDENT}`), { name: 'Minor', status: 'approved', joinedAt: 1, parentApprovedAt: Date.now() }));
+  });
+
+  it('a child cannot approve themselves, with or without the field', async () => {
+    await assertFails(set(ref(asStudent(), `groupMembers/gp/${STUDENT}/status`), 'approved'));
+    await assertFails(set(ref(asStudent(), `groupMembers/gp/${STUDENT}`), { name: 'Minor', status: 'approved', joinedAt: 1 }));
+  });
+
+  it('rejecting a child never needs the parent', async () => {
+    await assertSucceeds(set(ref(asTeacher(), `groupMembers/gp/${STUDENT}/status`), 'rejected'));
+  });
+});
+
+describe('a group declares an age range, inside the app’s own child range, and it freezes with the rest', () => {
+  const ADMIN_DB = () => testEnv.authenticatedContext('admin-uid', { email: 'rotemshaer@gmail.com' }).database();
+  const base = (over = {}) => ({
+    teacherId: TEACHER, teacherName: 'Teach', subject: 'math', title: 'Chess club', desc: 'we play', day: 'ב', time: '17:00',
+    location: 'Park', city: 'TA', maxStudents: 5, price: 25, isMixed: false, status: 'pending', membersCount: 0, createdAt: 1, ...over,
+  });
+
+  it('a new group without an age range is refused; with one it is created', async () => {
+    await assertFails(set(ref(asTeacher(), 'groups/ag1'), base()));
+    await assertFails(set(ref(asTeacher(), 'groups/ag1'), base({ minAge: 12 })));
+    await assertSucceeds(set(ref(asTeacher(), 'groups/ag1'), base({ minAge: 12, maxAge: 14 })));
+  });
+
+  it('the range stays inside 9–18 and runs the right way round', async () => {
+    await assertFails(set(ref(asTeacher(), 'groups/ag2'), base({ minAge: 7, maxAge: 12 })));
+    await assertFails(set(ref(asTeacher(), 'groups/ag2'), base({ minAge: 12, maxAge: 19 })));
+    await assertFails(set(ref(asTeacher(), 'groups/ag2'), base({ minAge: 14, maxAge: 10 })));
+    await assertFails(set(ref(asTeacher(), 'groups/ag2'), base({ minAge: 12.5, maxAge: 14 })));
+    await assertFails(set(ref(asTeacher(), 'groups/ag2'), base({ minAge: '12', maxAge: 14 })));
+    await assertSucceeds(set(ref(asTeacher(), 'groups/ag2'), base({ minAge: 12, maxAge: 18 })));
+    await assertSucceeds(set(ref(ADMIN_DB(), 'groups/ag2b'), base({ minAge: 9, maxAge: 18 })));
+  });
+
+  it('once the group is published the leader cannot widen the range the parents saw', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => { await set(ref(ctx.database(), 'groups/ag3'), base({ minAge: 12, maxAge: 14, status: 'open' })); });
+    await assertFails(set(ref(asTeacher(), 'groups/ag3/minAge'), 9));
+    await assertFails(set(ref(asTeacher(), 'groups/ag3/maxAge'), 18));
+    await assertSucceeds(set(ref(ADMIN_DB(), 'groups/ag3/maxAge'), 15));
+  });
+
+  it('an old group with no range can still be closed by its leader', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => { await set(ref(ctx.database(), 'groups/ag4'), base({ status: 'open' })); });
+    await assertSucceeds(set(ref(asTeacher(), 'groups/ag4/status'), 'closed'));
+  });
+});
+
+
+// ── A group's youngest child may be at most 3 years younger than its leader (owner's decision 15.11.2026) ──
+// The leaders are 14-18. A 14-year-old leading nine-year-olds, alone and unsupervised, was the gap a lawyer or an
+// insurer would name first. The rule is measured against the age on the leader's own record.
+describe('a group cannot be aimed at children much younger than its leader', () => {
+  const ADMIN_DB = () => testEnv.authenticatedContext('admin-uid', { email: 'rotemshaer@gmail.com' }).database();
+  const base = (over = {}) => ({
+    teacherId: TEACHER, teacherName: 'Teach', subject: 'math', title: 'Chess club', desc: 'we play', day: 'ב', time: '17:00',
+    location: 'Park', city: 'TA', maxStudents: 5, price: 25, isMixed: false, status: 'pending', membersCount: 0, createdAt: 1, ...over,
+  });
+  const leaderIs = (age) => testEnv.withSecurityRulesDisabled(async (ctx) => { await set(ref(ctx.database(), `users/${TEACHER}/age`), age); });
+
+  it('a 15-year-old may lead from age 12, not from 11', async () => {
+    await assertSucceeds(set(ref(asTeacher(), 'groups/gap1'), base({ minAge: 12, maxAge: 14 })));
+    await assertFails(set(ref(asTeacher(), 'groups/gap2'), base({ minAge: 11, maxAge: 14 })));
+  });
+
+  it('a 14-year-old may lead from age 11, and never nine-year-olds', async () => {
+    await leaderIs(14);
+    await assertSucceeds(set(ref(asTeacher(), 'groups/gap3'), base({ minAge: 11, maxAge: 13 })));
+    await assertFails(set(ref(asTeacher(), 'groups/gap4'), base({ minAge: 9, maxAge: 12 })));
+    await assertFails(set(ref(asTeacher(), 'groups/gap4'), base({ minAge: 10, maxAge: 12 })));
+  });
+
+  it('an 18-year-old may lead anyone from 15, but not younger', async () => {
+    await leaderIs(18);
+    await assertSucceeds(set(ref(asTeacher(), 'groups/gap5'), base({ minAge: 15, maxAge: 18 })));
+    await assertFails(set(ref(asTeacher(), 'groups/gap6'), base({ minAge: 14, maxAge: 18 })));
+  });
+
+  it('a leader with no age on record cannot create a group at all', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => { await remove(ref(ctx.database(), `users/${TEACHER}/age`)); });
+    await assertFails(set(ref(asTeacher(), 'groups/gap7'), base({ minAge: 12, maxAge: 14 })));
+  });
+
+  it('only the admin can set a range outside the rule, for an exceptional group', async () => {
+    await leaderIs(14);
+    await assertSucceeds(set(ref(ADMIN_DB(), 'groups/gap8'), base({ minAge: 9, maxAge: 12 })));
+  });
+});
+
+
+// ── The deletion queue for ID photos is the owner's alone (15.11.2026) ───────────────────────
+describe('idPurgeDue: only the admin schedules or reads the deletion of ID photos', () => {
+  it('a child, a teacher, a stranger and a guest can neither write nor read it', async () => {
+    for (const who of [asStudent, asTeacher, asStranger, asGuest]) {
+      await assertFails(set(ref(who(), `idPurgeDue/${STUDENT}`), Date.now() + 1000));
+      await assertFails(get(ref(who(), `idPurgeDue/${STUDENT}`)));
+    }
+  });
+  it('the admin can', async () => {
+    await assertSucceeds(set(ref(asAdmin(), `idPurgeDue/${STUDENT}`), Date.now() + 1000));
+    await assertSucceeds(get(ref(asAdmin(), 'idPurgeDue')));
+  });
+  it('a user cannot push their own deletion date further out', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => { await set(ref(ctx.database(), `idPurgeDue/${STUDENT}`), 1); });
+    await assertFails(set(ref(asStudent(), `idPurgeDue/${STUDENT}`), Date.now() + 99 * 86400000));
+    await assertFails(remove(ref(asStudent(), `idPurgeDue/${STUDENT}`)));
+  });
+});
+
+
+// ── The team: several people review, one person owns (15.11.2026) ───────────────────────────────
+// A team member is a flag at team/<uid>, written only by the server (netlify/functions/team-roles.js). Rules read
+// the flag, so removing it takes effect on the next request — no token to wait out. A member can do the review work
+// (approve or reject children and teachers, decide on groups and reports, moderate content) and nothing that makes
+// the platform's rules: not the database root, not the configuration, not payments, not the team list itself.
+describe('team members review; only the owner owns', () => {
+  const TEAM_UID = 'team-uid';
+  const asTeam = () => testEnv.authenticatedContext(TEAM_UID, { email: 'team@example.com' }).database();
+  const setTeam = (on) => testEnv.withSecurityRulesDisabled(async (ctx) => {
+    if (on) await set(ref(ctx.database(), `team/${TEAM_UID}`), true); else await remove(ref(ctx.database(), `team/${TEAM_UID}`));
+  });
+  beforeEach(async () => {
+    await setTeam(true);
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.database();
+      await set(ref(db, 'users/kid2'), { name: 'Kid Two', role: 'student', verified: false, age: 12, createdAt: 1, parentIdPhoto: 'data:image/png;base64,AA' });
+      await set(ref(db, 'teachers/t2'), { name: 'T2', verified: false, rating: 4, reviews: 3, lessons: 2 });
+      await set(ref(db, 'reports/r1'), { reporterId: STUDENT, status: 'open', severity: 'high', createdAt: 1 });
+      await set(ref(db, 'groups/gt'), { teacherId: TEACHER, title: 'G', location: 'Park', day: 'ב', time: '17:00', status: 'pending', minAge: 12, maxAge: 14 });
+      await set(ref(db, `groupMembers/gt/${STUDENT}`), { name: 'Minor', status: 'pending', joinedAt: 1 });
+      await set(ref(db, 'adminConfig/x'), 1);
+      await set(ref(db, 'fcmTokens/tok'), { uid: STUDENT });
+      await set(ref(db, 'contactMessages/m1'), { name: 'x' });
+    });
+  });
+
+  it('can read the users, the reports, the pending groups and the ID photos it needs to decide', async () => {
+    await assertSucceeds(get(ref(asTeam(), 'users')));
+    await assertSucceeds(get(ref(asTeam(), 'reports')));
+    await assertSucceeds(get(ref(asTeam(), 'groups')));
+    await assertSucceeds(get(ref(asTeam(), 'adminAlerts')));
+    await assertSucceeds(get(ref(asTeam(), 'teacherVerification')));
+  });
+
+  it('cannot read the database root, the configuration, push tokens, analytics or contact forms', async () => {
+    await assertFails(get(ref(asTeam())));
+    for (const p of ['adminConfig', 'fcmTokens', '_analytics', 'parentConsentLog', 'contactMessages', 'teamInfo', 'bookings', 'idPurgeDue']) {
+      await assertFails(get(ref(asTeam(), p)));
+    }
+  });
+
+  it('approves and rejects a child', async () => {
+    await assertSucceeds(set(ref(asTeam(), 'users/kid2/verified'), true));
+    await assertSucceeds(set(ref(asTeam(), 'users/kid2/verifiedAt'), Date.now()));
+    await assertSucceeds(set(ref(asTeam(), 'users/kid2/verifiedBy'), TEAM_UID));
+    await assertSucceeds(set(ref(asTeam(), 'users/kid2/rejected'), true));
+    await assertSucceeds(set(ref(asTeam(), 'users/kid2/rejectedAt'), Date.now()));
+  });
+
+  it('cannot rewrite who a user is: role, age, creation date, subscription, the parent’s consent or ID photo', async () => {
+    for (const [f, v] of [['role', 'teacher'], ['age', 18], ['createdAt', 5], ['subscription', { active: true }], ['foundingMember', true],
+      ['parentConsentAt', Date.now()], ['parentConsentEmail', 'x@y.z'], ['parentIdPhoto', 'data:image/png;base64,ZZ']]) {
+      await assertFails(set(ref(asTeam(), `users/kid2/${f}`), v));
+    }
+  });
+
+  it('cannot delete a user, or invent one', async () => {
+    await assertFails(remove(ref(asTeam(), 'users/kid2')));
+    await assertFails(set(ref(asTeam(), 'users/kid2/role'), null));
+    await assertFails(set(ref(asTeam(), 'users/brand-new'), { name: 'x', role: 'student', verified: true }));
+  });
+
+  it('approves a teacher but cannot touch the rating, reviews or lessons that make a teacher look good', async () => {
+    await assertSucceeds(set(ref(asTeam(), 'teachers/t2/verified'), true));
+    await assertSucceeds(set(ref(asTeam(), 'teachers/t2/active'), true));
+    await assertSucceeds(set(ref(asTeam(), 'teachers/t2/ageVerification/status'), 'verified'));
+    await assertSucceeds(set(ref(asTeam(), 'approvedTeachers/t2'), true));
+    await assertFails(set(ref(asTeam(), 'teachers/t2/rating'), 5));
+    await assertFails(set(ref(asTeam(), 'teachers/t2/reviews'), 99));
+    await assertFails(set(ref(asTeam(), 'teachers/t2/lessons'), 99));
+  });
+
+  it('decides on a group — but can never write the parent’s approval, nor approve a child without it', async () => {
+    await assertSucceeds(set(ref(asTeam(), 'groups/gt/status'), 'open'));
+    await assertFails(set(ref(asTeam(), `groupMembers/gt/${STUDENT}/parentApprovedAt`), Date.now()));
+    await assertFails(set(ref(asTeam(), `groupMembers/gt/${STUDENT}/status`), 'approved'));
+    await assertSucceeds(set(ref(asTeam(), `groupMembers/gt/${STUDENT}/status`), 'rejected'));
+  });
+
+  it('cannot sign anyone out — the client answers that signal by deleting the account', async () => {
+    await assertFails(set(ref(asTeam(), `forceSignout/${STUDENT}`), { ts: Date.now() }));
+    await assertSucceeds(set(ref(asAdmin(), `forceSignout/${STUDENT}`), { ts: Date.now() }));
+  });
+
+  it('handles a report', async () => {
+    await assertSucceeds(set(ref(asTeam(), 'reports/r1/status'), 'resolved'));
+    await assertSucceeds(set(ref(asTeam(), 'reports/r1/handledBy'), TEAM_UID));
+  });
+
+  it('cannot write the configuration, the team list, or grant itself or anyone the role', async () => {
+    await assertFails(set(ref(asTeam(), 'adminConfig/x'), 2));
+    await assertFails(set(ref(asTeam(), `team/${TEAM_UID}`), true));
+    await assertFails(set(ref(asTeam(), 'team/someone-else'), true));
+    await assertFails(set(ref(asTeam(), 'teamInfo/someone-else'), { email: 'x' }));
+    await assertFails(set(ref(asTeam(), 'stats/students'), 5));
+  });
+
+  it('schedules the deletion of ID photos, with a number and nothing else', async () => {
+    await assertSucceeds(set(ref(asTeam(), 'idPurgeDue/kid2'), Date.now() + 1000));
+    await assertFails(set(ref(asTeam(), 'idPurgeDue/kid2'), 'never'));
+  });
+
+  it('loses everything the moment the flag is removed — no token to wait out', async () => {
+    await assertSucceeds(get(ref(asTeam(), 'users')));
+    await setTeam(false);
+    await assertFails(get(ref(asTeam(), 'users')));
+    await assertFails(set(ref(asTeam(), 'users/kid2/verified'), true));
+    await assertFails(set(ref(asTeam(), 'groups/gt/status'), 'open'));
+    await assertFails(get(ref(asTeam(), 'reports')));
+  });
+
+  it('nobody else gets any of it: a child, a teacher, a stranger or a guest', async () => {
+    for (const who of [asStudent, asTeacher, asStranger, asGuest]) {
+      await assertFails(get(ref(who(), 'users')));
+      await assertFails(set(ref(who(), `team/${STRANGER}`), true));
+      await assertFails(get(ref(who(), 'teamInfo')));
+    }
+    await assertSucceeds(get(ref(asTeam(), `team/${TEAM_UID}`)));
+    await assertFails(get(ref(asStranger(), `team/${TEAM_UID}`)));
+  });
+
+  it('the owner is unchanged: still everything', async () => {
+    await assertSucceeds(get(ref(asAdmin())));
+    await assertSucceeds(set(ref(asAdmin(), 'adminConfig/x'), 3));
+    await assertSucceeds(set(ref(asAdmin(), 'users/kid2/role'), 'student'));
   });
 });

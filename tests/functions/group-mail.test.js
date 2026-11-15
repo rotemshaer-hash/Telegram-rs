@@ -53,6 +53,13 @@ beforeEach(() => {
 });
 
 describe('group-mail', () => {
+  it('the approval email gives the parent a number to call during a meetup', async () => {
+    const { GROUP_EMERGENCY_PHONE } = require('../../netlify/lib/safety-contact');
+    await call(TEACHER, { groupId: 'g1', uid: KID, event: 'approved' });
+    assert.ok(sent[0].message.includes(GROUP_EMERGENCY_PHONE));
+    assert.match(sent[0].message, /משטרה 100/);
+  });
+
   it('prefers the parent address the server locked over the one the child can edit', async () => {
     data[`parentContact/${KID}/email`] = 'real-mom@example.org';
     const r = await call(TEACHER, { groupId: 'g1', uid: KID, event: 'approved' });
@@ -117,6 +124,17 @@ describe('group-mail', () => {
     const admin = await call('admin-uid', { groupId: 'g1', uid: KID, event: 'cancelled' });
     assert.equal(admin.status, 200);
     assert.equal(admin.body.sent, true);
+  });
+
+  it('a team member may cancel a group that is not theirs, until they are removed', async () => {
+    data['groups/g1'].status = 'cancelled';
+    data['users/team-uid/verified'] = true;
+    data['team/team-uid'] = true;
+    const ok = await call('team-uid', { groupId: 'g1', uid: KID, event: 'cancelled' });
+    assert.equal(ok.status, 200);
+    delete data['team/team-uid'];
+    data['groupMailSent/g1_' + KID + '_cancelled'] = undefined;
+    assert.equal((await call('team-uid', { groupId: 'g1', uid: KID, event: 'cancelled' })).status, 403);
   });
 
   it('a made-up or fake-domain parent address is silently skipped, not an error', async () => {

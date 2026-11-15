@@ -25,6 +25,7 @@ const admin = require('firebase-admin');
 const PROJECT_ID = 'kidemy-83a17';
 const CLIENT_EMAIL = 'firebase-adminsdk-fbsvc@kidemy-83a17.iam.gserviceaccount.com';
 const DATABASE_URL = 'https://kidemy-83a17-default-rtdb.firebaseio.com';
+const STORAGE_BUCKET = 'kidemy-83a17.firebasestorage.app';
 
 function buildCredential() {
   const key = process.env.FIREBASE_PRIVATE_KEY;
@@ -57,4 +58,4 @@ function initAdmin() {
   _initialized = true;
 }
 
-module.exports = { admin, initAdmin, DATABASE_URL, PROJECT_ID, CLIENT_EMAIL };
+module.exports = { admin, initAdmin, DATABASE_URL, STORAGE_BUCKET, PROJECT_ID, CLIENT_EMAIL };
