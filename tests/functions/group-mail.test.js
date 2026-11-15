@@ -57,7 +57,7 @@ describe('group-mail', () => {
     const { GROUP_EMERGENCY_PHONE } = require('../../netlify/lib/safety-contact');
     await call(TEACHER, { groupId: 'g1', uid: KID, event: 'approved' });
     assert.ok(sent[0].message.includes(GROUP_EMERGENCY_PHONE));
-    assert.match(sent[0].message, /משטרה 100/);
+    assert.ok(!/משטרה|סכנה/.test(sent[0].message), 'the number is offered calmly, without alarm');
   });
 
   it('prefers the parent address the server locked over the one the child can edit', async () => {

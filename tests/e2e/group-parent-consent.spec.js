@@ -141,7 +141,7 @@ test.describe('the page a parent lands on from the email', () => {
   test('shows the group, the age range, the physical-meetup notice and the emergency number', async ({ page }) => {
     await openLink(page, INFO);
     const txt = await page.locator('#_pcContent').innerText();
-    for (const part of ['דנה', 'חוג שחמט', 'פארק הירקון', 'יום ב בשעה 17:00', 'גילאים 11–14', 'ללא נוכחות הורים', '0542020812', 'משטרה 100']) {
+    for (const part of ['דנה', 'חוג שחמט', 'פארק הירקון', 'יום ב בשעה 17:00', 'גילאים 11–14', 'ללא נוכחות הורים', '0542020812']) {
       expect(txt, part).toContain(part);
     }
     await expect(page.locator('#_pcContent a[href="tel:0542020812"]')).toHaveCount(1);

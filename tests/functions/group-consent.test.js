@@ -79,7 +79,7 @@ describe('group-consent: request', () => {
     assert.match(m, /שחמט בפארק/); assert.match(m, /פארק הירקון/); assert.match(m, /יום שני בשעה 17:00/);
     assert.match(m, /11–14/); assert.match(m, /ללא נוכחות הורים/); assert.match(m, /קבוצה נוספת תדרוש אישור נפרד/);
     assert.ok(m.includes(GROUP_EMERGENCY_PHONE), 'the emergency number is in the parent’s email');
-    assert.match(m, /^[\s\S]*https:\/\/kidemy-app\.netlify\.app\/\?groupConsent=[a-f0-9]{64}/);
+    assert.match(m, /^[\s\S]*https:\/\/drushe\.com\/\?groupConsent=[a-f0-9]{64}/);
   });
 
   it('the token never reaches the child — it is only in the email and the server record', async () => {

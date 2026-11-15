@@ -16,8 +16,8 @@ describe('allowed origins', () => {
     }
   });
 
-  it('keeps the current site first — emails link to the first entry', () => {
-    assert.equal(origins[0], 'https://kidemy-app.netlify.app');
+  it('keeps the primary domain first — emails link to the first entry (drushe.com, Netlify\'s primary domain)', () => {
+    assert.equal(origins[0], 'https://drushe.com');
   });
 
   it('no function declares its own copy of the list', () => {
