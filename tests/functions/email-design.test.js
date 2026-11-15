@@ -11,7 +11,7 @@ const path = require('node:path');
 const { render, esc } = require('../../email-design.js');
 
 const URL64 = 'https://drushe.com/?groupConsent=' + 'a'.repeat(64);
-const SAMPLE = `שלום רונית,\n\nדנה ביקש/ה להצטרף לקבוצה ב-Drushe:\n\n📌 שחמט בפארק\n👤 מוביל/ה: נועם\n📅 יום שני בשעה 17:00\n\n**חלק מהקבוצות נפגשות פיזית.** הילד לא יתקבל בלי אישורכם.\n\nלפרטים ולאישור:\n${URL64}\n\nבסכנה מיידית — משטרה 100.\n\n– צוות Drushe`;
+const SAMPLE = `שלום רונית,\n\nדנה ביקש/ה להצטרף לקבוצה ב-Drushe:\n\n📌 שחמט בפארק\n👤 מוביל/ה: נועם\n📅 יום שני בשעה 17:00\n\n**חלק מהקבוצות נפגשות פיזית.** הילד לא יתקבל בלי אישורכם.\n\nלפרטים ולאישור:\n${URL64}\n\nלשאלות ולפניות בזמן מפגש: 0542020812.\n\n– צוות Drushe`;
 const html = render({ subject: 'נדרש אישורך — דנה ביקש/ה להצטרף', text: SAMPLE, siteUrl: 'https://drushe.com' });
 
 describe('email-design: it looks like Drushe', () => {

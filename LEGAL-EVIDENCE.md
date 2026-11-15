@@ -59,7 +59,7 @@
 | 🆕 המוביל רואה "ממתין לאישור ההורה" במקום כפתור אישור, והפעולה עצמה מסרבת | `index.html:14100` · `index.html:14133` |
 | 🆕 ההורה יכול גם **לסרב**, והילד נדחה | `index.html:14367` (`_decideGroupConsent`) · `netlify/functions/group-consent.js` (`decline`) |
 | 🆕 בדיקות שנכשלות על הקוד הישן: חוקים · שרת · דפדפן | `tests/rules/database.rules.test.js:2084` · `tests/functions/group-consent.test.js:72,162` · `tests/e2e/group-parent-consent.spec.js:14,93,126` |
-| 🆕 מספר לפניות דחופות בזמן מפגש (זמני) מופיע במייל להורה, בדף האישור, בפאנל המוביל ובמסמך בטיחות הילדים | `index.html:3779` · `netlify/lib/safety-contact.js:9` · `child-safety.html` |
+| 🆕 מספר לשאלות ולפניות בזמן מפגש (זמני) מופיע במייל להורה, בדף האישור, בפאנל המוביל ובמסמך בטיחות הילדים | `index.html:3779` · `netlify/lib/safety-contact.js:9` · `child-safety.html` |
 | המיילים נשלחים **מהשרת**, לא מדפדפן המשתמש, ולכתובת ששמורה בצד השרת | כל הפונקציות לעיל — הכתובת נקראת מ-`parentContact/<uid>` |
 
 **מה זה מוכיח:** ההורה יודע מראש שקיימים מפגשים פיזיים, מאשר זאת במפורש, ומקבל

@@ -3793,7 +3793,7 @@ function groupMinAgeFloor(){
   return Math.max(AGE_RANGE.student.min,Number.isFinite(a)?a-GROUP_MAX_AGE_GAP:AGE_RANGE.student.max);
 }
 function emergencyLineHtml(){
-  return `<div class="warn" style="margin-bottom:12px"><span>🆘</span><span>לפניות דחופות בזמן מפגש: <a href="tel:${GROUP_EMERGENCY_PHONE}" dir="ltr" style="color:inherit;font-weight:800">${GROUP_EMERGENCY_PHONE}</a>. בסכנה מיידית — משטרה 100, מד"א 101.</span></div>`;
+  return `<div class="warn" style="margin-bottom:12px"><span>📞</span><span>לשאלות ולפניות בזמן מפגש: <a href="tel:${GROUP_EMERGENCY_PHONE}" dir="ltr" style="color:inherit;font-weight:800">${GROUP_EMERGENCY_PHONE}</a></span></div>`;
 }
 // הילד בטווח הגילים של הקבוצה? קבוצה בלי טווח (ישנה) — לא ניתן להצטרף אליה, כמו בשרת (group_no_age_range).
 function ageInGroupRange(g){
@@ -14358,7 +14358,7 @@ async function _loadGroupConsentInfo(token){
           <div>🎂 גילאים ${Number(gr.minAge)||'?'}–${Number(gr.maxAge)||'?'}</div>
         </div>
         <div class="warn" style="margin-bottom:12px"><span>${icon("shield",14)}</span><span>${escapeHtml(GROUP_MEETUP_NOTICE)} האישור הזה תקף לקבוצה הזו בלבד.</span></div>
-        <div class="warn" style="margin-bottom:16px"><span>🆘</span><span>לפניות דחופות בזמן מפגש: <a href="tel:${escapeHtml(data.emergencyPhone||GROUP_EMERGENCY_PHONE)}" dir="ltr" style="color:inherit;font-weight:800">${escapeHtml(data.emergencyPhone||GROUP_EMERGENCY_PHONE)}</a>. בסכנה מיידית — משטרה 100, מד"א 101.</span></div>
+        <div class="warn" style="margin-bottom:16px"><span>📞</span><span>לשאלות ולפניות בזמן מפגש: <a href="tel:${escapeHtml(data.emergencyPhone||GROUP_EMERGENCY_PHONE)}" dir="ltr" style="color:inherit;font-weight:800">${escapeHtml(data.emergencyPhone||GROUP_EMERGENCY_PHONE)}</a></span></div>
         <button id="_gcOk" onclick="_decideGroupConsent('${jsAttrEscape(token)}','approve')" style="width:100%;background:linear-gradient(135deg,#0F766E,#0E7490);border:none;color:#fff;border-radius:16px;padding:16px;font-size:16px;font-weight:900;cursor:pointer;margin-bottom:10px">✅ אני מאשר/ת את הקבוצה</button>
         <button id="_gcNo" onclick="_decideGroupConsent('${jsAttrEscape(token)}','decline')" style="width:100%;background:rgba(185,28,28,0.07);border:none;color:#B91C1C;border-radius:16px;padding:14px;font-size:14px;font-weight:800;cursor:pointer">אני לא מאשר/ת</button>
       </div>`;

@@ -35,7 +35,7 @@ function compose(event, g, child, parentName, link) {
     const when = [clip(g.day, 40), clip(g.time, 20)].filter(Boolean).join(' בשעה ');
     return {
       subject: `✅ ${kid} התקבל/ה לקבוצה "${title}" — Drushe`,
-      body: `שלום ${parent} 👋\n\n${kid} התקבל/ה לקבוצה "${title}"${teacher ? ' של ' + teacher : ''}.\n\n${when ? '📅 ' + when + '\n' : ''}${where ? '📍 ' + where + '\n' : ''}\nחלק מהקבוצות נפגשות פיזית, ללא נוכחות הורים. כל קבוצה מאושרת על ידי צוות Drushe לפני שהיא מתפרסמת.\n\nבזמן מפגש אפשר לפנות לפניות דחופות: ${GROUP_EMERGENCY_PHONE}. בסכנה מיידית — משטרה 100, מד"א 101.\n\nניתן לעקוב באפליקציה:\n${link}\n\n– צוות Drushe 💙`,
+      body: `שלום ${parent} 👋\n\n${kid} התקבל/ה לקבוצה "${title}"${teacher ? ' של ' + teacher : ''}.\n\n${when ? '📅 ' + when + '\n' : ''}${where ? '📍 ' + where + '\n' : ''}\nחלק מהקבוצות נפגשות פיזית, ללא נוכחות הורים. כל קבוצה מאושרת על ידי צוות Drushe לפני שהיא מתפרסמת.\n\nלשאלות ולפניות בזמן מפגש אפשר ליצור איתנו קשר: ${GROUP_EMERGENCY_PHONE}.\n\nניתן לעקוב באפליקציה:\n${link}\n\n– צוות Drushe 💙`,
     };
   }
   if (event === 'cancelled') {
