@@ -106,7 +106,7 @@ exports.handler = async (event) => {
       '',
       clip(err.stack, 800),
       '',
-      'כל השגיאות: ' + SITE_URL + ' → פאנל ניהול → שגיאות אפליקציה',
+      'כל השגיאות: ' + SITE_URL + ' ← פאנל ניהול ← שגיאות אפליקציה',
       'מייל אחד לכל שגיאה ייחודית ב-24 שעות, עד ' + MAX_EMAILS_PER_DAY + ' מיילים ביום.',
     ];
     await sendViaEmailJS(ADMIN_EMAIL, '🐞 שגיאה חדשה ב-Drushe: ' + clip(err.message, 70), lines.join('\n'));
