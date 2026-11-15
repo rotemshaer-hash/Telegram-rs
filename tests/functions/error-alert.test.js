@@ -147,6 +147,7 @@ describe('error-alert', () => {
     const r = await call({ errorId: 'e1' });
     assert.equal(r.status, 502);
     assert.equal(r.body.error, 'mail_failed');
+    assert.match(r.body.detail, /EmailJS 400/, 'the reason is visible to whoever is diagnosing');
     assert.ok(!Object.keys(data).some((k) => k.startsWith('errorAlertSent/')), 'the signature is released');
     assert.equal(data['errorAlertRateLimit/global'].count, 0, 'the daily slot is given back');
     assert.equal(data['push:adminNotifs'].type, 'emailFailed');

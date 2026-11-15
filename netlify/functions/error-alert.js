@@ -118,7 +118,8 @@ exports.handler = async (event) => {
       await db.ref('errorAlertSent/' + sig).remove().catch(() => {});
       await db.ref('errorAlertRateLimit/global').transaction((cur) => (cur && cur.count > 0 ? { start: cur.start, count: cur.count - 1 } : cur)).catch(() => {});
       await db.ref('adminNotifs').push({ type: 'emailFailed', from: 'error-alert', error: clip(mailErr.message, 200), read: false, createdAt: Date.now() }).catch(() => {});
-      return reply(502, { error: 'mail_failed' });
+      // הסיבה (מקוצרת) חוזרת גם בתגובה: היא טקסט שגיאה של EmailJS ולא סוד, וכך כשל במייל נראה מיד לבדיקה ולא רק בלוגים שאין גישה אליהם
+      return reply(502, { error: 'mail_failed', detail: clip(mailErr.message, 160) });
     }
 
     return reply(200, { sent: 1, signature: sig });
