@@ -109,4 +109,33 @@ describe('email-design: the same module serves the server and the browser', () =
     assert.match(html, /<script src="\/email-design\.js"><\/script>/);
     assert.match(html, /message_html:_emailHtml\(subject,body\)/);
   });
+
+  it('if EmailJS refuses the designed version, the same content goes out as escaped plain text — and a double refusal still surfaces', async () => {
+    const calls = [];
+    const realFetch = global.fetch;
+    let refuse = 1;
+    global.fetch = async (url, o) => {
+      const b = JSON.parse(o.body); calls.push(b.template_params);
+      if (refuse-- > 0) return { ok: false, status: 400, text: async () => 'bad template' };
+      return { ok: true, text: async () => 'OK' };
+    };
+    try {
+      const { sendViaEmailJS } = require('../../netlify/lib/emailjs');
+      await sendViaEmailJS('to@example.org', 'נושא', 'שלום <b>x</b>');
+      assert.equal(calls.length, 2);
+      assert.match(calls[0].message_html, /^<!doctype html>/);
+      assert.ok(!calls[1].message_html.startsWith('<!doctype'), 'the retry is the plain version');
+      assert.ok(calls[1].message_html.includes('&lt;b&gt;x&lt;/b&gt;'), 'escaped');
+      assert.equal(calls[1].message, 'שלום <b>x</b>');
+      // refused twice -> the failure reaches the caller
+      calls.length = 0; refuse = 5;
+      await assert.rejects(() => sendViaEmailJS('to@example.org', 's', 'm'), /EmailJS 400/);
+      assert.equal(calls.length, 2);
+      // a server error (5xx) is not retried as a different email
+      calls.length = 0; refuse = 0;
+      global.fetch = async () => { calls.push(1); return { ok: false, status: 503, text: async () => 'down' }; };
+      await assert.rejects(() => sendViaEmailJS('to@example.org', 's', 'm'), /EmailJS 503/);
+      assert.equal(calls.length, 1);
+    } finally { global.fetch = realFetch; }
+  });
 });
