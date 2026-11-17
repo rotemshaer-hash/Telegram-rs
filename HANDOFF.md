@@ -13,7 +13,8 @@
 
 ## מה חי
 - **4.11.80 חי** (PR #186: מיילים מעוצבים, קישורים ל-`drushe.com`, שורת פנייה רגועה במקום "סכנה מיידית"). PR #187 (עמידות מיילי שרת) גם במיזוג ל-`main` — ראה "סגור הערב" מתחת.
-- **4.11.81 על הענף, עדיין לא במיזוג** (commit `ba7b100`): תיקון audit של Hallmark (`npx skills add nutlope/hallmark`, ראה הודעת הבעלים 15.11 מאוחר) —
+- **4.11.81 חי** (PR #188, squash `3cc86c6`, 17.11 ערב; פריסת Netlify `6afcc769…` מגישה `APP_VERSION='4.11.81'` ו-`/qr-drushe.svg` — אומת). התוכן:
+  (commit `ba7b100`): תיקון audit של Hallmark (`npx skills add nutlope/hallmark`, ראה הודעת הבעלים 15.11 מאוחר) —
   `firebase.initializeApp` יצא מחוץ ל-try/catch שהיה אמור לכסות בדיוק את כשל טעינת ה-CDN שלו (זורק שגיאה לא-תפוסה שהורגת את כל בלוק ה-script, כולל דיווח
   שגיאות ה-client); אייקון התראת דפדפן הצביע ל-`/favicon.ico` שמעולם לא היה בריפו; אמוג'י כאייקון, canvas בלי aria-hidden, `overflow-x:hidden`→`clip`,
   פוקוס ב-OTP/chat-bar עבר מ-border בלבד לאאוטליין אמיתי, טיקר התמיכה נעצר ב-hover/focus. הגרדיאנט הכהה לא נגע בו — Hallmark מסמן אותו "AI גנרי"
