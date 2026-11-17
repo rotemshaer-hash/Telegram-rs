@@ -68,13 +68,22 @@ const firebaseConfig = {
   appId: "1:799651449632:web:3e16d3e8e28029f58aa545",
   measurementId: "G-9S1J6XPL8B"
 };
-firebase.initializeApp(firebaseConfig);
 // var (not const/let) prevents TDZ issues if Firebase CDN fails to load
 var auth=null,db=null,storage=null,analytics=null;
 // analytics לא מאותחל כאן בכוונה — ראה initAnalyticsIfConsented(). קריאה
 // ל-firebase.analytics() היא מה שמזריק את gtag.js ומציב את עוגיית _ga, ולכן
 // עצם הדחייה שלה היא מה שמונע איסוף לפני שיש הסכמת הורה.
-try{auth=firebase.auth();db=firebase.database();storage=firebase.storage();}catch(e){console.error('Firebase init failed:',e);}
+//
+// initializeApp חייב להיות באותו try: אם ה-CDN של Firebase לא נטען (חוסם
+// רשת, ad-blocker, ניתוק), `firebase` עצמו לא מוגדר, וקריאה אליו מחוץ ל-try
+// הייתה זורקת שגיאה לא-תפוסה שעוצרת את בלוק ה-script כולו באמצעו — כולל
+// הדיווח על שגיאות client-side שמוגדר כמה שורות מתחת, וכל מה שבא אחריו.
+try{
+  firebase.initializeApp(firebaseConfig);
+  auth=firebase.auth();db=firebase.database();storage=firebase.storage();
+}catch(e){console.error('Firebase init failed:',e);}
+// כמעט כל המשתמשים בטלפון, ובאפליקציה הארוזה אין שורת כתובת ואין F5.
+const FIREBASE_UNAVAILABLE_MSG='❌ אין חיבור לשרת — בדקו את החיבור לאינטרנט וסגרו ופתחו מחדש';
 
 // באנר קבוע כשהדף מדבר עם מסד הבדיקות. בלעדיו preview נראה זהה לייצור,
 // ומי שפותח אותו רואה נתונים שנראים אמיתיים — או, גרוע יותר, **לא** רואה
@@ -198,7 +207,8 @@ if(IS_STAGING){
    גדולות, אין עולים גבוהים), וריווח שלילי דוחס אותה ופוגע בקריאות. הוסר
    משלושת הכללים הגלובליים האלה; הערכים השליליים שעל הלוגו "Drushe"
    עצמו (טקסט לטיני) נשארו בכוונה — inline וגוברים ממילא על הכלל הגלובלי. */
-html,body{height:100%;background:#ECFEFF;font-family:var(--font);overflow-x:hidden;overscroll-behavior:none;-webkit-overflow-scrolling:touch}
+/* hidden לפני clip בכוונה: Safari עד iOS 15 לא מכיר clip ומשליך את ההצהרה, ובלעדיה לא היה שם שום חיתוך אופקי. דפדפן שמכיר clip לוקח את האחרונה. */
+html,body{height:100%;background:#ECFEFF;font-family:var(--font);overflow-x:hidden;overflow-x:clip;overscroll-behavior:none;-webkit-overflow-scrolling:touch}
 ::-webkit-scrollbar{display:none}
 
 h1,h2,h3,h4{font-family:var(--font)}
@@ -229,6 +239,8 @@ input,textarea,select{font-family:inherit;-webkit-appearance:none;appearance:non
   --gg:0 0 32px rgba(16,185,129,0.45);
   /* פעולות אשר/דחה: כהים מספיק לטקסט לבן (≥4.5:1) */
   --ok:#047857;--no:#B91C1C;
+  /* טבעת פוקוס: הגוון הכהה מגרדיאנט הכותרת. --s (#06B6D4) נותן 2.4:1 מול #ECFEFF, מתחת ל-3:1 של WCAG 1.4.11; זה ~5:1 */
+  --focus:#0e7a72;
   --grad-main:linear-gradient(135deg,#14B8A6,#06B6D4);
   --surface:linear-gradient(165deg,#ECFEFF 0%,#F0F9FF 50%,#EEF2FF 100%);
   --grad-soft:linear-gradient(135deg,#5EEAD4 0%,#67E8F9 50%,#C4B5FD 100%);
@@ -277,9 +289,11 @@ input,textarea,select{font-family:inherit;-webkit-appearance:none;appearance:non
    אחד בדיוק) — כך שתמיד יש טקסט גלוי, בלי תלות ברוחב המסך. הפרדה בין
    העותקים היא תו מפריד נראה (לא padding ריק) — פסק ריק בין העותקים היה
    "נעלם" מהעין כשהוא עצמו גולל לתוך המסך, ונראה כאילו הפס התרוקן לרגע. */
-.support-ticker{background:linear-gradient(90deg,#3B82F6,#8B5CF6);overflow:hidden;white-space:nowrap;padding:5px 0 max(5px,env(safe-area-inset-bottom));cursor:pointer;direction:ltr}
+.support-ticker{display:block;width:100%;text-align:start;background:linear-gradient(90deg,#3B82F6,#8B5CF6);overflow:hidden;white-space:nowrap;padding:5px 0 max(5px,env(safe-area-inset-bottom));cursor:pointer;direction:ltr}
+.support-ticker:focus-visible{outline:2px solid #fff;outline-offset:-4px}
 .support-ticker-track{display:inline-flex;animation:supportMarquee 28s linear infinite reverse}
 .support-ticker-track span{color:#fff;font-weight:800;font-size:11.5px;direction:rtl}
+.support-ticker:hover .support-ticker-track,.support-ticker:focus .support-ticker-track{animation-play-state:paused}
 @keyframes supportMarquee{from{transform:translateX(0)}to{transform:translateX(-25%)}}
 @media (prefers-reduced-motion:reduce){.support-ticker-track{animation:none}}
 
@@ -347,7 +361,7 @@ input,textarea,select{font-family:inherit;-webkit-appearance:none;appearance:non
 /* OTP */
 .otp{display:flex;gap:8px;justify-content:center;margin-bottom:20px}
 .otp input{width:44px;height:52px;text-align:center;font-size:22px;font-weight:900;border-radius:12px;border:2px solid rgba(20,184,166,.15);outline:none;background:rgba(20,184,166,.03);color:var(--text)}
-.otp input:focus{border-color:var(--s)}
+.otp input:focus{border-color:var(--s);outline:2px solid var(--focus);outline-offset:2px}
 
 /* SLIDER */
 .slider{width:100%;-webkit-appearance:none;height:6px;border-radius:3px;background:rgba(20,184,166,.15);outline:none}
@@ -398,7 +412,7 @@ button[onclick*="back()"]{min-height:44px;min-width:44px}
 .bbl-other{color:#fff;border-radius:18px 18px 4px 18px}
 .chat-bar{background:rgba(255,255,255,.96);backdrop-filter:blur(20px);padding:11px 14px;padding-bottom:max(14px,env(safe-area-inset-bottom));border-top:1px solid rgba(0,0,0,.05);display:flex;gap:9px;align-items:center}
 .chat-bar input{flex:1;border:2px solid rgba(20,184,166,.12);border-radius:50px;padding:11px 16px;font-size:14px;outline:none;direction:rtl;background:rgba(20,184,166,.03)}
-.chat-bar input:focus{border-color:var(--s)}
+.chat-bar input:focus{border-color:var(--s);outline:2px solid var(--focus);outline-offset:2px}
 
 /* LEADERBOARD */
 .lb-row{background:var(--card);border-radius:var(--radius-sm);padding:13px 16px;margin-bottom:10px;display:flex;align-items:center;gap:13px;box-shadow:var(--shadow)}
@@ -524,29 +538,22 @@ body.dark .online-dot{border-color:#0D1117 !important}
 <body>
 <!-- Mobile-only notice for desktop users -->
 <div id="_desktopWarn" style="display:none;position:fixed;inset:0;background:linear-gradient(165deg,#ECFEFF 0%,#F0F9FF 50%,#EEF2FF 100%);z-index:99999;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:40px;color:#0F1A1F">
-  <div style="font-size:80px;margin-bottom:20px">📱</div>
+  <div style="margin-bottom:20px"><svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg></div>
   <h1 style="font-size:28px;font-weight:900;margin:0 0 12px">Drushe</h1>
   <p style="font-size:16px;color:#0F1A1F;margin:0 0 8px">ילדים מלמדים ילדים</p>
   <div style="background:rgba(255,255,255,0.7);border-radius:20px;padding:24px 32px;max-width:360px;margin-top:24px">
-    <div style="font-size:32px;margin-bottom:12px">🚫💻</div>
+    <div style="margin-bottom:12px"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/><line x1="1" y1="1" x2="23" y2="23"/></svg></div>
     <p style="font-size:15px;font-weight:700;margin:0 0 10px;color:#0F1A1F">האפליקציה מיועדת לשימוש בסלולרי בלבד</p>
     <p style="font-size:13px;color:#64748B;margin:0 0 18px;line-height:1.6">סרוק את הקוד עם הטלפון שלך<br>או גש לאפליקציה ישירות מהדפדפן הנייד</p>
-    <canvas id="_qrCanvas" style="border-radius:12px;background:#fff;padding:8px"></canvas>
+    <!-- קובץ סטטי ולא שירות QR חיצוני: השירות קיבל את ה-IP וה-User-Agent של כל מי שנכנס מהמחשב, כולל ילדים, לפני כל הסכמה. נוצר מקומית ונבדק בפענוח. -->
+    <img src="/qr-drushe.svg" width="150" height="150" loading="lazy" alt="קוד QR לכתובת drushe.com" style="display:block;margin:0 auto;border-radius:12px;background:#fff;padding:8px">
+    <p dir="ltr" style="font-size:14px;font-weight:800;color:#0F1A1F;margin:12px 0 0">drushe.com</p>
   </div>
-  <button onclick="document.getElementById('_desktopWarn').style.display='none'" style="margin-top:16px;background:rgba(20,184,166,0.12);color:#14B8A6;border-radius:50px;padding:8px 20px;font-size:12px;cursor:pointer">כניסת מנהל 🔑</button>
+  <button onclick="document.getElementById('_desktopWarn').style.display='none'" style="margin-top:16px;background:rgba(20,184,166,0.12);color:#14B8A6;border-radius:50px;padding:8px 20px;font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>כניסת מנהל</button>
 </div>
 <script>
 (function(){
-  var el=document.getElementById('_desktopWarn');
-  if(window.innerWidth>768){
-    el.style.display='flex';
-    // Simple QR via API
-    var img=document.createElement('img');
-    img.src='https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://kidemy-app.netlify.app';
-    img.style.cssText='width:150px;height:150px;border-radius:8px';
-    var c=document.getElementById('_qrCanvas');
-    c.parentNode.replaceChild(img,c);
-  }
+  if(window.innerWidth>768)document.getElementById('_desktopWarn').style.display='flex';
 })();
 </script>
 <div id="app"></div>
@@ -1257,7 +1264,7 @@ const STUDENT_ACHIEVEMENTS=[
   {id:'s6',em:"🎯",ttl:"מגוון נושאים", desc:"למדת ב-3 תחומים שונים",        col:"#A855F7"},
 ];
 
-const APP_VERSION='4.11.80';
+const APP_VERSION='4.11.81';
 
 // ─── הודעות קוליות — כבויות ────────────────────────────────────────────────
 // הקלטה קולית היא הערוץ היחיד בין ילדים שאיש לא בודק: אין תמלול, אין סינון,
@@ -1407,10 +1414,11 @@ _restoreRegSession();
 // שמור קוד הפניה מ-URL לסשן (לפני כל דבר אחר)
 (function(){try{const ref=new URLSearchParams(window.location.search).get('ref');if(ref)sessionStorage.setItem('_kidRefCode',ref);}catch(_){}})();
 // ─── ROUTER ───────────────────────────────────────────────────────────────────
-// html,body{overflow-x:hidden} עם overflow-y לא מוגדר גורם לדפדפן לחשב
-// overflow-y כ-auto (כלל ה-CSS: אם ציר אחד לא visible, הציר השני הופך מ-visible ל-auto) —
-// כלומר body עצמו הופך למיכל הגלילה בפועל, לא window/documentElement. לכן איפוס גלילה
-// בניווט חייב לאפס גם את body.scrollTop, אחרת מסך חדש "יורש" את מיקום הגלילה מהמסך הקודם.
+// עד 15.11.2026 html,body{overflow-x:hidden} עם overflow-y לא מוגדר גרם לדפדפן לחשב overflow-y
+// כ-auto (כלל ה-CSS: hidden על ציר אחד הופך visible בציר השני ל-auto, מה ש-clip לא עושה) —
+// כלומר body עצמו הפך למיכל הגלילה בפועל, לא window/documentElement. הכלל הוחלף ל-
+// overflow-x:clip בדיוק כדי למנוע את זה, אבל האיפוס כאן נשאר מאפס את כל המועמדים האפשריים
+// (window, documentElement, body, #app) בכוונה — הוא לא תלוי במי מהם בפועל מיכל הגלילה.
 function _resetScroll(){
   window.scrollTo(0,0);
   document.documentElement.scrollTop=0;
@@ -1418,6 +1426,12 @@ function _resetScroll(){
   const app=document.getElementById('app');
   if(app)app.scrollTop=0;
 }
+// render() משחזר את מיקום הגלילה כשמרנדרים שוב את אותו מסך — זה נועד לרינדור
+// שאף אחד לא ביקש (הודעה נכנסת, מאזין, טעינת רקע). ניווט וסינון *מבקשים* לחזור
+// למעלה, אבל render() לא יודע להבדיל ביניהם לפי שם המסך בלבד: לחיצה על הלשונית
+// הפעילה היא "אותו מסך". השחזור רץ ב-rAF, כלומר אחרי האיפוס, ודורס אותו. עד
+// המעבר ל-overflow-x:clip זה לא נראה רק כי השחזור קרא תמיד 0 (body גלל, לא החלון).
+let _skipScrollRestore=false;
 function go(scr,extra={}){
   if(scr==='register'){S.safetyConfirmed=true;_saveRegSession();if(!S.parentRegData)scr='parentReg';}
   if(scr!=="splash")S.prev=S.screen;
@@ -1457,6 +1471,7 @@ function go(scr,extra={}){
   }
   if(scr==='discover')loadDiscoverFeed();
   history.pushState({screen:scr,prev:S.prev},'');
+  _skipScrollRestore=true;
   render();
   _resetScroll();
   if(scr==='teacher'&&!('teacherCat' in extra))S.teacherCat=null;
@@ -1466,6 +1481,7 @@ function back(){
   S.prev='home';
   S.screen=prev;
   history.pushState({screen:prev,prev:'home'},'');
+  _skipScrollRestore=true;
   render();
   _resetScroll();
 }
@@ -1473,6 +1489,7 @@ window.addEventListener('popstate',()=>{
   const prev=S.prev||'home';
   S.prev='home';
   S.screen=prev;
+  _skipScrollRestore=true;
   render();
   _resetScroll();
 });
@@ -1493,7 +1510,7 @@ window.addEventListener('popstate',()=>{
   // הזו פאנל הניהול (שנבנה בדיוק כך) לא זוהה כדיאלוג בכלל.
   const DLG_SEL='[style*="z-index:9999"],[style*="z-index: 9999"],[style*="z-index:99999"],[style*="z-index: 99999"],._qaDlg,._intDlg';
   const dialogOpen=()=>[...document.querySelectorAll(DLG_SEL)]
-    .some(el=>el.id!=='_desktopWarn'&&el.id!=='_ft'&&getComputedStyle(el).display!=='none'&&el.getBoundingClientRect().height>0);
+    .some(el=>el.id!=='_desktopWarn'&&el.id!=='_ft'&&el.id!=='_stagingBanner'&&getComputedStyle(el).display!=='none'&&el.getBoundingClientRect().height>0);
 
   // ההגנה האמיתית, שלא תלויה בזיהוי דיאלוגים לפי סלקטור: אם המגע התחיל בתוך
   // אזור שגולל בעצמו (פאנל, מודאל, רשימה פנימית), התנועה שייכת לאותו אזור.
@@ -1873,9 +1890,9 @@ function BNav(active){
         <span class="nb-lbl" style="${it.special?'color:#8B5CF6;font-weight:900':''}">${it.lbl}</span>
         ${active===it.id?"<span class='nb-dot'></span>":""}
       </button>`).join("")}</nav>
-    <div class="support-ticker" onclick="go('support')">
-      <div class="support-ticker-track">${[0,1,2,3].map(i=>`<span${i>0?' aria-hidden="true"':''}>${supportTickerText()}&nbsp;&nbsp;💙&nbsp;&nbsp;</span>`).join('')}</div>
-    </div>
+    <button type="button" class="support-ticker" onclick="go('support')">
+      <span class="support-ticker-track">${[0,1,2,3].map(i=>`<span${i>0?' aria-hidden="true"':''}>${supportTickerText()}&nbsp;&nbsp;💙&nbsp;&nbsp;</span>`).join('')}</span>
+    </button>
   </div>`;
 }
 function supportTickerText(){
@@ -5915,11 +5932,17 @@ function _initNetworkBanner(){
 window.addEventListener('load',_initNetworkBanner);
 
 // ─── Browser Push Notifications (zero-setup, no email needed) ────────────────
+// בכרום לאנדרואיד `new Notification()` זורק "Illegal constructor" — שם מותר
+// להציג התראה רק דרך ה-service worker. הזריקה גם עצרה את המאזין שקרא לכאן
+// לפני שעדכן את רשימת השיחות ואת מונה ההתראות, כך שההתראה עצמה "נבלעה".
 function _sendBrowserNotif(title,body){
-  if(!('Notification' in window))return;
-  if(Notification.permission==='granted'){
-    new Notification(title,{body,icon:'https://kidemy-app.netlify.app/favicon.ico',dir:'rtl',lang:'he'});
-  }
+  if(!('Notification' in window)||Notification.permission!=='granted')return;
+  const opts={body,icon:'/icon-192.png',dir:'rtl',lang:'he'};
+  const viaPage=()=>{try{new Notification(title,opts);}catch(_e){}};
+  if(!('serviceWorker' in navigator)){viaPage();return;}
+  navigator.serviceWorker.getRegistration()
+    .then(reg=>reg?reg.showNotification(title,opts):viaPage())
+    .catch(viaPage);
 }
 async function _requestBrowserNotifPermission(){
   if(!('Notification' in window))return;
@@ -10042,7 +10065,7 @@ function Home(){
           const cnt=TEACHERS.filter(t=>
             t.cat===c.id||(Array.isArray(t.cats)&&t.cats.includes(c.id))
           ).length;
-          return `<button onclick="S.catFilter='${jsAttrEscape(c.id)}';S.search='';render();window.scrollTo({top:0,behavior:'smooth'})" style="border:none;background:transparent;padding:6px 4px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;text-align:center;transition:all 0.2s;-webkit-tap-highlight-color:transparent">
+          return `<button onclick="S.catFilter='${jsAttrEscape(c.id)}';S.search='';_skipScrollRestore=true;render();window.scrollTo({top:0,behavior:'smooth'})" style="border:none;background:transparent;padding:6px 4px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;text-align:center;transition:all 0.2s;-webkit-tap-highlight-color:transparent">
             ${catBadge(c,52)}
             <div style="font-size:12px;font-weight:800;color:#0F1A1F;line-height:1.3">${c.lbl}</div>
             ${cnt>0?`<div style="font-size:10px;font-weight:700;color:${c.col};background:${c.col}15;border-radius:50px;padding:2px 9px;margin-top:1px">${cnt} מורים</div>`:`<div style="font-size:10px;color:#64748B;font-weight:600">${CAT_EMPTY_LABEL}</div>`}
@@ -10055,7 +10078,7 @@ function Home(){
         const cats=CATS.filter(c=>c.grp===g);
         if(!cats.length)return '';
         const cnt=cats.reduce((s,c)=>s+TEACHERS.filter(t=>t.cat===c.id||(Array.isArray(t.cats)&&t.cats.includes(c.id))).length,0);
-        return `<button onclick="S.groupFilter='${jsAttrEscape(g)}';render();window.scrollTo({top:0,behavior:'smooth'})" style="border:none;background:transparent;padding:4px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center">
+        return `<button onclick="S.groupFilter='${jsAttrEscape(g)}';_skipScrollRestore=true;render();window.scrollTo({top:0,behavior:'smooth'})" style="border:none;background:transparent;padding:4px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center">
           ${catBadge(cats[0],66)}
           <div style="font-size:13px;font-weight:800;color:#0F1A1F">${g}</div>
           <div style="font-size:10px;color:${cnt>0?'#14B8A6':'#64748B'};font-weight:700">${catCountLabel(cnt)}</div>
@@ -14566,7 +14589,8 @@ function render(){
   //
   // משחזרים רק כשנשארים באותו מסך. ניווט למסך חדש *צריך* להתחיל מלמעלה.
   const _prevScreen=_lastRenderedScreen;
-  const _prevPageScroll=window.scrollY||document.documentElement.scrollTop||0;
+  const _prevPageScroll=_skipScrollRestore?0:(window.scrollY||document.documentElement.scrollTop||0);
+  _skipScrollRestore=false;
 
   // טיוטת הודעה/תגובה שהמשתמש מקליד לא נמחקת כשמגיע רינדור (הודעה נכנסת, התראה, מאזין) — הוא ימחק רק מה שהוא שולח
   const _drafts={};
@@ -14939,7 +14963,7 @@ function _attachStudentApprovalListener(uid){
 
 if(typeof auth==='undefined'||!auth){
   console.error('Firebase Auth not loaded — check CDN');
-  setTimeout(()=>showFireToast('❌ Firebase לא נטען — רענן את הדף (F5)'),500);
+  setTimeout(()=>showFireToast(FIREBASE_UNAVAILABLE_MSG),500);
 }
 auth&&auth.onAuthStateChanged(async user=>{
   // טוענים מורים וסטוריז יחד, מוקדם ככל האפשר, כדי ששני העדכונים של דף הבית
@@ -15311,7 +15335,7 @@ auth&&auth.onAuthStateChanged(async user=>{
 });
 
 async function browseAsGuest(){
-  if(typeof auth==='undefined'||!auth){showFireToast('❌ Firebase לא נטען — רענן את הדף (F5)');return;}
+  if(typeof auth==='undefined'||!auth){showFireToast(FIREBASE_UNAVAILABLE_MSG);return;}
   try{
     await auth.signInAnonymously();
     go('home');
@@ -15321,7 +15345,7 @@ async function browseAsGuest(){
 }
 
 async function firebaseRegister(email,password,userData){
-  if(typeof auth==='undefined'||!auth){showFireToast('❌ Firebase לא נטען — רענן את הדף (F5)');return;}
+  if(typeof auth==='undefined'||!auth){showFireToast(FIREBASE_UNAVAILABLE_MSG);return;}
   try{
     showFireToast('⏳ יוצר חשבון...');
     S._registering=true;
@@ -15730,7 +15754,7 @@ async function forgotPassword(){
 }
 
 async function firebaseLogin(usernameOrEmail,password){
-  if(typeof auth==='undefined'||!auth){showFireToast('❌ Firebase לא נטען — רענן את הדף (F5)');return;}
+  if(typeof auth==='undefined'||!auth){showFireToast(FIREBASE_UNAVAILABLE_MSG);return;}
   try{
     showFireToast('⏳ מתחבר...');
     S._loggingIn=true; // מסמן שזו כניסה ידנית — לא לנתק ב-onAuthStateChanged
