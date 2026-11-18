@@ -3,6 +3,8 @@ import { messageStore } from './store.js';
 import { connectWhatsApp, sendSelfMessage } from './whatsapp.js';
 import { startStatusServer, statusState } from './statusServer.js';
 import { startScheduler, runSummaryNow } from './scheduler.js';
+import { askAssistant } from './assistant.js';
+import { splitForWhatsApp } from './summarize.js';
 
 startStatusServer();
 
@@ -40,9 +42,19 @@ connectWhatsApp({
     messageStore.addMessage(groupJid, groupName, message);
   },
 
-  onManualTrigger: () => {
-    console.log('Manual "summarize now" trigger received');
-    void runSummaryNow();
+  onSelfMessage: (text) => {
+    if (text === config.manualTriggerPhrase) {
+      void runSummaryNow();
+      return;
+    }
+    askAssistant(text)
+      .then(async (reply) => {
+        for (const chunk of splitForWhatsApp(`🤖 ${reply}`)) await sendSelfMessage(chunk);
+      })
+      .catch(async (err) => {
+        console.error('Assistant failed:', err);
+        await sendSelfMessage('🤖 משהו השתבש ולא הצלחתי לענות. נסה שוב בעוד דקה.').catch(() => undefined);
+      });
   },
 });
 

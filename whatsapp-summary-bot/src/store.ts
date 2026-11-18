@@ -1,45 +1,105 @@
+import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'fs';
+import { join } from 'path';
+import { config } from './config.js';
 import type { GroupMessages, StoredMessage } from './types.js';
 
+interface PersistedMessage extends StoredMessage {
+  groupJid: string;
+  groupName: string;
+}
+
+interface StoreFile {
+  lastSummaryAtMs: number;
+  messages: PersistedMessage[];
+}
+
 /**
- * In-memory only, by design: messages are kept just long enough to build the
- * next summary, then dropped. Nothing here is ever written to disk.
+ * Group text messages, kept on the server's disk for MESSAGE_RETENTION_DAYS so
+ * the assistant can answer questions about them; older ones are deleted.
+ * Media is never stored — only a placeholder like "[תמונה]".
  */
 class MessageStore {
-  private groups = new Map<string, { groupName: string; messages: StoredMessage[] }>();
+  private readonly path = join(config.dataDir, 'messages.json');
+  private readonly retentionMs = config.retentionDays * 24 * 60 * 60 * 1000;
+  private data: StoreFile = { lastSummaryAtMs: 0, messages: [] };
+  private ids = new Set<string>();
+  private saveTimer: NodeJS.Timeout | null = null;
+
+  constructor() {
+    mkdirSync(config.dataDir, { recursive: true });
+    try {
+      this.data = JSON.parse(readFileSync(this.path, 'utf-8')) as StoreFile;
+    } catch {
+      // First run, or an unreadable file — start empty.
+    }
+    this.prune();
+    for (const m of this.data.messages) this.ids.add(m.id);
+  }
 
   addMessage(groupJid: string, groupName: string, message: StoredMessage): void {
-    let entry = this.groups.get(groupJid);
-    if (!entry) {
-      entry = { groupName, messages: [] };
-      this.groups.set(groupJid, entry);
-    }
-    entry.groupName = groupName;
-    entry.messages.push(message);
+    if (this.ids.has(message.id)) return;
+    this.ids.add(message.id);
+    this.data.messages.push({ ...message, groupJid, groupName });
+    this.scheduleSave();
   }
 
-  hasAnyMessages(): boolean {
-    for (const entry of this.groups.values()) {
-      if (entry.messages.length > 0) return true;
-    }
-    return false;
-  }
-
-  /** Returns a snapshot of everything collected so far, without clearing it. */
-  snapshot(): GroupMessages[] {
-    const result: GroupMessages[] = [];
-    for (const [groupJid, entry] of this.groups.entries()) {
-      if (entry.messages.length > 0) {
-        result.push({ groupJid, groupName: entry.groupName, messages: [...entry.messages] });
+  /** Everything since the last successful summary, grouped by group. */
+  messagesSinceLastSummary(): GroupMessages[] {
+    this.prune();
+    const byGroup = new Map<string, GroupMessages>();
+    for (const m of this.data.messages) {
+      if (m.timestampMs <= this.data.lastSummaryAtMs) continue;
+      let g = byGroup.get(m.groupJid);
+      if (!g) {
+        g = { groupJid: m.groupJid, groupName: m.groupName, messages: [] };
+        byGroup.set(m.groupJid, g);
       }
+      g.messages.push(m);
     }
-    return result;
+    for (const g of byGroup.values()) g.messages.sort((a, b) => a.timestampMs - b.timestampMs);
+    return [...byGroup.values()];
   }
 
-  /** Deletes everything collected so far. Call only after the summary was sent successfully. */
-  clear(): void {
-    for (const entry of this.groups.values()) {
-      entry.messages = [];
+  markSummarized(atMs: number): void {
+    this.data.lastSummaryAtMs = atMs;
+    this.scheduleSave();
+  }
+
+  search(opts: { query?: string; group?: string; sinceMs?: number; limit: number }): PersistedMessage[] {
+    this.prune();
+    const query = opts.query?.trim().toLowerCase();
+    const group = opts.group?.trim().toLowerCase();
+    return this.data.messages
+      .filter(
+        (m) =>
+          (!opts.sinceMs || m.timestampMs >= opts.sinceMs) &&
+          (!group || m.groupName.toLowerCase().includes(group)) &&
+          (!query ||
+            m.text.toLowerCase().includes(query) ||
+            m.sender.toLowerCase().includes(query)),
+      )
+      .sort((a, b) => b.timestampMs - a.timestampMs)
+      .slice(0, opts.limit);
+  }
+
+  private prune(): void {
+    const cutoff = Date.now() - this.retentionMs;
+    const before = this.data.messages.length;
+    this.data.messages = this.data.messages.filter((m) => m.timestampMs >= cutoff);
+    if (this.data.messages.length !== before) {
+      this.ids = new Set(this.data.messages.map((m) => m.id));
+      this.scheduleSave();
     }
+  }
+
+  private scheduleSave(): void {
+    if (this.saveTimer) return;
+    this.saveTimer = setTimeout(() => {
+      this.saveTimer = null;
+      const tmp = `${this.path}.tmp`;
+      writeFileSync(tmp, JSON.stringify(this.data));
+      renameSync(tmp, this.path);
+    }, 2000);
   }
 }
 

@@ -1,4 +1,5 @@
 export interface StoredMessage {
+  id: string;
   sender: string;
   text: string;
   timestampMs: number;

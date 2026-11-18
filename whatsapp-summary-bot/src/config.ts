@@ -16,6 +16,12 @@ export const config = {
    *  gitignored and won't exist on a server deployed straight from GitHub. */
   groupsEnv: process.env.GROUPS,
   port: Number(process.env.PORT) || 3000,
+  dataDir: process.env.DATA_DIR?.trim() || './data',
+  retentionDays: Number(process.env.MESSAGE_RETENTION_DAYS) || 7,
+  assistantModel: process.env.ASSISTANT_MODEL?.trim() || 'claude-opus-5-5',
+  gmailAddress: process.env.GMAIL_ADDRESS?.trim() || '',
+  gmailAppPassword: process.env.GMAIL_APP_PASSWORD?.replace(/\s/g, '') || '',
+  calendarIcsUrl: process.env.GOOGLE_CALENDAR_ICS_URL?.trim() || '',
   summaryHour: 7,
   summaryMinute: 30,
   timezone: 'Asia/Jerusalem',
