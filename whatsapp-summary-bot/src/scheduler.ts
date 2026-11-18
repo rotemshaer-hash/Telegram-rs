@@ -14,8 +14,7 @@ export async function runSummaryNow(): Promise<void> {
   }
   running = true;
   try {
-    const startedAt = Date.now();
-    const groups = messageStore.messagesSinceLastSummary();
+    const groups = messageStore.snapshot();
     const summary = await createDailySummary(groups);
     const text = summary ?? noActivityMessage();
 
@@ -23,12 +22,12 @@ export async function runSummaryNow(): Promise<void> {
       await sendSelfMessage(chunk);
     }
 
-    messageStore.markSummarized(startedAt);
+    messageStore.clear();
     statusState.lastSummaryAt = new Date().toLocaleString('he-IL', { timeZone: config.timezone });
   } catch (err) {
     console.error('Failed to create/send daily summary:', err);
-    // Not marked as summarized on failure — the next attempt (manual trigger,
-    // or tomorrow's run) still includes these messages.
+    // Deliberately don't clear the store on failure — the next attempt (manual
+    // trigger, or tomorrow's run) will include today's messages too.
   } finally {
     running = false;
   }

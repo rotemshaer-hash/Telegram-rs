@@ -20,8 +20,7 @@ export interface WhatsAppCallbacks {
   onDisconnected: (reason: string) => void;
   onGroupsResolved: (matched: Map<string, string>, missing: string[]) => void;
   onGroupMessage: (groupJid: string, groupName: string, message: StoredMessage) => void;
-  /** A text Rotem wrote himself in his own self-chat (never one the bot sent). */
-  onSelfMessage: (text: string) => void;
+  onManualTrigger: () => void;
 }
 
 let currentSock: WASocket | null = null;
@@ -30,13 +29,6 @@ let selfJid: string | null = null;
 // instead of (or alongside) the phone-number JID — match either.
 let selfLid: string | null = null;
 let groupJidToName: Map<string, string> = new Map();
-
-// The bot writes into the same self-chat it reads from, so remember what it
-// sent and never treat those as Rotem's messages — otherwise it would answer itself.
-const sentByBot = new Set<string>();
-// A self-chat message older than this is a re-delivery (history sync after a
-// reconnect), not a new question — answering it would repeat old answers.
-const SELF_MESSAGE_MAX_AGE_MS = 2 * 60 * 1000;
 
 function extractText(msg: WAMessage): string | null {
   const m = msg.message;
@@ -124,7 +116,7 @@ async function start(callbacks: WhatsAppCallbacks): Promise<void> {
     if (connection === 'open') {
       selfJid = jidNormalizedUser(sock.user!.jid ?? sock.user!.id);
       selfLid = sock.user!.lid ? jidNormalizedUser(sock.user!.lid) : null;
-      console.log('self identity', { selfJid, selfLid });
+      console.log('self identity', { selfJid, selfLid, rawUser: sock.user });
       try {
         const { matched, missing } = await resolveGroups(sock);
         groupJidToName = matched;
@@ -145,20 +137,41 @@ async function start(callbacks: WhatsAppCallbacks): Promise<void> {
   });
 
   sock.ev.on('messages.upsert', ({ messages, type }) => {
+    console.log(
+      'messages.upsert',
+      type,
+      messages.map((m) => ({
+        remoteJid: m.key.remoteJid,
+        fromMe: m.key.fromMe,
+        hasMessage: !!m.message,
+        selfJid,
+      })),
+    );
     if (type !== 'notify' && type !== 'append') return;
     for (const msg of messages) {
       const remoteJid = msg.key.remoteJid;
       if (!remoteJid || msg.message?.protocolMessage) continue;
 
-      // Self-chat: Rotem's own questions and commands to the bot.
+      // Self-chat: only ever look for the manual "summarize now" trigger.
       // WhatsApp may route it via the phone-number JID or the newer "@lid" form.
       const isSelfChat = (selfJid && remoteJid === selfJid) || (selfLid && remoteJid === selfLid);
       if (isSelfChat) {
-        const fresh = Date.now() - timestampMs(msg) < SELF_MESSAGE_MAX_AGE_MS;
-        const ownMessage = msg.key.fromMe && !sentByBot.has(msg.key.id ?? '');
-        // Typed text only — a photo or voice note in the self-chat isn't a question.
-        const text = (msg.message?.conversation ?? msg.message?.extendedTextMessage?.text)?.trim();
-        if (type === 'notify' && fresh && ownMessage && text) callbacks.onSelfMessage(text);
+        if (msg.key.fromMe) {
+          const text = extractText(msg);
+          if (text) {
+            console.log(
+              'self-chat text:',
+              JSON.stringify(text),
+              'codepoints:',
+              Array.from(text)
+                .map((c) => c.codePointAt(0)!.toString(16))
+                .join(' '),
+            );
+          }
+          if (text && text.trim() === config.manualTriggerPhrase) {
+            callbacks.onManualTrigger();
+          }
+        }
         continue;
       }
 
@@ -172,7 +185,6 @@ async function start(callbacks: WhatsAppCallbacks): Promise<void> {
       if (!text) continue;
 
       callbacks.onGroupMessage(remoteJid, groupName, {
-        id: msg.key.id ?? `${remoteJid}:${timestampMs(msg)}`,
         sender: senderName(msg),
         text,
         timestampMs: timestampMs(msg),
@@ -196,9 +208,6 @@ export async function sendSelfMessage(text: string): Promise<void> {
   // Prefer the "@lid" address — that's the form the self-chat actually uses
   // for this account (see the connect-time "self identity" log).
   const target = selfLid ?? selfJid;
-  const sent = await currentSock.sendMessage(target, { text });
-  if (sent?.key.id) {
-    sentByBot.add(sent.key.id);
-    if (sentByBot.size > 500) sentByBot.delete(sentByBot.values().next().value!);
-  }
+  console.log('sending self message to', target);
+  await currentSock.sendMessage(target, { text });
 }

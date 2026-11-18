@@ -16,9 +16,6 @@
     "@anthropic-ai/sdk": "^0.136.0",
     "@hapi/boom": "^9.1.4",
     "@whiskeysockets/baileys": "6.7.22",
-    "ical-expander": "^3.2.0",
-    "imapflow": "^2.12.1",
-    "mailparser": "^3.14.5",
     "node-cron": "^4.6.0",
     "pino": "^10.4.0"
   },

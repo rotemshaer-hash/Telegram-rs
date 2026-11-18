@@ -1,17 +1,10 @@
 # WhatsApp Group Summary Bot
 
-Reads a configured list of WhatsApp groups (read-only — never posts in them,
-reacts, or messages anyone else), and every day at 7:30 Asia/Jerusalem sends a
-Hebrew summary of everything since the previous summary to your own "Message
-Yourself" chat via the Claude API.
-
-It is also a personal assistant: anything you write in your "Message Yourself"
-chat is answered by Claude, which can search the stored group messages, your
-Gmail and your Google Calendar. Every tool is read-only; to add a calendar event
-it sends a pre-filled Google Calendar link that you tap to save.
-
-Group text messages are kept on the server's disk for MESSAGE_RETENTION_DAYS
-(default 7) and then deleted. Media is never stored.
+Reads a configured list of WhatsApp groups (read-only — never replies, reacts,
+or messages anyone), and once a day at 21:00 Asia/Jerusalem sends a Hebrew
+summary of the day to your own "Message Yourself" chat via the Claude API.
+Messages are kept in memory only, and only until the summary is built — never
+written to disk, and media is never stored.
 
 ## Setup
 
@@ -37,22 +30,16 @@ Group text messages are kept on the server's disk for MESSAGE_RETENTION_DAYS
 
 - `src/whatsapp.ts` — Baileys connection, pairing-code login, persisted auth
   state (`AUTH_DIR`, must be a persistent volume in production), and the
-  read-only message filter (only configured groups + your own messages in
-  your self-chat; everything else is ignored, not stored, not replied to).
+  read-only message filter (only configured groups + the manual trigger in
+  your own chat; everything else is ignored, not stored, not replied to).
 - `src/groups.ts` — loads `groups.config.json` and matches names against the
   groups Baileys reports the account participates in.
-- `src/store.ts` — group messages on disk (`DATA_DIR/messages.json`), pruned
-  after MESSAGE_RETENTION_DAYS; tracks the last summary time.
+- `src/store.ts` — in-memory-only message buffer, cleared after a summary is
+  sent successfully.
 - `src/summarize.ts` — builds the transcript and calls the Claude API
   (model configurable via `CLAUDE_MODEL`, default `claude-opus-5-5`).
-- `src/scheduler.ts` — the 7:30 `Asia/Jerusalem` cron job, and the same
+- `src/scheduler.ts` — the 21:00 `Asia/Jerusalem` cron job, and the same
   summary logic used by the manual "סכם עכשיו" trigger.
-- `src/assistant.ts` — the self-chat assistant: Claude tool loop with
-  `search_whatsapp`, `search_email`, `read_email`, `list_calendar_events`
-  and `make_calendar_link`.
-- `src/mail.ts` — read-only Gmail over IMAP (app password).
-- `src/calendar.ts` — reads the calendar's secret iCal address; builds
-  "add event" links.
 - `src/statusServer.ts` — a tiny phone-friendly status page: shows the
   pairing code, connection state, and any group names from the config that
   weren't found.
@@ -61,7 +48,7 @@ Group text messages are kept on the server's disk for MESSAGE_RETENTION_DAYS
 
 Send yourself (in your own "Message Yourself" chat) the exact text
 `סכם עכשיו` to generate and send an immediate summary of everything
-collected so far, without waiting for 7:30.
+collected so far, without waiting for 21:00.
 
 ## Required environment variables
 
